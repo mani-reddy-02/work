@@ -1,0 +1,23 @@
+﻿{
+	"folders": [
+		{
+			"name": "Backend",
+			"path": "backend"
+		},
+		{
+			"name": "Medi User (App / Client)",
+			"path": "medi-user"
+		},
+		{
+			"name": "Mediquee Admin",
+			"path": "mediquee admin"
+		},
+		{
+			"name": "MediQuee Hospital Dashboard",
+			"path": "MediQuee_Hospital_Dashboard-main"
+		}
+	],
+	"settings": {
+		"workbench.editor.tabSizing": "shrink"
+	}
+}
