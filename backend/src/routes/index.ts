@@ -20,10 +20,15 @@ router.get('/health/db', async (req, res) => {
 });
 
 import departmentsRoutes from '../modules/departments/departments.routes';
+import staffRoutes from '../modules/staff/staff.routes';
+
+import permissionsRoutes from '../modules/permissions/permissions.routes';
 
 // API Routes
 router.use('/auth', authRoutes);
 router.use('/users', usersRoutes);
 router.use('/departments', departmentsRoutes);
+router.use('/staff', staffRoutes);
+router.use('/permissions', permissionsRoutes);
 
 export default router;

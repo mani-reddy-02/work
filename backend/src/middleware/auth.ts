@@ -12,7 +12,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'No token provided' } });
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required. Please log in again.' } });
     }
 
     const token = authHeader.split(' ')[1];

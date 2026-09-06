@@ -4,16 +4,39 @@ import jwt from 'jsonwebtoken';
 import { env } from '../../config/env';
 import { BusinessType, Role } from '@prisma/client';
 
+// Maps the frontend UI role selector values to the authoritative database Role enum.
+// This is the ONLY place where UI role labels are translated.
+const UI_ROLE_TO_DB_ROLE: Record<string, Role> = {
+  admin: Role.HOSPITAL_ADMIN,
+  doctor: Role.DOCTOR,
+  nurse: Role.NURSE,
+  receptionist: Role.RECEPTIONIST,
+  lab: Role.LAB_ADMIN,
+};
+
 export class AuthService {
-  static async login(email: string, password: string) {
+  static async login(email: string, password: string, selectedRole?: string) {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       throw new Error('Invalid credentials');
     }
 
+    if (!user.active) {
+      throw new Error('Account is deactivated');
+    }
+
     const isValid = await bcrypt.compare(password, user.passwordHash);
     if (!isValid) {
       throw new Error('Invalid credentials');
+    }
+
+    // If a role was selected on the login UI, verify it matches the database role.
+    // The database role is ALWAYS authoritative. We never switch or override it.
+    if (selectedRole) {
+      const expectedDbRole = UI_ROLE_TO_DB_ROLE[selectedRole.toLowerCase()];
+      if (!expectedDbRole || expectedDbRole !== user.role) {
+        throw new Error('Role mismatch');
+      }
     }
 
     const token = jwt.sign({ userId: user.id }, env.JWT_SECRET as string, { expiresIn: env.JWT_EXPIRES_IN as any });

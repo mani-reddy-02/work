@@ -55,6 +55,7 @@ model Hospital {
   users              User[]
   departments        Department[]
   verifications      HospitalVerification[]
+  rolePermissions    RolePermission[]
 }
 
 model HospitalVerification {
@@ -77,11 +78,15 @@ model User {
   name         String
   role         Role
   designation  String?
+  avatar       String?
   active       Boolean   @default(true)
 
   // Nullable because SUPER_ADMIN might not belong to one hospital
   hospitalId   String?
   hospital     Hospital? @relation(fields: [hospitalId], references: [id])
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -99,5 +104,36 @@ model Department {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  users       User[]
+
   @@unique([hospitalId, name])
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  description String?
+  module      String
+  
+  createdAt   DateTime @default(now())
+
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           String   @id @default(uuid())
+  hospitalId   String
+  hospital     Hospital @relation(fields: [hospitalId], references: [id])
+  role         Role
+  
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  
+  enabled      Boolean  @default(false)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([hospitalId, role, permissionId])
 }

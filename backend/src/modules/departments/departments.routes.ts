@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authenticate, requireRole } from '../../middleware/auth';
+import { authenticate } from '../../middleware/auth';
+import { requirePermission } from '../../middleware/permissions';
 import { validateRequest } from '../../middleware/validate';
 import { Role } from '@prisma/client';
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from './departments.controller';
@@ -7,13 +8,12 @@ import { createDepartmentSchema, updateDepartmentSchema } from './departments.sc
 
 const router = Router();
 
-// All department routes require authentication and HOSPITAL_ADMIN role
+// All department routes require authentication
 router.use(authenticate);
-router.use(requireRole([Role.HOSPITAL_ADMIN]));
 
-router.get('/', getDepartments);
-router.post('/', validateRequest(createDepartmentSchema), createDepartment);
-router.patch('/:id', validateRequest(updateDepartmentSchema), updateDepartment);
-router.delete('/:id', deleteDepartment);
+router.get('/', requirePermission('departments.view'), getDepartments);
+router.post('/', requirePermission('departments.create'), validateRequest(createDepartmentSchema), createDepartment);
+router.patch('/:id', requirePermission('departments.update'), validateRequest(updateDepartmentSchema), updateDepartment);
+router.delete('/:id', requirePermission('departments.delete'), deleteDepartment);
 
 export default router;
