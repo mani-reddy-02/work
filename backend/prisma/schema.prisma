@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  HOSPITAL_ADMIN
+  DOCTOR
+  NURSE
+  RECEPTIONIST
+  LAB_ADMIN
+  PATIENT
+}
+
+enum BusinessType {
+  HOSPITAL
+  LABORATORY
+}
+
+model Hospital {
+  id                 String       @id @default(uuid())
+  name               String
+  businessType       BusinessType
+  facilityType       String?
+  registrationNumber String?
+  establishedYear    String?
+  logoUrl            String?
+
+  // Contact
+  contactPhone       String?
+  contactEmail       String?
+  website            String?
+  emergencyContact   String?
+
+  // Location
+  addressLine1       String?
+  addressLine2       String?
+  area               String?
+  city               String?
+  state              String?
+  country            String?
+  pincode            String?
+
+  // Services as a JSON array of strings
+  services           String[]
+
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  users              User[]
+  departments        Department[]
+  verifications      HospitalVerification[]
+}
+
+model HospitalVerification {
+  id           String   @id @default(uuid())
+  hospitalId   String
+  hospital     Hospital @relation(fields: [hospitalId], references: [id])
+  
+  documentType String   // e.g., 'REGISTRATION', 'CLINICAL_ESTABLISHMENT', 'NABH'
+  fileUrl      String   // Path or URL to the uploaded file
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  phone        String?   @unique
+  passwordHash String
+  name         String
+  role         Role
+  designation  String?
+  active       Boolean   @default(true)
+
+  // Nullable because SUPER_ADMIN might not belong to one hospital
+  hospitalId   String?
+  hospital     Hospital? @relation(fields: [hospitalId], references: [id])
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Department {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  
+  name        String
+  code        String?
+  description String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([hospitalId, name])
+}
