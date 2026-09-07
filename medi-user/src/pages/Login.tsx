@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { HeartPulse, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { HeartPulse, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 
 export default function Login() {
@@ -12,6 +12,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   
   const [errors, setErrors] = useState({ identifier: '', password: '' });
+  const [apiError, setApiError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -32,21 +33,22 @@ export default function Login() {
     return isValid;
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setApiError('');
     if (validate()) {
       setIsLoading(true);
+      const res = await login(identifier.trim(), password);
+      setIsLoading(false);
       
-      // Simulate network request
-      setTimeout(() => {
-        setIsLoading(false);
+      if (res.success) {
         setShowSuccess(true);
-        login();
-        
         setTimeout(() => {
           navigate('/');
-        }, 1000);
-      }, 1500);
+        }, 800);
+      } else {
+        setApiError(res.error || 'Invalid email/mobile or password.');
+      }
     }
   };
 
@@ -80,6 +82,13 @@ export default function Login() {
             </div>
           )}
 
+          {apiError && (
+            <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 font-medium text-sm flex items-center gap-2.5 animate-in fade-in duration-200">
+              <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
+              <span>{apiError}</span>
+            </div>
+          )}
+
           <form className="space-y-5" onSubmit={handleLogin}>
             <div>
               <label htmlFor="identifier" className="block text-sm font-semibold text-slate-700">
@@ -96,6 +105,7 @@ export default function Login() {
                   onChange={(e) => {
                     setIdentifier(e.target.value);
                     if (errors.identifier) setErrors({...errors, identifier: ''});
+                    if (apiError) setApiError('');
                   }}
                   className={`appearance-none block w-full px-4 py-3.5 border rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:text-sm font-medium transition-all ${
                     errors.identifier ? 'border-red-300 focus:border-red-500 bg-red-50/50' : 'border-slate-200 focus:border-blue-500 bg-slate-50'
@@ -122,6 +132,7 @@ export default function Login() {
                   onChange={(e) => {
                     setPassword(e.target.value);
                     if (errors.password) setErrors({...errors, password: ''});
+                    if (apiError) setApiError('');
                   }}
                   className={`appearance-none block w-full px-4 py-3.5 border rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:text-sm font-medium pr-12 transition-all ${
                     errors.password ? 'border-red-300 focus:border-red-500 bg-red-50/50' : 'border-slate-200 focus:border-blue-500 bg-slate-50'

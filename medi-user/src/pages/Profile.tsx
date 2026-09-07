@@ -61,7 +61,7 @@ const menuItems = [
 ];
 
 const Profile = () => {
-  const { profile } = useProfile();
+  const { profile, isLoading } = useProfile();
   const { logout } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const navigate = useNavigate();
@@ -71,6 +71,14 @@ const Profile = () => {
     logout();
     navigate('/login');
   };
+
+  if (isLoading && !profile.name) {
+    return (
+      <div className="flex flex-col min-h-screen bg-slate-50 items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 pb-20">
@@ -97,7 +105,11 @@ const Profile = () => {
           <div className="flex items-center gap-4">
             <div className="relative shrink-0">
               <div className="w-24 h-24 rounded-full border-2 border-white overflow-hidden bg-white/20 shadow-lg">
-                 <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80" alt="Profile" className="w-full h-full object-cover" />
+                 <img 
+                   src={profile.avatar || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80"} 
+                   alt="Profile" 
+                   className="w-full h-full object-cover" 
+                 />
               </div>
               <button className="absolute bottom-1 right-1 p-1.5 bg-white rounded-full text-blue-600 shadow-md">
                 <Camera className="w-4 h-4" />
@@ -105,7 +117,7 @@ const Profile = () => {
             </div>
             <div>
               <h2 className="text-2xl font-bold flex items-center gap-2">
-                {profile.name}
+                {profile.name || 'Patient'}
               </h2>
               <div className="flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full text-white text-xs font-medium w-fit mb-3 mt-1 backdrop-blur-sm border border-white/20">
                 <ShieldCheck className="w-3.5 h-3.5" /> 
@@ -116,10 +128,12 @@ const Profile = () => {
                   <Mail className="w-4 h-4" />
                   <span>{profile.email}</span>
                 </div>
-                <div className="flex items-center gap-2 text-white/90 text-sm">
-                  <Phone className="w-4 h-4" />
-                  <span>{profile.phone}</span>
-                </div>
+                {profile.phone && (
+                  <div className="flex items-center gap-2 text-white/90 text-sm">
+                    <Phone className="w-4 h-4" />
+                    <span>{profile.phone}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

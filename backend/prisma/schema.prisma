@@ -79,6 +79,8 @@ model User {
   role         Role
   designation  String?
   avatar       String?
+  dob          String?
+  gender       String?
   active       Boolean   @default(true)
 
   // Nullable because SUPER_ADMIN might not belong to one hospital

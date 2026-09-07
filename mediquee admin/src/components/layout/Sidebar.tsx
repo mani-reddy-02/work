@@ -29,6 +29,8 @@ interface SidebarProps {
   toggleSidebar: () => void;
 }
 
+import { useAdminAuth } from '../../contexts/AuthContext';
+
 const navGroups = [
   {
     title: 'Overview',
@@ -100,6 +102,7 @@ const navGroups = [
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
+  const { adminUser, logout } = useAdminAuth();
   return (
     <>
       {/* Mobile Overlay */}
@@ -194,18 +197,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
            <div className={`flex items-center gap-3 ${!isOpen && 'lg:justify-center'}`}>
              <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0">
                <img 
-                 src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" 
+                 src={adminUser?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"} 
                  alt="Admin Avatar" 
                  className="w-full h-full object-cover"
                />
              </div>
              
              <div className={`flex-1 min-w-0 ${!isOpen && 'lg:hidden'}`}>
-               <p className="text-sm font-medium text-slate-900 dark:text-white truncate transition-colors">System Admin</p>
-               <p className="text-xs text-slate-500 dark:text-slate-400 truncate transition-colors">Super User</p>
+               <p className="text-sm font-medium text-slate-900 dark:text-white truncate transition-colors">{adminUser?.name || 'Super Admin'}</p>
+               <p className="text-xs text-slate-500 dark:text-slate-400 truncate transition-colors">{adminUser?.email || 'admin@mediquee.com'}</p>
              </div>
              
-             <button className={`p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:text-slate-300 dark:hover:bg-slate-800 rounded-md transition-colors ${!isOpen && 'lg:hidden'}`}>
+             <button 
+               onClick={logout}
+               title="Sign Out"
+               className={`p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:text-red-400 dark:hover:bg-slate-800 rounded-md transition-colors ${!isOpen && 'lg:hidden'}`}
+             >
                 <LogOut size={18} />
              </button>
            </div>

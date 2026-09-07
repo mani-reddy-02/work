@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import authRoutes from '../modules/auth/auth.routes';
 import usersRoutes from '../modules/users/users.routes';
+import departmentsRoutes from '../modules/departments/departments.routes';
+import staffRoutes from '../modules/staff/staff.routes';
+import permissionsRoutes from '../modules/permissions/permissions.routes';
+import adminRoutes from '../modules/admin/admin.routes';
+import publicRoutes from '../modules/public/public.routes';
 import { prisma } from '../config/prisma';
 
 const router = Router();
@@ -19,16 +24,13 @@ router.get('/health/db', async (req, res) => {
   }
 });
 
-import departmentsRoutes from '../modules/departments/departments.routes';
-import staffRoutes from '../modules/staff/staff.routes';
-
-import permissionsRoutes from '../modules/permissions/permissions.routes';
-
 // API Routes
 router.use('/auth', authRoutes);
 router.use('/users', usersRoutes);
 router.use('/departments', departmentsRoutes);
 router.use('/staff', staffRoutes);
 router.use('/permissions', permissionsRoutes);
+router.use('/admin', adminRoutes);
+router.use('/public', publicRoutes);
 
 export default router;

@@ -1,14 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { Hospital } from '../types';
 import { mockHospitals } from '../mock/data';
 import { Building2, Building, ShieldCheck, ShieldAlert } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
+import { useAdminAuth } from '../contexts/AuthContext';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 const Hospitals: React.FC = () => {
-  const [hospitals] = useState<Hospital[]>(mockHospitals);
+  const { token } = useAdminAuth();
+  const [hospitals, setHospitals] = useState<Hospital[]>(mockHospitals);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const fetchHospitals = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_BASE_URL}/admin/hospitals`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            setHospitals(json.data);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch admin hospitals:', err);
+      }
+    };
+    fetchHospitals();
+  }, [token]);
 
   const filteredHospitals = hospitals.filter(h => 
     h.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -20,7 +44,7 @@ const Hospitals: React.FC = () => {
       header: 'Hospital',
       accessor: (h) => (
         <div className="flex flex-col">
-          <span className="font-medium text-slate-900">{h.name}</span>
+          <span className="font-medium text-slate-900 dark:text-white">{h.name}</span>
           <span className="text-xs text-slate-500">{h.registrationNumber}</span>
         </div>
       ),
@@ -29,7 +53,7 @@ const Hospitals: React.FC = () => {
       header: 'Location',
       accessor: (h) => (
         <div className="flex flex-col">
-          <span className="text-sm text-slate-700">{h.city}</span>
+          <span className="text-sm text-slate-700 dark:text-slate-300">{h.city}</span>
           <span className="text-xs text-slate-500">{h.state}</span>
         </div>
       ),
@@ -54,19 +78,27 @@ const Hospitals: React.FC = () => {
     {
       header: 'Actions',
       accessor: (h) => (
-        <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">View</button>
+        <button 
+          onClick={() => alert(`Viewing hospital: ${h.name}`)}
+          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 text-sm font-medium"
+        >
+          View
+        </button>
       ),
     }
   ];
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Hospital Management</h2>
-          <p className="text-sm text-slate-500">Manage registered hospitals and verify their credentials.</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Hospital Management</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">View and manage registered hospitals and medical centers</p>
         </div>
-        <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+        <button 
+          onClick={() => alert('New hospital registration can be performed on the Onboarding portal.')}
+          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+        >
           <Building size={16} />
           Add Hospital
         </button>

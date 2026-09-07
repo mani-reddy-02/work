@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { HeartPulse, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { HeartPulse, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../lib/auth';
-import { updateGlobalProfile } from '../lib/profile';
 
 export default function Register() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { register } = useAuth();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -21,6 +20,7 @@ export default function Register() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -46,7 +46,7 @@ export default function Register() {
       isValid = false;
     }
     if (!formData.phone.trim() || formData.phone.length < 10) {
-      newErrors.phone = 'Valid mobile number is required';
+      newErrors.phone = 'Valid mobile number (at least 10 digits) is required';
       isValid = false;
     }
     if (!formData.password) {
@@ -65,33 +65,31 @@ export default function Register() {
     return isValid;
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!agreeTerms) return; // Prevent submission if terms not checked
 
+    setApiError('');
     if (validate()) {
       setIsLoading(true);
       
-      // Simulate network request
-      setTimeout(() => {
-        setIsLoading(false);
-        setShowSuccess(true);
-        
-        // Update mock profile state
-        updateGlobalProfile({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          dob: '1990-01-01', // Default mock dob
-          gender: 'Not specified' // Default mock gender
-        });
+      const res = await register({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        password: formData.password,
+      });
 
-        login(); // Set auth state to logged in
-        
+      setIsLoading(false);
+
+      if (res.success) {
+        setShowSuccess(true);
         setTimeout(() => {
           navigate('/');
-        }, 1500);
-      }, 1500);
+        }, 1200);
+      } else {
+        setApiError(res.error || 'Registration failed. Please try again.');
+      }
     }
   };
 
@@ -100,6 +98,9 @@ export default function Register() {
     setFormData({ ...formData, [name]: value });
     if (errors[name]) {
       setErrors({ ...errors, [name]: '' });
+    }
+    if (apiError) {
+      setApiError('');
     }
   };
 
@@ -122,6 +123,13 @@ export default function Register() {
       <div className="mt-4 sm:mx-auto sm:w-full sm:max-w-xl px-4">
         <div className="bg-white py-6 px-4 shadow sm:rounded-2xl sm:px-10 border border-slate-100">
           
+          {apiError && (
+            <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 font-medium text-sm flex items-center gap-2.5 animate-in fade-in duration-200">
+              <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
+              <span>{apiError}</span>
+            </div>
+          )}
+
           {showSuccess ? (
             <div className="text-center py-8 animate-in fade-in zoom-in duration-300">
               <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">

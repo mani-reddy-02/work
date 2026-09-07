@@ -10,10 +10,41 @@ import KpiCard from '../components/ui/KpiCard';
 import StatusBadge from '../components/ui/StatusBadge';
 import { mockKPIsAdvanced, mockChartData, mockAppointments, mockActivities } from '../mock/data';
 import { formatCurrency } from '../utils/finance';
+import { useAdminAuth } from '../contexts/AuthContext';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 const Dashboard: React.FC = () => {
+  const { token } = useAdminAuth();
   const [period, setPeriod] = useState('30d');
   const [serviceFilter, setServiceFilter] = useState('all');
+  const [kpis, setKpis] = useState(mockKPIsAdvanced);
+
+  React.useEffect(() => {
+    const fetchStats = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_BASE_URL}/admin/stats`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            setKpis((prev) => ({
+              ...prev,
+              totalUsers: json.data.totalUsers ?? prev.totalUsers,
+              totalPatients: json.data.totalPatients ?? prev.totalPatients,
+              totalDoctors: json.data.totalDoctors ?? prev.totalDoctors,
+              totalHospitals: json.data.totalHospitals ?? prev.totalHospitals,
+            }));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch admin stats:', err);
+      }
+    };
+    fetchStats();
+  }, [token]);
 
   return (
     <div className="space-y-8">
@@ -92,22 +123,22 @@ const Dashboard: React.FC = () => {
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Platform Overview</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <Link to="/admin/users" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Total Users" value={mockKPIsAdvanced.totalUsers} icon={Users} />
+            <KpiCard title="Total Users" value={kpis.totalUsers} icon={Users} />
           </Link>
           <Link to="/admin/users?role=patient" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Patients" value={mockKPIsAdvanced.totalPatients} icon={UserCircle} />
+            <KpiCard title="Patients" value={kpis.totalPatients} icon={UserCircle} />
           </Link>
           <Link to="/admin/doctors" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Doctors" value={mockKPIsAdvanced.totalDoctors} icon={Stethoscope} />
+            <KpiCard title="Doctors" value={kpis.totalDoctors} icon={Stethoscope} />
           </Link>
           <Link to="/admin/hospitals" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Hospitals" value={mockKPIsAdvanced.totalHospitals} icon={Building2} />
+            <KpiCard title="Hospitals" value={kpis.totalHospitals} icon={Building2} />
           </Link>
           <Link to="/admin/providers?type=lab" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Labs" value={mockKPIsAdvanced.totalLabs} icon={TestTube} />
+            <KpiCard title="Labs" value={kpis.totalLabs || 0} icon={TestTube} />
           </Link>
           <Link to="/admin/providers?type=nurse" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Nurses" value={mockKPIsAdvanced.totalNurses} icon={HeartHandshake} />
+            <KpiCard title="Nurses" value={kpis.totalNurses || 0} icon={HeartHandshake} />
           </Link>
         </div>
       </section>
