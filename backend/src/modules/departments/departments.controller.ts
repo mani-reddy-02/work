@@ -26,7 +26,17 @@ export const createDepartment = async (req: Request, res: Response, next: NextFu
       return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'User does not belong to a hospital' } });
     }
 
-    const { name, code, description } = req.body;
+    let { name, code, description, specialtyId } = req.body;
+
+    // Infer name and code from PlatformSpecialty if not provided
+    if (!name || !code) {
+      const specialty = await prisma.platformSpecialty.findUnique({ where: { id: specialtyId } });
+      if (!specialty) {
+        return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Platform specialty not found' } });
+      }
+      if (!name) name = specialty.name;
+      if (!code) code = specialty.name.substring(0, 3).toUpperCase();
+    }
 
     // Check for duplicate name in the same hospital
     const existing = await prisma.department.findFirst({
@@ -42,6 +52,7 @@ export const createDepartment = async (req: Request, res: Response, next: NextFu
         name,
         code,
         description,
+        specialtyId,
         hospitalId
       }
     });
@@ -60,7 +71,7 @@ export const updateDepartment = async (req: Request, res: Response, next: NextFu
     }
 
     const { id } = req.params;
-    const { name, code, description } = req.body;
+    const { name, code, description, specialtyId } = req.body;
 
     const department = await prisma.department.findUnique({
       where: { id: id as string }
@@ -85,7 +96,7 @@ export const updateDepartment = async (req: Request, res: Response, next: NextFu
 
     const updated = await prisma.department.update({
       where: { id: id as string },
-      data: { name, code, description }
+      data: { name, code, description, specialtyId }
     });
 
     res.json({ success: true, data: updated });

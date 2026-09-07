@@ -64,7 +64,6 @@ export const getPublicDoctors = async (req: Request, res: Response, next: NextFu
         id: true,
         name: true,
         designation: true,
-        avatar: true,
         hospital: {
           select: { id: true, name: true, city: true },
         },

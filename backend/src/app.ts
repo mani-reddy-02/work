@@ -11,7 +11,14 @@ const app = express();
 // Security and middleware
 app.use(helmet());
 app.use(cors({
-  origin: env.CORS_ORIGIN,
+  origin: (origin, callback) => {
+    // Allow any localhost port for local development, or fallback to the exact CORS_ORIGIN
+    if (!origin || origin.startsWith('http://localhost:') || env.CORS_ORIGIN.split(',').includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));

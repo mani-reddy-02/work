@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -22,6 +23,14 @@ enum BusinessType {
   LABORATORY
 }
 
+enum BookingStatus {
+  PENDING
+  WAITING
+  IN_CONSULTATION
+  COMPLETED
+  CANCELLED
+}
+
 model Hospital {
   id                 String       @id @default(uuid())
   name               String
@@ -32,48 +41,73 @@ model Hospital {
   logoUrl            String?
 
   // Contact
-  contactPhone       String?
-  contactEmail       String?
-  website            String?
-  emergencyContact   String?
+  contactPhone     String?
+  contactEmail     String?
+  website          String?
+  emergencyContact String?
 
   // Location
-  addressLine1       String?
-  addressLine2       String?
-  area               String?
-  city               String?
-  state              String?
-  country            String?
-  pincode            String?
+  addressLine1 String?
+  addressLine2 String?
+  area         String?
+  city         String?
+  state        String?
+  country      String?
+  pincode      String?
 
   // Services as a JSON array of strings
-  services           String[]
+  services String[]
 
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  users              User[]
-  departments        Department[]
-  verifications      HospitalVerification[]
-  rolePermissions    RolePermission[]
+  users           User[]
+  departments     Department[]
+  verifications   HospitalVerification[]
+  rolePermissions RolePermission[]
+  opBookings      OPBooking[]
+}
+
+model PlatformSpecialty {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
+
+  conditions  PlatformCondition[]
+  departments Department[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PlatformCondition {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
+
+  specialtyId String
+  specialty   PlatformSpecialty @relation(fields: [specialtyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model HospitalVerification {
-  id           String   @id @default(uuid())
-  hospitalId   String
-  hospital     Hospital @relation(fields: [hospitalId], references: [id])
-  
-  documentType String   // e.g., 'REGISTRATION', 'CLINICAL_ESTABLISHMENT', 'NABH'
-  fileUrl      String   // Path or URL to the uploaded file
+  id         String   @id @default(uuid())
+  hospitalId String
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  documentType String // e.g., 'REGISTRATION', 'CLINICAL_ESTABLISHMENT', 'NABH'
+  fileUrl      String // Path or URL to the uploaded file
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  phone        String?   @unique
+  id           String  @id @default(uuid())
+  email        String  @unique
+  phone        String? @unique
   passwordHash String
   name         String
   role         Role
@@ -81,61 +115,90 @@ model User {
   avatar       String?
   dob          String?
   gender       String?
-  active       Boolean   @default(true)
+  active       Boolean @default(true)
 
   // Nullable because SUPER_ADMIN might not belong to one hospital
-  hospitalId   String?
-  hospital     Hospital? @relation(fields: [hospitalId], references: [id])
+  hospitalId String?
+  hospital   Hospital? @relation(fields: [hospitalId], references: [id])
 
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])
 
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  opBookings   OPBooking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Department {
-  id          String   @id @default(uuid())
-  hospitalId  String
-  hospital    Hospital @relation(fields: [hospitalId], references: [id])
-  
+  id         String   @id @default(uuid())
+  hospitalId String
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
+
   name        String
   code        String?
   description String?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  specialtyId String
+  specialty   PlatformSpecialty @relation(fields: [specialtyId], references: [id])
 
-  users       User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users      User[]
+  opBookings OPBooking[]
 
   @@unique([hospitalId, name])
 }
 
 model Permission {
-  id          String   @id @default(uuid())
-  key         String   @unique
+  id          String  @id @default(uuid())
+  key         String  @unique
   name        String
   description String?
   module      String
-  
-  createdAt   DateTime @default(now())
+
+  createdAt DateTime @default(now())
 
   rolePermissions RolePermission[]
 }
 
 model RolePermission {
-  id           String   @id @default(uuid())
-  hospitalId   String
-  hospital     Hospital @relation(fields: [hospitalId], references: [id])
-  role         Role
-  
+  id         String   @id @default(uuid())
+  hospitalId String
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
+  role       Role
+
   permissionId String
   permission   Permission @relation(fields: [permissionId], references: [id])
-  
-  enabled      Boolean  @default(false)
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  enabled Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([hospitalId, role, permissionId])
+}
+
+model OPBooking {
+  id              String        @id @default(uuid())
+  hospitalId      String
+  hospital        Hospital      @relation(fields: [hospitalId], references: [id])
+  departmentId    String
+  department      Department    @relation(fields: [departmentId], references: [id])
+  doctorId        String
+  doctor          User          @relation(fields: [doctorId], references: [id])
+  
+  patientName     String
+  patientPhone    String?
+  patientAge      Int?
+  patientGender   String?
+  opType          String        @default("Normal")
+  
+  status          BookingStatus @default(WAITING)
+  appointmentDate DateTime      @default(now())
+  fee             Float         @default(0)
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }

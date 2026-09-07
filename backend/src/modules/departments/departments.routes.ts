@@ -11,7 +11,7 @@ const router = Router();
 // All department routes require authentication
 router.use(authenticate);
 
-router.get('/', requirePermission('departments.view'), getDepartments);
+router.get('/', getDepartments); // Read-only: any authenticated hospital user can view their departments
 router.post('/', requirePermission('departments.create'), validateRequest(createDepartmentSchema), createDepartment);
 router.patch('/:id', requirePermission('departments.update'), validateRequest(updateDepartmentSchema), updateDepartment);
 router.delete('/:id', requirePermission('departments.delete'), deleteDepartment);

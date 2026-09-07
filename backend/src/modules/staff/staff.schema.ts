@@ -15,6 +15,14 @@ export const createStaffSchema = z.object({
     designation: z.string().optional(),
     avatar: z.string().optional(),
     departmentId: z.string().uuid().optional(),
+  }).refine((data) => {
+    if (data.role === 'DOCTOR' && !data.departmentId) {
+      return false;
+    }
+    return true;
+  }, {
+    message: "Department is required for doctors",
+    path: ["departmentId"]
   }),
 });
 

@@ -25,7 +25,6 @@ export const getStaff = async (req: Request, res: Response, next: NextFunction) 
         phone: true,
         role: true,
         designation: true,
-        avatar: true,
         active: true,
         createdAt: true,
         updatedAt: true,

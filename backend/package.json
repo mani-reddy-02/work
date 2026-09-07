@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "seed:admin": "ts-node prisma/seed-superadmin.ts",
     "seed:permissions": "ts-node prisma/seed-permissions.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "seed:platform": "ts-node prisma/seed-platform-data.ts"
   },
   "keywords": [],
   "author": "",

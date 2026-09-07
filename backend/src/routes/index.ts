@@ -6,6 +6,8 @@ import staffRoutes from '../modules/staff/staff.routes';
 import permissionsRoutes from '../modules/permissions/permissions.routes';
 import adminRoutes from '../modules/admin/admin.routes';
 import publicRoutes from '../modules/public/public.routes';
+import referenceRoutes from '../modules/reference/reference.routes';
+import bookingRoutes from '../modules/bookings/bookings.routes';
 import { prisma } from '../config/prisma';
 
 const router = Router();
@@ -32,5 +34,7 @@ router.use('/staff', staffRoutes);
 router.use('/permissions', permissionsRoutes);
 router.use('/admin', adminRoutes);
 router.use('/public', publicRoutes);
+router.use('/reference', referenceRoutes);
+router.use('/hospital/bookings', bookingRoutes);
 
 export default router;

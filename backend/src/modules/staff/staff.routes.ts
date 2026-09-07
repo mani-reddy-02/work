@@ -11,7 +11,7 @@ const router = Router();
 // All staff management routes require authentication
 router.use(authenticate);
 
-router.get('/', requirePermission('staff.view'), getStaff);
+router.get('/', getStaff); // Read-only: any authenticated hospital user can view their staff list
 router.post('/', requirePermission('staff.create'), validateRequest(createStaffSchema), createStaff);
 router.patch('/:id', requirePermission('staff.update'), validateRequest(updateStaffSchema), updateStaff);
 router.delete('/:id', requirePermission('staff.delete'), deactivateStaff);

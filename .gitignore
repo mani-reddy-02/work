@@ -1,4 +1,41 @@
-﻿# Dependencies
+# Dependencies
+node_modules/
+*/node_modules/
+*/*/node_modules/
+
+# Build outputs
+dist/
+*/dist/
+*/*/dist/
+build/
+*/build/
+
+# Local Environment files
+.env.local
+.env.*.local
+*.env.local
+*/.env.local
+*/.env.*.local
+
+# Git backups
+.git_backup/
+*.git_backup/
+*/*/.git_backup/
+
+# Python virtual environment
+venv/
+*/venv/
+*/*/venv/
+__pycache__/
+*.pyc
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# Vercel / Deploy caches
+.vercel/
+# Dependencies
 node_modules/
 */node_modules/
 */*/node_modules/
@@ -42,3 +79,7 @@ __pycache__/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Secrets
+.env
+.env.*
