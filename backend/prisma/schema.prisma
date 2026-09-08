@@ -88,6 +88,8 @@ model PlatformCondition {
   specialtyId String
   specialty   PlatformSpecialty @relation(fields: [specialtyId], references: [id])
 
+  opBookings  OPBooking[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -124,7 +126,8 @@ model User {
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])
 
-  opBookings   OPBooking[]
+  doctorBookings  OPBooking[] @relation("DoctorBookings")
+  patientBookings OPBooking[] @relation("PatientBookings")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -187,7 +190,13 @@ model OPBooking {
   departmentId    String
   department      Department    @relation(fields: [departmentId], references: [id])
   doctorId        String
-  doctor          User          @relation(fields: [doctorId], references: [id])
+  doctor          User          @relation("DoctorBookings", fields: [doctorId], references: [id])
+  patientId       String?
+  patient         User?         @relation("PatientBookings", fields: [patientId], references: [id])
+  conditionId     String?
+  condition       PlatformCondition? @relation(fields: [conditionId], references: [id])
+  timeSlot        String?
+  reason          String?
   
   patientName     String
   patientPhone    String?

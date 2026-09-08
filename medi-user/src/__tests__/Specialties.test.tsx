@@ -98,6 +98,98 @@ describe('Specialties Component - OP Appointment', () => {
     expect(screen.getByPlaceholderText(/Search hospital by name/i)).toBeInTheDocument();
     expect(screen.getByText(/Hospitals for Hypertension \/ High BP/i)).toBeInTheDocument();
   });
+
+  test('confirmBooking calls API and displays real booking ID on confirmation', async () => {
+    const { opAppointmentApi } = await import('../lib/opAppointmentApi');
+    const spy = vi.spyOn(opAppointmentApi, 'createOpAppointment').mockResolvedValueOnce({
+      success: true,
+      data: {
+        id: '041d83a3-e82f-4878-ac48-b343d3c9bb99',
+        appointmentId: '041d83a3-e82f-4878-ac48-b343d3c9bb99',
+        status: 'WAITING'
+      }
+    });
+
+    render(<Specialties />);
+    
+    // Disease -> Hospital -> Doctor -> Date/Time -> Reason -> Review -> Confirm
+    fireEvent.click(screen.getByText('Fever'));
+    
+    const viewHospitalBtns = screen.getAllByText('View Hospital');
+    if (viewHospitalBtns.length > 0) fireEvent.click(viewHospitalBtns[0]);
+    
+    const viewAllDocs = screen.getByText('View All Doctors');
+    fireEvent.click(viewAllDocs);
+
+    const viewDocBtns = screen.getAllByText('View Doctor');
+    if (viewDocBtns.length > 0) fireEvent.click(viewDocBtns[0]);
+
+    fireEvent.click(screen.getByText(/Book Appointment/i));
+
+    const timeSlot = screen.getByText('10:00 AM');
+    fireEvent.click(timeSlot);
+    fireEvent.click(screen.getByText('Continue'));
+
+    // Enter reason
+    const textarea = screen.getByPlaceholderText(/Describe the reason for your visit/i);
+    fireEvent.change(textarea, { target: { value: 'High fever and headache since yesterday' } });
+    fireEvent.click(screen.getByText('Review Details'));
+
+    // Review screen displays patient & doctor summary
+    expect(screen.getByText(/High fever and headache since yesterday/i)).toBeInTheDocument();
+
+    // Click confirm
+    const confirmBtn = screen.getByText(/Confirm Appointment/i);
+    fireEvent.click(confirmBtn);
+
+    // Confirmation screen displays real booking ID from database
+    const confirmedId = await screen.findByText('041d83a3-e82f-4878-ac48-b343d3c9bb99');
+    expect(confirmedId).toBeInTheDocument();
+    expect(screen.getByText('Appointment Confirmed')).toBeInTheDocument();
+
+    spy.mockRestore();
+  });
+
+  test('handles 409 slot conflict gracefully with error message', async () => {
+    const { opAppointmentApi } = await import('../lib/opAppointmentApi');
+    const spy = vi.spyOn(opAppointmentApi, 'createOpAppointment').mockResolvedValueOnce({
+      success: false,
+      statusCode: 409,
+      error: {
+        code: 'CONFLICT',
+        message: 'This appointment slot is no longer available. Please select another time.'
+      }
+    });
+
+    render(<Specialties />);
+    
+    fireEvent.click(screen.getByText('Fever'));
+    
+    const viewHospitalBtns = screen.getAllByText('View Hospital');
+    if (viewHospitalBtns.length > 0) fireEvent.click(viewHospitalBtns[0]);
+    
+    fireEvent.click(screen.getByText('View All Doctors'));
+
+    const viewDocBtns = screen.getAllByText('View Doctor');
+    if (viewDocBtns.length > 0) fireEvent.click(viewDocBtns[0]);
+
+    fireEvent.click(screen.getByText(/Book Appointment/i));
+
+    fireEvent.click(screen.getByText('10:00 AM'));
+    fireEvent.click(screen.getByText('Continue'));
+
+    const textarea = screen.getByPlaceholderText(/Describe the reason for your visit/i);
+    fireEvent.change(textarea, { target: { value: 'Consultation slot conflict check' } });
+    fireEvent.click(screen.getByText('Review Details'));
+
+    fireEvent.click(screen.getByText(/Confirm Appointment/i));
+
+    // Error alert should be displayed
+    const errorAlerts = await screen.findAllByText(/This appointment slot is no longer available/i);
+    expect(errorAlerts.length).toBeGreaterThanOrEqual(1);
+
+    spy.mockRestore();
+  });
 });
 
 describe('Specialties Component - Video Consultation', () => {

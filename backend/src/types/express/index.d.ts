@@ -8,6 +8,8 @@ declare global {
         role: Role;
         hospitalId: string | null;
         active: boolean;
+        name?: string;
+        phone?: string | null;
       };
     }
   }

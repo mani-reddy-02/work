@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import HowItWorks from '../components/HowItWorks';
 import KnowYourDiseaseModal from '../components/KnowYourDiseaseModal';
+import { useAuth } from '../lib/auth';
+import { opAppointmentApi } from '../lib/opAppointmentApi';
 
 import {
   HeartIcon, KidneyIcon, SkinIcon, LiverIcon, BrainIcon, LungsIcon,
@@ -286,7 +288,22 @@ const CATEGORICAL_DISEASE_MAP: Record<string, Array<{ id: string; name: string; 
   ]
 };
 
-const getDiseasesForCategory = (catId: string, catName: string) => {
+const getDiseasesForCategory = (catId: string, catName: string, rawConditions: any[] = []) => {
+  // If backend has conditions for this category/specialty, prioritize them
+  const backendMatches = rawConditions.filter(c => 
+    c.specialtyId === catId || (c.specialtyName && c.specialtyName.toLowerCase().includes(catName.toLowerCase()))
+  );
+
+  if (backendMatches.length > 0) {
+    return backendMatches.map((bm, idx) => ({
+      id: bm.id,
+      name: bm.name,
+      desc: bm.description || `Specialized clinical care and diagnosis for ${bm.name}.`,
+      icon: Stethoscope,
+      bg: ['bg-red-50', 'bg-blue-50', 'bg-emerald-50', 'bg-purple-50', 'bg-amber-50'][idx % 5]
+    }));
+  }
+
   if (CATEGORICAL_DISEASE_MAP[catId]) {
     return CATEGORICAL_DISEASE_MAP[catId];
   }
@@ -319,6 +336,7 @@ const Specialties = () => {
   const navigate = useNavigate();
   const type = searchParams.get('type') || 'hospital-op';
   const isVideo = type === 'video-consult' || type === 'doctor';
+  const { user } = useAuth();
 
   // State Management
   const [view, setView] = useState<ViewState>('LANDING');
@@ -327,6 +345,22 @@ const Specialties = () => {
   const [showAllAdvanced, setShowAllAdvanced] = useState(false);
   const [showAllCategorical, setShowAllCategorical] = useState(false);
   
+  // Real Data State
+  const [diseasesList, setDiseasesList] = useState({
+    general: generalDiseases,
+    advanced: advancedDiseases,
+    categorical: categoricalDiseases,
+    raw: [] as any[]
+  });
+  const [hospitalsList, setHospitalsList] = useState<any[]>(MOCK_HOSPITALS);
+  const [doctorsList, setDoctorsList] = useState<any[]>(MOCK_DOCTORS);
+  const [availableSlots, setAvailableSlots] = useState<string[]>(TIME_SLOTS);
+  const [isHospitalsLoading, setIsHospitalsLoading] = useState(false);
+  const [isDoctorsLoading, setIsDoctorsLoading] = useState(false);
+  const [isSlotsLoading, setIsSlotsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bookingError, setBookingError] = useState('');
+
   // Selection State
   const [hospitalSearch, setHospitalSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -354,12 +388,117 @@ const Specialties = () => {
   // Know Your Disease AI Modal state
   const [showAiModal, setShowAiModal] = useState(false);
 
+  // Fetch real diseases on mount
+  useEffect(() => {
+    let mounted = true;
+    opAppointmentApi.fetchDiseases().then((res) => {
+      if (mounted && res.success && res.data) {
+        const backendConditions = res.data.conditions;
+
+        // Enrich general diseases with real IDs if matched
+        const enrichedGeneral = generalDiseases.map((gd) => {
+          const match = backendConditions.find(bc =>
+            bc.name.toLowerCase().includes(gd.name.toLowerCase()) ||
+            gd.name.toLowerCase().includes(bc.name.toLowerCase())
+          );
+          return match ? { ...gd, id: match.id, specialtyId: match.specialtyId, specialtyName: match.specialtyName } : gd;
+        });
+
+        // Enrich advanced diseases with real IDs if matched
+        const enrichedAdvanced = advancedDiseases.map((ad) => {
+          const match = backendConditions.find(bc =>
+            bc.name.toLowerCase().includes(ad.name.toLowerCase()) ||
+            ad.name.toLowerCase().includes(bc.name.toLowerCase())
+          );
+          return match ? { ...ad, id: match.id, specialtyId: match.specialtyId, specialtyName: match.specialtyName } : ad;
+        });
+
+        // Enrich categorical with real specialty IDs
+        const enrichedCategorical = categoricalDiseases.map((cd) => {
+          const match = res.data!.categorical.find(cat =>
+            cat.name.toLowerCase().includes(cd.name.toLowerCase()) ||
+            cd.name.toLowerCase().includes(cat.name.toLowerCase())
+          );
+          return match ? { ...cd, id: match.id, specialtyId: match.id } : cd;
+        });
+
+        setDiseasesList({
+          general: enrichedGeneral,
+          advanced: enrichedAdvanced,
+          categorical: enrichedCategorical,
+          raw: backendConditions
+        });
+      }
+    }).catch(() => {});
+
+    return () => { mounted = false; };
+  }, []);
+
+  // Fetch real hospitals when entering hospital view or changing search/disease
+  useEffect(() => {
+    if (view === 'HOSPITAL_RESULTS' || view === 'HOSPITAL_DETAILS') {
+      let active = true;
+      setIsHospitalsLoading(true);
+      opAppointmentApi.fetchHospitals(hospitalSearch, selectedDisease?.id).then((res) => {
+        if (active) {
+          setIsHospitalsLoading(false);
+          if (res.success && res.data && res.data.length > 0) {
+            setHospitalsList(res.data);
+          }
+        }
+      }).catch(() => {
+        if (active) setIsHospitalsLoading(false);
+      });
+      return () => { active = false; };
+    }
+  }, [view, hospitalSearch, selectedDisease]);
+
+  // Fetch real doctors when entering doctor list
+  useEffect(() => {
+    if (view === 'DOCTOR_LIST' || view === 'DOCTOR_PROFILE') {
+      if (selectedHospital?.id) {
+        let active = true;
+        setIsDoctorsLoading(true);
+        opAppointmentApi.fetchHospitalDoctors(selectedHospital.id, selectedDepartment || undefined).then((res) => {
+          if (active) {
+            setIsDoctorsLoading(false);
+            if (res.success && res.data && res.data.length > 0) {
+              setDoctorsList(res.data);
+            }
+          }
+        }).catch(() => {
+          if (active) setIsDoctorsLoading(false);
+        });
+        return () => { active = false; };
+      }
+    }
+  }, [view, selectedHospital, selectedDepartment]);
+
+  // Fetch real availability when selecting slots
+  useEffect(() => {
+    if (view === 'SELECT_SLOT' && selectedDoctor?.id) {
+      let active = true;
+      setIsSlotsLoading(true);
+      const isoDate = new Date().toISOString().split('T')[0];
+      opAppointmentApi.fetchDoctorAvailability(selectedDoctor.id, isoDate).then((res) => {
+        if (active) {
+          setIsSlotsLoading(false);
+          if (res.success && res.data) {
+            setAvailableSlots(res.data.availableSlots);
+          }
+        }
+      }).catch(() => {
+        if (active) setIsSlotsLoading(false);
+      });
+      return () => { active = false; };
+    }
+  }, [view, selectedDoctor, selectedDate]);
+
   const handleAiSelectConcern = (concern: any) => {
-    // Check if concern maps to one of our general or advanced diseases
     const term = concern.diseaseSearchTerm || concern.name;
-    const matched = generalDiseases.find(d => d.name.toLowerCase().includes(term.toLowerCase())) ||
-                    advancedDiseases.find(d => d.name.toLowerCase().includes(term.toLowerCase())) ||
-                    categoricalDiseases.find(d => d.name.toLowerCase().includes(term.toLowerCase()));
+    const matched = diseasesList.general.find(d => d.name.toLowerCase().includes(term.toLowerCase())) ||
+                    diseasesList.advanced.find(d => d.name.toLowerCase().includes(term.toLowerCase())) ||
+                    diseasesList.categorical.find(d => d.name.toLowerCase().includes(term.toLowerCase()));
 
     if (matched) {
       handleDiseaseSelect(matched);
@@ -382,9 +521,11 @@ const Specialties = () => {
     setSelectedCategory(null);
     setCategoricalDiseaseSearch('');
     setHospitalSearch('');
+    setBookingError('');
   }, [isVideo]);
 
   const handleBack = () => {
+    setBookingError('');
     switch (view) {
       case 'CATEGORICAL_DISEASES':
         setView('LANDING');
@@ -410,11 +551,7 @@ const Specialties = () => {
         }
         break;
       case 'HOSPITAL_DETAILS':
-        if (selectedDisease) {
-            setView('HOSPITAL_RESULTS');
-        } else {
-            setView('HOSPITAL_RESULTS');
-        }
+        setView('HOSPITAL_RESULTS');
         break;
       case 'DOCTOR_PROFILE':
         setView('DOCTOR_LIST');
@@ -447,12 +584,55 @@ const Specialties = () => {
     setTimeout(() => setNotification(''), 4000);
   };
 
-  const confirmBooking = () => {
-    const newId = isVideo ? `MQ-VC-${Math.floor(Math.random() * 1000)}` : `MQ-OP-${Math.floor(Math.random() * 1000)}`;
-    setBookingId(newId);
-    setBookingStatus('CONFIRMED');
-    setView('CONFIRMATION');
-    showNotification(`Your appointment with Dr. ${selectedDoctor.name.split(' ')[1]} has been booked successfully.`);
+  const confirmBooking = async () => {
+    if (isSubmitting) return;
+
+    if (isVideo) {
+      const newId = `MQ-VC-${Math.floor(Math.random() * 1000)}`;
+      setBookingId(newId);
+      setBookingStatus('CONFIRMED');
+      setView('CONFIRMATION');
+      showNotification(`Your appointment with Dr. ${selectedDoctor.name.split(' ')[1] || selectedDoctor.name} has been booked successfully.`);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setBookingError('');
+
+    try {
+      const targetDate = new Date().toISOString().split('T')[0];
+      const res = await opAppointmentApi.createOpAppointment({
+        hospitalId: selectedHospital?.id || selectedDoctor?.hospitalId,
+        doctorId: selectedDoctor?.id,
+        departmentId: selectedDoctor?.departmentId,
+        conditionId: selectedDisease?.id,
+        date: targetDate,
+        timeSlot: selectedTime || '10:00 AM',
+        patientName: user?.name,
+        patientPhone: user?.phone,
+        reason: reason || 'OP Consultation visit',
+        opType: 'Normal'
+      });
+
+      if (!res.success) {
+        const errMsg = typeof res.error === 'object' ? res.error.message : (res.error || 'Failed to book appointment');
+        setBookingError(errMsg);
+        showNotification(errMsg);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const realBookingId = res.data.id || res.data.appointmentId;
+      setBookingId(realBookingId);
+      setBookingStatus('CONFIRMED');
+      setView('CONFIRMATION');
+      showNotification(`Your appointment with Dr. ${selectedDoctor.name.split(' ')[1] || selectedDoctor.name} has been booked successfully.`);
+    } catch (err: any) {
+      setBookingError(err.message || 'Error booking appointment');
+      showNotification(err.message || 'Error booking appointment');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDiseaseSelect = (disease: any) => {
@@ -471,18 +651,18 @@ const Specialties = () => {
   const renderDiseaseCategories = () => {
     const query = hospitalSearch.toLowerCase().trim();
     
-    let filteredGeneral = generalDiseases;
-    let filteredAdvanced = advancedDiseases;
-    let filteredCategorical = categoricalDiseases;
+    let filteredGeneral = diseasesList.general;
+    let filteredAdvanced = diseasesList.advanced;
+    let filteredCategorical = diseasesList.categorical;
 
     if (query) {
-      filteredGeneral = generalDiseases.filter(d => 
+      filteredGeneral = diseasesList.general.filter(d => 
         d.name.toLowerCase().includes(query)
       );
-      filteredAdvanced = advancedDiseases.filter(d => 
+      filteredAdvanced = diseasesList.advanced.filter(d => 
         d.name.toLowerCase().includes(query)
       );
-      filteredCategorical = categoricalDiseases.filter(d => 
+      filteredCategorical = diseasesList.categorical.filter(d => 
         d.name.toLowerCase().includes(query) || (d.desc && d.desc.toLowerCase().includes(query))
       );
     }
@@ -662,7 +842,7 @@ const Specialties = () => {
   const renderCategoricalDiseases = () => {
     if (!selectedCategory) return null;
     
-    const categoryDiseases = getDiseasesForCategory(selectedCategory.id, selectedCategory.name);
+    const categoryDiseases = getDiseasesForCategory(selectedCategory.id, selectedCategory.name, diseasesList.raw);
     const query = categoricalDiseaseSearch.toLowerCase().trim();
     const filtered = query
       ? categoryDiseases.filter(d => d.name.toLowerCase().includes(query) || (d.desc && d.desc.toLowerCase().includes(query)))
@@ -794,13 +974,14 @@ const Specialties = () => {
     const hasSearch = query.length > 0;
     const showPopular = searchFocused && !hasSearch;
     
-    let filteredHospitals = MOCK_HOSPITALS;
+    let filteredHospitals = hospitalsList;
     
     if (query) {
-      filteredHospitals = MOCK_HOSPITALS.filter(h => 
+      filteredHospitals = hospitalsList.filter(h => 
         h.name.toLowerCase().includes(query) || 
-        h.departments.some((d: string) => d.toLowerCase().includes(query)) ||
-        h.description.toLowerCase().includes(query)
+        (h.departments && h.departments.some((d: string) => d.toLowerCase().includes(query))) ||
+        (h.description && h.description.toLowerCase().includes(query)) ||
+        (h.city && h.city.toLowerCase().includes(query))
       );
     }
     
@@ -930,11 +1111,17 @@ const Specialties = () => {
 
   const renderDoctorList = () => {
     // Filter doctors based on selected hospital/dept or search query
-    let docs = MOCK_DOCTORS;
+    let docs = doctorsList;
     if (!isVideo && selectedHospital) {
-      docs = docs.filter(d => d.hospitalId === selectedHospital.id);
+      docs = doctorsList.filter(d => d.hospitalId === selectedHospital.id);
       if (selectedDepartment) {
-        docs = docs.filter(d => d.department === selectedDepartment);
+        const deptDocs = docs.filter(d => d.department === selectedDepartment || d.departmentId === selectedDepartment);
+        if (deptDocs.length > 0) {
+          docs = deptDocs;
+        }
+      }
+      if (docs.length === 0) {
+        docs = doctorsList.filter(d => d.hospitalId === selectedHospital.id);
       }
     }
 
@@ -1010,44 +1197,51 @@ const Specialties = () => {
     </div>
   );
 
-  const renderSelectSlot = () => (
-    <div className="px-4 py-6 animate-in fade-in slide-in-from-right-4">
-      <h2 className="text-[15px] font-bold text-slate-800 mb-4">Select {isVideo ? 'Consultation' : 'Appointment'} Date</h2>
-      <div className="flex overflow-x-auto gap-3 pb-2 -mx-4 px-4 hide-scrollbar mb-4">
-        {DATES.map((d) => (
-          <div 
-            key={d.date}
-            onClick={() => setSelectedDate(d.date)}
-            className={`flex flex-col items-center justify-center shrink-0 w-[72px] h-[72px] rounded-2xl border transition-all cursor-pointer ${selectedDate === d.date ? 'border-blue-600 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white'}`}
-          >
-            <span className={`text-[10px] font-medium mb-1 ${selectedDate === d.date ? 'text-blue-600' : 'text-slate-500'}`}>{d.label}</span>
-            <span className={`text-[13px] font-bold ${selectedDate === d.date ? 'text-blue-700' : 'text-slate-800'}`}>{d.date}</span>
-          </div>
-        ))}
-      </div>
+  const renderSelectSlot = () => {
+    const slots = availableSlots.length > 0 ? availableSlots : TIME_SLOTS;
 
-      <h2 className="text-[15px] font-bold text-slate-800 mb-3 mt-6">Available Time Slots</h2>
-      <div className="grid grid-cols-3 gap-3 mb-8">
-        {TIME_SLOTS.map(time => (
-          <div 
-            key={time}
-            onClick={() => setSelectedTime(time)}
-            className={`py-3 rounded-xl border text-center text-[12px] font-bold cursor-pointer transition-all ${selectedTime === time ? 'border-blue-600 bg-blue-600 text-white shadow-md' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'}`}
-          >
-            {time}
-          </div>
-        ))}
-      </div>
+    return (
+      <div className="px-4 py-6 animate-in fade-in slide-in-from-right-4">
+        <h2 className="text-[15px] font-bold text-slate-800 mb-4">Select {isVideo ? 'Consultation' : 'Appointment'} Date</h2>
+        <div className="flex overflow-x-auto gap-3 pb-2 -mx-4 px-4 hide-scrollbar mb-4">
+          {DATES.map((d) => (
+            <div 
+              key={d.date}
+              onClick={() => setSelectedDate(d.date)}
+              className={`flex flex-col items-center justify-center shrink-0 w-[72px] h-[72px] rounded-2xl border transition-all cursor-pointer ${selectedDate === d.date ? 'border-blue-600 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white'}`}
+            >
+              <span className={`text-[10px] font-medium mb-1 ${selectedDate === d.date ? 'text-blue-600' : 'text-slate-500'}`}>{d.label}</span>
+              <span className={`text-[13px] font-bold ${selectedDate === d.date ? 'text-blue-700' : 'text-slate-800'}`}>{d.date}</span>
+            </div>
+          ))}
+        </div>
 
-      <button 
-        disabled={!selectedTime}
-        onClick={() => setView('REASON')}
-        className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Continue
-      </button>
-    </div>
-  );
+        <div className="flex items-center justify-between mb-3 mt-6">
+          <h2 className="text-[15px] font-bold text-slate-800">Available Time Slots</h2>
+          {isSlotsLoading && <span className="text-[10px] text-blue-600 font-medium">Checking availability...</span>}
+        </div>
+        <div className="grid grid-cols-3 gap-3 mb-8">
+          {slots.map(time => (
+            <div 
+              key={time}
+              onClick={() => setSelectedTime(time)}
+              className={`py-3 rounded-xl border text-center text-[12px] font-bold cursor-pointer transition-all ${selectedTime === time ? 'border-blue-600 bg-blue-600 text-white shadow-md' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'}`}
+            >
+              {time}
+            </div>
+          ))}
+        </div>
+
+        <button 
+          disabled={!selectedTime}
+          onClick={() => setView('REASON')}
+          className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Continue
+        </button>
+      </div>
+    );
+  };
 
   const renderReason = () => (
     <div className="px-4 py-6 animate-in fade-in slide-in-from-right-4">
@@ -1075,8 +1269,26 @@ const Specialties = () => {
     <div className="px-4 py-6 animate-in fade-in slide-in-from-right-4">
       <h2 className="text-[15px] font-bold text-slate-800 mb-4">Review {isVideo ? 'Video Consultation' : 'Appointment'}</h2>
       
+      {bookingError && (
+        <div className="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700 text-xs font-medium">
+          <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+          <span>{bookingError}</span>
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-6">
-        <div className="p-4 border-b border-slate-100 bg-slate-50">
+        <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+          <div>
+            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Patient</div>
+            <div className="font-bold text-slate-900 text-[14px]">{user?.name || 'Patient'}</div>
+            {user?.phone && <div className="text-[11px] text-slate-500">{user.phone}</div>}
+          </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+            {isVideo ? 'Video Consultation' : 'OP Appointment'}
+          </span>
+        </div>
+        
+        <div className="p-4 border-b border-slate-100">
           <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Doctor</div>
           <div className="font-bold text-slate-900 text-[14px]">{selectedDoctor.name}</div>
           <div className="text-[11px] text-blue-600">{selectedDoctor.specialization}</div>
@@ -1116,10 +1328,18 @@ const Specialties = () => {
           Edit
         </button>
         <button 
+          disabled={isSubmitting}
           onClick={confirmBooking}
-          className="flex-1 py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm"
+          className="flex-1 py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          Confirm {isVideo ? 'Consultation' : 'Appointment'}
+          {isSubmitting ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Confirming...</span>
+            </>
+          ) : (
+            `Confirm ${isVideo ? 'Consultation' : 'Appointment'}`
+          )}
         </button>
       </div>
     </div>
@@ -1169,13 +1389,19 @@ const Specialties = () => {
       <div className="space-y-3">
         <button 
           onClick={() => setView(isVideo ? 'VIDEO_UPCOMING' : 'APPOINTMENT_STATUS')}
-          className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm"
+          className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm hover:bg-blue-700 transition-colors"
         >
           View {isVideo ? 'Consultation' : 'Appointment'}
         </button>
         <button 
+          onClick={() => navigate('/bookings')}
+          className="w-full py-3.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[13px] hover:bg-emerald-100 transition-colors flex items-center justify-center gap-2"
+        >
+          <Calendar className="w-4 h-4" /> Go to My Bookings
+        </button>
+        <button 
           onClick={() => setView('LANDING')}
-          className="w-full py-3.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-[13px] hover:bg-slate-50"
+          className="w-full py-3.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-[13px] hover:bg-slate-50 transition-colors"
         >
           Back to Home
         </button>
@@ -1256,17 +1482,25 @@ const Specialties = () => {
         </div>
       </div>
 
-      {bookingStatus !== 'CANCELLED' && bookingStatus !== 'COMPLETED' && (
+      <div className="space-y-3 mb-3">
         <button 
-          onClick={() => {
-            setBookingStatus('CANCELLED');
-            showNotification('Appointment has been cancelled.');
-          }}
-          className="w-full py-3.5 rounded-xl border border-red-200 text-red-500 font-bold text-[13px] bg-red-50 mb-3"
+          onClick={() => navigate('/bookings')}
+          className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
         >
-          Cancel Appointment
+          <Calendar className="w-4 h-4" /> View in My Bookings
         </button>
-      )}
+        {bookingStatus !== 'CANCELLED' && bookingStatus !== 'COMPLETED' && (
+          <button 
+            onClick={() => {
+              setBookingStatus('CANCELLED');
+              showNotification('Appointment has been cancelled.');
+            }}
+            className="w-full py-3.5 rounded-xl border border-red-200 text-red-500 font-bold text-[13px] bg-red-50 hover:bg-red-100 transition-colors"
+          >
+            Cancel Appointment
+          </button>
+        )}
+      </div>
     </div>
   );
 

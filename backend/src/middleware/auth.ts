@@ -21,7 +21,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     // Fetch user from database to ensure they still exist and get authoritative role/hospitalId
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, role: true, hospitalId: true, active: true }
+      select: { id: true, name: true, phone: true, role: true, hospitalId: true, active: true }
     });
 
     if (!user || !user.active) {
