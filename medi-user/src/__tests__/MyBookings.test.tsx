@@ -4,6 +4,8 @@ import { render } from './test-utils';
 import MyBookings from '../pages/MyBookings';
 import BookingDetails from '../pages/BookingDetails';
 import { opAppointmentApi } from '../lib/opAppointmentApi';
+import { labBookingApi } from '../lib/labTestApi';
+import { homeNursingApi } from '../lib/homeNursingApi';
 
 const mockAppointments = [
   {
@@ -51,6 +53,14 @@ const mockAppointments = [
 describe('MyBookings Page (Real Database Workflow)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(labBookingApi, 'getMyLabBookings').mockResolvedValue({
+      success: true,
+      data: []
+    });
+    vi.spyOn(homeNursingApi, 'getMyBookings').mockResolvedValue({
+      success: true,
+      data: []
+    });
   });
 
   it('fetches real appointments from API and renders them in Upcoming tab', async () => {
@@ -200,5 +210,120 @@ describe('BookingDetails Page (Real Database Fetch)', () => {
     });
 
     expect(screen.getByText('Appointment not found')).toBeDefined();
+  });
+
+  it('fetches real lab booking by ID and renders diagnostic details', async () => {
+    vi.spyOn(opAppointmentApi, 'fetchAppointmentDetails').mockResolvedValueOnce({
+      success: false,
+      error: 'Appointment not found'
+    });
+    vi.spyOn(labBookingApi, 'getLabBookingById').mockResolvedValueOnce({
+      success: true,
+      data: {
+        id: 'lab-booking-uuid-1',
+        bookingNumber: 'MED-LAB-998877',
+        testId: 'test-1',
+        testName: 'Complete Blood Count (CBC)',
+        laboratoryId: 'lab-1',
+        laboratoryName: 'Apollo Diagnostics',
+        laboratoryAddress: 'Banjara Hills, Hyderabad',
+        laboratoryPhone: '+91-9876543210',
+        collectionType: 'LAB_VISIT',
+        collectionAddress: null,
+        date: '2026-11-25',
+        timeSlot: '09:00 AM - 10:00 AM',
+        patientName: 'Rahul Verma',
+        patientPhone: '9876543210',
+        patientEmail: 'rahul@example.com',
+        patientAge: 32,
+        patientGender: 'Male',
+        status: 'CONFIRMED',
+        testPrice: 350,
+        collectionFee: 0,
+        totalAmount: 350,
+        amount: '₹350',
+        prep: 'No special preparation needed.',
+        createdAt: new Date().toISOString()
+      } as any
+    });
+
+    render(
+      <Routes>
+        <Route path="/booking/:id" element={<BookingDetails />} />
+      </Routes>,
+      { initialEntries: ['/booking/lab-booking-uuid-1'] }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Complete Blood Count (CBC)')).toBeDefined();
+    });
+
+    expect(screen.getAllByText('Apollo Diagnostics').length).toBeGreaterThan(0);
+    expect(screen.getByText('MED-LAB-998877')).toBeDefined();
+    expect(screen.getByText('Visit Laboratory')).toBeDefined();
+    expect(screen.getByText('Rahul Verma')).toBeDefined();
+    expect(screen.getAllByText('₹350').length).toBeGreaterThan(0);
+  });
+
+  it('fetches real home nursing booking by ID and renders nursing details', async () => {
+    vi.spyOn(opAppointmentApi, 'fetchAppointmentDetails').mockResolvedValueOnce({
+      success: false,
+      error: 'Appointment not found'
+    });
+    vi.spyOn(labBookingApi, 'getLabBookingById').mockResolvedValueOnce({
+      success: false,
+      error: 'Lab booking not found'
+    });
+    vi.spyOn(homeNursingApi, 'getBookingById').mockResolvedValueOnce({
+      success: true,
+      data: {
+        id: 'nursing-booking-uuid-1',
+        bookingNumber: 'MQ-HN-TEST-9988',
+        serviceId: 'serv-1',
+        serviceName: 'Elderly Care',
+        serviceCategory: 'Elderly Care',
+        hospitalId: 'hosp-1',
+        hospitalName: 'SM Hospital',
+        hospitalAddress: 'Banjara Hills, Hyderabad',
+        hospitalPhone: '+91-9988776655',
+        nurseName: 'Sister Mary',
+        nurseDesignation: 'Senior Palliative Nurse',
+        patientName: 'Sunita Rao',
+        patientPhone: '9876543210',
+        patientAge: 74,
+        patientGender: 'Female',
+        date: '2026-11-28',
+        timeSlot: 'Day Shift (08:00 AM - 08:00 PM)',
+        duration: '12 Hours',
+        address: 'Villa 12, Palm Meadows',
+        city: 'Hyderabad',
+        pincode: '500084',
+        notes: 'Needs daily mobility assistance',
+        status: 'CONFIRMED',
+        paymentStatus: 'PAID',
+        totalAmount: 1500,
+        amount: '₹1,500',
+        createdAt: new Date().toISOString()
+      } as any
+    });
+
+    render(
+      <Routes>
+        <Route path="/booking/:id" element={<BookingDetails />} />
+      </Routes>,
+      { initialEntries: ['/booking/nursing-booking-uuid-1'] }
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Elderly Care').length).toBeGreaterThan(0);
+    });
+
+    expect(screen.getAllByText('SM Hospital').length).toBeGreaterThan(0);
+    expect(screen.getByText('MQ-HN-TEST-9988')).toBeDefined();
+    expect(screen.getByText('Sister Mary')).toBeDefined();
+    expect(screen.getByText('Sunita Rao')).toBeDefined();
+    expect(screen.getByText(/Villa 12, Palm Meadows/i)).toBeDefined();
+    expect(screen.getByText('Day Shift (08:00 AM - 08:00 PM)')).toBeDefined();
+    expect(screen.getAllByText('₹1,500').length).toBeGreaterThan(0);
   });
 });

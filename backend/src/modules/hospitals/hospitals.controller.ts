@@ -1,12 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
-import { Role } from '@prisma/client';
+import { Role, BusinessType } from '@prisma/client';
 
 export const getHospitals = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
     const conditionId = typeof req.query.conditionId === 'string' ? req.query.conditionId.trim() : '';
     const specialtyId = typeof req.query.specialtyId === 'string' ? req.query.specialtyId.trim() : '';
+    const departmentId = typeof req.query.departmentId === 'string' ? req.query.departmentId.trim() : '';
+    const city = typeof req.query.city === 'string' ? req.query.city.trim() : '';
+    const location = typeof req.query.location === 'string' ? req.query.location.trim() : '';
 
     let targetSpecialtyId = specialtyId;
     if (conditionId && !targetSpecialtyId) {
@@ -31,7 +34,26 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
       ];
     }
 
-    if (targetSpecialtyId) {
+    if (city) {
+      whereClause.city = { contains: city, mode: 'insensitive' };
+    }
+
+    if (location) {
+      whereClause.OR = [
+        ...(whereClause.OR || []),
+        { city: { contains: location, mode: 'insensitive' } },
+        { area: { contains: location, mode: 'insensitive' } },
+        { state: { contains: location, mode: 'insensitive' } }
+      ];
+    }
+
+    if (departmentId) {
+      whereClause.departments = {
+        some: {
+          id: departmentId
+        }
+      };
+    } else if (targetSpecialtyId) {
       whereClause.departments = {
         some: {
           specialtyId: targetSpecialtyId
@@ -289,3 +311,131 @@ export const getHospitalDoctors = async (req: Request, res: Response, next: Next
     next(error);
   }
 };
+
+export const getHospitalDepartments = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = req.params.id as string;
+    const hospital = await prisma.hospital.findUnique({
+      where: { id: hospitalId },
+      select: { id: true, name: true }
+    });
+
+    if (!hospital) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Hospital not found' }
+      });
+    }
+
+    const departments = await prisma.department.findMany({
+      where: { hospitalId },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        description: true,
+        specialtyId: true,
+        specialty: {
+          select: { id: true, name: true }
+        },
+        _count: {
+          select: {
+            users: {
+              where: { role: Role.DOCTOR, active: true }
+            }
+          }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    res.json({
+      success: true,
+      data: departments.map(d => ({
+        id: d.id,
+        name: d.name,
+        code: d.code,
+        description: d.description,
+        specialtyId: d.specialtyId,
+        specialty: d.specialty,
+        doctorCount: d._count.users
+      }))
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getHospitalLaboratories = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = req.params.id as string;
+    const hospital = await prisma.hospital.findUnique({
+      where: { id: hospitalId },
+      select: {
+        id: true,
+        name: true,
+        city: true,
+        services: true
+      }
+    });
+
+    if (!hospital) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Hospital not found' }
+      });
+    }
+
+    // Find all laboratories linked or matching the hospital
+    const labs = await prisma.hospital.findMany({
+      where: {
+        OR: [
+          { id: hospitalId },
+          { businessType: BusinessType.LABORATORY, city: hospital.city || undefined }
+        ],
+        AND: [
+          {
+            OR: [
+              { businessType: BusinessType.LABORATORY },
+              { services: { hasSome: ['lab_tests', 'lab', 'laboratory', 'diagnostics'] } }
+            ]
+          }
+        ]
+      },
+      select: {
+        id: true,
+        name: true,
+        businessType: true,
+        facilityType: true,
+        logoUrl: true,
+        contactPhone: true,
+        contactEmail: true,
+        addressLine1: true,
+        area: true,
+        city: true,
+        state: true,
+        pincode: true,
+        services: true
+      }
+    });
+
+    res.json({
+      success: true,
+      data: labs.map(lab => ({
+        id: lab.id,
+        name: lab.name,
+        businessType: lab.businessType,
+        facilityType: lab.facilityType,
+        address: [lab.addressLine1, lab.area, lab.city].filter(Boolean).join(', ') || lab.city || 'India',
+        location: [lab.area, lab.city, lab.state].filter(Boolean).join(', ') || lab.city || 'India',
+        contactPhone: lab.contactPhone,
+        services: lab.services,
+        rating: 4.8,
+        price: '₹399'
+      }))
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

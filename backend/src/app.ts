@@ -25,6 +25,25 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev'));
 
+// Root Route & Health Check
+app.get('/', (req, res) => {
+  if (req.accepts('html')) {
+    // If opened in a web browser, redirect directly to the user frontend
+    return res.redirect('http://localhost:5173');
+  }
+  return res.json({
+    status: 'ok',
+    message: 'MediQuee Backend API Service is running',
+    version: 'v1',
+    endpoints: '/api/v1',
+    frontend: 'http://localhost:5173'
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // API Routes
 app.use('/api/v1', apiRouter);
 

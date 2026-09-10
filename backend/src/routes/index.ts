@@ -12,6 +12,12 @@ import diseasesRoutes from '../modules/diseases/diseases.routes';
 import hospitalsRoutes from '../modules/hospitals/hospitals.routes';
 import doctorsRoutes from '../modules/doctors/doctors.routes';
 import appointmentsRoutes from '../modules/appointments/appointments.routes';
+import laboratoriesRoutes from '../modules/laboratories/laboratories.routes';
+import labTestsRoutes from '../modules/laboratories/lab-tests.routes';
+import labBookingsRoutes from '../modules/laboratories/lab-bookings.routes';
+import homeNursingRoutes from '../modules/home-nursing/home-nursing.routes';
+import homeSampleRoutes from '../modules/home-sample-collection/home-sample.routes';
+import reportsRoutes from '../modules/reports/reports.routes';
 import { prisma } from '../config/prisma';
 
 const router = Router();
@@ -44,5 +50,11 @@ router.use('/diseases', diseasesRoutes);
 router.use('/hospitals', hospitalsRoutes);
 router.use('/doctors', doctorsRoutes);
 router.use('/appointments', appointmentsRoutes);
+router.use('/laboratories', laboratoriesRoutes);
+router.use('/lab-tests', labTestsRoutes);
+router.use('/lab-bookings', labBookingsRoutes);
+router.use('/home-nursing', homeNursingRoutes);
+router.use('/home-sample-collection', homeSampleRoutes);
+router.use('/reports', reportsRoutes);
 
 export default router;

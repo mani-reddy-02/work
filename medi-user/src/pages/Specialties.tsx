@@ -10,7 +10,7 @@ import {
 import HowItWorks from '../components/HowItWorks';
 import KnowYourDiseaseModal from '../components/KnowYourDiseaseModal';
 import { useAuth } from '../lib/auth';
-import { opAppointmentApi } from '../lib/opAppointmentApi';
+import { opAppointmentApi, doctorApi, hospitalApi } from '../lib/opAppointmentApi';
 
 import {
   HeartIcon, KidneyIcon, SkinIcon, LiverIcon, BrainIcon, LungsIcon,
@@ -434,15 +434,26 @@ const Specialties = () => {
     return () => { mounted = false; };
   }, []);
 
+  // Pre-load real hospitals on mount
+  useEffect(() => {
+    let active = true;
+    hospitalApi.getHospitals().then((res) => {
+      if (active && res.success && res.data && res.data.length > 0) {
+        setHospitalsList(res.data);
+      }
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+
   // Fetch real hospitals when entering hospital view or changing search/disease
   useEffect(() => {
     if (view === 'HOSPITAL_RESULTS' || view === 'HOSPITAL_DETAILS') {
       let active = true;
       setIsHospitalsLoading(true);
-      opAppointmentApi.fetchHospitals(hospitalSearch, selectedDisease?.id).then((res) => {
+      hospitalApi.getHospitals({ search: hospitalSearch, conditionId: selectedDisease?.id }).then((res) => {
         if (active) {
           setIsHospitalsLoading(false);
-          if (res.success && res.data && res.data.length > 0) {
+          if (res.success && res.data) {
             setHospitalsList(res.data);
           }
         }
@@ -456,23 +467,38 @@ const Specialties = () => {
   // Fetch real doctors when entering doctor list
   useEffect(() => {
     if (view === 'DOCTOR_LIST' || view === 'DOCTOR_PROFILE') {
+      let active = true;
+      setIsDoctorsLoading(true);
       if (selectedHospital?.id) {
-        let active = true;
-        setIsDoctorsLoading(true);
-        opAppointmentApi.fetchHospitalDoctors(selectedHospital.id, selectedDepartment || undefined).then((res) => {
+        hospitalApi.getHospitalDoctors(selectedHospital.id, selectedDepartment || undefined).then((res) => {
           if (active) {
             setIsDoctorsLoading(false);
-            if (res.success && res.data && res.data.length > 0) {
+            if (res.success && res.data) {
               setDoctorsList(res.data);
             }
           }
         }).catch(() => {
           if (active) setIsDoctorsLoading(false);
         });
-        return () => { active = false; };
+      } else {
+        doctorApi.getDoctors({
+          search: hospitalSearch,
+          departmentId: selectedDepartment || undefined,
+          specialtyId: selectedDisease?.specialtyId
+        }).then((res) => {
+          if (active) {
+            setIsDoctorsLoading(false);
+            if (res.success && res.data) {
+              setDoctorsList(res.data);
+            }
+          }
+        }).catch(() => {
+          if (active) setIsDoctorsLoading(false);
+        });
       }
+      return () => { active = false; };
     }
-  }, [view, selectedHospital, selectedDepartment]);
+  }, [view, selectedHospital, selectedDepartment, hospitalSearch, selectedDisease]);
 
   // Fetch real availability when selecting slots
   useEffect(() => {
@@ -1018,9 +1044,16 @@ const Specialties = () => {
         <h2 className="text-[16px] font-bold text-slate-800 mb-1">{title}</h2>
         <p className="text-[12px] text-slate-500 mb-4">{subtitle}</p>
         
-        {filteredHospitals.length === 0 ? (
+        {isHospitalsLoading && (
+          <div className="flex items-center justify-center py-6 text-blue-600 gap-2">
+            <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-xs font-semibold">Loading hospitals...</span>
+          </div>
+        )}
+
+        {!isHospitalsLoading && filteredHospitals.length === 0 ? (
           <div className="text-center py-8">
-             <p className="text-[14px] text-slate-500 font-bold">No hospitals found matching your search</p>
+             <p className="text-[14px] text-slate-500 font-bold">{hasSearch ? "No hospitals found matching your search" : "No hospitals found."}</p>
           </div>
         ) : (
         <div className="space-y-3">
@@ -1042,7 +1075,7 @@ const Specialties = () => {
               </p>
               
               <div className="flex flex-wrap gap-1.5 mb-4">
-                {hosp.departments.slice(0, 3).map((dept: string) => (
+                {(hosp.departments || []).slice(0, 3).map((dept: string) => (
                   <span key={dept} className="px-2 py-1 bg-slate-50 text-slate-600 text-[9px] rounded-md font-medium border border-slate-100">
                     {dept}
                   </span>
@@ -1082,22 +1115,41 @@ const Specialties = () => {
             {selectedHospital.contact}
           </p>
         </div>
+
+        {selectedHospital.services && selectedHospital.services.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-slate-100">
+            <h4 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">Services & Facilities</h4>
+            <div className="flex flex-wrap gap-1.5">
+              {selectedHospital.services.map((srv: string) => (
+                <span key={srv} className="px-2.5 py-1 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-lg capitalize">
+                  {srv.replace(/_/g, ' ')}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <h3 className="font-bold text-slate-800 text-[15px] mb-3">Departments</h3>
       <div className="grid grid-cols-2 gap-3 mb-6">
-        {selectedHospital.departments.map((dept: string) => (
-          <div 
-            key={dept} 
-            onClick={() => { setSelectedDepartment(dept); setView('DOCTOR_LIST'); }}
-            className="bg-white rounded-xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-300"
-          >
-            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mb-2">
-              <Activity className="w-5 h-5 text-blue-500" />
-            </div>
-            <span className="text-[11px] font-bold text-slate-800">{dept}</span>
+        {(!selectedHospital.departments || selectedHospital.departments.length === 0) ? (
+          <div className="col-span-2 text-center py-6 bg-white rounded-xl border border-slate-100 text-xs text-slate-400 font-medium">
+            No departments currently listed for this hospital
           </div>
-        ))}
+        ) : (
+          selectedHospital.departments.map((dept: string) => (
+            <div 
+              key={dept} 
+              onClick={() => { setSelectedDepartment(dept); setView('DOCTOR_LIST'); }}
+              className="bg-white rounded-xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-300 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mb-2">
+                <Activity className="w-5 h-5 text-blue-500" />
+              </div>
+              <span className="text-[11px] font-bold text-slate-800">{dept}</span>
+            </div>
+          ))
+        )}
       </div>
 
       <button 
@@ -1132,12 +1184,30 @@ const Specialties = () => {
     return (
       <div className="px-4 py-6 animate-in fade-in slide-in-from-right-4">
         <h2 className="text-[15px] font-bold text-slate-800 mb-4">{title}</h2>
+
+        {isDoctorsLoading && (
+          <div className="flex items-center justify-center py-6 text-blue-600 gap-2">
+            <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-xs font-semibold">Loading doctors...</span>
+          </div>
+        )}
+
+        {!isDoctorsLoading && docs.length === 0 ? (
+          <div className="text-center py-8 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+            <p className="text-[14px] text-slate-500 font-bold">No doctors found</p>
+            <p className="text-[11px] text-slate-400 mt-1">No doctors are currently available for this selection.</p>
+          </div>
+        ) : (
         <div className="space-y-3">
           {docs.map(doc => (
             <div key={doc.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
               <div className="flex gap-3">
-                <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                  <User className="w-6 h-6 text-slate-400" />
+                <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
+                  {doc.avatar ? (
+                    <img src={doc.avatar} alt={doc.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-6 h-6 text-slate-400" />
+                  )}
                 </div>
                 <div className="flex-1">
                   <h3 className="font-bold text-slate-900 text-[14px]">{doc.name}</h3>
@@ -1158,6 +1228,7 @@ const Specialties = () => {
             </div>
           ))}
         </div>
+        )}
       </div>
     );
   };
@@ -1165,8 +1236,12 @@ const Specialties = () => {
   const renderDoctorProfile = () => (
     <div className="px-4 py-6 animate-in fade-in slide-in-from-right-4">
       <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm mb-4 text-center">
-        <div className="w-20 h-20 rounded-full bg-slate-100 mx-auto flex items-center justify-center mb-3">
-          <User className="w-10 h-10 text-slate-400" />
+        <div className="w-20 h-20 rounded-full bg-slate-100 mx-auto flex items-center justify-center mb-3 overflow-hidden">
+          {selectedDoctor.avatar ? (
+            <img src={selectedDoctor.avatar} alt={selectedDoctor.name} className="w-full h-full object-cover" />
+          ) : (
+            <User className="w-10 h-10 text-slate-400" />
+          )}
         </div>
         <h2 className="font-bold text-slate-900 text-[18px] mb-0.5">{selectedDoctor.name}</h2>
         <p className="text-[12px] text-blue-600 font-medium mb-1">{selectedDoctor.specialization}</p>

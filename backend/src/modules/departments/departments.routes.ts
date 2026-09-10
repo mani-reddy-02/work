@@ -2,18 +2,26 @@ import { Router } from 'express';
 import { authenticate } from '../../middleware/auth';
 import { requirePermission } from '../../middleware/permissions';
 import { validateRequest } from '../../middleware/validate';
-import { Role } from '@prisma/client';
-import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from './departments.controller';
+import { 
+  getDepartments, 
+  getDepartmentById, 
+  getDepartmentDoctors, 
+  createDepartment, 
+  updateDepartment, 
+  deleteDepartment 
+} from './departments.controller';
 import { createDepartmentSchema, updateDepartmentSchema } from './departments.schema';
 
 const router = Router();
 
-// All department routes require authentication
-router.use(authenticate);
+// Public discovery routes
+router.get('/', getDepartments);
+router.get('/:id', getDepartmentById);
+router.get('/:id/doctors', getDepartmentDoctors);
 
-router.get('/', getDepartments); // Read-only: any authenticated hospital user can view their departments
-router.post('/', requirePermission('departments.create'), validateRequest(createDepartmentSchema), createDepartment);
-router.patch('/:id', requirePermission('departments.update'), validateRequest(updateDepartmentSchema), updateDepartment);
-router.delete('/:id', requirePermission('departments.delete'), deleteDepartment);
+// Protected hospital admin mutation routes
+router.post('/', authenticate, requirePermission('departments.create'), validateRequest(createDepartmentSchema), createDepartment);
+router.patch('/:id', authenticate, requirePermission('departments.update'), validateRequest(updateDepartmentSchema), updateDepartment);
+router.delete('/:id', authenticate, requirePermission('departments.delete'), deleteDepartment);
 
 export default router;

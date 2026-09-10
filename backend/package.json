@@ -9,7 +9,7 @@
     "start": "node dist/server.js",
     "seed:admin": "ts-node prisma/seed-superadmin.ts",
     "seed:permissions": "ts-node prisma/seed-permissions.ts",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "ts-node src/__tests__/op-booking.test.ts && ts-node src/__tests__/discovery-integration.test.ts && ts-node src/__tests__/lab-workflow-integration.test.ts && ts-node src/__tests__/home-nursing-workflow.test.ts && ts-node src/__tests__/home-sample-collection-workflow.test.ts && ts-node src/__tests__/reports-workflow.test.ts",
     "seed:platform": "ts-node prisma/seed-platform-data.ts"
   },
   "keywords": [],

@@ -117,72 +117,41 @@ const defaultReports: ReportItem[] = [
   },
 ];
 
+import { reportsApi } from '../lib/reportsApi';
+import type { ReportRecord } from '../lib/reportsApi';
+
 const Reports = () => {
   const [activeTab, setActiveTab] = useState<'received' | 'upload'>('received');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Safe state initialization that handles corrupted or missing localStorage data
-  const [reports, setReports] = useState<ReportItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('mediquee_reports');
-      if (!saved) return defaultReports;
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return defaultReports;
-      
-      const sanitized = parsed.map((item: any, idx: number): ReportItem => {
-        if (!item || typeof item !== 'object') {
-          return defaultReports[idx % defaultReports.length];
-        }
-        return {
-          id: String(item.id || `report-${Date.now()}-${idx}`),
-          title: String(item.title || 'Medical Report'),
-          hospital: String(item.hospital || 'Diagnostic Lab'),
-          doctor: item.doctor ? String(item.doctor) : 'Verified Healthcare Provider',
-          date: String(item.date || 'Recent'),
-          pages: String(item.pages || '1 page'),
-          status: String(item.status || 'Normal'),
-          statusColor: String(item.statusColor || 'text-emerald-600 bg-emerald-100/60'),
-          iconName: typeof item.iconName === 'string' ? item.iconName : (typeof item.icon === 'string' ? item.icon : 'FileText'),
-          iconColor: String(item.iconColor || 'text-blue-500'),
-          bg: String(item.bg || 'bg-blue-50'),
-          summary: item.summary ? String(item.summary) : 'Official medical report document.'
-        };
-      });
-
-      return sanitized.length > 0 ? sanitized : defaultReports;
-    } catch (e) {
-      console.error('Safe fallback: unable to parse stored reports', e);
-      return defaultReports;
-    }
-  });
+  const [reports, setReports] = useState<ReportItem[]>([]);
   
   const [showAllReports, setShowAllReports] = useState(false);
 
-  // Safe localStorage persistence with serializable string names for icons
   useEffect(() => {
-    try {
-      const cleanToSave = reports.map(r => ({
-        id: r.id,
-        title: r.title,
-        hospital: r.hospital,
-        doctor: r.doctor,
-        date: r.date,
-        pages: r.pages,
-        status: r.status,
-        statusColor: r.statusColor,
-        iconName: r.iconName || (typeof r.icon === 'string' ? r.icon : 'FileText'),
-        iconColor: r.iconColor,
-        bg: r.bg,
-        summary: r.summary
-      }));
-      localStorage.setItem('mediquee_reports', JSON.stringify(cleanToSave));
-    } catch (e) {
-      console.error('Error saving reports to localStorage:', e);
-    }
-  }, [reports]);
+    const fetchReports = async () => {
+      setIsLoading(true);
+      const res = await reportsApi.getReports();
+      if (res.success && res.data) {
+        // Map backend ReportRecord to frontend ReportItem
+        const formatted = res.data.map(r => ({
+          ...r,
+          iconName: r.iconName || 'FileText',
+          iconColor: r.iconColor || 'text-blue-500',
+          bg: r.bg || 'bg-blue-50',
+          statusColor: r.statusColor || 'text-emerald-600 bg-emerald-100/60',
+          pages: r.pages || '1 page',
+        }));
+        setReports(formatted as any);
+      }
+      setIsLoading(false);
+    };
+    fetchReports();
+  }, []);
 
   // Filtered reports based on search query
   const filteredReports = useMemo(() => {
@@ -214,38 +183,68 @@ const Reports = () => {
       return;
     }
 
-    const newReport: ReportItem = {
-      id: Date.now().toString(),
-      title: file.name,
-      hospital: 'Uploaded by You',
-      doctor: 'Self-Uploaded Document',
-      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      pages: '1 page',
-      status: 'Uploaded',
-      statusColor: 'text-blue-600 bg-blue-100/60',
-      iconName: 'FileText',
-      iconColor: 'text-blue-500',
-      bg: 'bg-blue-50',
-      summary: `Uploaded document: ${file.name} (${(file.size / 1024).toFixed(1)} KB). Verified and safely saved in your personal health records vault.`
-    };
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64String = reader.result as string;
+      const res = await reportsApi.uploadReport({
+        title: file.name,
+        hospital: 'Uploaded by You',
+        doctor: 'Self-Uploaded Document',
+        date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        fileData: base64String,
+        fileName: file.name,
+        pages: '1 page',
+        status: 'Uploaded',
+        summary: `Uploaded document: ${file.name} (${(file.size / 1024).toFixed(1)} KB). Verified and safely saved in your personal health records vault.`
+      });
 
-    setReports(prev => [newReport, ...prev]);
-    setActiveTab('received');
+      if (res.success && res.data) {
+        setReports(prev => [{
+          ...res.data!,
+          iconName: res.data!.iconName || 'FileText',
+          iconColor: res.data!.iconColor || 'text-blue-500',
+          bg: res.data!.bg || 'bg-blue-50',
+          statusColor: res.data!.statusColor || 'text-blue-600 bg-blue-100/60',
+          pages: res.data!.pages || '1 page',
+        } as any, ...prev]);
+        setActiveTab('received');
+      } else {
+        alert(res.error || 'Failed to upload report');
+      }
+    };
+    reader.readAsDataURL(file);
+
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleDelete = (id: string, e?: React.MouseEvent) => {
+  const handleDelete = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (window.confirm('Are you sure you want to delete this report?')) {
-      setReports(prev => prev.filter(r => r.id !== id));
-      if (selectedReport?.id === id) {
-        setSelectedReport(null);
+      const res = await reportsApi.deleteReport(id);
+      if (res.success) {
+        setReports(prev => prev.filter(r => r.id !== id));
+        if (selectedReport?.id === id) {
+          setSelectedReport(null);
+        }
+      } else {
+        alert(res.error || 'Failed to delete report');
       }
     }
   };
 
-  const handleDownload = (report: ReportItem, e?: React.MouseEvent) => {
+  const handleDownload = async (report: ReportItem, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    
+    // Download real file if it has fileUrl
+    if ((report as any).fileUrl) {
+      const res = await reportsApi.downloadReport(report.id, report.title.replace(/[^a-zA-Z0-9_-]/g, '_'));
+      if (!res.success) {
+        alert(res.error || 'Failed to download report');
+      }
+      return;
+    }
+
+    // Fallback for mocked/legacy records
     const content = `======================================================
 MEDIQUEE HEALTHCARE NETWORK - OFFICIAL MEDICAL REPORT
 ======================================================

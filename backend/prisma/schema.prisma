@@ -128,6 +128,9 @@ model User {
 
   doctorBookings  OPBooking[] @relation("DoctorBookings")
   patientBookings OPBooking[] @relation("PatientBookings")
+  labBookings     LabBooking[]
+  nursingBookings HomeNursingBooking[]
+  patientReports  PatientReport[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -211,3 +214,172 @@ model OPBooking {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
+
+model LabTest {
+  id              String   @id @default(uuid())
+  name            String
+  category        String
+  sampleType      String?
+  description     String?
+  preparation     String?
+  turnaroundTime  String?
+  parametersCount Int?     @default(1)
+  price           Float
+  iconUrl         String?
+  healthConcern   String?
+  active          Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  offerings       LaboratoryTestOffering[]
+  bookings        LabBooking[]
+}
+
+model LaboratoryTestOffering {
+  id                      String   @id @default(uuid())
+  laboratoryId            String
+  testId                  String
+  test                    LabTest  @relation(fields: [testId], references: [id], onDelete: Cascade)
+  price                   Float
+  homeCollectionAvailable Boolean  @default(true)
+  homeCollectionFee       Float    @default(0)
+  active                  Boolean  @default(true)
+
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@unique([laboratoryId, testId])
+}
+
+model LabBooking {
+  id                String   @id @default(uuid())
+  bookingNumber     String   @unique
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hospitalId        String?
+  laboratoryId      String
+  testId            String
+  test              LabTest  @relation(fields: [testId], references: [id])
+
+  patientName       String
+  patientAge        Int?
+  patientGender     String?
+  patientPhone      String
+  patientEmail      String?
+
+  bookingDate       DateTime
+  timeSlot          String
+  collectionType    String   @default("LAB_VISIT") // 'LAB_VISIT' | 'HOME_COLLECTION'
+  collectionAddress String?
+
+  status            String   @default("CONFIRMED") // 'CONFIRMED', 'SAMPLE_COLLECTED', 'PROCESSING', 'COMPLETED', 'CANCELLED'
+  paymentStatus     String   @default("PAID")      // 'PENDING', 'PAID', 'REFUNDED'
+  testPrice         Float
+  collectionFee     Float    @default(0)
+  totalAmount       Float
+  notes             String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model NursingService {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  code         String   @unique
+  category     String
+  description  String?
+  duration     String   @default("12 / 24 Hours")
+  basePrice    Float
+  requirements String?
+  iconUrl      String?
+  active       Boolean  @default(true)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  offerings    NursingServiceOffering[]
+  bookings     HomeNursingBooking[]
+
+  @@map("nursing_services")
+}
+
+model NursingServiceOffering {
+  id          String         @id @default(uuid())
+  hospitalId  String
+  serviceId   String
+  service     NursingService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  price       Float
+  duration    String?
+  available   Boolean        @default(true)
+  serviceArea String?
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([hospitalId, serviceId])
+  @@map("nursing_service_offerings")
+}
+
+model HomeNursingBooking {
+  id            String         @id @default(uuid())
+  bookingNumber String         @unique
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hospitalId    String
+  serviceId     String
+  service       NursingService @relation(fields: [serviceId], references: [id])
+  nurseId       String?
+
+  patientName   String
+  patientPhone  String
+  patientEmail  String?
+  patientAge    Int?
+  patientGender String?
+
+  serviceDate   DateTime
+  timeSlot      String
+  duration      String?
+  address       String
+  city          String?
+  pincode       String?
+  notes         String?
+
+  status        String         @default("CONFIRMED") // 'CONFIRMED', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'
+  paymentStatus String         @default("PAID")      // 'PENDING', 'PAID', 'REFUNDED'
+  paymentMethod String?                              // 'CARD', 'UPI', etc.
+  totalAmount   Float
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([hospitalId, serviceDate, timeSlot, nurseId, userId])
+  @@map("home_nursing_bookings")
+}
+
+model PatientReport {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title       String
+  hospital    String
+  doctor      String?
+  date        String
+  pages       String   @default("1 page")
+  status      String   @default("Normal")
+  statusColor String?  @default("text-emerald-600 bg-emerald-100/60")
+  iconName    String?  @default("FileText")
+  iconColor   String?  @default("text-blue-500")
+  bg          String?  @default("bg-blue-50")
+  summary     String?
+  
+  fileUrl     String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("patient_reports")
+}
+

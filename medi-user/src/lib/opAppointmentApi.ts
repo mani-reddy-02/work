@@ -1,3 +1,5 @@
+import { hospitalApi, doctorApi, departmentApi, laboratoryApi } from './hospitalApi';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 export interface DiseaseCondition {
@@ -245,6 +247,18 @@ export const opAppointmentApi = {
     }
   },
 
+  async fetchHospitalDepartments(hospitalId: string) {
+    return hospitalApi.getHospitalDepartments(hospitalId);
+  },
+
+  async fetchDepartmentDoctors(departmentId: string) {
+    return departmentApi.getDepartmentDoctors(departmentId);
+  },
+
+  async fetchLaboratories(search?: string, hospitalId?: string) {
+    return laboratoryApi.getLaboratories({ search, hospitalId });
+  },
+
   async createOpAppointment(payload: CreateAppointmentPayload): Promise<{
     success: boolean;
     data?: any;
@@ -314,3 +328,6 @@ export const opAppointmentApi = {
     }
   }
 };
+
+export { hospitalApi, doctorApi, departmentApi, laboratoryApi } from './hospitalApi';
+
