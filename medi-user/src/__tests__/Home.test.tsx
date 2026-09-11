@@ -62,8 +62,5 @@ describe('Home Component', () => {
     expect(screen.queryByText(answerText)).not.toBeInTheDocument();
   });
 
-  test('renders MediQuee AI section', () => {
-    renderHome();
-    expect(screen.getByText('Chat with MediAI Assistant')).toBeInTheDocument();
-  });
+
 });

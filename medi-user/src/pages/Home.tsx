@@ -409,17 +409,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* MediAI Assistant */}
-      <div className="bg-[#1a1f2e] rounded-2xl p-4 flex items-center gap-3 shadow-md">
-        <div className="w-10 h-10 rounded-full bg-[#273041] flex items-center justify-center shrink-0">
-            <Bot className="w-5 h-5 text-sky-400" />
-        </div>
-        <div>
-            <h4 className="text-white text-[12px] font-bold mb-0.5">Chat with MediAI Assistant</h4>
-            <p className="text-[9px] text-slate-400">Instant symptom checker & health recommendations</p>
-        </div>
-      </div>
-      
     </div>
   );
 };

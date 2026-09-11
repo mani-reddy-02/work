@@ -377,7 +377,7 @@ const MyBookings = () => {
                           ID: <strong className="font-mono text-slate-700">{(booking.nursingRecord?.bookingNumber || booking.id).slice(0, 15)}</strong>
                         </span>
                         <span className="font-bold text-primary">
-                          {booking.type === 'LAB' ? 'Diagnostic Test' : booking.type === 'NURSING' ? 'Home Nursing Visit' : 'In-Hospital OP Visit'}
+                          {booking.type === 'LAB' ? 'Diagnostic Test' : booking.type === 'NURSING' ? 'Home Nursing Visit' : (booking.opRecord?.opType === 'Video Consultation' ? 'Video Consultation' : 'In-Hospital OP Visit')}
                         </span>
                       </div>
                     </div>

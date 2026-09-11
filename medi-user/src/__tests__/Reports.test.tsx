@@ -3,48 +3,86 @@ import { expect, test, describe, vi, beforeEach, afterEach } from 'vitest';
 import Reports from '../pages/Reports';
 import React from 'react';
 import userEvent from '@testing-library/user-event';
+import { reportsApi } from '../lib/reportsApi';
+
+vi.mock('../lib/reportsApi', () => ({
+  reportsApi: {
+    getReports: vi.fn(),
+    uploadReport: vi.fn(),
+    deleteReport: vi.fn(),
+    downloadReport: vi.fn(),
+  }
+}));
+
+const mockReports = [
+  { 
+    id: '1', 
+    title: 'Complete Blood Count (CBC)', 
+    hospital: 'Apollo Diagnostics', 
+    date: '12 May 2024', 
+    pages: '2 pages', 
+    status: 'Normal', 
+  },
+  { 
+    id: '2', 
+    title: 'Chest X-Ray', 
+    hospital: 'Manipal Hospital', 
+    date: '08 May 2024', 
+    pages: '1 page', 
+    status: 'Review', 
+  }
+];
 
 describe('Reports Component', () => {
   beforeEach(() => {
-    localStorage.clear();
+    vi.clearAllMocks();
     vi.spyOn(window, 'alert').mockImplementation(() => {});
     vi.spyOn(window, 'confirm').mockImplementation(() => true);
+    (reportsApi.getReports as any).mockResolvedValue({ success: true, data: mockReports });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  test('renders initial default reports', () => {
+  test('renders initial default reports', async () => {
     render(<Reports />);
-    expect(screen.getByText('Complete Blood Count (CBC)')).toBeInTheDocument();
-    expect(screen.getByText('Chest X-Ray')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Complete Blood Count (CBC)')).toBeInTheDocument();
+      expect(screen.getByText('Chest X-Ray')).toBeInTheDocument();
+    });
   });
 
   test('file upload with valid file', async () => {
+    (reportsApi.uploadReport as any).mockResolvedValue({ 
+      success: true, 
+      data: { id: '3', title: 'hello.png', hospital: 'Uploaded by You', date: 'Today', pages: '1 page', status: 'Uploaded' } 
+    });
+    
     render(<Reports />);
-    const file = new File(['hello'], 'hello.png', { type: 'image/png' });
+    await waitFor(() => {
+      expect(screen.getByText('Complete Blood Count (CBC)')).toBeInTheDocument();
+    });
     
     const uploadTab = screen.getByText('Upload Reports');
     fireEvent.click(uploadTab);
 
-    // The input is hidden or handled via label click, let's find input type=file
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    expect(input).toBeInTheDocument();
-
+    const file = new File(['hello'], 'hello.png', { type: 'image/png' });
     await userEvent.upload(input, file);
     
-    // It should add to reports
-    expect(screen.getByText('hello.png')).toBeInTheDocument();
-    expect(screen.getByText('Uploaded by You')).toBeInTheDocument();
-    
-    // Check localStorage
-    const saved = JSON.parse(localStorage.getItem('mediquee_reports') || '[]');
-    expect(saved[0].title).toBe('hello.png');
+    await waitFor(() => {
+      expect(screen.getByText('hello.png')).toBeInTheDocument();
+      expect(screen.getByText('Uploaded by You')).toBeInTheDocument();
+    });
   });
 
   test('file upload with invalid type alerts', async () => {
     render(<Reports />);
+    await waitFor(() => {
+      expect(screen.getByText('Complete Blood Count (CBC)')).toBeInTheDocument();
+    });
+
     const file = new File(['hello'], 'hello.txt', { type: 'text/plain' });
     const uploadTab = screen.getByText('Upload Reports');
     fireEvent.click(uploadTab);
@@ -56,72 +94,51 @@ describe('Reports Component', () => {
   });
 
   test('deletes report', async () => {
+    (reportsApi.deleteReport as any).mockResolvedValue({ success: true });
+    
     render(<Reports />);
+    await waitFor(() => {
+      expect(screen.getByText('Complete Blood Count (CBC)')).toBeInTheDocument();
+    });
     
-    // Check CBC is present
-    expect(screen.getByText('Complete Blood Count (CBC)')).toBeInTheDocument();
-    
-    // Find delete buttons (Trash2 icons inside buttons)
-    // We can search for the nearest button or test-id. Since no test-id, we can rely on window.confirm
-    const deleteButtons = document.querySelectorAll('button');
-    // Assuming the delete buttons are the ones beside the report
-    // Let's just click the first delete button we can find that triggers confirm
-    // Actually, in Reports.tsx we have onClick={() => handleDelete(report.id)}
-    // Let's just check if delete works if we mock it, or find it by role.
-    const allButtons = screen.getAllByRole('button');
-    
-    // The first button is Back, the second might be Upload
-    // Let's find button inside the report card
     const cbcCard = screen.getByText('Complete Blood Count (CBC)').closest('div.bg-white');
     if (cbcCard) {
-      const delBtn = cbcCard.querySelector('button');
+      const delBtn = cbcCard.querySelector('button[title="Delete report"]');
       if (delBtn) fireEvent.click(delBtn);
     }
 
     expect(window.confirm).toHaveBeenCalled();
-    // Since mock confirm returns true, it should be deleted
-    expect(screen.queryByText('Complete Blood Count (CBC)')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('Complete Blood Count (CBC)')).not.toBeInTheDocument();
+    });
   });
 
-  test('filters reports using search input', () => {
+  test('filters reports using search input', async () => {
     render(<Reports />);
+    await waitFor(() => {
+      expect(screen.getByText('Complete Blood Count (CBC)')).toBeInTheDocument();
+    });
+    
     const searchInput = screen.getByPlaceholderText('Search reports by test, hospital or date...');
-    expect(searchInput).toBeInTheDocument();
-
     fireEvent.change(searchInput, { target: { value: 'Chest' } });
+    
     expect(screen.getByText('Chest X-Ray')).toBeInTheDocument();
     expect(screen.queryByText('Complete Blood Count (CBC)')).not.toBeInTheDocument();
   });
 
-  test('opens and closes report detail modal', () => {
+  test('opens and closes report detail modal', async () => {
     render(<Reports />);
+    await waitFor(() => {
+      expect(screen.getByText('Complete Blood Count (CBC)')).toBeInTheDocument();
+    });
+    
     const cbcCard = screen.getByText('Complete Blood Count (CBC)');
     fireEvent.click(cbcCard);
 
     expect(screen.getByText('Clinical Findings & Summary')).toBeInTheDocument();
-    expect(screen.getByText('Prescribing Doctor')).toBeInTheDocument();
 
     const closeBtn = screen.getByText('Close');
     fireEvent.click(closeBtn);
     expect(screen.queryByText('Clinical Findings & Summary')).not.toBeInTheDocument();
-  });
-
-  test('handles corrupted or serialized object icons in localStorage without crashing', () => {
-    // Simulate what happens when Lucide forwardRef icon was serialized as {} in localStorage
-    localStorage.setItem('mediquee_reports', JSON.stringify([
-      { id: '99', title: 'Corrupted Icon Report', hospital: 'City Care', date: '01 Jan 2025', icon: {}, pages: '1 page', status: 'Normal' }
-    ]));
-
-    render(<Reports />);
-    expect(screen.getByText('Corrupted Icon Report')).toBeInTheDocument();
-    expect(screen.getByText('City Care')).toBeInTheDocument();
-  });
-
-  test('handles malformed JSON in localStorage gracefully without crashing', () => {
-    localStorage.setItem('mediquee_reports', 'invalid-json-string{[');
-
-    render(<Reports />);
-    // Should fall back to defaultReports
-    expect(screen.getByText('Complete Blood Count (CBC)')).toBeInTheDocument();
   });
 });

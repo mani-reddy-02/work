@@ -29,7 +29,6 @@ import HelpSupport from './pages/HelpSupport';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
-import MediQueeAI from './pages/MediQueeAI';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isLoggedIn, isLoading } = useAuth();
@@ -101,7 +100,6 @@ function App() {
             <Route path="profile/preferences" element={<ProfilePreferences />} />
             <Route path="family" element={<FamilyMembers />} />
             <Route path="help" element={<HelpSupport />} />
-            <Route path="ai" element={<MediQueeAI />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

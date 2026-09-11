@@ -52,14 +52,7 @@ describe('MobileBottomNav Component', () => {
     expect(screen.getByText('Bookings')).toBeInTheDocument();
     expect(screen.getByText('Services')).toBeInTheDocument();
     expect(screen.getByText('Profile')).toBeInTheDocument();
-
-    const aiButton = screen.getByText('MediQuee').closest('button');
-    expect(aiButton).toBeInTheDocument();
-    
-    // Test navigation? MemoryRouter is used, but we can just check if button is clickable
-    if(aiButton) {
-        fireEvent.click(aiButton);
-    }
+    expect(screen.getByText('Profile')).toBeInTheDocument();
   });
 });
 

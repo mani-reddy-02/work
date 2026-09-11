@@ -20,17 +20,6 @@ const MobileBottomNav = ({ className }: { className?: string }) => {
             <span className="text-[10px] font-medium">Bookings</span>
           </NavLink>
 
-          <div className="relative -top-6 flex flex-col items-center">
-            <button 
-              onClick={() => navigate('/ai')}
-              className={cn(
-                "w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300",
-                "bg-primary text-white shadow-primary/30 hover:bg-blue-700"
-              )}
-            >
-               <span className="text-[9px] font-bold tracking-tight">MediQuee</span>
-            </button>
-          </div>
 
           <NavLink to="/services" className={({ isActive }) => cn("flex flex-col items-center gap-1", isActive ? "text-primary" : "text-slate-400 hover:text-slate-600")}>
             <Grid className="w-6 h-6" />

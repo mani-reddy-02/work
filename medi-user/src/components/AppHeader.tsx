@@ -47,7 +47,7 @@ const AppHeader = ({ className }: { className?: string }) => {
 
         {/* Center: Logo (Mobile) / Left: Logo (Desktop) */}
         <div className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex items-center gap-2">
-          <span className="font-bold text-xl text-primary tracking-tight">MediQuee</span>
+          <Link to="/" className="font-bold text-xl text-primary tracking-tight">MediQuee</Link>
         </div>
 
         {/* Right: Actions */}
@@ -112,9 +112,9 @@ const AppHeader = ({ className }: { className?: string }) => {
             )}
           </Link>
           
-          <button className="hidden md:flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 border border-slate-200 overflow-hidden">
+          <Link to="/profile" className="hidden md:flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 border border-slate-200 overflow-hidden">
              <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80" alt="Profile" className="w-full h-full object-cover" />
-          </button>
+          </Link>
         </div>
       </div>
       

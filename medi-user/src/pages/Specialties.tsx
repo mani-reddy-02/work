@@ -613,15 +613,6 @@ const Specialties = () => {
   const confirmBooking = async () => {
     if (isSubmitting) return;
 
-    if (isVideo) {
-      const newId = `MQ-VC-${Math.floor(Math.random() * 1000)}`;
-      setBookingId(newId);
-      setBookingStatus('CONFIRMED');
-      setView('CONFIRMATION');
-      showNotification(`Your appointment with Dr. ${selectedDoctor.name.split(' ')[1] || selectedDoctor.name} has been booked successfully.`);
-      return;
-    }
-
     setIsSubmitting(true);
     setBookingError('');
 
@@ -636,8 +627,8 @@ const Specialties = () => {
         timeSlot: selectedTime || '10:00 AM',
         patientName: user?.name,
         patientPhone: user?.phone,
-        reason: reason || 'OP Consultation visit',
-        opType: 'Normal'
+        reason: reason || (isVideo ? 'Video Consultation' : 'OP Consultation visit'),
+        opType: isVideo ? 'Video Consultation' : 'Normal'
       });
 
       if (!res.success) {
