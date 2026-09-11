@@ -13,6 +13,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       conditionId,
       date,
       timeSlot,
+      slotTime,
       patientName,
       patientPhone,
       patientAge,
@@ -21,10 +22,12 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       opType
     } = req.body;
 
-    if (!hospitalId || !doctorId || !date || !timeSlot) {
+    const requestedSlot = (timeSlot || slotTime || '').trim();
+
+    if (!hospitalId || !doctorId || !date || !requestedSlot) {
       return res.status(400).json({
         success: false,
-        error: { code: 'BAD_REQUEST', message: 'hospitalId, doctorId, date, and timeSlot are required.' }
+        error: { code: 'BAD_REQUEST', message: 'hospitalId, doctorId, date, and timeSlot/slotTime are required.' }
       });
     }
 
@@ -136,7 +139,10 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       const existingConflict = await tx.oPBooking.findFirst({
         where: {
           doctorId,
-          timeSlot,
+          OR: [
+            { timeSlot: requestedSlot },
+            { slotTime: requestedSlot }
+          ],
           appointmentDate: {
             gte: startOfDay,
             lte: endOfDay
@@ -167,7 +173,8 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
           patientPhone: patientPhone || req.user!.phone || patient.phone || null,
           patientAge: patientAge ? parseInt(patientAge, 10) : null,
           patientGender: patientGender || patient.gender || null,
-          timeSlot,
+          timeSlot: requestedSlot,
+          slotTime: requestedSlot,
           reason: reason ? reason.trim() : null,
           opType: opType || 'Normal',
           status: 'WAITING',
@@ -309,10 +316,11 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
 
 export const getMyAppointments = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const patientId = req.user!.id;
+    const userId = req.user!.id;
+    const isDoctor = req.user!.role === 'DOCTOR';
 
     const bookings = await prisma.oPBooking.findMany({
-      where: { patientId },
+      where: isDoctor ? { doctorId: userId } : { patientId: userId },
       include: {
         hospital: {
           select: { id: true, name: true, city: true, addressLine1: true }
@@ -344,8 +352,13 @@ export const getMyAppointments = async (req: Request, res: Response, next: NextF
         doctorAvatar: b.doctor.avatar,
         departmentName: b.department.name,
         diseaseName: b.condition?.name || null,
+        patientName: b.patientName,
+        patientPhone: b.patientPhone,
+        patientAge: b.patientAge,
+        patientGender: b.patientGender,
         date: b.appointmentDate.toISOString().split('T')[0],
-        timeSlot: b.timeSlot,
+        timeSlot: b.timeSlot || b.slotTime,
+        slotTime: b.slotTime || b.timeSlot,
         status: b.status,
         opType: b.opType,
         fee: b.fee,

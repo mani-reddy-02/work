@@ -66,6 +66,7 @@ model Hospital {
   verifications   HospitalVerification[]
   rolePermissions RolePermission[]
   opBookings      OPBooking[]
+  doctorSchedules DoctorSchedule[]
 }
 
 model PlatformSpecialty {
@@ -131,6 +132,7 @@ model User {
   labBookings     LabBooking[]
   nursingBookings HomeNursingBooking[]
   patientReports  PatientReport[]
+  doctorSchedules DoctorSchedule[] @relation("DoctorSchedule")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -199,6 +201,7 @@ model OPBooking {
   conditionId     String?
   condition       PlatformCondition? @relation(fields: [conditionId], references: [id])
   timeSlot        String?
+  slotTime        String?
   reason          String?
   
   patientName     String
@@ -382,4 +385,26 @@ model PatientReport {
 
   @@map("patient_reports")
 }
+
+model DoctorSchedule {
+  id                  String   @id @default(uuid())
+  doctorId            String
+  doctor              User     @relation("DoctorSchedule", fields: [doctorId], references: [id], onDelete: Cascade)
+  hospitalId          String
+  hospital            Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  dayOfWeek           String   // e.g. "Monday", "Tuesday", etc.
+  startTime           String   @default("09:00")
+  endTime             String   @default("13:00")
+  videoStartTime      String?  @default("14:00")
+  videoEndTime        String?  @default("18:00")
+  slotDurationMinutes Int      @default(15)
+  isAvailable         Boolean  @default(true)
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([doctorId, dayOfWeek])
+  @@map("doctor_schedules")
+}
+
 
