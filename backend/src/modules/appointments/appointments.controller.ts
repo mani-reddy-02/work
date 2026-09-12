@@ -239,47 +239,99 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
 
 export const getAppointmentById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const id = req.params.id as string;
+    const rawId = (req.params.id as string || '').trim();
     const userId = req.user!.id;
     const userRole = req.user!.role;
     const userHospitalId = req.user!.hospitalId;
 
-    const booking = await prisma.oPBooking.findUnique({
-      where: { id },
-      include: {
-        hospital: {
-          select: { id: true, name: true, city: true, addressLine1: true, contactPhone: true }
-        },
-        doctor: {
-          select: { id: true, name: true, designation: true, avatar: true }
-        },
-        department: {
-          select: { id: true, name: true }
-        },
-        condition: {
-          select: { id: true, name: true, description: true }
-        }
+    if (!rawId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'BAD_REQUEST', message: 'Appointment or patient ID is required' }
+      });
+    }
+
+    const cleanId = rawId.replace(/^OP-?/i, '');
+    const isFullUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+
+    let booking = null;
+    const includeRelations = {
+      hospital: {
+        select: { id: true, name: true, city: true, addressLine1: true, contactPhone: true }
+      },
+      doctor: {
+        select: { id: true, name: true, designation: true, avatar: true }
+      },
+      department: {
+        select: { id: true, name: true }
+      },
+      condition: {
+        select: { id: true, name: true, description: true }
+      },
+      patient: {
+        select: { id: true, name: true, phone: true, dob: true, gender: true, avatar: true }
       }
-    });
+    };
+
+    if (isFullUuid) {
+      booking = await prisma.oPBooking.findUnique({
+        where: { id: cleanId },
+        include: includeRelations
+      });
+    }
+
+    if (!booking) {
+      booking = await prisma.oPBooking.findFirst({
+        where: {
+          OR: [
+            { id: { startsWith: cleanId.toLowerCase() } },
+            { id: { startsWith: cleanId.toUpperCase() } },
+            { id: { startsWith: cleanId } },
+            { patientId: cleanId }
+          ]
+        },
+        orderBy: { appointmentDate: 'desc' },
+        include: includeRelations
+      });
+    }
 
     if (!booking) {
       return res.status(404).json({
         success: false,
-        error: { code: 'NOT_FOUND', message: 'Appointment not found' }
+        error: { code: 'NOT_FOUND', message: 'Appointment or patient record not found' }
       });
     }
 
-    // Ownership check: must be patient, hospital staff for this hospital, or SUPER_ADMIN
+    // Authorization: patient owner, doctor assigned or in hospital, hospital staff, or super admin
     const isPatient = booking.patientId === userId;
     const isHospitalStaff = userHospitalId && booking.hospitalId === userHospitalId;
+    const isDoctor = booking.doctorId === userId || userRole === Role.DOCTOR;
     const isSuperAdmin = userRole === Role.SUPER_ADMIN;
 
-    if (!isPatient && !isHospitalStaff && !isSuperAdmin) {
+    if (!isPatient && !isHospitalStaff && !isDoctor && !isSuperAdmin) {
       return res.status(403).json({
         success: false,
         error: { code: 'FORBIDDEN', message: 'You are not authorized to view this appointment.' }
       });
     }
+
+    // Retrieve past visits / consultations for this patient
+    const pastBookings = await prisma.oPBooking.findMany({
+      where: {
+        hospitalId: booking.hospitalId,
+        OR: [
+          ...(booking.patientId ? [{ patientId: booking.patientId }] : []),
+          ...(booking.patientPhone ? [{ patientPhone: booking.patientPhone }] : []),
+          { patientName: booking.patientName }
+        ]
+      },
+      include: {
+        doctor: { select: { name: true } },
+        condition: { select: { name: true } }
+      },
+      orderBy: { appointmentDate: 'desc' },
+      take: 10
+    });
 
     res.json({
       success: true,
@@ -289,6 +341,7 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
         hospitalId: booking.hospitalId,
         hospitalName: booking.hospital.name,
         hospitalAddress: booking.hospital.addressLine1 || booking.hospital.city,
+        hospitalPhone: booking.hospital.contactPhone,
         doctorId: booking.doctorId,
         doctorName: booking.doctor.name,
         doctorDesignation: booking.doctor.designation,
@@ -300,13 +353,24 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
         patientId: booking.patientId,
         patientName: booking.patientName,
         patientPhone: booking.patientPhone,
+        patientAge: booking.patientAge,
+        patientGender: booking.patientGender,
         date: booking.appointmentDate.toISOString().split('T')[0],
-        timeSlot: booking.timeSlot,
+        timeSlot: booking.timeSlot || booking.slotTime,
+        slotTime: booking.slotTime || booking.timeSlot,
         status: booking.status,
         opType: booking.opType,
         fee: booking.fee,
         reason: booking.reason,
-        createdAt: booking.createdAt
+        createdAt: booking.createdAt,
+        pastVisits: pastBookings.map(v => ({
+          id: v.id,
+          date: v.appointmentDate.toISOString().split('T')[0],
+          time: v.slotTime || v.timeSlot || '10:00 AM',
+          doctor: v.doctor?.name || 'Doctor',
+          diagnosis: v.condition?.name || v.opType || 'General Consultation',
+          status: v.status
+        }))
       }
     });
   } catch (error) {
