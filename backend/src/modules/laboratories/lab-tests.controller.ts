@@ -137,6 +137,34 @@ export const getTestCategories = async (req: Request, res: Response, next: NextF
   }
 };
 
+export const getHealthConcerns = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const homeCollectionOnly = req.query.homeCollectionOnly === 'true';
+    
+    let whereClause: any = { active: true, healthConcern: { not: null, notIn: [''] } };
+
+    if (homeCollectionOnly) {
+      whereClause.offerings = {
+        some: {
+          active: true,
+          homeCollectionAvailable: true,
+        },
+      };
+    }
+
+    const tests = await prisma.labTest.findMany({
+      where: whereClause,
+      select: { healthConcern: true },
+      distinct: ['healthConcern'],
+    });
+
+    const concerns = tests.map((t) => t.healthConcern).filter(Boolean);
+    res.json({ success: true, data: concerns });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getLabTestById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;

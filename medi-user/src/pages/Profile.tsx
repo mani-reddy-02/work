@@ -141,33 +141,6 @@ const Profile = () => {
       </div>
 
       <div className="px-4 -mt-10 relative z-20 flex-1">
-        {/* Stats Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-4 flex divide-x divide-slate-100">
-          <div className="flex-1 flex flex-col justify-center px-2">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                <Calendar className="w-5 h-5 text-blue-600" />
-              </div>
-              <div className="flex flex-col">
-                <p className="text-[11px] text-slate-500 font-medium leading-tight mb-1">Upcoming Appointments</p>
-                <p className="text-2xl font-bold text-slate-800 leading-none mb-1">2</p>
-                <p className="text-[11px] text-slate-400">This week</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex-1 flex flex-col justify-center px-2 pl-4">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-                <ClipboardList className="w-5 h-5 text-emerald-500" />
-              </div>
-              <div className="flex flex-col">
-                <p className="text-[11px] text-slate-500 font-medium leading-tight mb-1">Health Records</p>
-                <p className="text-2xl font-bold text-slate-800 leading-none mb-1">12</p>
-                <p className="text-[11px] text-slate-400">Total reports</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Menu Options */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden divide-y divide-slate-50 mb-6">

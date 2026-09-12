@@ -87,38 +87,7 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
       orderBy: { name: 'asc' }
     });
 
-    if (targetSpecialtyId && hospitals.length === 0) {
-      hospitals = await prisma.hospital.findMany({
-        where: search ? {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { city: { contains: search, mode: 'insensitive' } }
-          ]
-        } : undefined,
-        include: {
-          departments: {
-            select: {
-              id: true,
-              name: true,
-              code: true,
-              description: true,
-              specialtyId: true,
-              specialty: {
-                select: { id: true, name: true }
-              }
-            }
-          },
-          _count: {
-            select: {
-              users: {
-                where: { role: Role.DOCTOR, active: true }
-              }
-            }
-          }
-        },
-        orderBy: { name: 'asc' }
-      });
-    }
+    // Enforce strict filtering: if no hospitals match the condition/specialty, return empty array.
 
     const formatted = hospitals.map(h => ({
       id: h.id,

@@ -38,35 +38,6 @@ const videoConsultationStepsData = [
   { id: '05', title: 'Book Consultation', desc: 'Choose an available consultation time and confirm your booking.', icon: CalendarClock },
   { id: '06', title: 'Start Video Consultation', desc: 'Join your scheduled consultation with the selected doctor.', icon: Video }
 ];
-const MOCK_HOSPITALS = [
-  { 
-    id: 'H1', 
-    name: 'Apollo Hospitals', 
-    address: 'Jubilee Hills, Hyderabad', 
-    contact: '+91 40 2360 7777', 
-    departments: ['Cardiology', 'Neurology', 'Orthopedics'], 
-    description: 'Multi-specialty hospital with advanced healthcare and state-of-the-art infrastructure.', 
-    verified: true 
-  },
-  { 
-    id: 'H2', 
-    name: 'KIMS Hospitals', 
-    address: 'Minister Road, Secunderabad', 
-    contact: '+91 40 4488 5000', 
-    departments: ['Pediatrics', 'Gastroenterology', 'Dermatology'], 
-    description: 'Leading healthcare provider known for clinical excellence and patient care.', 
-    verified: true 
-  },
-];
-
-const MOCK_DOCTORS = [
-  { id: 'D1', name: 'Dr. Rajesh Kumar', specialization: 'Cardiologist', qualification: 'MBBS, MD, DM', experience: '15 Years', hospitalId: 'H1', hospitalName: 'Apollo Hospitals', department: 'Cardiology', consultInfo: 'Expert in interventional cardiology and heart failure.', fees: '₹1000', rating: 4.8 },
-  { id: 'D2', name: 'Dr. Sneha Reddy', specialization: 'Neurologist', qualification: 'MBBS, MD, DM', experience: '12 Years', hospitalId: 'H1', hospitalName: 'Apollo Hospitals', department: 'Neurology', consultInfo: 'Specializes in stroke, epilepsy and movement disorders.', fees: '₹1200', rating: 4.9 },
-  { id: 'D3', name: 'Dr. Amit Sharma', specialization: 'Pediatrician', qualification: 'MBBS, MD', experience: '10 Years', hospitalId: 'H2', hospitalName: 'KIMS Hospitals', department: 'Pediatrics', consultInfo: 'Child care, vaccinations, and pediatric infectious diseases.', fees: '₹800', rating: 4.7 },
-  { id: 'D4', name: 'Dr. Priya Desai', specialization: 'Dermatologist', qualification: 'MBBS, MD', experience: '8 Years', hospitalId: 'H2', hospitalName: 'KIMS Hospitals', department: 'Dermatology', consultInfo: 'Skin health, cosmetic dermatology, and hair treatments.', fees: '₹900', rating: 4.6 },
-];
-
-const TIME_SLOTS = ['09:00 AM', '09:30 AM', '10:00 AM', '11:00 AM', '04:00 PM'];
 
 export interface SlotDateOption {
   label: string;
@@ -372,9 +343,9 @@ const Specialties = () => {
     categorical: categoricalDiseases,
     raw: [] as any[]
   });
-  const [hospitalsList, setHospitalsList] = useState<any[]>(MOCK_HOSPITALS);
-  const [doctorsList, setDoctorsList] = useState<any[]>(MOCK_DOCTORS);
-  const [availableSlots, setAvailableSlots] = useState<string[]>(TIME_SLOTS);
+  const [hospitalsList, setHospitalsList] = useState<any[]>([]);
+  const [doctorsList, setDoctorsList] = useState<any[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isHospitalsLoading, setIsHospitalsLoading] = useState(false);
   const [isDoctorsLoading, setIsDoctorsLoading] = useState(false);
   const [isSlotsLoading, setIsSlotsLoading] = useState(false);
@@ -493,7 +464,7 @@ const Specialties = () => {
       let active = true;
       setIsDoctorsLoading(true);
       if (selectedHospital?.id) {
-        hospitalApi.getHospitalDoctors(selectedHospital.id, selectedDepartment || undefined).then((res) => {
+        hospitalApi.getHospitalDoctors(selectedHospital.id, selectedDepartment || undefined, selectedDisease?.id).then((res) => {
           if (active) {
             setIsDoctorsLoading(false);
             if (res.success && res.data) {
@@ -507,7 +478,8 @@ const Specialties = () => {
         doctorApi.getDoctors({
           search: hospitalSearch,
           departmentId: selectedDepartment || undefined,
-          specialtyId: selectedDisease?.specialtyId
+          specialtyId: selectedDisease?.specialtyId,
+          conditionId: selectedDisease?.id
         }).then((res) => {
           if (active) {
             setIsDoctorsLoading(false);
@@ -528,38 +500,25 @@ const Specialties = () => {
     if (view === 'SELECT_SLOT' && selectedDoctor?.id) {
       let active = true;
       setIsSlotsLoading(true);
-      const isMockDoctor = selectedDoctor.id === 'D1' || !selectedDoctor.id.includes('-');
-      if (!isMockDoctor) {
-        setAvailableSlots([]);
-      }
+      setAvailableSlots([]);
       const queryDate = selectedDateIso || new Date().toISOString().split('T')[0];
-      opAppointmentApi.fetchDoctorAvailability(selectedDoctor.id, queryDate).then((res) => {
+      const slotType = isVideo ? 'VIDEO' : 'OP';
+      opAppointmentApi.fetchDoctorAvailability(selectedDoctor.id, queryDate, slotType).then((res) => {
         if (active) {
           setIsSlotsLoading(false);
           if (res.success && res.data) {
             setIsDoctorAvailable(res.data.isAvailable !== false);
             setAvailableSlots(res.data.availableSlots || []);
           } else {
-            // Mock doctors in unit test environment
-            if (isMockDoctor) {
-              setAvailableSlots(TIME_SLOTS);
-              setIsDoctorAvailable(true);
-            } else {
-              setAvailableSlots([]);
-              setIsDoctorAvailable(false);
-            }
+            setAvailableSlots([]);
+            setIsDoctorAvailable(false);
           }
         }
       }).catch(() => {
         if (active) {
           setIsSlotsLoading(false);
-          if (isMockDoctor) {
-            setAvailableSlots(TIME_SLOTS);
-            setIsDoctorAvailable(true);
-          } else {
-            setAvailableSlots([]);
-            setIsDoctorAvailable(false);
-          }
+          setAvailableSlots([]);
+          setIsDoctorAvailable(false);
         }
       });
       return () => { active = false; };
@@ -684,7 +643,8 @@ const Specialties = () => {
         setIsSubmitting(false);
         // Refresh available slots for this doctor so the user sees updated availability
         if (selectedDoctor?.id) {
-          opAppointmentApi.fetchDoctorAvailability(selectedDoctor.id, targetDate).then(r => {
+          const slotType = isVideo ? 'VIDEO' : 'OP';
+          opAppointmentApi.fetchDoctorAvailability(selectedDoctor.id, targetDate, slotType).then(r => {
             if (r.success && r.data?.availableSlots) setAvailableSlots(r.data.availableSlots);
           }).catch(() => {});
         }

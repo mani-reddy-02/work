@@ -165,6 +165,23 @@ export const labTestApi = {
     }
   },
 
+  async getHealthConcerns(params?: { homeCollectionOnly?: boolean }): Promise<{ success: boolean; data?: string[]; error?: string }> {
+    try {
+      let qs = '';
+      if (params?.homeCollectionOnly) qs = '?homeCollectionOnly=true';
+      const res = await fetch(`${API_BASE_URL}/lab-tests/health-concerns${qs}`, {
+        headers: getAuthHeaders(),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        return { success: false, error: json.error?.message || 'Failed to load health concerns' };
+      }
+      return { success: true, data: json.data };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Unable to connect to the server' };
+    }
+  },
+
   async getLabTestById(id: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       const res = await fetch(`${API_BASE_URL}/lab-tests/${id}`, {

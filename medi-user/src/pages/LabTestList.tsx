@@ -99,29 +99,9 @@ const healthConcerns = [
   { id: 'infection', name: 'Infection', icon: ShieldAlert, color: 'text-red-500', bg: 'bg-red-50' },
 ];
 
-const diagnosticPackages = [
-  { id: 'p1', name: 'Complete Health\nCheckup', tests: '60 Tests', time: '24 Hours', price: '₹1199', icon: Heart, color: 'text-blue-600', bg: 'bg-blue-100', btnBg: 'bg-[#0055ff]', desc: 'Includes common blood, liver, kidney and vitamin tests.', prep: '10-12 hours of fasting is required.' },
-  { id: 'p2', name: 'Diabetes Care\nPackage', tests: '3 Tests', time: '24 Hours', price: '₹899', icon: Droplet, color: 'text-indigo-600', bg: 'bg-indigo-100', btnBg: 'bg-[#0055ff]', desc: 'Includes: Fasting Blood Sugar, HbA1c, Post Meal Blood Sugar.', prep: '10-12 hours of fasting is required.' },
-  { id: 'p3', name: 'Heart Health\nPackage', tests: '3 Tests', time: '24 Hours', price: '₹999', icon: Heart, color: 'text-rose-600', bg: 'bg-rose-100', btnBg: 'bg-[#0055ff]', desc: 'Includes: Lipid Profile, Cardiac Risk Profile, Cholesterol Test.', prep: '12 hours of fasting is required.' },
-  { id: 'p4', name: 'Thyroid Package', tests: '3 Tests', time: '24 Hours', price: '₹499', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-100', btnBg: 'bg-[#0055ff]', desc: 'Includes: TSH, T3, T4.', prep: 'No fasting required.' },
-  { id: 'p5', name: "Women's Health\nPackage", tests: '32 Tests', time: '24 Hours', price: '₹1499', icon: Activity, color: 'text-pink-600', bg: 'bg-pink-100', btnBg: 'bg-[#0055ff]', desc: "Tailored health package addressing key aspects of women's health.", prep: '10-12 hours of fasting is required.' },
-  { id: 'p6', name: 'Senior Citizen\nHealth Package', tests: '40 Tests', time: '24 Hours', price: '₹1999', icon: Heart, color: 'text-blue-600', bg: 'bg-blue-100', btnBg: 'bg-[#0055ff]', desc: 'Comprehensive health monitoring tailored for senior citizens.', prep: '10-12 hours of fasting is required.' },
-];
+const diagnosticPackages: any[] = [];
 
-const DEFAULT_LAB_TESTS: LabTestRecord[] = [
-  { id: '1', name: 'Complete Blood\nCount (CBC)', code: 'CBC', category: 'Blood Tests', concern: 'fever', price: '₹350', time: '12 Hours', desc: 'A complete blood count used to evaluate overall health.', prep: 'No special preparation required.', sampleType: 'Blood' },
-  { id: '2', name: 'Liver Function\nTest (LFT)', code: 'LFT', category: 'Liver', concern: 'liver', price: '₹550', time: '12 Hours', desc: 'Evaluates liver function and detects liver inflammation.', prep: '10-12 hours fasting required.', sampleType: 'Blood' },
-  { id: '3', name: 'Thyroid Profile\n(T3, T4, TSH)', code: 'THYROID', category: 'Thyroid', concern: 'thyroid', price: '₹450', time: '12 Hours', desc: 'Measures thyroid hormones to check gland function.', prep: 'No fasting required.', sampleType: 'Blood' },
-  { id: '4', name: 'Lipid Profile', code: 'LIPID', category: 'Heart', concern: 'heart', price: '₹600', time: '12 Hours', desc: 'Measures cholesterol and triglyceride levels.', prep: '12 hours fasting required.', sampleType: 'Blood' },
-  { id: '5', name: 'Blood Sugar Fasting\n(FBS)', code: 'FBS', category: 'Diabetes', concern: 'diabetes', price: '₹120', time: '6 Hours', desc: 'Measures fasting blood glucose level.', prep: '8-10 hours fasting required.', sampleType: 'Blood' },
-  { id: '6', name: 'Kidney Function\nTest (KFT)', code: 'KFT', category: 'Kidney', concern: 'kidney', price: '₹500', time: '12 Hours', desc: 'Evaluates kidney function and health.', prep: 'No fasting required.', sampleType: 'Blood' },
-  { id: '7', name: 'Vitamin D\n(25-OH)', code: 'VITD', category: 'Vitamins', concern: 'vitamins', price: '₹950', time: '24 Hours', desc: 'Measures 25-hydroxyvitamin D level.', prep: 'No fasting required.', sampleType: 'Blood' },
-  { id: '8', name: 'Vitamin B12', code: 'VITB12', category: 'Vitamins', concern: 'vitamins', price: '₹750', time: '24 Hours', desc: 'Measures cobalamin level in blood.', prep: 'No fasting required.', sampleType: 'Blood' },
-  { id: '9', name: 'HbA1c\n(Glycated Hb)', code: 'HBA1C', category: 'Diabetes', concern: 'diabetes', price: '₹400', time: '12 Hours', desc: 'Monitors average blood sugar over 3 months.', prep: 'No fasting required.', sampleType: 'Blood' },
-  { id: '10', name: 'Urine Routine &\nMicroscopy', code: 'URINE', category: 'Urine Tests', concern: 'kidney', price: '₹180', time: '6 Hours', desc: 'Examines physical, chemical, and microscopic urine aspects.', prep: 'Morning first urine sample preferred.', sampleType: 'Urine' },
-  { id: '11', name: 'Cardiac Risk\nProfile', code: 'CARDIAC', category: 'Heart', concern: 'heart', price: '₹1500', time: '24 Hours', desc: 'Assessment of cardiovascular disease risk markers.', prep: '12 hours fasting required.', sampleType: 'Blood' },
-  { id: '12', name: 'Iron Profile', code: 'IRON', category: 'Blood Tests', concern: 'fever', price: '₹650', time: '12 Hours', desc: 'Assesses iron deficiency and iron metabolism.', prep: '10-12 hours fasting required.', sampleType: 'Blood' },
-] as any as LabTestRecord[];
+const DEFAULT_LAB_TESTS: LabTestRecord[] = [];
 
 const LabTestList = () => {
   const navigate = useNavigate();
@@ -148,6 +128,7 @@ const LabTestList = () => {
   const [showAllTests, setShowAllTests] = useState(false);
   const [showAllPackages, setShowAllPackages] = useState(false);
   const [selectedConcern, setSelectedConcern] = useState<string | null>(null);
+  const [dynamicHealthConcerns, setDynamicHealthConcerns] = useState<string[]>([]);
 
   // Real Database Lab Tests state (defaults to catalog, enhanced with live data)
   const [dbTests, setDbTests] = useState<LabTestRecord[]>(DEFAULT_LAB_TESTS);
@@ -189,9 +170,10 @@ const LabTestList = () => {
     setIsTestsLoading(true);
     setTestsError(null);
     try {
-      const [testsRes, catsRes] = await Promise.all([
+      const [testsRes, catsRes, concernsRes] = await Promise.all([
         labTestApi.getLabTests(),
         labTestApi.getCategories(),
+        labTestApi.getHealthConcerns(),
       ]);
 
       if (testsRes.success && testsRes.data && testsRes.data.length > 0) {
@@ -202,6 +184,10 @@ const LabTestList = () => {
 
       if (catsRes.success && catsRes.data && catsRes.data.length > 0) {
         setCategoryTabs(catsRes.data);
+      }
+
+      if (concernsRes.success && concernsRes.data && concernsRes.data.length > 0) {
+        setDynamicHealthConcerns(concernsRes.data);
       }
     } catch (err: any) {
       setTestsError(err.message || 'Unable to connect to the server');
@@ -307,18 +293,22 @@ const LabTestList = () => {
     : filteredByCategory;
 
   const displayLabTests = showAllTests || q ? filteredLabTests : filteredLabTests.slice(0, 8);
+  
+  // Extract packages (Category contains "Package")
+  const allPackages = dbTests.filter((t) => t.category.toLowerCase().includes('package'));
+  const allNonPackages = dbTests.filter((t) => !t.category.toLowerCase().includes('package'));
+  
   const filteredPackages = q
-    ? diagnosticPackages.filter(
+    ? allPackages.filter(
         (p) => p.name.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q)
       )
-    : diagnosticPackages;
+    : allPackages;
 
-  const activeConcern = healthConcerns.find((c) => c.id === selectedConcern);
-  const concernTests = activeConcern
-    ? dbTests.filter(
+  const concernTests = selectedConcern
+    ? allNonPackages.filter(
         (t) =>
-          t.concern?.toLowerCase() === activeConcern.id.toLowerCase() ||
-          t.category.toLowerCase() === activeConcern.name.toLowerCase()
+          t.concern?.toLowerCase() === selectedConcern.toLowerCase() ||
+          t.healthConcern?.toLowerCase() === selectedConcern.toLowerCase()
       )
     : [];
 
@@ -628,40 +618,52 @@ const LabTestList = () => {
                         </div>
 
                         {/* Find Tests by Health Concern */}
-                        <div className="bg-white pt-5 pb-6 mb-2 shadow-sm">
-                          <div className="px-4 mb-4">
-                            <h2 className="text-[16px] font-bold text-slate-800">Find Tests by Health Concern</h2>
+                        {dynamicHealthConcerns.length > 0 && (
+                          <div className="bg-white pt-5 pb-6 mb-2 shadow-sm">
+                            <div className="px-4 mb-4">
+                              <h2 className="text-[16px] font-bold text-slate-800">Find Tests by Health Concern</h2>
+                            </div>
+                            <div className="flex gap-3 overflow-x-auto hide-scrollbar px-4 mb-5 pb-1">
+                              {dynamicHealthConcerns.map((concernStr) => {
+                                const staticMatch = healthConcerns.find(
+                                  (c) => c.id.toLowerCase() === concernStr.toLowerCase() || c.name.toLowerCase() === concernStr.toLowerCase()
+                                );
+                                const bg = staticMatch?.bg || 'bg-blue-50';
+                                const Icon = staticMatch?.icon || Activity;
+                                const color = staticMatch?.color || 'text-blue-500';
+                                const iconUrl = healthConcernIconMap[concernStr.toLowerCase()] || (staticMatch ? healthConcernIconMap[staticMatch.id] : null);
+
+                                return (
+                                  <div
+                                    key={concernStr}
+                                    onClick={() => {
+                                      setSelectedConcern(concernStr);
+                                      setViewState('CONCERN_RESULTS');
+                                    }}
+                                    className="flex flex-col items-center shrink-0 w-[72px] cursor-pointer group"
+                                  >
+                                    <div
+                                      className={`w-14 h-14 rounded-full ${bg} flex items-center justify-center mb-1.5 border border-slate-100 group-hover:shadow-lg group-hover:scale-110 transition-all duration-200 overflow-hidden`}
+                                    >
+                                      {iconUrl ? (
+                                        <img
+                                          src={iconUrl}
+                                          alt={concernStr}
+                                          className="w-10 h-10 object-contain"
+                                        />
+                                      ) : (
+                                        <Icon className={`w-6 h-6 ${color}`} />
+                                      )}
+                                    </div>
+                                    <span className="text-[11px] font-bold text-slate-700 text-center">
+                                      {concernStr}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                          <div className="flex gap-3 overflow-x-auto hide-scrollbar px-4 mb-5 pb-1">
-                            {healthConcerns.map((concern) => (
-                              <div
-                                key={concern.id}
-                                onClick={() => {
-                                  setSelectedConcern(concern.id);
-                                  setViewState('CONCERN_RESULTS');
-                                }}
-                                className="flex flex-col items-center shrink-0 w-[72px] cursor-pointer group"
-                              >
-                                <div
-                                  className={`w-14 h-14 rounded-full ${concern.bg} flex items-center justify-center mb-1.5 border border-slate-100 group-hover:shadow-lg group-hover:scale-110 transition-all duration-200 overflow-hidden`}
-                                >
-                                  {healthConcernIconMap[concern.id] ? (
-                                    <img
-                                      src={healthConcernIconMap[concern.id]}
-                                      alt={concern.name}
-                                      className="w-10 h-10 object-contain"
-                                    />
-                                  ) : (
-                                    <concern.icon className={`w-6 h-6 ${concern.color}`} />
-                                  )}
-                                </div>
-                                <span className="text-[11px] font-bold text-slate-700 text-center">
-                                  {concern.name}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                        )}
                       </>
                     )}
 

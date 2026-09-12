@@ -87,6 +87,24 @@ export const homeSampleCollectionApi = {
   },
 
   /**
+   * Get health concerns for home collection tests
+   */
+  async getHealthConcerns(): Promise<{ success: boolean; data?: string[]; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/lab-tests/health-concerns?homeCollectionOnly=true`, {
+        headers: getAuthHeaders(),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        return { success: false, error: json.error?.message || 'Failed to load health concerns' };
+      }
+      return { success: true, data: json.data };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Unable to connect to the server' };
+    }
+  },
+
+  /**
    * Get detailed test information including offerings
    */
   async getTestById(id: string): Promise<{ success: boolean; data?: any; error?: string }> {

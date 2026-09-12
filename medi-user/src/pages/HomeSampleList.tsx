@@ -102,46 +102,9 @@ const healthConcerns = [
 ];
 
 // Initial fallback tests to ensure instant synchronous test rendering
-const initialTests = [
-  { id: '1', name: 'Complete Blood Count (CBC)', category: 'Blood Tests', concern: 'fever', provider: 'Lucid Medical', price: '₹350', numericPrice: 350, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'A complete blood count used to evaluate your overall health.', icon: TestTube, color: 'text-red-500', bg: 'bg-red-50' },
-  { id: '2', name: 'Blood Sugar Test (Fasting)', category: 'Diabetes', concern: 'diabetes', provider: 'Apollo Diagnostics', price: '₹150', numericPrice: 150, collection: 'Free Home Collection', fasting: '10-12 Hrs Fasting', desc: 'Measures blood glucose after an overnight fast.', icon: Droplet, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-  { id: '3', name: 'Lipid Profile', category: 'Heart', concern: 'heart', provider: 'Vijaya Diagnostic', price: '₹899', numericPrice: 899, collection: 'Free Home Collection', fasting: '12 Hrs Fasting', desc: 'Measures cholesterol and triglycerides in the blood.', icon: Heart, color: 'text-rose-500', bg: 'bg-rose-50' },
-  { id: '4', name: 'Liver Function Test', category: 'Liver', concern: 'liver', provider: 'Tenet Diagnostics', price: '₹750', numericPrice: 750, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Evaluates the health and function of your liver.', icon: Activity, color: 'text-yellow-500', bg: 'bg-yellow-50' },
-  { id: '5', name: 'Kidney Function Test', category: 'Kidney', concern: 'kidney', provider: 'Apollo Diagnostics', price: '₹600', numericPrice: 600, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Assesses how well your kidneys are working.', icon: Activity, color: 'text-purple-500', bg: 'bg-purple-50' },
-  { id: '6', name: 'Thyroid Profile', category: 'Thyroid', concern: 'thyroid', provider: 'Tenet Diagnostics', price: '₹450', numericPrice: 450, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Measures thyroid hormones to check gland function.', icon: Activity, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { id: '7', name: 'Vitamin B12', category: 'Vitamins', concern: 'vitamins', provider: 'Lucid Medical', price: '₹950', numericPrice: 950, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Measures the level of Vitamin B12 in blood.', icon: Apple, color: 'text-orange-500', bg: 'bg-orange-50' },
-  { id: '8', name: 'Vitamin D', category: 'Vitamins', concern: 'vitamins', provider: 'Vijaya Diagnostic', price: '₹1200', numericPrice: 1200, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Measures the level of Vitamin D in blood.', icon: Apple, color: 'text-orange-500', bg: 'bg-orange-50' },
-  { id: '9', name: 'HbA1c', category: 'Diabetes', concern: 'diabetes', provider: 'Apollo Diagnostics', price: '₹400', numericPrice: 400, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Measures average blood sugar over the past 3 months.', icon: Droplet, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-  { id: '10', name: 'Iron Profile', category: 'Blood Tests', concern: 'fever', provider: 'Tenet Diagnostics', price: '₹850', numericPrice: 850, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Measures various markers of iron in the blood.', icon: TestTube, color: 'text-red-500', bg: 'bg-red-50' },
-  { id: '11', name: 'Post Meal Blood Sugar', category: 'Diabetes', concern: 'diabetes', provider: 'Lucid Medical', price: '₹150', numericPrice: 150, collection: 'Free Home Collection', fasting: 'Post Meal', desc: 'Measures blood glucose 2 hours after eating.', icon: Droplet, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-  { id: '12', name: 'Glucose Tolerance Test', category: 'Diabetes', concern: 'diabetes', provider: 'Apollo Diagnostics', price: '₹550', numericPrice: 550, collection: 'Free Home Collection', fasting: 'Fasting Required', desc: 'Checks how your body processes sugar.', icon: Droplet, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-  { id: '13', name: 'Cardiac Risk Profile', category: 'Heart', concern: 'heart', provider: 'Tenet Diagnostics', price: '₹2200', numericPrice: 2200, collection: 'Free Home Collection', fasting: '12 Hrs Fasting', desc: 'Comprehensive test for assessing heart disease risk.', icon: Heart, color: 'text-rose-500', bg: 'bg-rose-50' },
-  { id: '14', name: 'Troponin Test', category: 'Heart', concern: 'heart', provider: 'Vijaya Diagnostic', price: '₹1500', numericPrice: 1500, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Measures troponin levels to detect heart injury.', icon: Heart, color: 'text-rose-500', bg: 'bg-rose-50' },
-  { id: '15', name: 'T3, T4, TSH', category: 'Thyroid', concern: 'thyroid', provider: 'Apollo Diagnostics', price: '₹500', numericPrice: 500, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Complete thyroid hormone panel.', icon: Activity, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { id: '16', name: 'Bilirubin', category: 'Liver', concern: 'liver', provider: 'Lucid Medical', price: '₹300', numericPrice: 300, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Measures bilirubin levels to check liver health.', icon: Activity, color: 'text-yellow-500', bg: 'bg-yellow-50' },
-  { id: '17', name: 'SGOT & SGPT', category: 'Liver', concern: 'liver', provider: 'Tenet Diagnostics', price: '₹400', numericPrice: 400, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Measures liver enzymes to detect liver damage.', icon: Activity, color: 'text-yellow-500', bg: 'bg-yellow-50' },
-  { id: '18', name: 'Creatinine', category: 'Kidney', concern: 'kidney', provider: 'Vijaya Diagnostic', price: '₹250', numericPrice: 250, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Measures creatinine levels to assess kidney function.', icon: Activity, color: 'text-purple-500', bg: 'bg-purple-50' },
-  { id: '19', name: 'Urea', category: 'Kidney', concern: 'kidney', provider: 'Apollo Diagnostics', price: '₹200', numericPrice: 200, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Measures urea nitrogen in the blood.', icon: Activity, color: 'text-purple-500', bg: 'bg-purple-50' },
-  { id: '20', name: 'Folate', category: 'Vitamins', concern: 'vitamins', provider: 'Tenet Diagnostics', price: '₹800', numericPrice: 800, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Measures the level of folate (folic acid) in blood.', icon: Apple, color: 'text-orange-500', bg: 'bg-orange-50' },
-  { id: '21', name: 'Master Health Checkup', category: 'Packages', concern: 'general', provider: 'Apollo Diagnostics', price: '₹2499', numericPrice: 2499, collection: 'Free Home Collection', fasting: '10-12 Hrs Fasting', desc: 'Comprehensive full body health checkup.', icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50' },
-  { id: '22', name: 'Comprehensive Full Body', category: 'Packages', concern: 'general', provider: 'Tenet Diagnostics', price: '₹1999', numericPrice: 1999, collection: 'Free Home Collection', fasting: '12 Hrs Fasting', desc: 'Detailed assessment of all major body systems.', icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50' },
-  { id: '23', name: 'Thyroid Stimulating Hormone (TSH)', category: 'Hormones', concern: 'thyroid', provider: 'Lucid Medical', price: '₹400', numericPrice: 400, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Measures TSH levels to evaluate thyroid function.', icon: Activity, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { id: '24', name: 'Testosterone Total', category: 'Hormones', concern: 'general', provider: 'Apollo Diagnostics', price: '₹750', numericPrice: 750, collection: 'Free Home Collection', fasting: 'Morning Sample Preferred', desc: 'Measures testosterone levels in the blood.', icon: Activity, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-  { id: '25', name: 'Widal Test', category: 'Infection', concern: 'fever', provider: 'Vijaya Diagnostic', price: '₹350', numericPrice: 350, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Used for the diagnosis of Typhoid fever.', icon: ShieldAlert, color: 'text-red-500', bg: 'bg-red-50' },
-  { id: '26', name: 'Dengue NS1 Antigen', category: 'Infection', concern: 'fever', provider: 'Tenet Diagnostics', price: '₹850', numericPrice: 850, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Detects the presence of dengue virus.', icon: ShieldAlert, color: 'text-red-500', bg: 'bg-red-50' },
-  { id: '27', name: 'Urine Routine & Microscopy', category: 'Urine Tests', concern: 'kidney', provider: 'Apollo Diagnostics', price: '₹200', numericPrice: 200, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Examines physical, chemical, and microscopic properties of urine.', icon: TestTube, color: 'text-yellow-500', bg: 'bg-yellow-50' },
-  { id: '28', name: 'Urine Culture', category: 'Urine Tests', concern: 'kidney', provider: 'Lucid Medical', price: '₹600', numericPrice: 600, collection: 'Free Home Collection', fasting: 'Sterile Container', desc: 'Checks for bacteria or yeast causing infection.', icon: TestTube, color: 'text-yellow-500', bg: 'bg-yellow-50' },
-  { id: '29', name: 'PSA (Prostate Specific Antigen)', category: 'Cancer Screening', concern: 'general', provider: 'Tenet Diagnostics', price: '₹950', numericPrice: 950, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Screens for prostate cancer in men.', icon: Activity, color: 'text-slate-500', bg: 'bg-slate-50' },
-  { id: '30', name: 'CA 125', category: 'Cancer Screening', concern: 'general', provider: 'Vijaya Diagnostic', price: '₹1400', numericPrice: 1400, collection: 'Free Home Collection', fasting: 'No Fasting', desc: 'Tumor marker primarily used to monitor ovarian cancer.', icon: Activity, color: 'text-slate-500', bg: 'bg-slate-50' },
-];
+const initialTests: any[] = [];
 
-const diagnosticPackages = [
-  { id: 'p1', name: 'Complete Health\nCheckup', tests: '60 Tests', time: '24 Hours', price: '₹1199', icon: Heart, color: 'text-blue-600', bg: 'bg-blue-100', btnBg: 'bg-[#0055ff]', desc: 'A collection of common health screening tests.', prep: '10-12 hours of fasting is required.' },
-  { id: 'p2', name: 'Diabetes Care\nPackage', tests: '3 Tests', time: '24 Hours', price: '₹899', icon: Droplet, color: 'text-indigo-600', bg: 'bg-indigo-100', btnBg: 'bg-[#0055ff]', desc: 'Includes: Fasting Blood Sugar, HbA1c, Post Meal Blood Sugar.', prep: '10-12 hours of fasting is required.' },
-  { id: 'p3', name: 'Heart Health\nPackage', tests: '3 Tests', time: '24 Hours', price: '₹999', icon: Heart, color: 'text-rose-600', bg: 'bg-rose-100', btnBg: 'bg-[#0055ff]', desc: 'Includes: Lipid Profile, Cardiac Risk Profile, Cholesterol Test.', prep: '12 hours of fasting is required.' },
-  { id: 'p4', name: 'Thyroid Package', tests: '3 Tests', time: '24 Hours', price: '₹499', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-100', btnBg: 'bg-[#0055ff]', desc: 'Includes: TSH, T3, T4.', prep: 'No fasting required.' },
-  { id: 'p5', name: "Vitamin Health\nPackage", tests: '3 Tests', time: '24 Hours', price: '₹1499', icon: Apple, color: 'text-orange-600', bg: 'bg-orange-100', btnBg: 'bg-[#0055ff]', desc: 'Includes: Vitamin D, Vitamin B12, Folate.', prep: '10-12 hours of fasting is required.' },
-];
+const diagnosticPackages: any[] = [];
 
 type ViewState =
   | 'LIST'
@@ -165,6 +128,17 @@ const HomeSampleList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState('All Tests');
   const [selectedConcern, setSelectedConcern] = useState<string | null>(null);
+  const [categoryTabs, setCategoryTabs] = useState<string[]>([
+    'All Tests',
+    'Blood Tests',
+    'Diabetes',
+    'Heart',
+    'Thyroid',
+    'Liver',
+    'Kidney',
+    'Vitamins',
+  ]);
+  const [dynamicHealthConcerns, setDynamicHealthConcerns] = useState<string[]>([]);
 
   // Laboratories for selected test
   const [laboratories, setLaboratories] = useState<LaboratoryRecord[]>([]);
@@ -197,24 +171,36 @@ const HomeSampleList = () => {
   const [createdBooking, setCreatedBooking] = useState<LabBookingRecord | null>(null);
 
   // Load real tests from backend on mount
-  useEffect(() => {
-    const fetchTests = async () => {
-      try {
-        const res = await homeSampleCollectionApi.getTests();
-        if (res.success && res.data && res.data.length > 0) {
-          // Merge database tests with styling metadata
-          const mapped = res.data.map((t) => ({
-            ...t,
-            collection: t.homeCollectionAvailable ? 'Free Home Collection' : 'Lab Visit Only',
-            fasting: t.preparation?.toLowerCase().includes('fasting') ? 'Fasting Required' : 'No Fasting',
-          }));
-          setTests(mapped);
-        }
-      } catch {
-        // Fallback to initial tests on network error
+  const loadInitialData = async () => {
+    try {
+      const [testsRes, catsRes, concernsRes] = await Promise.all([
+        homeSampleCollectionApi.getTests(),
+        homeSampleCollectionApi.getCategories(),
+        homeSampleCollectionApi.getHealthConcerns()
+      ]);
+
+      if (testsRes.success && testsRes.data && testsRes.data.length > 0) {
+        // Merge database tests with styling metadata
+        const mapped = testsRes.data.map((t) => ({
+          ...t,
+          collection: t.homeCollectionAvailable ? 'Free Home Collection' : 'Lab Visit Only',
+          fasting: t.preparation?.toLowerCase().includes('fasting') ? 'Fasting Required' : 'No Fasting',
+        }));
+        setTests(mapped);
       }
-    };
-    fetchTests();
+      if (catsRes.success && catsRes.data && catsRes.data.length > 0) {
+        setCategoryTabs(catsRes.data);
+      }
+      if (concernsRes.success && concernsRes.data && concernsRes.data.length > 0) {
+        setDynamicHealthConcerns(concernsRes.data);
+      }
+    } catch {
+      // Fallback to initial tests on network error
+    }
+  };
+
+  useEffect(() => {
+    loadInitialData();
   }, []);
 
   // Pre-load user profile if authenticated
@@ -287,6 +273,7 @@ const HomeSampleList = () => {
             t.category === selectedTab ||
             ((t as any).categories && (t as any).categories.includes(selectedTab))
         );
+
   const filteredByConcern =
     !selectedConcern || selectedConcern === 'all'
       ? filteredByCategory
@@ -307,14 +294,17 @@ const HomeSampleList = () => {
       )
     : filteredByConcern;
 
-  const filteredPackages = q
-    ? diagnosticPackages.filter(
-        (p) => p.name.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q)
-      )
-    : diagnosticPackages;
+  const allPackages = tests.filter((t) => t.category?.toLowerCase().includes('package'));
+  const allNonPackages = filteredTests.filter((t) => !t.category?.toLowerCase().includes('package'));
 
-  const hasResults = filteredTests.length > 0 || filteredPackages.length > 0;
-  const displayedTests = showAll || q ? filteredTests : filteredTests.slice(0, 8);
+  const filteredPackages = q
+    ? allPackages.filter(
+        (p) => p.name.toLowerCase().includes(q) || p.desc?.toLowerCase().includes(q)
+      )
+    : allPackages;
+
+  const displayedTests = showAll || q ? allNonPackages : allNonPackages.slice(0, 8);
+  const hasResults = displayedTests.length > 0 || filteredPackages.length > 0;
 
   const handleSelectTest = (item: any) => {
     setSelectedItem(item);
@@ -560,7 +550,7 @@ const HomeSampleList = () => {
 
                     {/* Lab Tests - Circular Grid */}
                     <div className="bg-white pt-5 pb-6 mb-2 shadow-sm">
-                      <div className="px-4 mb-4 flex items-center justify-between">
+                      <div className="px-4 flex items-center justify-between mb-4">
                         <h2 className="text-[16px] font-bold text-slate-800">Lab Tests</h2>
                         {filteredByCategory.length > 8 && (
                           <div
@@ -573,6 +563,23 @@ const HomeSampleList = () => {
                             <ChevronRight className="w-4 h-4" />
                           </div>
                         )}
+                      </div>
+
+                      {/* Category Tabs */}
+                      <div className="flex gap-2 overflow-x-auto hide-scrollbar px-4 mb-6 pb-1">
+                        {categoryTabs.map((tab) => (
+                          <button
+                            key={tab}
+                            onClick={() => setSelectedTab(tab)}
+                            className={`shrink-0 px-4 py-1.5 rounded-full text-[12px] font-bold transition-all ${
+                              selectedTab === tab
+                                ? 'bg-[#0055ff] text-white shadow-md shadow-blue-500/20'
+                                : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {tab}
+                          </button>
+                        ))}
                       </div>
 
                       <div className="grid grid-cols-4 gap-y-5 gap-x-2 px-4 relative">
@@ -619,36 +626,52 @@ const HomeSampleList = () => {
                     </div>
 
                     {/* Find Tests by Health Concern */}
-                    <div className="bg-white p-4 py-5 mb-2 shadow-sm">
-                      <h2 className="text-[16px] font-bold text-slate-800 mb-4">
-                        Find Tests by Health Concern
-                      </h2>
-                      <div className="flex overflow-x-auto hide-scrollbar gap-4 pb-2 mb-2 px-1">
-                        {healthConcerns.map((item) => (
-                          <div
-                            key={item.id}
-                            onClick={() => {
-                              setSelectedConcern(item.id);
-                              setViewState('CONCERN_RESULTS');
-                            }}
-                            className="flex flex-col items-center shrink-0 w-[72px] cursor-pointer group"
-                          >
-                            <div
-                              className={`w-14 h-14 rounded-full ${item.bg} flex items-center justify-center mb-1.5 border border-slate-100 group-hover:shadow-lg group-hover:scale-110 transition-all duration-200 overflow-hidden`}
-                            >
-                              <img
-                                src={healthConcernIconMap[item.id]}
-                                alt={item.name}
-                                className="w-9 h-9 object-contain"
-                              />
-                            </div>
-                            <span className="text-[11px] font-bold text-center text-slate-700">
-                              {item.name}
-                            </span>
-                          </div>
-                        ))}
+                    {dynamicHealthConcerns.length > 0 && (
+                      <div className="bg-white p-4 py-5 mb-2 shadow-sm">
+                        <h2 className="text-[16px] font-bold text-slate-800 mb-4">
+                          Find Tests by Health Concern
+                        </h2>
+                        <div className="flex overflow-x-auto hide-scrollbar gap-4 pb-2 mb-2 px-1">
+                          {dynamicHealthConcerns.map((concernStr) => {
+                            const staticMatch = healthConcerns.find(
+                              (c) => c.id.toLowerCase() === concernStr.toLowerCase() || c.name.toLowerCase() === concernStr.toLowerCase()
+                            );
+                            const bg = staticMatch?.bg || 'bg-blue-50';
+                            const Icon = staticMatch?.icon || Activity;
+                            const color = staticMatch?.color || 'text-blue-500';
+                            const iconUrl = healthConcernIconMap[concernStr.toLowerCase()] || (staticMatch ? healthConcernIconMap[staticMatch.id] : null);
+                            
+                            return (
+                              <div
+                                key={concernStr}
+                                onClick={() => {
+                                  setSelectedConcern(concernStr);
+                                  setViewState('CONCERN_RESULTS');
+                                }}
+                                className="flex flex-col items-center shrink-0 w-[72px] cursor-pointer group"
+                              >
+                                <div
+                                  className={`w-14 h-14 rounded-full ${bg} flex items-center justify-center mb-1.5 border border-slate-100 group-hover:shadow-lg group-hover:scale-110 transition-all duration-200 overflow-hidden`}
+                                >
+                                  {iconUrl ? (
+                                    <img
+                                      src={iconUrl}
+                                      alt={concernStr}
+                                      className="w-9 h-9 object-contain"
+                                    />
+                                  ) : (
+                                    <Icon className={`w-6 h-6 ${color}`} />
+                                  )}
+                                </div>
+                                <span className="text-[11px] font-bold text-center text-slate-700">
+                                  {concernStr}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </>
                 )}
 
@@ -742,66 +765,74 @@ const HomeSampleList = () => {
                           : 'flex overflow-x-auto hide-scrollbar gap-3 pb-2 px-4'
                       }
                     >
-                      {filteredPackages.map((item) => (
-                        <div
-                          key={item.id}
-                          className="bg-white rounded-2xl border border-slate-100 shadow-sm min-w-[210px] max-w-[240px] shrink-0 flex flex-col justify-between overflow-hidden hover:shadow-md transition-shadow"
-                        >
+                        {filteredPackages.map((item) => (
                           <div
-                            className={`h-1.5 w-full bg-gradient-to-r ${
-                              item.color === 'text-blue-600'
-                                ? 'from-blue-500 to-blue-400'
-                                : item.color === 'text-rose-600'
-                                ? 'from-rose-500 to-rose-400'
-                                : item.color === 'text-indigo-600'
-                                ? 'from-indigo-500 to-indigo-400'
-                                : item.color === 'text-emerald-600'
-                                ? 'from-emerald-500 to-emerald-400'
-                                : item.color === 'text-orange-600'
-                                ? 'from-orange-500 to-orange-400'
-                                : 'from-blue-500 to-cyan-400'
-                            }`}
-                          ></div>
-                          <div className="p-3.5">
-                            <div className="mb-3">
-                              <div className="flex items-start gap-2.5 mb-2">
-                                <div
-                                  className={`w-10 h-10 rounded-xl ${item.bg} ${item.color} flex items-center justify-center shrink-0`}
-                                >
-                                  <item.icon className="w-5 h-5" strokeWidth={2} />
-                                </div>
-                                <div>
-                                  <h3 className="font-bold text-slate-900 text-[12px] leading-tight mb-0.5 whitespace-pre-line">
-                                    {item.name}
-                                  </h3>
-                                  <p className="text-[9px] text-slate-500 font-medium">({item.tests})</p>
+                            key={item.id}
+                            className="bg-white rounded-2xl border border-slate-100 shadow-sm min-w-[210px] max-w-[240px] shrink-0 flex flex-col justify-between overflow-hidden hover:shadow-md transition-shadow"
+                          >
+                            <div
+                              className={`h-1.5 w-full bg-gradient-to-r ${
+                                (item as any).color === 'text-blue-600'
+                                  ? 'from-blue-500 to-blue-400'
+                                  : (item as any).color === 'text-rose-600'
+                                  ? 'from-rose-500 to-rose-400'
+                                  : (item as any).color === 'text-indigo-600'
+                                  ? 'from-indigo-500 to-indigo-400'
+                                  : 'from-blue-500 to-cyan-400'
+                              }`}
+                            ></div>
+                            <div className="p-3.5">
+                              <div className="mb-3">
+                                <div className="flex items-start gap-2.5 mb-2">
+                                  <div
+                                    className={`w-10 h-10 rounded-xl ${
+                                      (item as any).bg || 'bg-blue-50'
+                                    } ${
+                                      (item as any).color || 'text-blue-500'
+                                    } flex items-center justify-center shrink-0`}
+                                  >
+                                    {item.icon ? (
+                                      <item.icon className="w-5 h-5" strokeWidth={2} />
+                                    ) : (
+                                      <Activity className="w-5 h-5" strokeWidth={2} />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <h3 className="font-bold text-slate-900 text-[12px] leading-tight mb-0.5 whitespace-pre-line">
+                                      {item.name}
+                                    </h3>
+                                    <p className="text-[9px] text-slate-500 font-medium">
+                                      ({(item as any).tests || 'Comprehensive Tests'})
+                                    </p>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[10px] text-slate-600 font-medium mb-3">
-                              <Clock className="w-3.5 h-3.5 text-slate-400" />
-                              <span>Results in {item.time}</span>
-                            </div>
-                            <div className="flex items-center justify-between mt-auto">
-                              <span className="text-[16px] font-black text-blue-600">{item.price}</span>
-                            </div>
-                            <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-                              <button
-                                onClick={() => handleSelectTest(item)}
-                                className="flex-1 bg-slate-50 text-slate-700 border border-slate-200 py-1.5 rounded-lg text-[10px] font-bold hover:bg-slate-100 transition-colors"
-                              >
-                                View Package
-                              </button>
-                              <button
-                                onClick={() => handleSelectTest(item)}
-                                className={`flex-1 text-white py-1.5 rounded-lg text-[10px] font-bold ${item.btnBg} hover:opacity-90 transition-opacity shadow-sm`}
-                              >
-                                Book Package
-                              </button>
+                              <div className="flex items-center gap-1.5 text-[10px] text-slate-600 font-medium mb-3">
+                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Results in {(item as any).time || '24 hrs'}</span>
+                              </div>
+                              <div className="flex items-center justify-between mt-auto">
+                                <span className="text-[16px] font-black text-blue-600">{item.price}</span>
+                              </div>
+                              <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                                <button
+                                  onClick={() => handleSelectTest(item)}
+                                  className="flex-1 bg-slate-50 text-slate-700 border border-slate-200 py-1.5 rounded-lg text-[10px] font-bold hover:bg-slate-100 transition-colors"
+                                >
+                                  View Package
+                                </button>
+                                <button
+                                  onClick={() => handleSelectTest(item)}
+                                  className={`flex-1 text-white py-1.5 rounded-lg text-[10px] font-bold ${
+                                    (item as any).btnBg || 'bg-[#0055ff]'
+                                  } hover:opacity-90 transition-opacity shadow-sm`}
+                                >
+                                  Book Package
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   </div>
                 )}

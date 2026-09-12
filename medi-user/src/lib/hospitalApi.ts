@@ -167,10 +167,11 @@ export const hospitalApi = {
     }
   },
 
-  async getHospitalDoctors(hospitalId: string, departmentId?: string): Promise<{ success: boolean; data?: DoctorRecord[]; error?: string }> {
+  async getHospitalDoctors(hospitalId: string, departmentId?: string, conditionId?: string): Promise<{ success: boolean; data?: DoctorRecord[]; error?: string }> {
     try {
       const url = new URL(`${API_BASE_URL}/hospitals/${hospitalId}/doctors`);
       if (departmentId) url.searchParams.set('departmentId', departmentId);
+      if (conditionId) url.searchParams.set('conditionId', conditionId);
 
       const res = await fetch(url.toString(), { headers: getAuthHeaders() });
       const json = await res.json();
@@ -190,6 +191,7 @@ export const doctorApi = {
     departmentId?: string;
     hospitalId?: string;
     specialtyId?: string;
+    conditionId?: string;
   }): Promise<{ success: boolean; data?: DoctorRecord[]; error?: string }> {
     try {
       const url = new URL(`${API_BASE_URL}/doctors`);
@@ -197,6 +199,7 @@ export const doctorApi = {
       if (params?.departmentId) url.searchParams.set('departmentId', params.departmentId);
       if (params?.hospitalId) url.searchParams.set('hospitalId', params.hospitalId);
       if (params?.specialtyId) url.searchParams.set('specialtyId', params.specialtyId);
+      if (params?.conditionId) url.searchParams.set('conditionId', params.conditionId);
 
       const res = await fetch(url.toString(), { headers: getAuthHeaders() });
       const json = await res.json();

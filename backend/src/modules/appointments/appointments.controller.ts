@@ -82,6 +82,19 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
           throw { status: 400, code: 'BAD_REQUEST', message: 'Invalid disease / condition selected' };
         }
         validConditionId = condition.id;
+        
+        // 5b. STRICT DISEASE-DRIVEN VALIDATION
+        // Verify doctor belongs to a department that matches the disease's specialty
+        if (doctor.departmentId) {
+          const doctorDept = await tx.department.findUnique({
+            where: { id: doctor.departmentId }
+          });
+          if (!doctorDept || doctorDept.specialtyId !== condition.specialtyId) {
+            throw { status: 400, code: 'BAD_REQUEST', message: 'Doctor is not a specialist for the selected disease' };
+          }
+        } else {
+           throw { status: 400, code: 'BAD_REQUEST', message: 'Doctor is not assigned to any specialty department' };
+        }
       }
 
       // 6. Resolve department
@@ -134,6 +147,39 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(appointmentDate);
       endOfDay.setHours(23, 59, 59, 999);
+
+      // 7b. Verify doctor schedule and slot boundaries
+      const dayName = appointmentDate.toLocaleDateString('en-US', { weekday: 'long' });
+      const schedule = await tx.doctorSchedule.findFirst({
+        where: {
+          doctorId,
+          dayOfWeek: { equals: dayName, mode: 'insensitive' }
+        }
+      });
+
+      if (!schedule || !schedule.isAvailable) {
+        throw { status: 400, code: 'BAD_REQUEST', message: 'Doctor is not available on this day' };
+      }
+
+      const isVideoReq = opType === 'Video Consultation' || opType === 'VIDEO_CONSULTATION';
+      const startBound = isVideoReq && schedule.videoStartTime ? schedule.videoStartTime : schedule.startTime;
+      const endBound = isVideoReq && schedule.videoEndTime ? schedule.videoEndTime : schedule.endTime;
+
+      const [reqH, reqM] = requestedSlot.split(':');
+      const reqPeriod = requestedSlot.split(' ')[1];
+      let reqMinutes = parseInt(reqH) * 60 + parseInt(reqM);
+      if (reqPeriod === 'PM' && parseInt(reqH) !== 12) reqMinutes += 12 * 60;
+      if (reqPeriod === 'AM' && parseInt(reqH) === 12) reqMinutes -= 12 * 60;
+
+      const [startH, startM] = startBound.split(':');
+      const startMinutes = parseInt(startH) * 60 + parseInt(startM);
+      
+      const [endH, endM] = endBound.split(':');
+      const endMinutes = parseInt(endH) * 60 + parseInt(endM);
+
+      if (reqMinutes < startMinutes || reqMinutes >= endMinutes) {
+         throw { status: 400, code: 'BAD_REQUEST', message: 'Invalid time slot for the selected consultation type' };
+      }
 
       // 8. Double-booking check: verify slot is not already taken
       const existingConflict = await tx.oPBooking.findFirst({

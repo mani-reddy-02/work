@@ -39,10 +39,7 @@ export const createWalkInBooking = async (req: Request, res: Response, next: Nex
       where: {
         doctorId,
         appointmentDate: { gte: startOfAppt, lte: endOfAppt },
-        OR: [
-          { timeSlot: assignedSlot },
-          { slotTime: assignedSlot }
-        ],
+        timeSlot: assignedSlot,
         status: { notIn: ['COMPLETED', 'CANCELLED'] }
       }
     });
@@ -69,7 +66,6 @@ export const createWalkInBooking = async (req: Request, res: Response, next: Nex
         opType: opType || 'Normal',
         fee: fee || 0,
         timeSlot: assignedSlot,
-        slotTime: assignedSlot,
         status: 'WAITING',
         appointmentDate: apptDate
       },

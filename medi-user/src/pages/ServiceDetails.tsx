@@ -54,70 +54,9 @@ const ServiceDetails = () => {
           
           <h2 className="font-bold text-slate-800 px-1 mt-4">Top Specialists</h2>
 
-          {/* Dummy Item 1 */}
-          <div className="bg-white p-4 rounded-2xl shadow-soft border border-slate-100 flex flex-col gap-4">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                 <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=150" alt="Dr. Ananya Reddy" className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-slate-800 text-lg leading-tight">Dr. Ananya Reddy</h3>
-                <p className="text-sm text-slate-500 font-medium">Gynecologist • 8 Yrs Exp</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                  <span className="text-sm font-medium text-slate-700">4.8</span>
-                  <span className="text-xs text-slate-400">(320 reviews)</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-4 text-sm text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-primary" />
-                <span className="truncate">Banjara Hills</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-primary" />
-                <span>Available Today</span>
-              </div>
-            </div>
-            
-            <button className="w-full py-2.5 text-center text-sm font-semibold text-white bg-primary rounded-xl hover:bg-blue-700 transition-colors">
-              Book Appointment
-            </button>
-          </div>
-
-          {/* Dummy Item 2 */}
-          <div className="bg-white p-4 rounded-2xl shadow-soft border border-slate-100 flex flex-col gap-4">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                 <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=150" alt="Dr. Rajesh Kumar" className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-slate-800 text-lg leading-tight">Dr. Rajesh Kumar</h3>
-                <p className="text-sm text-slate-500 font-medium">Cardiologist • 15 Yrs Exp</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                  <span className="text-sm font-medium text-slate-700">4.9</span>
-                  <span className="text-xs text-slate-400">(415 reviews)</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-4 text-sm text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-primary" />
-                <span className="truncate">Jubilee Hills</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <CalendarDays className="w-4 h-4 text-primary" />
-                <span>Available Tomorrow</span>
-              </div>
-            </div>
-            
-            <button className="w-full py-2.5 text-center text-sm font-semibold text-primary border border-primary/20 rounded-xl hover:bg-primary/5 transition-colors">
-              Book Appointment
-            </button>
+          {/* Dummy items removed to avoid fake data */}
+          <div className="bg-white p-6 text-center rounded-2xl shadow-soft border border-slate-100 mt-4">
+             <p className="text-slate-500 text-sm">No specialists currently available for this service.</p>
           </div>
 
           <button 

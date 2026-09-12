@@ -22,7 +22,19 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
     const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
     const departmentId = typeof req.query.departmentId === 'string' ? req.query.departmentId.trim() : '';
     const hospitalId = typeof req.query.hospitalId === 'string' ? req.query.hospitalId.trim() : '';
+    const conditionId = typeof req.query.conditionId === 'string' ? req.query.conditionId.trim() : '';
     const specialtyId = typeof req.query.specialtyId === 'string' ? req.query.specialtyId.trim() : '';
+    let targetSpecialtyId = specialtyId;
+
+    if (conditionId && !targetSpecialtyId) {
+      const condition = await prisma.platformCondition.findUnique({
+        where: { id: conditionId },
+        select: { specialtyId: true }
+      });
+      if (condition) {
+        targetSpecialtyId = condition.specialtyId;
+      }
+    }
 
     const whereClause: any = {
       role: Role.DOCTOR,
@@ -35,10 +47,15 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
 
     if (departmentId) {
       whereClause.departmentId = departmentId;
-    } else if (specialtyId) {
+    } else if (targetSpecialtyId) {
       whereClause.department = {
-        specialtyId
+        specialtyId: targetSpecialtyId
       };
+    }
+
+    // Strict disease-driven filter: if conditionId was provided but no targetSpecialtyId was resolved, return empty array immediately or set impossible where clause
+    if (conditionId && !targetSpecialtyId) {
+      return res.json({ success: true, data: [] });
     }
 
     if (search) {

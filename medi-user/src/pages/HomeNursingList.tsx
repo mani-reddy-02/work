@@ -33,84 +33,9 @@ import {
 } from '../lib/homeNursingApi';
 import { profileApi } from '../lib/profileApi';
 
-const mockHospitals: NursingProviderRecord[] = [
-  {
-    id: '9c2e7291-de11-4a74-9752-781454e0f99c',
-    hospitalName: 'SM Hospital',
-    rating: 4.8,
-    location: 'Banjara Hills, Hyderabad',
-    address: 'Road No. 2, Banjara Hills',
-    registered: true,
-    price: '₹570',
-    numericPrice: 570,
-    duration: '12 / 24 Hours',
-  },
-  {
-    id: '6517543c-a619-45d2-bdc4-ce5a4f7d6c45',
-    hospitalName: 'Apollo Care Center',
-    rating: 4.7,
-    location: 'Jubilee Hills, Hyderabad',
-    address: 'Road No. 36, Jubilee Hills',
-    registered: true,
-    price: '₹1,500',
-    numericPrice: 1500,
-    duration: '12 / 24 Hours',
-  },
-  {
-    id: 'ms-hospital-id',
-    hospitalName: 'MS Hospital',
-    rating: 4.9,
-    location: 'Hitec City, Hyderabad',
-    address: 'Cyber Towers Main Rd',
-    registered: true,
-    price: '₹1,200',
-    numericPrice: 1200,
-    duration: '12 / 24 Hours',
-  },
-];
+const mockHospitals: NursingProviderRecord[] = [];
 
-const mockServices: NursingServiceRecord[] = [
-  {
-    id: 's1',
-    name: 'General Nursing Care',
-    description: 'Patient monitoring, Medication assistance, Basic nursing care',
-    duration: '12 / 24 Hours',
-    category: 'General Care',
-    basePrice: 1200,
-    price: '₹1,200',
-    numericPrice: 1200,
-  },
-  {
-    id: 's2',
-    name: 'Elderly Care',
-    description: 'Daily assistance, Mobility support, Personal care',
-    duration: '12 / 24 Hours',
-    category: 'Elderly Care',
-    basePrice: 1500,
-    price: '₹1,500',
-    numericPrice: 1500,
-  },
-  {
-    id: 's3',
-    name: 'Post-Hospitalization Care',
-    description: 'Recovery monitoring, Medication assistance, Wound-care support',
-    duration: '12 / 24 Hours',
-    category: 'Post-Op Recovery',
-    basePrice: 1800,
-    price: '₹1,800',
-    numericPrice: 1800,
-  },
-  {
-    id: 's4',
-    name: 'Injection / Dressing Support',
-    description: 'Injection assistance, Dressing support',
-    duration: 'Per Visit',
-    category: 'Clinical Procedures',
-    basePrice: 500,
-    price: '₹500',
-    numericPrice: 500,
-  },
-];
+const mockServices: NursingServiceRecord[] = [];
 
 const homeNursingStepsData = [
   { id: '01', title: 'Customer', desc: 'Customer submits a home nursing request.', icon: User },

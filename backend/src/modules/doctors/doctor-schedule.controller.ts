@@ -246,13 +246,10 @@ export const getDoctorAvailableSlots = async (req: Request, res: Response, next:
         const end = isVideo && schedule.videoEndTime ? schedule.videoEndTime : schedule.endTime;
         allSlots = generateSlots(start, end, schedule.slotDurationMinutes || 15);
       }
-    } else if (doctorHasAnySchedule > 0) {
-      // Doctor has configured a custom schedule for other days, but not this day -> doctor is OFF
+    } else {
+      // No schedule found and no fallback allowed for strict booking
       isAvailable = false;
       allSlots = [];
-    } else {
-      // Fallback to default consultation slots only if doctor hasn't configured any custom hours yet
-      allSlots = [...ALL_FALLBACK_SLOTS];
     }
 
     // Fetch existing active bookings for this doctor on this day
@@ -268,14 +265,13 @@ export const getDoctorAvailableSlots = async (req: Request, res: Response, next:
         }
       },
       select: {
-        timeSlot: true,
-        slotTime: true
+        timeSlot: true
       }
     });
 
     const bookedSlots = new Set<string>();
     for (const b of existingBookings) {
-      const slot = b.slotTime || b.timeSlot;
+      const slot = b.timeSlot;
       if (slot) {
         bookedSlots.add(slot);
       }

@@ -177,7 +177,7 @@ export const opAppointmentApi = {
     }
   },
 
-  async fetchHospitalDoctors(hospitalId: string, departmentId?: string): Promise<{
+  async fetchHospitalDoctors(hospitalId: string, departmentId?: string, conditionId?: string): Promise<{
     success: boolean;
     data?: DoctorRecord[];
     error?: string;
@@ -185,6 +185,7 @@ export const opAppointmentApi = {
     try {
       const url = new URL(`${API_BASE_URL}/hospitals/${hospitalId}/doctors`);
       if (departmentId) url.searchParams.set('departmentId', departmentId);
+      if (conditionId) url.searchParams.set('conditionId', conditionId);
 
       const res = await fetch(url.toString(), {
         headers: getAuthHeaders(),
@@ -218,12 +219,13 @@ export const opAppointmentApi = {
     }
   },
 
-  async fetchDoctorAvailability(doctorId: string, date: string): Promise<{
+  async fetchDoctorAvailability(doctorId: string, date: string, type: string = 'OP'): Promise<{
     success: boolean;
     data?: {
       doctorId: string;
       doctorName: string;
       date: string;
+      isAvailable?: boolean;
       allSlots: string[];
       availableSlots: string[];
       bookedSlots: string[];
@@ -233,6 +235,7 @@ export const opAppointmentApi = {
     try {
       const url = new URL(`${API_BASE_URL}/doctors/${doctorId}/availability`);
       if (date) url.searchParams.set('date', date);
+      if (type) url.searchParams.set('type', type);
 
       const res = await fetch(url.toString(), {
         headers: getAuthHeaders(),

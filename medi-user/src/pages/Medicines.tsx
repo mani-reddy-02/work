@@ -2,53 +2,18 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Pill, CheckCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
-
-const mockMedicines = [
-  {
-    id: 1,
-    name: "Paracetamol 500mg",
-    category: "Fever & pain relief",
-    form: "Tablet",
-    price: 50,
-    usage: "Take 1 tablet every 6 hours after food for fever or pain."
-  },
-  {
-    id: 2,
-    name: "Cetirizine 10mg",
-    category: "Allergy relief",
-    form: "Tablet",
-    price: 80,
-    usage: "Take 1 tablet at night or as directed for allergy symptoms."
-  },
-  {
-    id: 3,
-    name: "Amoxicillin 250mg",
-    category: "Antibiotic",
-    form: "Capsule",
-    price: 120,
-    usage: "Take 1 capsule every 8 hours. Complete the full course."
-  },
-  {
-    id: 4,
-    name: "Cough Syrup",
-    category: "Cough & Cold",
-    form: "Syrup",
-    price: 95,
-    usage: "Take 2 teaspoons 3 times a day for cough relief."
-  }
-];
-
 export default function Medicines() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedMedicine, setSelectedMedicine] = useState<typeof mockMedicines[0] | null>(null);
+  const [selectedMedicine, setSelectedMedicine] = useState<any | null>(null);
   const [addedToList, setAddedToList] = useState(false);
+  const [medicines, setMedicines] = useState<any[]>([]);
 
   const q = searchQuery.toLowerCase().trim();
-  const filteredMedicines = q ? mockMedicines.filter(m => 
+  const filteredMedicines = q ? medicines.filter(m => 
     m.name.toLowerCase().includes(q) || 
     m.category.toLowerCase().includes(q)
-  ) : mockMedicines;
+  ) : medicines;
 
   const handleAddToList = () => {
     setAddedToList(true);

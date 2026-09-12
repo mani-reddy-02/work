@@ -2,114 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { ArrowLeft, Shield, ChevronRight, Search, Activity, Users, HeartPulse, Building, FileText, CheckCircle, X, AlertCircle, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const insuranceData = [
-   {
-      id: 1,
-      companyName: "Star Health",
-      planName: "Comprehensive Health Plan",
-      category: "Family",
-      coverage: "₹10 Lakhs",
-      claimSettlementRatio: "92%",
-      networkHospitals: "14,000+",
-      benefits: [
-         "Cashless Hospitalization",
-         "Day-care Procedures",
-         "Pre/Post Hospitalization",
-         "Ambulance coverage"
-      ],
-      popularity: "Popular",
-      requiredDocuments: [
-         { name: "Identity Proof", required: true },
-         { name: "Address Proof", required: true },
-         { name: "Age Proof", required: true },
-         { name: "Income Proof", required: false }
-      ]
-   },
-   {
-      id: 2,
-      companyName: "HDFC ERGO",
-      planName: "Optima Restore",
-      category: "Individual",
-      coverage: "₹15 Lakhs",
-      claimSettlementRatio: "97%",
-      networkHospitals: "10,000+",
-      benefits: [
-         "Multiplier Benefit",
-         "No Room Rent Capping",
-         "Preventive Health Checkup"
-      ],
-      popularity: "High",
-      requiredDocuments: [
-         { name: "Identity Proof", required: true },
-         { name: "Address Proof", required: true },
-         { name: "Age Proof", required: true },
-         { name: "Medical Documents", required: true }
-      ]
-   },
-   {
-      id: 3,
-      companyName: "Niva Bupa",
-      planName: "ReAssure 2.0",
-      category: "Family",
-      coverage: "₹25 Lakhs+",
-      claimSettlementRatio: "91%",
-      networkHospitals: "8,500+",
-      benefits: [
-         "Lock the clock",
-         "ReAssure benefit unlimited times",
-         "Live Healthy benefit"
-      ],
-      popularity: "Popular",
-      requiredDocuments: [
-         { name: "Identity Proof", required: true },
-         { name: "Address Proof", required: true },
-         { name: "Age Proof", required: true }
-      ]
-   },
-   {
-      id: 4,
-      companyName: "Care Health",
-      planName: "Care Advantage",
-      category: "Senior Citizen",
-      coverage: "₹5 Lakhs",
-      claimSettlementRatio: "90%",
-      networkHospitals: "9,000+",
-      benefits: [
-         "Annual Health Check-up",
-         "Alternative Treatments (AYUSH)",
-         "Automatic Recharge"
-      ],
-      popularity: "High",
-      requiredDocuments: [
-         { name: "Identity Proof", required: true },
-         { name: "Address Proof", required: true },
-         { name: "Age Proof", required: true },
-         { name: "Medical Documents", required: true },
-         { name: "Previous Insurance Documents", required: false }
-      ]
-   },
-   {
-      id: 5,
-      companyName: "ICICI Lombard",
-      planName: "Health AdvantEdge",
-      category: "Individual",
-      coverage: "₹10 Lakhs",
-      claimSettlementRatio: "94%",
-      networkHospitals: "7,500+",
-      benefits: [
-         "Worldwide Cover",
-         "Bariatric Surgery Cover",
-         "Wellness Program"
-      ],
-      popularity: "High",
-      requiredDocuments: [
-         { name: "Identity Proof", required: true },
-         { name: "Address Proof", required: true },
-         { name: "Age Proof", required: true },
-         { name: "Medical Documents", required: true }
-      ]
-   }
-];
+const insuranceData: any[] = [];
 
 const InsuranceList = () => {
    const navigate = useNavigate();
@@ -655,7 +548,7 @@ const InsuranceList = () => {
                               <div className="mb-5 flex-1">
                                  <p className="text-[11px] font-bold text-slate-800 mb-2">Key Benefits:</p>
                                  <ul className="space-y-1.5">
-                                    {item.benefits.map((benefit, i) => (
+                                    {item.benefits.map((benefit: string, i: number) => (
                                        <li key={i} className="flex items-start gap-1.5">
                                           <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                                           <span className="text-[11px] text-slate-600 leading-snug">{benefit}</span>
