@@ -354,6 +354,7 @@ const Specialties = () => {
 
   // Selection State
   const [hospitalSearch, setHospitalSearch] = useState('');
+  const [diseaseSearch, setDiseaseSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [selectedDisease, setSelectedDisease] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
@@ -551,6 +552,7 @@ const Specialties = () => {
     setSelectedDisease(null);
     setSelectedCategory(null);
     setCategoricalDiseaseSearch('');
+    setDiseaseSearch('');
     setHospitalSearch('');
     setBookingError('');
   }, [isVideo]);
@@ -678,7 +680,7 @@ const Specialties = () => {
   // --- RENDERERS ---
 
   const renderDiseaseCategories = () => {
-    const query = hospitalSearch.toLowerCase().trim();
+    const query = diseaseSearch.toLowerCase().trim();
     
     let filteredGeneral = diseasesList.general;
     let filteredAdvanced = diseasesList.advanced;
@@ -708,6 +710,28 @@ const Specialties = () => {
       <p className="text-[12px] text-slate-500 mb-4">
         {isVideo ? 'Select a disease to find available doctors' : 'Select a disease to find suitable hospitals'}
       </p>
+
+      {/* Disease Search Bar */}
+      <div className="relative mb-6">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search className="h-4 w-4 text-slate-400" />
+        </div>
+        <input
+          type="text"
+          value={diseaseSearch}
+          onChange={(e) => setDiseaseSearch(e.target.value)}
+          placeholder="Search for a disease or condition..."
+          className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm text-[13px] font-medium transition-all"
+        />
+        {diseaseSearch && (
+          <button
+            onClick={() => setDiseaseSearch('')}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
       
       {!hasResults ? (
         <div className="text-center py-8">

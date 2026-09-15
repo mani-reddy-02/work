@@ -13,7 +13,7 @@ app.use(helmet());
 app.use(cors({
   origin: (origin, callback) => {
     // Allow any localhost port for local development, or fallback to the exact CORS_ORIGIN
-    if (!origin || origin.startsWith('http://localhost:') || env.CORS_ORIGIN.split(',').includes(origin)) {
+    if (!origin || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:') || env.CORS_ORIGIN.split(',').includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));

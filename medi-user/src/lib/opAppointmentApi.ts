@@ -235,7 +235,7 @@ export const opAppointmentApi = {
     try {
       const url = new URL(`${API_BASE_URL}/doctors/${doctorId}/availability`);
       if (date) url.searchParams.set('date', date);
-      if (type) url.searchParams.set('type', type);
+      if (type) url.searchParams.set('opType', type);
 
       const res = await fetch(url.toString(), {
         headers: getAuthHeaders(),

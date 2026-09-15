@@ -50,15 +50,23 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
     if (departmentId) {
       whereClause.departments = {
         some: {
-          id: departmentId
+          id: departmentId,
+          users: { some: { role: Role.DOCTOR, active: true } }
         }
       };
     } else if (targetSpecialtyId) {
       whereClause.departments = {
         some: {
-          specialtyId: targetSpecialtyId
+          specialtyId: targetSpecialtyId,
+          users: { some: { role: Role.DOCTOR, active: true } }
         }
       };
+    }
+
+    // Enforce strict disease-driven filter: if conditionId was passed but no targetSpecialtyId was resolved, 
+    // it means the disease doesn't exist or isn't mapped, so return empty.
+    if (conditionId && !targetSpecialtyId) {
+      return res.json({ success: true, data: [] });
     }
 
     let hospitals = await prisma.hospital.findMany({

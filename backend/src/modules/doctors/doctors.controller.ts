@@ -209,6 +209,7 @@ export const getDoctorAvailability = async (req: Request, res: Response, next: N
   try {
     const doctorId = req.params.id as string;
     const dateQuery = typeof req.query.date === 'string' ? req.query.date.trim() : '';
+    const opType = typeof req.query.opType === 'string' ? req.query.opType.trim().toUpperCase() : 'OP';
 
     const doctor = await prisma.user.findFirst({
       where: {
@@ -240,6 +241,56 @@ export const getDoctorAvailability = async (req: Request, res: Response, next: N
 
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
+    
+    const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'long' });
+    
+    // Fetch Doctor Schedule
+    const schedule = await prisma.doctorSchedule.findFirst({
+      where: {
+        doctorId,
+        dayOfWeek: { equals: dayName, mode: 'insensitive' }
+      }
+    });
+    
+    if (!schedule || !schedule.isAvailable) {
+      return res.json({
+        success: true,
+        data: {
+          doctorId,
+          doctorName: doctor.name,
+          date: targetDate.toISOString().split('T')[0],
+          allSlots: [],
+          availableSlots: [],
+          bookedSlots: [],
+          isAvailable: false
+        }
+      });
+    }
+    
+    const isVideoReq = opType === 'VIDEO' || opType === 'VIDEO CONSULTATION' || opType === 'VIDEO_CONSULTATION';
+    const startBound = isVideoReq && schedule.videoStartTime ? schedule.videoStartTime : schedule.startTime;
+    const endBound = isVideoReq && schedule.videoEndTime ? schedule.videoEndTime : schedule.endTime;
+    
+    // Generate slots
+    const allSlots: string[] = [];
+    const slotDuration = schedule.slotDurationMinutes || 30; // fallback to 30 min if not set
+    
+    const [startH, startM] = startBound.split(':').map(Number);
+    const [endH, endM] = endBound.split(':').map(Number);
+    let currentMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    
+    while (currentMinutes + slotDuration <= endMinutes) {
+      const h = Math.floor(currentMinutes / 60);
+      const m = currentMinutes % 60;
+      const period = h >= 12 ? 'PM' : 'AM';
+      const displayH = h % 12 === 0 ? 12 : h % 12;
+      const displayM = m.toString().padStart(2, '0');
+      const displayHStr = displayH.toString().padStart(2, '0');
+      
+      allSlots.push(`${displayHStr}:${displayM} ${period}`);
+      currentMinutes += slotDuration;
+    }
 
     // Fetch existing active bookings for this doctor on this day
     const existingBookings = await prisma.oPBooking.findMany({
@@ -266,7 +317,7 @@ export const getDoctorAvailability = async (req: Request, res: Response, next: N
       }
     }
 
-    const availableSlots = ALL_TIME_SLOTS.filter(slot => !bookedSlots.has(slot));
+    const availableSlots = allSlots.filter(slot => !bookedSlots.has(slot));
 
     res.json({
       success: true,
@@ -274,9 +325,10 @@ export const getDoctorAvailability = async (req: Request, res: Response, next: N
         doctorId,
         doctorName: doctor.name,
         date: targetDate.toISOString().split('T')[0],
-        allSlots: ALL_TIME_SLOTS,
+        allSlots,
         availableSlots,
-        bookedSlots: Array.from(bookedSlots)
+        bookedSlots: Array.from(bookedSlots),
+        isAvailable: availableSlots.length > 0
       }
     });
   } catch (error) {

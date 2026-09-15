@@ -2,9 +2,11 @@ import { cn } from '../lib/utils';
 import { NavLink } from 'react-router-dom';
 import { Home, Calendar, Grid, FileText, Users, User, HelpCircle, LogOut, ChevronLeft } from 'lucide-react';
 import { useUIStore } from '../lib/uiStore';
+import { useAuth } from '../lib/auth';
 
 const DesktopSidebar = ({ className }: { className?: string }) => {
   const { setDesktopSidebarOpen } = useUIStore();
+  const { logout } = useAuth();
   const navItems = [
     { name: 'Home', icon: Home, path: '/' },
     { name: 'Bookings', icon: Calendar, path: '/bookings' },
@@ -69,7 +71,7 @@ const DesktopSidebar = ({ className }: { className?: string }) => {
           <HelpCircle className="w-5 h-5" />
           Help & Support
         </NavLink>
-        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-sm font-medium text-red-600 hover:bg-red-50">
+        <button onClick={() => logout()} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-sm font-medium text-red-600 hover:bg-red-50">
           <LogOut className="w-5 h-5" />
           Logout
         </button>
