@@ -7,6 +7,7 @@ import { updateProfileSchema } from './users.schema';
 const router = Router();
 
 router.get('/me', authenticate, getMe);
+router.put('/me', authenticate, validateRequest(updateProfileSchema), updateMe);
 router.patch('/me', authenticate, validateRequest(updateProfileSchema), updateMe);
 
 export default router;

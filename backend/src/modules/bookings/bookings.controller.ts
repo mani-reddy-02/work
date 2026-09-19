@@ -94,7 +94,9 @@ export const getTodayBookings = async (req: Request, res: Response, next: NextFu
       hospitalId
     };
 
-    if (doctorId && typeof doctorId === 'string') {
+    if (req.user!.role === 'DOCTOR') {
+      whereClause.doctorId = req.user!.id;
+    } else if (doctorId && typeof doctorId === 'string') {
       whereClause.doctorId = doctorId;
     }
 
@@ -152,7 +154,7 @@ export const getTodayBookings = async (req: Request, res: Response, next: NextFu
     const bookings = await prisma.oPBooking.findMany({
       where: whereClause,
       include: {
-        doctor: { select: { id: true, name: true, avatar: true, designation: true } },
+        doctor: { select: { id: true, name: true, avatar: true } },
         department: { select: { id: true, name: true } },
         condition: { select: { id: true, name: true } }
       },
@@ -176,19 +178,28 @@ export const updateBookingStatus = async (req: Request, res: Response, next: Nex
     }
 
     const bookingId = req.params.id as string;
-    const { status } = req.body;
+    const { status, reason, notes } = req.body;
+
+    const whereClause: any = { id: bookingId, hospitalId };
+    if (req.user!.role === 'DOCTOR') {
+      whereClause.doctorId = req.user!.id;
+    }
 
     const existing = await prisma.oPBooking.findFirst({
-      where: { id: bookingId, hospitalId }
+      where: whereClause
     });
 
     if (!existing) {
-      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } });
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found or not assigned to this doctor' } });
     }
+
+    const updateData: any = { status };
+    if (reason !== undefined) updateData.reason = reason;
+    else if (notes !== undefined) updateData.reason = notes;
 
     const updated = await prisma.oPBooking.update({
       where: { id: bookingId },
-      data: { status },
+      data: updateData,
       include: {
         doctor: { select: { id: true, name: true, avatar: true } },
         department: { select: { id: true, name: true } }

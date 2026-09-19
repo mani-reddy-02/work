@@ -31,6 +31,28 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum RequestStatus {
+  PENDING
+  REVIEWING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum DosageTiming {
+  BEFORE_FOOD
+  AFTER_FOOD
+  WITH_FOOD
+  EMPTY_STOMACH
+}
+
+enum DoctorPresenceStatus {
+  AVAILABLE_IN_OPD
+  ON_BREAK
+  IN_SURGERY
+  OFF_DUTY
+}
+
 model Hospital {
   id                 String       @id @default(uuid())
   name               String
@@ -65,8 +87,10 @@ model Hospital {
   departments     Department[]
   verifications   HospitalVerification[]
   rolePermissions RolePermission[]
-  opBookings      OPBooking[]
-  doctorSchedules DoctorSchedule[]
+  opBookings          OPBooking[]
+  doctorSchedules     DoctorSchedule[]
+  marketingRequests   MarketingRequest[]
+  medicalCampRequests MedicalCampRequest[]
 }
 
 model PlatformSpecialty {
@@ -119,6 +143,7 @@ model User {
   dob          String?
   gender       String?
   active       Boolean @default(true)
+  presenceStatus DoctorPresenceStatus? @default(OFF_DUTY)
 
   // Nullable because SUPER_ADMIN might not belong to one hospital
   hospitalId String?
@@ -133,6 +158,7 @@ model User {
   nursingBookings HomeNursingBooking[]
   patientReports  PatientReport[]
   doctorSchedules DoctorSchedule[] @relation("DoctorSchedule")
+  prescriptions   Prescription[]   @relation("DoctorPrescriptions")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -216,6 +242,10 @@ model OPBooking {
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  vitals          PatientVitals?
+  prescription    Prescription?
+  labOrders       DoctorLabOrder[]
 }
 
 model LabTest {
@@ -237,6 +267,7 @@ model LabTest {
 
   offerings       LaboratoryTestOffering[]
   bookings        LabBooking[]
+  doctorOrders    DoctorLabOrder[]
 }
 
 model LaboratoryTestOffering {
@@ -405,6 +436,104 @@ model DoctorSchedule {
 
   @@unique([doctorId, dayOfWeek])
   @@map("doctor_schedules")
+}
+
+model MarketingRequest {
+  id             String        @id @default(uuid())
+  hospitalId     String
+  hospital       Hospital      @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  campaignType   String
+  budget         Float?
+  targetAudience String?
+  notes          String?
+  status         RequestStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([hospitalId])
+  @@map("marketing_requests")
+}
+
+model MedicalCampRequest {
+  id               String        @id @default(uuid())
+  hospitalId       String
+  hospital         Hospital      @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  campTitle        String
+  location         String
+  expectedDate     DateTime
+  specialties      String[]
+  expectedPatients Int?
+  notes            String?
+  status           RequestStatus @default(PENDING)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([hospitalId])
+  @@map("medical_camp_requests")
+}
+
+model PatientVitals {
+  id              String    @id @default(uuid())
+  bookingId       String    @unique
+  booking         OPBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  patientId       String?
+  systolicBp      Int?
+  diastolicBp     Int?
+  pulseRate       Int?
+  bodyTemperature Float?
+  respiratoryRate Int?
+  spo2            Int?
+  weightKg        Float?
+  heightCm        Float?
+  recordedAt      DateTime  @default(now())
+
+  @@map("patient_vitals")
+}
+
+model Prescription {
+  id            String             @id @default(uuid())
+  bookingId     String             @unique
+  booking       OPBooking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  doctorId      String
+  doctor        User               @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
+  hospitalId    String
+  diagnosis     String
+  clinicalNotes String?
+  generalAdvice String?
+  followUpDate  DateTime?
+  items         PrescriptionItem[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@map("prescriptions")
+}
+
+model PrescriptionItem {
+  id             String       @id @default(uuid())
+  prescriptionId String
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medicineName   String
+  dosageForm     String
+  strength       String?
+  frequency      String
+  durationDays   Int
+  timing         DosageTiming @default(AFTER_FOOD)
+  instructions   String?
+
+  @@map("prescription_items")
+}
+
+model DoctorLabOrder {
+  id        String    @id @default(uuid())
+  bookingId String
+  booking   OPBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  testId    String
+  test      LabTest   @relation(fields: [testId], references: [id])
+  doctorId  String
+  notes     String?
+  createdAt DateTime  @default(now())
+
+  @@map("doctor_lab_orders")
 }
 
 

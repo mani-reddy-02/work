@@ -1,4 +1,4 @@
-﻿{
+{
 	"folders": [
 		{
 			"name": "Backend",
@@ -14,7 +14,7 @@
 		},
 		{
 			"name": "MediQuee Hospital Dashboard",
-			"path": "MediQuee_Hospital_Dashboard-main"
+			"path": "MediQuee Hospital"
 		}
 	],
 	"settings": {

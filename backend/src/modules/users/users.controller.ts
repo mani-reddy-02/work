@@ -16,6 +16,7 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
         dob: true,
         gender: true,
         hospitalId: true,
+        createdAt: true,
         hospital: {
           select: {
             id: true,
@@ -97,12 +98,14 @@ export const updateMe = async (req: Request, res: Response, next: NextFunction) 
         dob: true,
         gender: true,
         hospitalId: true,
+        createdAt: true,
       },
     });
 
     res.json({
       success: true,
       data: updatedUser,
+      message: 'Profile updated successfully',
     });
   } catch (error) {
     next(error);

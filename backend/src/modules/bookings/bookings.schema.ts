@@ -19,5 +19,7 @@ export const createWalkInBookingSchema = z.object({
 export const updateBookingStatusSchema = z.object({
   body: z.object({
     status: z.enum(['PENDING', 'WAITING', 'IN_CONSULTATION', 'COMPLETED', 'CANCELLED']),
+    reason: z.string().max(2000).optional().nullable(),
+    notes: z.string().max(2000).optional().nullable(),
   }),
 });
