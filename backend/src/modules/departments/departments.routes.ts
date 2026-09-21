@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../../middleware/auth';
+import { authenticate, optionalAuthenticate } from '../../middleware/auth';
 import { requirePermission } from '../../middleware/permissions';
 import { validateRequest } from '../../middleware/validate';
 import { 
@@ -14,8 +14,8 @@ import { createDepartmentSchema, updateDepartmentSchema } from './departments.sc
 
 const router = Router();
 
-// Public discovery routes
-router.get('/', getDepartments);
+// Public / Discovery routes (optional authentication populates tenant scope when token is provided)
+router.get('/', optionalAuthenticate, getDepartments);
 router.get('/:id', getDepartmentById);
 router.get('/:id/doctors', getDepartmentDoctors);
 

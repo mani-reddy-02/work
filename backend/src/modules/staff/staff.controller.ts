@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { sendNotification } from '../notifications/notifications.service';
 
 // Staff roles that can be managed by a Hospital Admin
 const STAFF_ROLES: Role[] = [Role.DOCTOR, Role.NURSE, Role.RECEPTIONIST, Role.LAB_ADMIN];
@@ -102,6 +103,14 @@ export const createStaff = async (req: Request, res: Response, next: NextFunctio
         department: { select: { id: true, name: true, code: true } }
       },
     });
+
+    sendNotification({
+      hospitalId,
+      title: 'New Staff Registered',
+      message: `${user.name} was added as ${user.role.replace(/_/g, ' ')}${user.department ? ` (${user.department.name})` : ''}`,
+      type: 'staff',
+      metadata: { userId: user.id, name: user.name, role: user.role }
+    }).catch(console.error);
 
     res.status(201).json({ success: true, data: user });
   } catch (error) {

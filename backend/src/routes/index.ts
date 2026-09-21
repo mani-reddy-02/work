@@ -23,6 +23,7 @@ import homeNursingRoutes from '../modules/home-nursing/home-nursing.routes';
 import homeSampleRoutes from '../modules/home-sample-collection/home-sample.routes';
 import reportsRoutes from '../modules/reports/reports.routes';
 import clinicalRoutes from '../modules/clinical/clinical.routes';
+import notificationsRoutes from '../modules/notifications/notifications.routes';
 import { prisma } from '../config/prisma';
 
 const router = Router();
@@ -68,5 +69,6 @@ router.use('/home-nursing', homeNursingRoutes);
 router.use('/home-sample-collection', homeSampleRoutes);
 router.use('/reports', reportsRoutes);
 router.use('/clinical', clinicalRoutes);
+router.use('/notifications', notificationsRoutes);
 
 export default router;

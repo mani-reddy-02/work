@@ -91,6 +91,7 @@ model Hospital {
   doctorSchedules     DoctorSchedule[]
   marketingRequests   MarketingRequest[]
   medicalCampRequests MedicalCampRequest[]
+  notifications       Notification[]
 }
 
 model PlatformSpecialty {
@@ -159,6 +160,7 @@ model User {
   patientReports  PatientReport[]
   doctorSchedules DoctorSchedule[] @relation("DoctorSchedule")
   prescriptions   Prescription[]   @relation("DoctorPrescriptions")
+  notifications   Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -536,4 +538,21 @@ model DoctorLabOrder {
   @@map("doctor_lab_orders")
 }
 
+model Notification {
+  id         String    @id @default(uuid())
+  hospitalId String?
+  hospital   Hospital? @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  message    String
+  type       String    @default("appointment")
+  read       Boolean   @default(false)
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
+  @@index([hospitalId, createdAt])
+  @@index([userId, read])
+  @@map("notifications")
+}

@@ -31,16 +31,23 @@ export const getHospitalDashboardOverview = async (req: Request, res: Response, 
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
 
-    // 3. Concurrent metrics queries strictly filtered by hospitalId
+    // 3. Time range for Current Month
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    // 4. Time range for Current Year
+    const startOfYear = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+    const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+    // 5. Concurrent metrics queries strictly filtered by hospitalId
     const [
       totalOPs,
       pendingOPs,
-      revenueTodayAgg,
-      revenueThisWeekAgg,
-      completedThisWeek,
-      todayBookings,
+      completedOPs,
       upcomingOPs,
-      upcomingBookings
+      todayBookings,
+      upcomingBookings,
+      activeBookingsThisYear
     ] = await Promise.all([
       // Count of all OPBooking records today
       prisma.oPBooking.count({
@@ -59,40 +66,21 @@ export const getHospitalDashboardOverview = async (req: Request, res: Response, 
         }
       }),
 
-      // Sum of fees for COMPLETED OPBookings today
-      prisma.oPBooking.aggregate({
+      // Count of completed OPBooking records today
+      prisma.oPBooking.count({
         where: {
           hospitalId,
           appointmentDate: { gte: startOfDay, lte: endOfDay },
           status: 'COMPLETED'
-        },
-        _sum: {
-          fee: true
         }
       }),
 
-      // Sum of fees for COMPLETED OPBookings this week
-      prisma.oPBooking.aggregate({
+      // Count of upcoming OP bookings beyond today
+      prisma.oPBooking.count({
         where: {
           hospitalId,
-          appointmentDate: { gte: startOfWeek, lte: endOfWeek },
-          status: 'COMPLETED'
-        },
-        _sum: {
-          fee: true
-        }
-      }),
-
-      // Completed bookings this week for revenue trend calculation
-      prisma.oPBooking.findMany({
-        where: {
-          hospitalId,
-          appointmentDate: { gte: startOfWeek, lte: endOfWeek },
-          status: 'COMPLETED'
-        },
-        select: {
-          fee: true,
-          appointmentDate: true
+          appointmentDate: { gt: endOfDay },
+          status: { not: 'CANCELLED' }
         }
       }),
 
@@ -113,15 +101,6 @@ export const getHospitalDashboardOverview = async (req: Request, res: Response, 
         take: 10
       }),
 
-      // Count of upcoming OP bookings beyond today
-      prisma.oPBooking.count({
-        where: {
-          hospitalId,
-          appointmentDate: { gt: endOfDay },
-          status: { not: 'CANCELLED' }
-        }
-      }),
-
       // Upcoming appointments list beyond today
       prisma.oPBooking.findMany({
         where: {
@@ -138,10 +117,26 @@ export const getHospitalDashboardOverview = async (req: Request, res: Response, 
           { createdAt: 'asc' }
         ],
         take: 10
+      }),
+
+      // All active (non-cancelled) bookings this year for accurate, real-time revenue & trends
+      prisma.oPBooking.findMany({
+        where: {
+          hospitalId,
+          appointmentDate: { gte: startOfYear, lte: endOfYear },
+          status: { not: 'CANCELLED' }
+        },
+        select: {
+          id: true,
+          fee: true,
+          appointmentDate: true,
+          timeSlot: true,
+          slotTime: true
+        }
       })
     ]);
 
-    // 4. Lab Tests count (scoped to hospital, returns 0 safely if none)
+    // 6. Lab Tests count (scoped to hospital, returns 0 safely if none)
     let labTests = 0;
     try {
       labTests = await prisma.labBooking.count({
@@ -155,27 +150,89 @@ export const getHospitalDashboardOverview = async (req: Request, res: Response, 
       labTests = 0;
     }
 
-    const revenueToday = revenueTodayAgg._sum.fee ?? 0;
-    const revenueThisWeek = revenueThisWeekAgg._sum.fee ?? 0;
+    // 7. Real-Time Revenue Calculations (Day, Week, Month, Year)
+    const activeBookingsToday = activeBookingsThisYear.filter(
+      b => b.appointmentDate >= startOfDay && b.appointmentDate <= endOfDay
+    );
+    const activeBookingsThisWeek = activeBookingsThisYear.filter(
+      b => b.appointmentDate >= startOfWeek && b.appointmentDate <= endOfWeek
+    );
+    const activeBookingsThisMonth = activeBookingsThisYear.filter(
+      b => b.appointmentDate >= startOfMonth && b.appointmentDate <= endOfMonth
+    );
 
-    // 5. Build weekly trend array [Mon..Sun]
+    const revenueToday = activeBookingsToday.reduce((sum, b) => sum + (b.fee || 0), 0);
+    const revenueThisWeek = activeBookingsThisWeek.reduce((sum, b) => sum + (b.fee || 0), 0);
+    const revenueThisMonth = activeBookingsThisMonth.reduce((sum, b) => sum + (b.fee || 0), 0);
+    const revenueThisYear = activeBookingsThisYear.reduce((sum, b) => sum + (b.fee || 0), 0);
+
+    // 8. Trend: Today (hourly/interval buckets)
+    const todayBuckets = [
+      { name: '9 AM', startH: 0, endH: 10, revenue: 0 },
+      { name: '11 AM', startH: 10, endH: 12, revenue: 0 },
+      { name: '1 PM', startH: 12, endH: 14, revenue: 0 },
+      { name: '3 PM', startH: 14, endH: 16, revenue: 0 },
+      { name: '5 PM', startH: 16, endH: 18, revenue: 0 },
+      { name: '7 PM+', startH: 18, endH: 24, revenue: 0 }
+    ];
+    for (const item of activeBookingsToday) {
+      const d = new Date(item.appointmentDate);
+      const h = d.getHours();
+      const b = todayBuckets.find(bucket => h >= bucket.startH && h < bucket.endH);
+      if (b) {
+        b.revenue += (item.fee || 0);
+      } else {
+        todayBuckets[0].revenue += (item.fee || 0);
+      }
+    }
+    const trendToday = todayBuckets.map(b => ({ name: b.name, revenue: b.revenue }));
+
+    // 9. Trend: Week (Monday to Sunday)
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const dailyTotals: Record<string, number> = {
       Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0
     };
-
-    for (const item of completedThisWeek) {
+    for (const item of activeBookingsThisWeek) {
       const itemDate = new Date(item.appointmentDate);
       const dayIdx = itemDate.getDay(); // 0 is Sun
       const key = dayIdx === 0 ? 'Sun' : dayNames[dayIdx - 1];
       dailyTotals[key] = (dailyTotals[key] || 0) + (item.fee || 0);
     }
-
-    const revenueTrend = dayNames.map(name => ({
+    const trendWeek = dayNames.map(name => ({
       name,
       revenue: dailyTotals[name] || 0
     }));
 
+    // 10. Trend: Month (Week 1 to Week 5)
+    const monthWeeks = [
+      { name: 'Week 1', startDay: 1, endDay: 7, revenue: 0 },
+      { name: 'Week 2', startDay: 8, endDay: 14, revenue: 0 },
+      { name: 'Week 3', startDay: 15, endDay: 21, revenue: 0 },
+      { name: 'Week 4', startDay: 22, endDay: 28, revenue: 0 },
+      { name: 'Week 5', startDay: 29, endDay: 31, revenue: 0 }
+    ];
+    for (const item of activeBookingsThisMonth) {
+      const dayNum = new Date(item.appointmentDate).getDate();
+      const w = monthWeeks.find(w => dayNum >= w.startDay && dayNum <= w.endDay);
+      if (w) w.revenue += (item.fee || 0);
+    }
+    const trendMonth = monthWeeks.map(w => ({ name: w.name, revenue: w.revenue }));
+
+    // 11. Trend: Year (Jan to Dec)
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const yearlyTotals: Record<string, number> = {};
+    monthNames.forEach(m => { yearlyTotals[m] = 0; });
+    for (const item of activeBookingsThisYear) {
+      const mIdx = new Date(item.appointmentDate).getMonth();
+      const mName = monthNames[mIdx];
+      yearlyTotals[mName] = (yearlyTotals[mName] || 0) + (item.fee || 0);
+    }
+    const trendYear = monthNames.map(name => ({
+      name,
+      revenue: yearlyTotals[name] || 0
+    }));
+
+    // 12. Format appointments for preview
     const mapAppointmentToPreview = (b: any) => {
       const timeStr = b.timeSlot || b.slotTime || new Date(b.appointmentDate).toLocaleTimeString('en-US', {
         hour: '2-digit',
@@ -190,6 +247,7 @@ export const getHospitalDashboardOverview = async (req: Request, res: Response, 
 
       return {
         id: b.id,
+        patientId: b.patientId,
         date: b.appointmentDate.toISOString().split('T')[0],
         time: timeStr,
         name: b.patientName,
@@ -201,7 +259,6 @@ export const getHospitalDashboardOverview = async (req: Request, res: Response, 
       };
     };
 
-    // 6. Format today's and upcoming appointments for preview
     const formattedTodayAppointments = todayBookings.map(mapAppointmentToPreview);
     const formattedUpcomingAppointments = upcomingBookings.map(mapAppointmentToPreview);
 
@@ -210,11 +267,20 @@ export const getHospitalDashboardOverview = async (req: Request, res: Response, 
       data: {
         totalOPs,
         pendingOPs,
+        completedOPs,
         upcomingOPs,
         labTests,
         revenueToday,
         revenueThisWeek,
-        revenueTrend,
+        revenueThisMonth,
+        revenueThisYear,
+        revenueTrend: trendWeek,
+        revenueTrends: {
+          today: trendToday,
+          week: trendWeek,
+          month: trendMonth,
+          year: trendYear
+        },
         todayAppointments: formattedTodayAppointments,
         upcomingAppointments: formattedUpcomingAppointments
       }

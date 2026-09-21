@@ -43,3 +43,26 @@ export const requireRole = (allowedRoles: Role[]) => {
     next();
   };
 };
+
+export const optionalAuthenticate = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: { id: true, name: true, phone: true, role: true, hospitalId: true, active: true }
+      });
+
+      if (user && user.active) {
+        req.user = user;
+      }
+    }
+  } catch (error) {
+    // Optional auth ignores invalid or expired tokens and lets the request proceed anonymously
+  }
+  next();
+};
+

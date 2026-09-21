@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Role } from '@prisma/client';
+import { sendNotification } from '../notifications/notifications.service';
 
 export const createAppointment = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -245,6 +246,23 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
 
       return newBooking;
     });
+
+    // Broadcast real-time notification to hospital & doctor
+    sendNotification({
+      hospitalId: result.hospitalId,
+      userId: result.doctorId,
+      title: 'New OP Appointment',
+      message: `Patient ${result.patientName} booked with Dr. ${result.doctor.name} (${result.department.name}) at ${result.timeSlot}`,
+      type: 'appointment',
+      metadata: {
+        appointmentId: result.id,
+        patientName: result.patientName,
+        doctorName: result.doctor.name,
+        departmentName: result.department.name,
+        timeSlot: result.timeSlot,
+        date: result.appointmentDate
+      }
+    }).catch(console.error);
 
     res.status(201).json({
       success: true,

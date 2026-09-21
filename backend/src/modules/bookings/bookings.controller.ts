@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
+import { sendNotification } from '../notifications/notifications.service';
 
 export const createWalkInBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -74,6 +75,15 @@ export const createWalkInBooking = async (req: Request, res: Response, next: Nex
         department: { select: { id: true, name: true } }
       }
     });
+
+    sendNotification({
+      hospitalId,
+      userId: booking.doctorId,
+      title: 'Walk-In OP Registered',
+      message: `Patient ${booking.patientName} registered for Dr. ${booking.doctor?.name || 'Doctor'} (${booking.department?.name || 'OP'})`,
+      type: 'appointment',
+      metadata: { bookingId: booking.id, patientName: booking.patientName }
+    }).catch(console.error);
 
     res.status(201).json({ success: true, data: booking });
   } catch (error) {
@@ -205,6 +215,15 @@ export const updateBookingStatus = async (req: Request, res: Response, next: Nex
         department: { select: { id: true, name: true } }
       }
     });
+
+    sendNotification({
+      hospitalId,
+      userId: updated.doctorId,
+      title: 'Appointment Status Changed',
+      message: `${updated.patientName}'s appointment is now ${updated.status.replace(/_/g, ' ')}`,
+      type: 'activity',
+      metadata: { bookingId: updated.id, status: updated.status, patientName: updated.patientName }
+    }).catch(console.error);
 
     res.json({ success: true, data: updated });
   } catch (error) {

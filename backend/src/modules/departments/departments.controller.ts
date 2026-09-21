@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
-import { Role } from '@prisma/client';
+import { Role, Prisma } from '@prisma/client';
+import { sendNotification } from '../notifications/notifications.service';
 
 export const getDepartments = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -83,24 +84,70 @@ export const createDepartment = async (req: Request, res: Response, next: NextFu
       if (!code) code = specialty.name.substring(0, 3).toUpperCase();
     }
 
-    // Check for duplicate name in the same hospital
+    // 1. Check if department for this platform specialty already exists in the hospital
+    if (specialtyId) {
+      const existingSpecialty = await prisma.department.findFirst({
+        where: { hospitalId, specialtyId }
+      });
+      if (existingSpecialty) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'CONFLICT',
+            message: `Department for '${existingSpecialty.name}' already exists in your hospital.`
+          }
+        });
+      }
+    }
+
+    const trimmedName = name.trim();
+    const trimmedCode = code ? code.trim().toUpperCase() : undefined;
+
+    // 2. Check for duplicate name or code in the same hospital (case-insensitive)
+    const orConditions: Prisma.DepartmentWhereInput[] = [
+      { name: { equals: trimmedName, mode: 'insensitive' } },
+    ];
+    if (trimmedCode) {
+      orConditions.push({ code: { equals: trimmedCode, mode: 'insensitive' } });
+    }
+
     const existing = await prisma.department.findFirst({
-      where: { hospitalId, name }
+      where: {
+        hospitalId,
+        OR: orConditions
+      }
     });
 
     if (existing) {
-      return res.status(409).json({ success: false, error: { code: 'CONFLICT', message: 'Department name already exists in this hospital' } });
+      const isNameMatch = existing.name.toLowerCase() === trimmedName.toLowerCase();
+      return res.status(409).json({
+        success: false,
+        error: {
+          code: 'CONFLICT',
+          message: isNameMatch
+            ? `Department '${trimmedName}' already exists in your hospital.`
+            : `Department code '${trimmedCode}' is already in use by '${existing.name}'.`
+        }
+      });
     }
 
     const department = await prisma.department.create({
       data: {
-        name,
-        code,
-        description,
+        name: trimmedName,
+        code: trimmedCode,
+        description: description ? description.trim() : null,
         specialtyId,
         hospitalId
       }
     });
+
+    sendNotification({
+      hospitalId,
+      title: 'New Department Created',
+      message: `Department "${trimmedName}" (${trimmedCode}) was created.`,
+      type: 'department',
+      metadata: { departmentId: department.id, name: trimmedName, code: trimmedCode }
+    }).catch(console.error);
 
     res.status(201).json({ success: true, data: department });
   } catch (error) {
@@ -130,18 +177,60 @@ export const updateDepartment = async (req: Request, res: Response, next: NextFu
       return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized to modify this department' } });
     }
 
-    if (name && name !== department.name) {
+    // Check if updating specialty to one already used in this hospital
+    if (specialtyId && specialtyId !== department.specialtyId) {
+      const existingSpecialty = await prisma.department.findFirst({
+        where: { hospitalId, specialtyId, id: { not: id as string } }
+      });
+      if (existingSpecialty) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'CONFLICT',
+            message: `Department for this specialty ('${existingSpecialty.name}') already exists in your hospital.`
+          }
+        });
+      }
+    }
+
+    const trimmedName = name ? name.trim() : undefined;
+    const trimmedCode = code ? code.trim().toUpperCase() : undefined;
+
+    const duplicateConditions: Prisma.DepartmentWhereInput[] = [];
+    if (trimmedName && trimmedName.toLowerCase() !== department.name.toLowerCase()) {
+      duplicateConditions.push({ name: { equals: trimmedName, mode: 'insensitive' } });
+    }
+    if (trimmedCode && trimmedCode.toLowerCase() !== (department.code || '').toLowerCase()) {
+      duplicateConditions.push({ code: { equals: trimmedCode, mode: 'insensitive' } });
+    }
+
+    if (duplicateConditions.length > 0) {
       const existing = await prisma.department.findFirst({
-        where: { hospitalId, name }
+        where: {
+          hospitalId,
+          id: { not: id as string },
+          OR: duplicateConditions
+        }
       });
       if (existing) {
-        return res.status(409).json({ success: false, error: { code: 'CONFLICT', message: 'Department name already exists in this hospital' } });
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'CONFLICT',
+            message: 'A department with this name or code already exists in your hospital.'
+          }
+        });
       }
     }
 
     const updated = await prisma.department.update({
       where: { id: id as string },
-      data: { name, code, description, specialtyId }
+      data: {
+        ...(trimmedName ? { name: trimmedName } : {}),
+        ...(trimmedCode !== undefined ? { code: trimmedCode } : {}),
+        ...(description !== undefined ? { description: description ? description.trim() : null } : {}),
+        ...(specialtyId ? { specialtyId } : {})
+      }
     });
 
     res.json({ success: true, data: updated });
