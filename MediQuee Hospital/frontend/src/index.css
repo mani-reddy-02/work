@@ -1,0 +1,165 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 247 248 250; /* #F7F8FA */
+    --surface: 255 255 255; /* #FFFFFF */
+    --foreground: 15 23 42; /* #0F172A */
+    --muted: 100 116 139; /* #64748B */
+    --border: 226 232 240; /* #E2E8F0 */
+    --ring: 221 83% 53%; /* #1769E0 */
+    --radius: 0.75rem;
+  }
+  
+  .dark {
+    color-scheme: dark;
+    --background: 15 23 42; /* #0F172A */
+    --surface: 30 41 59; /* #1E293B */
+    --foreground: 248 250 252; /* #F8FAFC */
+    --muted: 148 163 184; /* #94A3B8 */
+    --border: 51 65 85; /* #334155 */
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    -webkit-tap-highlight-color: transparent;
+    @apply bg-background text-foreground font-sans antialiased transition-colors;
+  }
+  .dark option {
+    background-color: #1E293B;
+    color: #F8FAFC;
+  }
+}
+
+@layer utilities {
+  .interactive-element {
+    @apply select-none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Universal Dark Mode Overrides for Hardcoded Text Colors */
+  .dark .text-\[\#172033\],
+  .dark .text-\[\#0A1A3D\],
+  .dark .text-\[\#101828\],
+  .dark .text-\[\#1A1C1E\],
+  .dark .text-\[\#111827\],
+  .dark .text-gray-900,
+  .dark .text-gray-800 {
+    color: rgb(248 250 252 / var(--tw-text-opacity, 1)) !important;
+  }
+
+  .dark .text-\[\#667085\],
+  .dark .text-\[\#98A2B3\],
+  .dark .text-\[\#475467\],
+  .dark .text-gray-700,
+  .dark .text-gray-600,
+  .dark .text-gray-500 {
+    color: rgb(148 163 184 / var(--tw-text-opacity, 1)) !important;
+  }
+
+  .dark .text-gray-400 {
+    color: rgb(100 116 139 / var(--tw-text-opacity, 1)) !important;
+  }
+
+  /* Universal Dark Mode Overrides for Hardcoded Background Shades */
+  .dark .bg-gray-50,
+  .dark .bg-gray-50\/30,
+  .dark .bg-gray-50\/50,
+  .dark .bg-gray-50\/70,
+  .dark .bg-gray-50\/90,
+  .dark .bg-\[\#F8F9FC\],
+  .dark .bg-\[\#F8FAFC\],
+  .dark .bg-\[\#F7F8FA\],
+  .dark .bg-\[\#F9FAFB\],
+  .dark .bg-\[\#F4F5F7\],
+  .dark .bg-slate-50,
+  .dark .bg-slate-50\/30,
+  .dark .bg-slate-50\/50 {
+    background-color: rgb(15 23 42 / var(--tw-bg-opacity, 1)) !important;
+  }
+
+  .dark .bg-gray-100,
+  .dark .bg-gray-100\/50,
+  .dark .bg-gray-100\/80,
+  .dark .bg-slate-100 {
+    background-color: rgb(51 65 85 / var(--tw-bg-opacity, 1)) !important;
+  }
+
+  .dark .bg-gray-200 {
+    background-color: rgb(71 85 105 / var(--tw-bg-opacity, 1)) !important;
+  }
+
+  /* Interactive States */
+  .dark .hover\:bg-gray-50:hover,
+  .dark .hover\:bg-gray-100:hover {
+    background-color: rgb(51 65 85 / var(--tw-bg-opacity, 1)) !important;
+  }
+
+  .dark .hover\:text-\[\#172033\]:hover {
+    color: rgb(248 250 252 / var(--tw-text-opacity, 1)) !important;
+  }
+
+  .dark .active\:bg-gray-50:active,
+  .dark .active\:bg-gray-50\/50:active,
+  .dark .active\:bg-gray-100:active {
+    background-color: rgb(51 65 85 / var(--tw-bg-opacity, 1)) !important;
+  }
+
+  /* Borders */
+  .dark .border-gray-100,
+  .dark .border-gray-200,
+  .dark .border-gray-300,
+  .dark .border-\[\#E2E8F0\],
+  .dark .border-\[\#E5E7EB\],
+  .dark .border-slate-100,
+  .dark .border-slate-200 {
+    border-color: rgb(51 65 85 / var(--tw-border-opacity, 1)) !important;
+  }
+
+  /* Tinted Pill/Badge Containers */
+  .dark .bg-\[\#EBF5FF\],
+  .dark .bg-blue-50,
+  .dark .bg-blue-50\/50 {
+    background-color: rgb(30 58 138 / 0.25) !important;
+  }
+
+  .dark .border-\[\#1B5DF1\]\/20,
+  .dark .border-blue-100 {
+    border-color: rgb(30 58 138 / 0.4) !important;
+  }
+
+  .dark .bg-emerald-50,
+  .dark .bg-green-50 {
+    background-color: rgb(6 78 59 / 0.25) !important;
+  }
+
+  .dark .bg-orange-50,
+  .dark .bg-amber-50 {
+    background-color: rgb(120 53 15 / 0.25) !important;
+  }
+
+  .dark .bg-purple-50 {
+    background-color: rgb(88 28 135 / 0.25) !important;
+  }
+
+  .dark .bg-pink-50,
+  .dark .bg-red-50 {
+    background-color: rgb(136 19 55 / 0.25) !important;
+  }
+}
