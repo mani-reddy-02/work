@@ -8,6 +8,35 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+
+enum SpecimenType {
+  WHOLE_BLOOD
+  SERUM
+  PLASMA
+  URINE
+  STOOL
+  SPUTUM
+  SWAB
+  CSF_FLUID
+  TISSUE_BIOPSY
+  IMAGE_SCAN
+}
+
+enum LabBookingType {
+  WALK_IN
+  HOME_COLLECTION
+}
+
+enum LabBookingStatus {
+  REQUESTED
+  ASSIGNED
+  SAMPLE_COLLECTED
+  IN_LAB_PROCESSING
+  REPORT_READY
+  CANCELLED
+}
+
+
 enum Role {
   SUPER_ADMIN
   HOSPITAL_ADMIN
@@ -92,6 +121,8 @@ model Hospital {
   marketingRequests   MarketingRequest[]
   medicalCampRequests MedicalCampRequest[]
   notifications       Notification[]
+  labTests            LabTest[]
+  labBookings         LabBooking[]
 }
 
 model PlatformSpecialty {
@@ -250,75 +281,11 @@ model OPBooking {
   labOrders       DoctorLabOrder[]
 }
 
-model LabTest {
-  id              String   @id @default(uuid())
-  name            String
-  category        String
-  sampleType      String?
-  description     String?
-  preparation     String?
-  turnaroundTime  String?
-  parametersCount Int?     @default(1)
-  price           Float
-  iconUrl         String?
-  healthConcern   String?
-  active          Boolean  @default(true)
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
 
-  offerings       LaboratoryTestOffering[]
-  bookings        LabBooking[]
-  doctorOrders    DoctorLabOrder[]
-}
 
-model LaboratoryTestOffering {
-  id                      String   @id @default(uuid())
-  laboratoryId            String
-  testId                  String
-  test                    LabTest  @relation(fields: [testId], references: [id], onDelete: Cascade)
-  price                   Float
-  homeCollectionAvailable Boolean  @default(true)
-  homeCollectionFee       Float    @default(0)
-  active                  Boolean  @default(true)
 
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
 
-  @@unique([laboratoryId, testId])
-}
-
-model LabBooking {
-  id                String   @id @default(uuid())
-  bookingNumber     String   @unique
-  userId            String
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  hospitalId        String?
-  laboratoryId      String
-  testId            String
-  test              LabTest  @relation(fields: [testId], references: [id])
-
-  patientName       String
-  patientAge        Int?
-  patientGender     String?
-  patientPhone      String
-  patientEmail      String?
-
-  bookingDate       DateTime
-  timeSlot          String
-  collectionType    String   @default("LAB_VISIT") // 'LAB_VISIT' | 'HOME_COLLECTION'
-  collectionAddress String?
-
-  status            String   @default("CONFIRMED") // 'CONFIRMED', 'SAMPLE_COLLECTED', 'PROCESSING', 'COMPLETED', 'CANCELLED'
-  paymentStatus     String   @default("PAID")      // 'PENDING', 'PAID', 'REFUNDED'
-  testPrice         Float
-  collectionFee     Float    @default(0)
-  totalAmount       Float
-  notes             String?
-
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-}
 
 model NursingService {
   id           String   @id @default(uuid())
@@ -555,4 +522,95 @@ model Notification {
   @@index([hospitalId, createdAt])
   @@index([userId, read])
   @@map("notifications")
+}
+
+
+model PlatformLabDepartment {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  icon        String?
+  tests       PlatformLabTest[]
+  createdAt   DateTime @default(now())
+  
+  @@map("platform_lab_departments")
+}
+
+model PlatformLabTest {
+  id                   String   @id @default(uuid())
+  code                 String   @unique
+  name                 String
+  departmentId         String
+  department           PlatformLabDepartment @relation(fields: [departmentId], references: [id])
+  specimenType         SpecimenType @default(SERUM)
+  fastingRequired      Boolean @default(false)
+  fastingDurationHours Int?
+  canBeCollectedAtHome Boolean @default(true)
+  defaultTatHours      Int @default(24)
+  description          String?
+  hospitalOfferings    LabTest[]
+  createdAt            DateTime @default(now())
+
+  @@map("platform_lab_tests")
+}
+
+model LabTest {
+  id                        String   @id @default(uuid())
+  hospitalId                String
+  hospital                  Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  platformTestId            String
+  platformTest              PlatformLabTest @relation(fields: [platformTestId], references: [id])
+  price                     Float
+  tatHours                  Int
+  isHomeCollectionAvailable Boolean @default(false)
+  homeCollectionFee         Float @default(0.0)
+  isActive                  Boolean @default(true)
+  
+  doctorOrders              DoctorLabOrder[]
+  bookingItems              LabBookingItem[]
+  
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@unique([hospitalId, platformTestId])
+  @@map("lab_tests")
+}
+
+model LabBooking {
+  id                 String   @id @default(uuid())
+  hospitalId         String
+  hospital           Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  patientId          String
+  patient            User     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  bookingType        LabBookingType
+  status             LabBookingStatus @default(REQUESTED)
+  
+  collectionAddress  String?
+  collectionDate     DateTime?
+  collectionTimeSlot String?
+  phlebotomistName   String?
+  phlebotomistPhone  String?
+  sampleCollectedAt  DateTime?
+  
+  totalAmount        Float
+  homeCollectionFee  Float @default(0.0)
+  
+  items              LabBookingItem[]
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("lab_bookings")
+}
+
+model LabBookingItem {
+  id          String   @id @default(uuid())
+  bookingId   String
+  booking     LabBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  labTestId   String
+  labTest     LabTest @relation(fields: [labTestId], references: [id], onDelete: Cascade)
+  price       Float
+
+  @@map("lab_booking_items")
 }

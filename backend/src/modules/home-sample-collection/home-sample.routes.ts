@@ -1,32 +1,17 @@
 import { Router } from 'express';
-import { authenticate } from '../../middleware/auth';
+import { authenticate, requireRole } from '../../middleware/auth';
 import {
-  getHomeSampleTests,
-  getHomeSampleCategories,
-  getHomeSampleTestById,
-  getHomeSampleProvidersForTest,
-  getHomeSampleAvailability,
-  createHomeSampleBooking,
-  getMyHomeSampleBookings,
-  getHomeSampleBookingById,
-  cancelHomeSampleBooking,
+  getHomeSampleRequests,
+  updateHomeSampleStatus,
+  assignPhlebotomist
 } from './home-sample.controller';
 
 const router = Router();
 
-// Public test and provider discovery
-router.get('/tests', getHomeSampleTests);
-router.get('/categories', getHomeSampleCategories);
-router.get('/tests/:id', getHomeSampleTestById);
-router.get('/tests/:id/laboratories', getHomeSampleProvidersForTest);
-router.get('/tests/:id/providers', getHomeSampleProvidersForTest);
-router.get('/laboratories/:id/availability', getHomeSampleAvailability);
-router.get('/availability', getHomeSampleAvailability);
+router.use(authenticate);
 
-// Authenticated booking operations
-router.post('/bookings', authenticate, createHomeSampleBooking);
-router.get('/bookings/my', authenticate, getMyHomeSampleBookings);
-router.get('/bookings/:id', authenticate, getHomeSampleBookingById);
-router.patch('/bookings/:id/cancel', authenticate, cancelHomeSampleBooking);
+router.get('/requests', requireRole(['HOSPITAL_ADMIN', 'SUPER_ADMIN']), getHomeSampleRequests);
+router.patch('/requests/:id/status', requireRole(['HOSPITAL_ADMIN', 'SUPER_ADMIN']), updateHomeSampleStatus);
+router.post('/requests/:id/assign', requireRole(['HOSPITAL_ADMIN', 'SUPER_ADMIN']), assignPhlebotomist);
 
 export default router;

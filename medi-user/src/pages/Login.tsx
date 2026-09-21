@@ -56,13 +56,13 @@ export default function Login() {
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md px-4">
         <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-            <HeartPulse className="w-10 h-10 text-white" strokeWidth={2.5} />
+          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-slate-200/50 p-2 border border-slate-100">
+            <img src="/logo-icon.png" alt="MediQuee" className="w-full h-full object-contain rounded-xl" />
           </div>
         </div>
-        <h2 className="text-center text-3xl font-extrabold text-slate-900 tracking-tight">
-          MediQuee
-        </h2>
+        <div className="flex justify-center mb-2">
+          <img src="/logo.png" alt="MediQuee" className="h-8 w-auto object-contain" />
+        </div>
         <p className="mt-2 text-center text-sm text-slate-600 font-medium">
           Your Healthcare, Just a Tap Away
         </p>

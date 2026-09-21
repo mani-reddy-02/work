@@ -59,12 +59,13 @@ export default function HelpSupport() {
         )}
 
         <div className="grid grid-cols-2 gap-3 mb-6">
-          <button onClick={triggerToast} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-blue-200 transition-colors">
+          <a href="tel:8331045500" className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-blue-200 transition-colors">
             <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center">
               <Phone className="w-5 h-5" />
             </div>
-            <span className="font-bold text-slate-900 text-sm">Contact Support</span>
-          </button>
+            <span className="font-bold text-slate-900 text-sm">Call Support</span>
+            <span className="text-xs text-blue-600 font-semibold">8331045500</span>
+          </a>
           
           <button onClick={triggerToast} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-orange-200 transition-colors">
             <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center">
@@ -106,7 +107,7 @@ export default function HelpSupport() {
 
         <div className="mt-6 flex flex-col items-center justify-center gap-2 text-center text-slate-500 pb-4">
           <Mail className="w-5 h-5 text-slate-400" />
-          <p className="text-xs font-medium">Still need help?<br/>Email us at <a href="mailto:support@mediquee.com" className="text-blue-500 hover:underline">support@mediquee.com</a></p>
+          <p className="text-xs font-medium">Still need help?<br/>Call us at <a href="tel:8331045500" className="text-blue-500 hover:underline font-bold">8331045500</a> or Email <a href="mailto:support@mediquee.com" className="text-blue-500 hover:underline">support@mediquee.com</a></p>
         </div>
       </div>
     </div>

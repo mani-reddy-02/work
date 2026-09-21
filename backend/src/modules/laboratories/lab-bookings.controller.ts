@@ -1,287 +1,189 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
-import { Role } from '@prisma/client';
+import { sendNotification } from '../notifications/notifications.service';
+import { LabBookingType, LabBookingStatus } from '@prisma/client';
 
 export const createLabBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user!.id;
-    const {
-      testId,
-      laboratoryId,
-      hospitalId,
-      bookingDate,
-      timeSlot,
-      collectionType = 'LAB_VISIT',
-      patientName,
-      patientAge,
-      patientGender,
-      patientPhone,
-      patientEmail,
-      collectionAddress,
-      notes,
+    const { 
+      hospitalId, 
+      patientId, 
+      bookingType, 
+      items, // array of testId
+      collectionAddress, 
+      collectionDate, 
+      collectionTimeSlot 
     } = req.body;
 
-    if (!testId || !laboratoryId || !bookingDate || !timeSlot) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'BAD_REQUEST',
-          message: 'testId, laboratoryId, bookingDate, and timeSlot are required.',
-        },
-      });
+    if (!hospitalId || !patientId || !bookingType || !items || !items.length) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_REQUEST', message: 'Missing required fields' } });
     }
 
-    const normCollectionType = collectionType === 'HOME_COLLECTION' ? 'HOME_COLLECTION' : 'LAB_VISIT';
-
-    if (normCollectionType === 'HOME_COLLECTION' && !collectionAddress?.trim()) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'BAD_REQUEST',
-          message: 'collectionAddress is required for Home Sample Collection.',
-        },
-      });
+    if (bookingType === 'HOME_COLLECTION' && (!collectionAddress || !collectionDate || !collectionTimeSlot)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_REQUEST', message: 'Home collection requires address, date, and slot' } });
     }
 
-    const dateObj = new Date(bookingDate);
-    if (isNaN(dateObj.getTime())) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'BAD_REQUEST',
-          message: 'Invalid bookingDate format. Please use ISO format (YYYY-MM-DD).',
-        },
-      });
-    }
-
-    // Execute in transaction to ensure atomicity and prevent race condition double-booking
     const booking = await prisma.$transaction(async (tx) => {
-      // 1. Verify user exists
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-      });
-      if (!user) {
-        throw { status: 401, code: 'UNAUTHORIZED', message: 'User account not found' };
+      // 1. Validate tests and calculate totals
+      let totalAmount = 0;
+      let totalHomeCollectionFee = 0;
+      const validItems = [];
+
+      for (const testId of items) {
+        const labTest = await tx.labTest.findUnique({
+          where: { id: testId },
+          include: { platformTest: true }
+        });
+
+        if (!labTest || labTest.hospitalId !== hospitalId || !labTest.isActive) {
+          throw new Error(`Test ${testId} is not available at this hospital`);
+        }
+
+        if (bookingType === 'HOME_COLLECTION') {
+          if (!labTest.isHomeCollectionAvailable || !labTest.platformTest.canBeCollectedAtHome) {
+            throw new Error(`Test ${labTest.platformTest.name} cannot be collected at home`);
+          }
+          totalHomeCollectionFee += labTest.homeCollectionFee;
+        }
+
+        totalAmount += labTest.price;
+        validItems.push({
+          labTestId: labTest.id,
+          price: labTest.price
+        });
       }
 
-      // 2. Verify test exists and is active
-      const test = await tx.labTest.findFirst({
-        where: { id: testId, active: true },
-      });
-      if (!test) {
-        throw { status: 404, code: 'NOT_FOUND', message: 'Lab test not found or inactive' };
+      // Add home collection fee to total amount
+      if (bookingType === 'HOME_COLLECTION') {
+        totalAmount += totalHomeCollectionFee;
       }
 
-      // 3. Verify laboratory exists
-      const lab = await tx.hospital.findUnique({
-        where: { id: laboratoryId },
-      });
-      if (!lab) {
-        throw { status: 404, code: 'NOT_FOUND', message: 'Laboratory not found' };
-      }
-
-      // 4. Verify test offering exists for this laboratory
-      const offering = await tx.laboratoryTestOffering.findUnique({
-        where: {
-          laboratoryId_testId: {
-            laboratoryId,
-            testId,
-          },
-        },
-      });
-      if (!offering || !offering.active) {
-        throw {
-          status: 400,
-          code: 'BAD_REQUEST',
-          message: `The selected test is not available at ${lab.name}.`,
-        };
-      }
-
-      if (normCollectionType === 'HOME_COLLECTION' && !offering.homeCollectionAvailable) {
-        throw {
-          status: 400,
-          code: 'BAD_REQUEST',
-          message: `Home sample collection is not supported by ${lab.name} for this test.`,
-        };
-      }
-
-      // 5. Check slot double-booking for the laboratory
-      const startOfDay = new Date(dateObj);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(dateObj);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      const slotConflict = await tx.labBooking.findFirst({
-        where: {
-          laboratoryId,
-          timeSlot,
-          bookingDate: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
-          status: { not: 'CANCELLED' },
-        },
-      });
-
-      if (slotConflict) {
-        throw {
-          status: 409,
-          code: 'CONFLICT',
-          message: `The slot ${timeSlot} on ${bookingDate} is already booked at this laboratory. Please select another time.`,
-        };
-      }
-
-      // 6. Calculate real prices
-      const testPrice = offering.price;
-      const collectionFee = normCollectionType === 'HOME_COLLECTION' ? offering.homeCollectionFee : 0;
-      const totalAmount = testPrice + collectionFee;
-
-      // 7. Generate clean booking number
-      const randSuffix = Math.floor(1000 + Math.random() * 9000);
-      const bookingNumber = `MQ-LAB-${Date.now().toString(36).toUpperCase()}-${randSuffix}`;
-
-      // 8. Create booking record
+      // 2. Create the booking
       const newBooking = await tx.labBooking.create({
         data: {
-          bookingNumber,
-          userId,
-          hospitalId: hospitalId || (lab.businessType === 'HOSPITAL' ? lab.id : null),
-          laboratoryId,
-          testId,
-          patientName: (patientName || user.name || 'Patient').trim(),
-          patientAge: patientAge ? parseInt(patientAge.toString(), 10) : null,
-          patientGender: patientGender || user.gender || null,
-          patientPhone: (patientPhone || user.phone || '').trim(),
-          patientEmail: (patientEmail || user.email || '').trim(),
-          bookingDate: dateObj,
-          timeSlot,
-          collectionType: normCollectionType,
-          collectionAddress: normCollectionType === 'HOME_COLLECTION' ? collectionAddress.trim() : null,
-          status: 'CONFIRMED',
-          paymentStatus: 'PAID',
-          testPrice,
-          collectionFee,
+          hospitalId,
+          patientId,
+          bookingType: bookingType as LabBookingType,
+          status: 'REQUESTED' as LabBookingStatus,
           totalAmount,
-          notes: notes ? notes.trim() : null,
+          homeCollectionFee: bookingType === 'HOME_COLLECTION' ? totalHomeCollectionFee : 0,
+          collectionAddress: bookingType === 'HOME_COLLECTION' ? collectionAddress : null,
+          collectionDate: bookingType === 'HOME_COLLECTION' ? new Date(collectionDate) : null,
+          collectionTimeSlot: bookingType === 'HOME_COLLECTION' ? collectionTimeSlot : null,
+          items: {
+            create: validItems
+          }
         },
         include: {
-          test: true,
-        },
+          items: { include: { labTest: { include: { platformTest: true } } } },
+          patient: true
+        }
       });
 
-      return { booking: newBooking, lab };
+      return newBooking;
     });
 
-    res.status(201).json({
-      success: true,
-      data: {
-        id: booking.booking.id,
-        bookingId: booking.booking.bookingNumber,
-        bookingNumber: booking.booking.bookingNumber,
-        testId: booking.booking.testId,
-        testName: booking.booking.test.name,
-        category: booking.booking.test.category,
-        sampleType: booking.booking.test.sampleType,
-        laboratoryId: booking.booking.laboratoryId,
-        laboratoryName: booking.lab.name,
-        laboratoryAddress: booking.lab.addressLine1 || booking.lab.city,
-        hospitalId: booking.booking.hospitalId,
-        patientName: booking.booking.patientName,
-        patientPhone: booking.booking.patientPhone,
-        patientAge: booking.booking.patientAge,
-        patientGender: booking.booking.patientGender,
-        patientEmail: booking.booking.patientEmail,
-        bookingDate: booking.booking.bookingDate.toISOString().split('T')[0],
-        date: booking.booking.bookingDate.toISOString().split('T')[0],
-        timeSlot: booking.booking.timeSlot,
-        time: booking.booking.timeSlot,
-        collectionType: booking.booking.collectionType,
-        collectionAddress: booking.booking.collectionAddress,
-        status: booking.booking.status,
-        paymentStatus: booking.booking.paymentStatus,
-        testPrice: booking.booking.testPrice,
-        collectionFee: booking.booking.collectionFee,
-        totalAmount: booking.booking.totalAmount,
-        amount: `₹${Math.round(booking.booking.totalAmount)}`,
-        prep: booking.booking.test.preparation,
-        turnaroundTime: booking.booking.test.turnaroundTime,
-        createdAt: booking.booking.createdAt,
-      },
+    // Fire notification to hospital
+    await sendNotification({
+      hospitalId,
+      title: `New Lab Test Order`,
+      message: `New ${bookingType === 'HOME_COLLECTION' ? 'Home Collection' : 'Walk-in'} order placed by ${booking.patient?.name || 'Patient'}`,
+      type: 'lab',
+      metadata: { bookingId: booking.id }
     });
+
+    res.status(201).json({ success: true, data: booking });
   } catch (error: any) {
-    if (error.status) {
-      return res.status(error.status).json({
-        success: false,
-        error: { code: error.code || 'BAD_REQUEST', message: error.message },
+    if (error.message && error.message.includes('not available') || error.message.includes('cannot be collected')) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_REQUEST', message: error.message } });
+    }
+    next(error);
+  }
+};
+
+export const getHospitalLabBookings = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = (req as any).user.hospitalId;
+    if (!hospitalId) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'User is not associated with a hospital' } });
+    }
+
+    const { status, bookingType } = req.query;
+    const where: any = { hospitalId };
+
+    if (status && status !== 'All') where.status = status as string;
+    if (bookingType && bookingType !== 'All') where.bookingType = bookingType as string;
+
+    const bookings = await prisma.labBooking.findMany({
+      where,
+      include: {
+        items: { include: { labTest: { include: { platformTest: { include: { department: true } } } } } },
+        patient: { select: { id: true, name: true, phone: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ success: true, data: bookings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateLabBookingStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = (req as any).user.hospitalId;
+    const { id } = req.params;
+    const { status, phlebotomistName, phlebotomistPhone, sampleCollectedAt } = req.body;
+
+    const booking = await prisma.labBooking.findFirst({ where: { id: id as string, hospitalId: hospitalId as string } });
+    if (!booking) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } });
+    }
+
+    const data: any = { status };
+
+    if (status === 'ASSIGNED') {
+      if (phlebotomistName) data.phlebotomistName = phlebotomistName;
+      if (phlebotomistPhone) data.phlebotomistPhone = phlebotomistPhone;
+    } else if (status === 'SAMPLE_COLLECTED') {
+      if (sampleCollectedAt) data.sampleCollectedAt = new Date(sampleCollectedAt);
+      else data.sampleCollectedAt = new Date();
+    }
+
+    const updated = await prisma.labBooking.update({
+      where: { id: id as string },
+      data,
+      include: { patient: true }
+    });
+
+    if (status === 'REPORT_READY') {
+      await sendNotification({
+        userId: updated.patientId,
+        title: 'Lab Report Ready',
+        message: 'Your lab test report is ready for download',
+        type: 'lab',
+        metadata: { bookingId: updated.id }
       });
     }
+
+    res.json({ success: true, data: updated });
+  } catch (error) {
     next(error);
   }
 };
 
 export const getMyLabBookings = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user!.id;
-
+    const userId = (req as any).user.id;
     const bookings = await prisma.labBooking.findMany({
-      where: { userId },
+      where: { patientId: userId },
       include: {
-        test: true,
+        items: { include: { labTest: { include: { platformTest: true } } } },
+        hospital: { select: { id: true, name: true } }
       },
-      orderBy: { bookingDate: 'desc' },
+      orderBy: { createdAt: 'desc' }
     });
-
-    const labIds = [...new Set(bookings.map((b) => b.laboratoryId))];
-    const labs = await prisma.hospital.findMany({
-      where: { id: { in: labIds } },
-      select: {
-        id: true,
-        name: true,
-        city: true,
-        addressLine1: true,
-        area: true,
-        contactPhone: true,
-      },
-    });
-
-    const labMap = new Map(labs.map((l) => [l.id, l]));
-
-    const formatted = bookings.map((b) => {
-      const lab = labMap.get(b.laboratoryId);
-      return {
-        id: b.id,
-        bookingId: b.bookingNumber,
-        bookingNumber: b.bookingNumber,
-        type: 'lab_test',
-        testId: b.testId,
-        testName: b.test.name,
-        category: b.test.category,
-        sampleType: b.test.sampleType,
-        laboratoryId: b.laboratoryId,
-        laboratoryName: lab?.name || 'Diagnostic Laboratory',
-        laboratoryAddress: [lab?.addressLine1, lab?.area, lab?.city].filter(Boolean).join(', ') || lab?.city || '',
-        hospitalId: b.hospitalId,
-        patientName: b.patientName,
-        patientPhone: b.patientPhone,
-        date: b.bookingDate.toISOString().split('T')[0],
-        bookingDate: b.bookingDate.toISOString().split('T')[0],
-        timeSlot: b.timeSlot,
-        time: b.timeSlot,
-        collectionType: b.collectionType,
-        collectionAddress: b.collectionAddress,
-        status: b.status,
-        paymentStatus: b.paymentStatus,
-        testPrice: b.testPrice,
-        collectionFee: b.collectionFee,
-        totalAmount: b.totalAmount,
-        amount: `₹${Math.round(b.totalAmount)}`,
-        prep: b.test.preparation,
-        turnaroundTime: b.test.turnaroundTime,
-        createdAt: b.createdAt,
-      };
-    });
-
-    res.json({ success: true, data: formatted });
+    res.json({ success: true, data: bookings });
   } catch (error) {
     next(error);
   }
@@ -289,91 +191,28 @@ export const getMyLabBookings = async (req: Request, res: Response, next: NextFu
 
 export const getLabBookingById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const id = req.params.id as string;
-    const userId = req.user!.id;
-    const userRole = req.user!.role;
+    const { id } = req.params;
+    const userId = (req as any).user?.id;
+    const hospitalId = (req as any).user?.hospitalId;
+
+    const where: any = { id: id as string };
+    if (hospitalId) where.hospitalId = hospitalId;
+    else if (userId) where.patientId = userId;
 
     const booking = await prisma.labBooking.findFirst({
-      where: {
-        OR: [{ id }, { bookingNumber: id }],
-      },
+      where,
       include: {
-        test: true,
-      },
+        items: { include: { labTest: { include: { platformTest: true } } } },
+        patient: { select: { id: true, name: true, phone: true } },
+        hospital: { select: { id: true, name: true } }
+      }
     });
 
     if (!booking) {
-      return res.status(404).json({
-        success: false,
-        error: { code: 'NOT_FOUND', message: 'Lab booking not found' },
-      });
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } });
     }
 
-    // Ownership check: must be owner, hospital staff for this lab, or SUPER_ADMIN
-    const isOwner = booking.userId === userId;
-    const isSuperAdmin = userRole === Role.SUPER_ADMIN;
-
-    if (!isOwner && !isSuperAdmin) {
-      return res.status(403).json({
-        success: false,
-        error: { code: 'FORBIDDEN', message: 'You are not authorized to view this lab booking.' },
-      });
-    }
-
-    const lab = await prisma.hospital.findUnique({
-      where: { id: booking.laboratoryId },
-      select: {
-        id: true,
-        name: true,
-        city: true,
-        addressLine1: true,
-        area: true,
-        contactPhone: true,
-        contactEmail: true,
-      },
-    });
-
-    res.json({
-      success: true,
-      data: {
-        id: booking.id,
-        bookingId: booking.bookingNumber,
-        bookingNumber: booking.bookingNumber,
-        type: 'lab_test',
-        testId: booking.testId,
-        testName: booking.test.name,
-        category: booking.test.category,
-        sampleType: booking.test.sampleType,
-        description: booking.test.description,
-        preparation: booking.test.preparation,
-        prep: booking.test.preparation,
-        turnaroundTime: booking.test.turnaroundTime,
-        laboratoryId: booking.laboratoryId,
-        laboratoryName: lab?.name || 'Diagnostic Laboratory',
-        laboratoryAddress: [lab?.addressLine1, lab?.area, lab?.city].filter(Boolean).join(', ') || lab?.city || '',
-        laboratoryPhone: lab?.contactPhone,
-        hospitalId: booking.hospitalId,
-        patientName: booking.patientName,
-        patientAge: booking.patientAge,
-        patientGender: booking.patientGender,
-        patientPhone: booking.patientPhone,
-        patientEmail: booking.patientEmail,
-        bookingDate: booking.bookingDate.toISOString().split('T')[0],
-        date: booking.bookingDate.toISOString().split('T')[0],
-        timeSlot: booking.timeSlot,
-        time: booking.timeSlot,
-        collectionType: booking.collectionType,
-        collectionAddress: booking.collectionAddress,
-        status: booking.status,
-        paymentStatus: booking.paymentStatus,
-        testPrice: booking.testPrice,
-        collectionFee: booking.collectionFee,
-        totalAmount: booking.totalAmount,
-        amount: `₹${Math.round(booking.totalAmount)}`,
-        notes: booking.notes,
-        createdAt: booking.createdAt,
-      },
-    });
+    res.json({ success: true, data: booking });
   } catch (error) {
     next(error);
   }
@@ -381,73 +220,25 @@ export const getLabBookingById = async (req: Request, res: Response, next: NextF
 
 export const cancelLabBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const id = req.params.id as string;
-    const userId = req.user!.id;
-    const userRole = req.user!.role;
+    const { id } = req.params;
+    const userId = (req as any).user?.id;
+    const hospitalId = (req as any).user?.hospitalId;
 
-    const booking = await prisma.labBooking.findFirst({
-      where: {
-        OR: [{ id }, { bookingNumber: id }],
-      },
-      include: {
-        test: true,
-      },
-    });
+    const where: any = { id: id as string };
+    if (hospitalId) where.hospitalId = hospitalId;
+    else if (userId) where.patientId = userId;
 
+    const booking = await prisma.labBooking.findFirst({ where });
     if (!booking) {
-      return res.status(404).json({
-        success: false,
-        error: { code: 'NOT_FOUND', message: 'Lab booking not found' },
-      });
-    }
-
-    const isOwner = booking.userId === userId;
-    const isSuperAdmin = userRole === Role.SUPER_ADMIN;
-
-    if (!isOwner && !isSuperAdmin) {
-      return res.status(403).json({
-        success: false,
-        error: { code: 'FORBIDDEN', message: 'You are not authorized to cancel this booking.' },
-      });
-    }
-
-    if (booking.status === 'CANCELLED') {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'BAD_REQUEST', message: 'Booking is already cancelled.' },
-      });
-    }
-
-    if (['COMPLETED', 'SAMPLE_COLLECTED', 'PROCESSING'].includes(booking.status)) {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'BAD_REQUEST', message: `Cannot cancel booking in ${booking.status} status.` },
-      });
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } });
     }
 
     const updated = await prisma.labBooking.update({
-      where: { id: booking.id },
-      data: {
-        status: 'CANCELLED',
-        paymentStatus: booking.paymentStatus === 'PAID' ? 'REFUNDED' : booking.paymentStatus,
-      },
-      include: {
-        test: true,
-      },
+      where: { id: id as string },
+      data: { status: 'CANCELLED' }
     });
 
-    res.json({
-      success: true,
-      message: 'Booking cancelled successfully.',
-      data: {
-        id: updated.id,
-        bookingId: updated.bookingNumber,
-        bookingNumber: updated.bookingNumber,
-        status: updated.status,
-        paymentStatus: updated.paymentStatus,
-        testName: updated.test.name,
-      },
-    });
+    res.json({ success: true, data: updated });
   } catch (error) {
     next(error);
   }

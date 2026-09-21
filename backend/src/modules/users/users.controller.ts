@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
+import bcrypt from 'bcryptjs';
 
 export const getMe = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -107,6 +108,37 @@ export const updateMe = async (req: Request, res: Response, next: NextFunction) 
       data: updatedUser,
       message: 'Profile updated successfully',
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const changePassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'Current and new password are required' } });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Incorrect current password' } });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash }
+    });
+
+    res.json({ success: true, message: 'Password updated successfully' });
   } catch (error) {
     next(error);
   }

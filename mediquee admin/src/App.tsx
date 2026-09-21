@@ -15,6 +15,7 @@ import Appointments from './pages/Appointments';
 import Verification from './pages/Verification';
 import Reports from './pages/Reports';
 import Notifications from './pages/Notifications';
+import Requests from './pages/Requests';
 import Settings from './pages/Settings';
 
 // Advanced Pages
@@ -72,10 +73,10 @@ function App() {
               
               <Route path="transactions" element={<Transactions />} />
               <Route path="settlements" element={<Settlements />} />
-              
               <Route path="verification" element={<Verification />} />
               <Route path="reports" element={<Reports />} />
               <Route path="notifications" element={<Notifications />} />
+              <Route path="requests" element={<Requests />} />
               <Route path="activity" element={<ActivityLog />} />
               <Route path="settings" element={<Settings />} />
             </Route>

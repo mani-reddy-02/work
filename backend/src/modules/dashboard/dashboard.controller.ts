@@ -142,7 +142,7 @@ export const getHospitalDashboardOverview = async (req: Request, res: Response, 
       labTests = await prisma.labBooking.count({
         where: {
           hospitalId,
-          bookingDate: { gte: startOfDay, lte: endOfDay },
+          createdAt: { gte: startOfDay, lte: endOfDay },
           status: { not: 'CANCELLED' }
         }
       });

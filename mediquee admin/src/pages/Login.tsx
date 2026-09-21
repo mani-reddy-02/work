@@ -36,13 +36,18 @@ const AdminLogin: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 text-slate-100">
       <div className="sm:mx-auto sm:w-full sm:max-w-md px-4 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600/20 border border-blue-500/30 text-blue-400 mb-4 shadow-xl shadow-blue-500/10">
-          <ShieldCheck className="w-9 h-9" />
+        <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-white/5 border border-white/10 mb-4 shadow-xl shadow-blue-500/10">
+          <img src="/logo-icon.png" alt="MediQuee" className="w-14 h-14 object-contain rounded-xl" />
         </div>
-        <h2 className="text-3xl font-extrabold tracking-tight text-white">
+        <div className="flex justify-center mb-2">
+          <div className="bg-white/95 rounded-xl px-4 py-2 inline-block">
+            <img src="/logo.png" alt="MediQuee" className="h-7 w-auto object-contain" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-extrabold tracking-tight text-white mt-3">
           MediQuee Admin
         </h2>
-        <p className="mt-2 text-sm text-slate-400 font-medium">
+        <p className="mt-1 text-sm text-slate-400 font-medium">
           System Administration & Operations Portal
         </p>
       </div>
@@ -119,9 +124,12 @@ const AdminLogin: React.FC = () => {
             </div>
           </form>
 
-          <div className="mt-6 pt-5 border-t border-slate-800 text-center">
+          <div className="mt-6 pt-5 border-t border-slate-800 text-center flex flex-col gap-1.5">
             <span className="text-xs text-slate-500">
               Protected by MediQuee RBAC & Multi-Tenant Security
+            </span>
+            <span className="text-xs text-slate-400">
+              Technical Support: <a href="tel:8331045500" className="text-blue-400 hover:underline font-bold">8331045500</a>
             </span>
           </div>
         </div>

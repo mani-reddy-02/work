@@ -21,7 +21,8 @@ import {
   CreditCard,
   TrendingUp,
   Landmark,
-  ListTodo
+  ListTodo,
+  Inbox
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -89,6 +90,7 @@ const navGroups = [
   {
     title: 'Communication',
     items: [
+      { name: 'Requests', path: '/admin/requests', icon: Inbox },
       { name: 'Notifications', path: '/admin/notifications', icon: Bell },
       { name: 'Activity Log', path: '/admin/activity', icon: ListTodo }
     ]
@@ -122,17 +124,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         {/* Logo Area */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800 transition-colors">
           <div className={`flex items-center gap-2 ${!isOpen && 'lg:hidden'}`}>
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xl">
-              M
-            </div>
-            <span className="font-bold text-xl text-slate-900 dark:text-white tracking-tight transition-colors">MediQuee</span>
+            <img src="/logo.png" alt="MediQuee" className="h-8 w-auto object-contain" />
           </div>
           
           {/* Logo when collapsed (desktop only) */}
           <div className={`hidden lg:flex w-full items-center justify-center ${isOpen && 'lg:hidden'}`}>
-             <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xl">
-              M
-            </div>
+            <img src="/logo-icon.png" alt="MediQuee" className="w-9 h-9 object-contain rounded-xl" />
           </div>
           
           <button 

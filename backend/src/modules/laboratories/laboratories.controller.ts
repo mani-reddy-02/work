@@ -70,22 +70,22 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
     const labIds = labs.map(l => l.id);
 
     // Fetch minimum test prices and test counts for each lab
-    const offerings = await prisma.laboratoryTestOffering.findMany({
+    const offerings = await prisma.labTest.findMany({
       where: {
-        laboratoryId: { in: labIds },
-        active: true,
+        hospitalId: { in: labIds },
+        isActive: true,
       },
       select: {
-        laboratoryId: true,
+        hospitalId: true,
         price: true,
       }
     });
 
     const labStatsMap = new Map<string, { minPrice: number; count: number }>();
     for (const o of offerings) {
-      const existing = labStatsMap.get(o.laboratoryId);
+      const existing = labStatsMap.get(o.hospitalId);
       if (!existing) {
-        labStatsMap.set(o.laboratoryId, { minPrice: o.price, count: 1 });
+        labStatsMap.set(o.hospitalId, { minPrice: o.price, count: 1 });
       } else {
         existing.count += 1;
         if (o.price < existing.minPrice) existing.minPrice = o.price;
@@ -162,12 +162,12 @@ export const getLaboratoryById = async (req: Request, res: Response, next: NextF
     }
 
     // Get offerings for this lab
-    const offerings = await prisma.laboratoryTestOffering.findMany({
-      where: { laboratoryId: id, active: true },
+    const offerings = await prisma.labTest.findMany({
+      where: { hospitalId: id, isActive: true },
       include: {
-        test: true
+        platformTest: true
       },
-      orderBy: { test: { name: 'asc' } }
+      orderBy: { platformTest: { name: 'asc' } }
     });
 
     const minPrice = offerings.length > 0 
@@ -196,15 +196,15 @@ export const getLaboratoryById = async (req: Request, res: Response, next: NextF
         time: 'Within 24 Hours',
         price: `₹${Math.round(minPrice)}`,
         availableTestsCount: offerings.length,
-        tests: offerings.map(o => ({
-          id: o.test.id,
-          name: o.test.name,
-          category: o.test.category,
-          sampleType: o.test.sampleType,
+        tests: offerings.map((o: any) => ({
+          id: o.platformTest.id,
+          name: o.platformTest.name,
+          category: o.platformTest.departmentId,
+          sampleType: o.platformTest.sampleType,
           price: `₹${Math.round(o.price)}`,
           numericPrice: o.price,
-          time: o.test.turnaroundTime || '12 Hours',
-          homeCollectionAvailable: o.homeCollectionAvailable,
+          time: o.tatHours ? `${o.tatHours} Hours` : '12 Hours',
+          homeCollectionAvailable: o.isHomeCollectionAvailable,
           homeCollectionFee: o.homeCollectionFee,
         }))
       }
@@ -218,29 +218,29 @@ export const getLaboratoryTests = async (req: Request, res: Response, next: Next
   try {
     const id = req.params.id as string;
 
-    const offerings = await prisma.laboratoryTestOffering.findMany({
-      where: { laboratoryId: id, active: true },
+    const offerings = await prisma.labTest.findMany({
+      where: { hospitalId: id, isActive: true },
       include: {
-        test: true
+        platformTest: true
       },
-      orderBy: { test: { name: 'asc' } }
+      orderBy: { platformTest: { name: 'asc' } }
     });
 
-    const tests = offerings.map(o => ({
-      id: o.test.id,
-      name: o.test.name,
-      category: o.test.category,
-      sampleType: o.test.sampleType || 'Blood',
-      sample: o.test.sampleType || 'Blood',
+    const tests = offerings.map((o: any) => ({
+      id: o.platformTest.id,
+      name: o.platformTest.name,
+      category: o.platformTest.departmentId,
+      sampleType: o.platformTest.sampleType || 'Blood',
+      sample: o.platformTest.sampleType || 'Blood',
       price: `₹${Math.round(o.price)}`,
       numericPrice: o.price,
-      time: o.test.turnaroundTime || '12 Hours',
-      tat: o.test.turnaroundTime || '12 Hours',
-      parameters: o.test.parametersCount || 1,
-      parametersCount: o.test.parametersCount || 1,
-      desc: o.test.description || '',
-      prep: o.test.preparation || 'No special preparation required.',
-      homeCollectionAvailable: o.homeCollectionAvailable,
+      time: o.tatHours ? `${o.tatHours} Hours` : '12 Hours',
+      tat: o.tatHours ? `${o.tatHours} Hours` : '12 Hours',
+      parameters: 1,
+      parametersCount: 1,
+      desc: o.platformTest.description || '',
+      prep: o.platformTest.fastingRequired ? 'Fasting Required' : 'No special preparation required.',
+      homeCollectionAvailable: o.isHomeCollectionAvailable,
       homeCollectionFee: o.homeCollectionFee,
     }));
 

@@ -47,7 +47,9 @@ const AppHeader = ({ className }: { className?: string }) => {
 
         {/* Center: Logo (Mobile) / Left: Logo (Desktop) */}
         <div className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex items-center gap-2">
-          <Link to="/" className="font-bold text-xl text-primary tracking-tight">MediQuee</Link>
+          <Link to="/" className="flex items-center">
+            <img src="/logo.png" alt="MediQuee" className="h-7 md:h-8 w-auto object-contain" />
+          </Link>
         </div>
 
         {/* Right: Actions */}

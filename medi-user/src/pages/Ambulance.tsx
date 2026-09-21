@@ -64,6 +64,9 @@ export default function Ambulance() {
           </div>
           <h2 className="text-xl font-bold text-slate-900 mb-1">Emergency Ambulance</h2>
           <p className="text-slate-600 text-sm">Get emergency assistance quickly.</p>
+          <a href="tel:8331045500" className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-600 rounded-full text-sm font-bold hover:bg-red-100 transition-colors">
+            <PhoneCall className="w-3.5 h-3.5" /> Call 24/7 Helpline: 8331045500
+          </a>
         </div>
 
         <div className="space-y-4 max-w-md mx-auto">

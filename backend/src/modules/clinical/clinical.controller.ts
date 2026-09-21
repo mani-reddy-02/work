@@ -202,7 +202,7 @@ export const getPatientHistory = async (req: Request, res: Response, next: NextF
       });
     }
 
-    const whereConditions: any[] = [];
+    const whereConditions: Array<{ patientId: string } | { patientPhone: string }> = [];
     if (patientId) {
       whereConditions.push({ patientId });
     }
@@ -234,7 +234,7 @@ export const getPatientHistory = async (req: Request, res: Response, next: NextF
         labOrders: {
           include: {
             test: {
-              select: { id: true, name: true, category: true, price: true, sampleType: true }
+              include: { platformTest: true }
             }
           }
         }
@@ -263,16 +263,7 @@ export const getPatientHistory = async (req: Request, res: Response, next: NextF
         followUpDate: b.prescription.followUpDate,
         createdAt: b.prescription.createdAt,
         items: b.prescription.items
-      } : null,
-      labOrders: b.labOrders.map(lo => ({
-        id: lo.id,
-        testId: lo.testId,
-        testName: lo.test?.name,
-        category: lo.test?.category,
-        sampleType: lo.test?.sampleType,
-        notes: lo.notes,
-        createdAt: lo.createdAt
-      }))
+      } : null
     }));
 
     res.json({

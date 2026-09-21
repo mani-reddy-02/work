@@ -82,19 +82,18 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
       allLabBookings = await prisma.labBooking.findMany({
         where: {
           hospitalId,
-          bookingDate: { gte: minDate, lte: maxDate },
+          createdAt: { gte: minDate, lte: maxDate },
           status: { not: 'CANCELLED' }
         },
         select: {
           id: true,
-          bookingNumber: true,
           totalAmount: true,
-          bookingDate: true,
-          patientName: true,
+          createdAt: true,
+          patientId: true,
           status: true,
-          collectionType: true
+          bookingType: true
         },
-        orderBy: { bookingDate: 'desc' }
+        orderBy: { createdAt: 'desc' }
       });
     } catch {
       allLabBookings = [];
@@ -142,7 +141,7 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
       b => b.appointmentDate >= start && b.appointmentDate <= end
     );
     const rangeLabBookings = allLabBookings.filter(
-      b => b.bookingDate >= start && b.bookingDate <= end
+      b => b.createdAt >= start && b.createdAt <= end
     );
     const rangeNursingBookings = allNursingBookings.filter(
       b => b.serviceDate >= start && b.serviceDate <= end
@@ -212,39 +211,39 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
     let sampleCount = 0;
 
     for (const b of rangeLabBookings) {
-      const amount = b.totalAmount || 0;
+      const amount = (b as any).totalAmount || (b as any).price || 0;
       const adminCut = Math.round(amount * ADMIN_COMMISSION_RATE);
       const hospitalNet = amount - adminCut;
-      const isSample = b.collectionType === 'HOME_COLLECTION';
+      const isSample = b.bookingType === 'HOME_COLLECTION';
       if (isSample) {
         sampleRevenue += amount;
         sampleCount += 1;
         allTransactions.push({
-          id: b.bookingNumber || b.id.slice(0, 8).toUpperCase(),
+          id: b.id.slice(0, 8).toUpperCase(),
           service: 'Home Sample Collection',
           type: 'HOME_SAMPLE_COLLECTION',
-          rawDate: new Date(b.bookingDate),
+          rawDate: new Date(b.createdAt),
           amount,
           adminCommission: adminCut,
           hospitalPayout: hospitalNet,
           status: b.status,
           statusColor: getStatusColor(b.status),
-          patientName: b.patientName
+          patientName: (b as any).patientId || 'Patient'
         });
       } else {
         labRevenue += amount;
         labCount += 1;
         allTransactions.push({
-          id: b.bookingNumber || b.id.slice(0, 8).toUpperCase(),
+          id: b.id.slice(0, 8).toUpperCase(),
           service: 'Lab Tests',
           type: 'LAB_TEST',
-          rawDate: new Date(b.bookingDate),
+          rawDate: new Date(b.createdAt),
           amount,
           adminCommission: adminCut,
           hospitalPayout: hospitalNet,
           status: b.status,
           statusColor: getStatusColor(b.status),
-          patientName: b.patientName
+          patientName: (b as any).patientId || 'Patient'
         });
       }
     }
@@ -303,8 +302,8 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
       .filter(b => b.appointmentDate >= thisMonthStart && b.appointmentDate <= thisMonthEnd)
       .reduce((sum, b) => sum + (b.fee || 0), 0);
     const thisMonthLab = allLabBookings
-      .filter(b => b.bookingDate >= thisMonthStart && b.bookingDate <= thisMonthEnd)
-      .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+      .filter(b => b.createdAt >= thisMonthStart && b.createdAt <= thisMonthEnd)
+      .reduce((sum, b) => sum + ((b as any).totalAmount || (b as any).price || 0), 0);
     const thisMonthNursing = allNursingBookings
       .filter(b => b.serviceDate >= thisMonthStart && b.serviceDate <= thisMonthEnd)
       .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
@@ -313,8 +312,8 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
       .filter(b => b.appointmentDate >= lastMonthStart && b.appointmentDate <= lastMonthEnd)
       .reduce((sum, b) => sum + (b.fee || 0), 0);
     const lastMonthLab = allLabBookings
-      .filter(b => b.bookingDate >= lastMonthStart && b.bookingDate <= lastMonthEnd)
-      .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+      .filter(b => b.createdAt >= lastMonthStart && b.createdAt <= lastMonthEnd)
+      .reduce((sum, b) => sum + ((b as any).totalAmount || (b as any).price || 0), 0);
     const lastMonthNursing = allNursingBookings
       .filter(b => b.serviceDate >= lastMonthStart && b.serviceDate <= lastMonthEnd)
       .reduce((sum, b) => sum + (b.totalAmount || 0), 0);

@@ -407,13 +407,13 @@ export const updateRequestStatus = async (req: Request, res: Response, next: Nex
     if (type === 'camp') {
       updated = await prisma.medicalCampRequest.update({
         where: { id },
-        data: { status, ...(notes ? { notes } : {}) },
+        data: { status: status as any, ...(notes ? { notes: notes as string } : {}) },
         include: { hospital: { select: { id: true, name: true } } },
       });
     } else {
       updated = await prisma.marketingRequest.update({
         where: { id },
-        data: { status, ...(notes ? { notes } : {}) },
+        data: { status: status as any, ...(notes ? { notes: notes as string } : {}) },
         include: { hospital: { select: { id: true, name: true } } },
       });
     }
