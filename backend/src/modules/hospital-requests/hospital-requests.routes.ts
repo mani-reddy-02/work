@@ -4,6 +4,7 @@ import { validateRequest } from '../../middleware/validate';
 import {
   createMarketingRequest,
   createCampRequest,
+  createInquiryRequest,
   getMyRequests,
 } from './hospital-requests.controller';
 import {
@@ -29,6 +30,12 @@ router.post(
   '/camp-requests',
   validateRequest(createCampRequestSchema as any),
   createCampRequest
+);
+
+// POST /api/v1/hospital/inquiries (Tile 3 - Learn More & Contact Admin)
+router.post(
+  '/inquiries',
+  createInquiryRequest
 );
 
 // GET /api/v1/hospital/requests
