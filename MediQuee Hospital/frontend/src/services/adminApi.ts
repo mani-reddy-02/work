@@ -97,6 +97,24 @@ export const adminApi = {
     const data = await res.json();
     return data.data;
   },
+
+  /**
+   * POST /api/v1/laboratories
+   * Creates a hospital laboratory department with license details and lab admin.
+   */
+  async createLab(payload: any): Promise<any> {
+    const res = await fetch(`${API_URL}/api/v1/laboratories`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error?.message || error.message || 'Failed to create laboratory');
+    }
+    const data = await res.json();
+    return data.data;
+  },
   /**
    * GET /api/v1/departments
    * Fetch hospital departments

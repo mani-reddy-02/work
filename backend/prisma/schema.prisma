@@ -123,6 +123,7 @@ model Hospital {
   notifications       Notification[]
   labTests            LabTest[]
   labBookings         LabBooking[]
+  labs                Lab[]
 }
 
 model PlatformSpecialty {
@@ -205,9 +206,17 @@ model Department {
   name        String
   code        String?
   description String?
+  type        String?  @default("CLINICAL")
 
-  specialtyId String
-  specialty   PlatformSpecialty @relation(fields: [specialtyId], references: [id])
+  specialtyId String?
+  specialty   PlatformSpecialty? @relation(fields: [specialtyId], references: [id])
+
+  platformLabDepartmentId String?
+  platformLabDepartment   PlatformLabDepartment? @relation(fields: [platformLabDepartmentId], references: [id])
+
+  labLicenseNumber      String?
+  labLicenseDocumentUrl String?
+  licenseValidUntil     DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -411,6 +420,8 @@ model MarketingRequest {
   id             String        @id @default(uuid())
   hospitalId     String
   hospital       Hospital      @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  doctorId       String?
+  doctorName     String?
   campaignType   String
   budget         Float?
   targetAudience String?
@@ -532,6 +543,8 @@ model PlatformLabDepartment {
   description String?
   icon        String?
   tests       PlatformLabTest[]
+  departments Department[]
+  labs        Lab[]
   createdAt   DateTime @default(now())
   
   @@map("platform_lab_departments")
@@ -613,4 +626,23 @@ model LabBookingItem {
   price       Float
 
   @@map("lab_booking_items")
+}
+
+model Lab {
+  id                    String                 @id @default(uuid())
+  hospitalId            String
+  hospital              Hospital               @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  
+  platformDepartmentId  String?
+  platformDepartment    PlatformLabDepartment? @relation(fields: [platformDepartmentId], references: [id])
+  
+  name                  String
+  labLicenseNumber      String
+  labLicenseDocumentUrl String
+  licenseValidUntil     DateTime?
+
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@map("hospital_labs")
 }

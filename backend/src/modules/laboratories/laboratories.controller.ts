@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
-import { BusinessType } from '@prisma/client';
+import { BusinessType, Role } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+import path from 'path';
+import fs from 'fs';
+import { sendNotification } from '../notifications/notifications.service';
 
 export const getLaboratories = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -245,6 +249,223 @@ export const getLaboratoryTests = async (req: Request, res: Response, next: Next
     }));
 
     res.json({ success: true, data: tests });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const UPLOADS_LICENSES_DIR = path.join(process.cwd(), 'uploads/licenses');
+if (!fs.existsSync(UPLOADS_LICENSES_DIR)) {
+  fs.mkdirSync(UPLOADS_LICENSES_DIR, { recursive: true });
+}
+
+export const createHospitalLab = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = req.user?.hospitalId;
+    if (!hospitalId) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'User does not belong to a hospital' }
+      });
+    }
+
+    const {
+      platformDepartmentId,
+      labLicenseNumber,
+      labLicenseDocumentUrl,
+      licenseValidUntil,
+      email,
+      password,
+      phone
+    } = req.body;
+
+    // Check platform lab department exists
+    const platformDept = await prisma.platformLabDepartment.findUnique({
+      where: { id: platformDepartmentId }
+    });
+
+    if (!platformDept) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Platform laboratory department not found' }
+      });
+    }
+
+    // Check duplicate email
+    const existingEmail = await prisma.user.findUnique({ where: { email } });
+    if (existingEmail) {
+      return res.status(409).json({
+        success: false,
+        error: { code: 'CONFLICT', message: 'A user with this email already exists' }
+      });
+    }
+
+    // Check duplicate phone
+    if (phone) {
+      const existingPhone = await prisma.user.findUnique({ where: { phone } });
+      if (existingPhone) {
+        return res.status(409).json({
+          success: false,
+          error: { code: 'CONFLICT', message: 'A user with this phone number already exists' }
+        });
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const parsedValidUntil = licenseValidUntil ? new Date(licenseValidUntil) : null;
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Create or link Department for this lab
+      let dept = await tx.department.findFirst({
+        where: {
+          hospitalId,
+          OR: [
+            { name: `${platformDept.name} (Lab)` },
+            { name: platformDept.name },
+            { platformLabDepartmentId: platformDept.id }
+          ]
+        }
+      });
+
+      if (!dept) {
+        dept = await tx.department.create({
+          data: {
+            hospitalId,
+            name: `${platformDept.name} (Lab)`,
+            code: platformDept.code,
+            description: platformDept.description,
+            type: 'LAB',
+            platformLabDepartmentId: platformDept.id,
+            labLicenseNumber,
+            labLicenseDocumentUrl,
+            licenseValidUntil: parsedValidUntil,
+          }
+        });
+      } else {
+        dept = await tx.department.update({
+          where: { id: dept.id },
+          data: {
+            type: 'LAB',
+            platformLabDepartmentId: platformDept.id,
+            labLicenseNumber,
+            labLicenseDocumentUrl,
+            licenseValidUntil: parsedValidUntil,
+          }
+        });
+      }
+
+      // 2. Create the Lab record
+      const lab = await tx.lab.create({
+        data: {
+          hospitalId,
+          platformDepartmentId: platformDept.id,
+          name: `${platformDept.name} Laboratory`,
+          labLicenseNumber,
+          labLicenseDocumentUrl,
+          licenseValidUntil: parsedValidUntil,
+        }
+      });
+
+      // 3. Create the LAB_ADMIN staff user
+      const user = await tx.user.create({
+        data: {
+          name: `${platformDept.name} Lab Admin`,
+          email,
+          phone: phone || null,
+          passwordHash,
+          role: Role.LAB_ADMIN,
+          designation: 'Laboratory Administrator',
+          hospitalId,
+          departmentId: dept.id,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          designation: true,
+          active: true,
+          createdAt: true,
+        }
+      });
+
+      // 4. Update hospital services to ensure lab capabilities are listed
+      const hospital = await tx.hospital.findUnique({
+        where: { id: hospitalId },
+        select: { services: true }
+      });
+      const currentServices = hospital?.services || [];
+      const neededServices = ['lab_tests', 'diagnostics', 'lab'];
+      const updatedServices = Array.from(new Set([...currentServices, ...neededServices]));
+      if (updatedServices.length > currentServices.length) {
+        await tx.hospital.update({
+          where: { id: hospitalId },
+          data: { services: updatedServices }
+        });
+      }
+
+      return { lab, department: dept, user };
+    });
+
+    sendNotification({
+      hospitalId,
+      title: 'Laboratory Registered',
+      message: `${platformDept.name} Lab registered with license ${labLicenseNumber}`,
+      type: 'lab',
+      metadata: { labId: result.lab.id, departmentId: result.department.id }
+    }).catch(console.error);
+
+    res.status(201).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const uploadLicenseCertificate = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { fileData, fileName } = req.body;
+    if (!fileData || !fileName) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'fileData and fileName are required' }
+      });
+    }
+
+    // Process base64 file data
+    let base64Content = fileData;
+    const matches = fileData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (matches && matches.length === 3) {
+      base64Content = matches[2];
+    }
+
+    const fileBuffer = Buffer.from(base64Content, 'base64');
+
+    if (fileBuffer.length > 10 * 1024 * 1024) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'FILE_TOO_LARGE', message: 'File size must not exceed 10MB' }
+      });
+    }
+
+    const safeFileName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const filePath = path.join(UPLOADS_LICENSES_DIR, safeFileName);
+
+    fs.writeFileSync(filePath, fileBuffer);
+
+    const fileUrl = `/uploads/licenses/${safeFileName}`;
+
+    res.status(201).json({
+      success: true,
+      data: {
+        fileUrl,
+        fileName: safeFileName,
+        size: fileBuffer.length
+      }
+    });
   } catch (error) {
     next(error);
   }

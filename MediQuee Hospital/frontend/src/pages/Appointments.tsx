@@ -7,11 +7,27 @@ import { WalkInModal } from "../components/appointments/WalkInModal"
 import { Skeleton } from "../components/ui/Skeleton"
 import { EmptyState } from "../components/ui/EmptyState"
 import { cn } from "@/lib/utils"
-import { useNavigate, useLocation } from "react-router-dom"
+import { useNavigate, useLocation, Navigate } from "react-router-dom"
 import { adminApi } from "@/services/adminApi"
 import { useTranslation } from "react-i18next"
 
 export function Appointments() {
+  const { role } = useAuth();
+
+  // Non-admin roles should be routed to their dedicated appointment/consultation workspaces
+  if (role === 'doctor') {
+    return <Navigate to="/doctor/ops" replace />;
+  }
+  if (role === 'receptionist') {
+    return <Navigate to="/receptionist/appointments" replace />;
+  }
+  if (role === 'nurse') {
+    return <Navigate to="/nurse/visits" replace />;
+  }
+  if (role === 'lab') {
+    return <Navigate to="/lab/orders" replace />;
+  }
+
   const { t } = useTranslation();
   const location = useLocation();
   const locationState = location.state as { date?: string; status?: string; filter?: string } | undefined;
@@ -29,7 +45,6 @@ export function Appointments() {
 
   const dateInputRef = useRef<HTMLInputElement>(null);
 
-  const { role } = useAuth();
   const navigate = useNavigate();
 
   const filterTypes = [
@@ -500,27 +515,18 @@ export function Appointments() {
                             </div>
                             
                             <div className="relative" onClick={(e) => e.stopPropagation()}>
-                              {role === 'doctor' ? (
-                                <button 
-                                  onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    setActiveDropdown(activeDropdown === apt.id ? null : apt.id); 
-                                  }}
-                                  className={cn(
-                                    "px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full shrink-0",
-                                    getStatusColor(apt.status)
-                                  )}
-                                >
-                                  {apt.status}
-                                </button>
-                              ) : (
-                                <div className={cn(
+                              <button 
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  setActiveDropdown(activeDropdown === apt.id ? null : apt.id); 
+                                }}
+                                className={cn(
                                   "px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full shrink-0",
                                   getStatusColor(apt.status)
-                                )}>
-                                  {apt.status}
-                                </div>
-                              )}
+                                )}
+                              >
+                                {apt.status}
+                              </button>
 
                               {activeDropdown === apt.id && (
                                 <div className="absolute top-full right-0 mt-1 w-36 bg-surface rounded-xl shadow-xl border border-border py-1.5 z-50 overflow-hidden">
@@ -560,20 +566,6 @@ export function Appointments() {
                                 <User className="w-3.5 h-3.5" />
                                 Patient View
                               </button>
-
-                              {apt.status !== 'CANCELLED' && role === 'doctor' && (
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedAppointment(apt);
-                                  }}
-                                  className="flex items-center gap-1.5 bg-[#1B5DF1] text-white font-bold text-[12px] sm:text-[13px] px-3.5 py-1.5 rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-[#1B5DF1]/20 active:scale-95"
-                                  title="Start Doctor Consultation"
-                                >
-                                  <Play className="w-3.5 h-3.5 fill-white" />
-                                  Start
-                                </button>
-                              )}
                             </div>
                           </div>
                         </div>

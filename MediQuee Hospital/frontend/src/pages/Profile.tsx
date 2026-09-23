@@ -1,4 +1,4 @@
-import { User, Bell, Shield, Settings, LogOut, ChevronRight, Building2, Users, LayoutGrid, Key, HelpCircle, MessageSquare, FileSignature, Calendar, History, Stethoscope } from "lucide-react"
+import { ArrowLeft, User, Bell, Shield, Settings, LogOut, ChevronRight, Building2, Users, LayoutGrid, Key, HelpCircle, MessageSquare, FileSignature, Calendar, History, Stethoscope } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import { useAuth } from "@/context/AuthContext"
@@ -86,8 +86,11 @@ export function Profile() {
     <div className="flex flex-col min-h-full pb-[120px] bg-background">
       
       {/* Sticky Top Controls */}
-      <div className="sticky top-0 z-30 pt-4 pb-3 px-4 flex justify-between items-center bg-background/95 backdrop-blur-md border-b border-border shadow-sm">
-        <h1 className="text-[22px] font-semibold text-foreground">{t('profile', 'Profile')}</h1>
+      <div className="sticky top-0 z-30 pt-4 pb-3 px-4 flex items-center gap-3 bg-background/95 backdrop-blur-md border-b border-border shadow-sm">
+        <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h1 className="text-[20px] font-bold text-foreground">{t('profile', 'Profile')}</h1>
       </div>
 
       <div className="flex flex-col px-4 pt-5">

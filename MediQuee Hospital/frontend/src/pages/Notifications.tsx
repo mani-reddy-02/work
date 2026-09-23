@@ -7,6 +7,7 @@ import { motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import { EmptyState } from "../components/ui/EmptyState"
 import { useNotifications } from "@/context/NotificationContext"
+import { useAuth } from "@/context/AuthContext"
 import { useTranslation } from "react-i18next"
 
 function formatTimeAgo(dateStr: string): string {
@@ -27,6 +28,7 @@ function formatTimeAgo(dateStr: string): string {
 
 export function Notifications() {
   const { t } = useTranslation();
+  const { role } = useAuth();
   const navigate = useNavigate();
   const { 
     notifications, 
@@ -74,7 +76,17 @@ export function Notifications() {
       await markAsRead(notif.id);
     }
     if (notif.type === 'appointment') {
-      navigate('/appointments');
+      if (role === 'doctor') {
+        navigate('/doctor/ops');
+      } else if (role === 'receptionist') {
+        navigate('/receptionist/appointments');
+      } else if (role === 'nurse') {
+        navigate('/nurse/visits');
+      } else if (role === 'lab') {
+        navigate('/lab/orders');
+      } else {
+        navigate('/appointments');
+      }
     } else if (notif.type === 'department') {
       navigate('/profile/departments');
     } else if (notif.type === 'staff') {

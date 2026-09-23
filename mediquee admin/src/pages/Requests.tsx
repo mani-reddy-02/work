@@ -33,7 +33,11 @@ interface MarketingRequest {
   id: string;
   hospitalId: string;
   hospital?: { name: string; contactPhone?: string; contactEmail?: string; city?: string; state?: string };
+  doctorId?: string | null;
+  doctorName?: string | null;
   campaignType: string;
+  budget?: number | null;
+  targetAudience?: string | null;
   notes?: string | null;
   status: 'PENDING' | 'REVIEWING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
   createdAt: string;
@@ -260,6 +264,12 @@ const Requests: React.FC = () => {
                         <Building2 size={13} className="text-slate-400" />
                         {m.hospital?.name || 'Hospital ID: ' + m.hospitalId}
                       </span>
+                      {m.doctorName && (
+                        <span className="flex items-center gap-1 font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full text-xs">
+                          <Users size={12} className="text-blue-500" />
+                          Dr. {m.doctorName}
+                        </span>
+                      )}
                       <span className="text-slate-400">
                         Submitted: {formatDateTime(m.createdAt)}
                       </span>
@@ -393,14 +403,41 @@ const Requests: React.FC = () => {
                   <div className="space-y-4">
                     <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                       <Megaphone size={16} className="text-blue-600" />
-                      Marketing / Inquiry Details
+                      Marketing / Campaign Details
                     </h4>
-                    <div className="text-sm">
-                      <span className="block text-slate-500 text-xs mb-0.5">Type</span>
-                      <span className="font-medium text-slate-900 text-base">
-                        {selectedRequest.data.campaignType.replace('PLATFORM_INQUIRY:', '').trim()}
-                      </span>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="col-span-2">
+                        <span className="block text-slate-500 text-xs mb-0.5">Campaign Services</span>
+                        <span className="font-semibold text-slate-900 text-base">
+                          {selectedRequest.data.campaignType.replace('PLATFORM_INQUIRY:', '').trim()}
+                        </span>
+                      </div>
+                      {selectedRequest.data.budget && (
+                        <div>
+                          <span className="block text-slate-500 text-xs mb-0.5">Estimated Budget</span>
+                          <span className="font-medium text-slate-900">₹{Number(selectedRequest.data.budget).toLocaleString()} / month</span>
+                        </div>
+                      )}
                     </div>
+
+                    {selectedRequest.data.doctorName && (
+                      <div className="bg-blue-50/70 p-4 rounded-xl border border-blue-100 space-y-2 mt-2">
+                        <h5 className="text-xs font-bold text-blue-900 flex items-center gap-1.5 uppercase tracking-wide">
+                          <Users size={14} className="text-blue-600" />
+                          Requesting Doctor
+                        </h5>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="block text-slate-500 text-xs">Doctor Name</span>
+                            <span className="font-bold text-slate-900">Dr. {selectedRequest.data.doctorName}</span>
+                          </div>
+                          <div>
+                            <span className="block text-slate-500 text-xs">Doctor ID</span>
+                            <span className="font-mono text-xs text-slate-600 truncate block">{selectedRequest.data.doctorId || 'N/A'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

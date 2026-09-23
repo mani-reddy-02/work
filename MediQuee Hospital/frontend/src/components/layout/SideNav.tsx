@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom"
-import { LayoutGrid, Calendar, IndianRupee, User, Plus, Video, Home, Users, Activity, X } from "lucide-react"
+import { LayoutGrid, Calendar, IndianRupee, User, Plus, Video, Home, Users, Activity, X, Stethoscope, CalendarClock, Megaphone } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
@@ -19,13 +19,22 @@ export function SideNav({
 
   const displayName = role === 'lab' ? 'MediQuee Lab' : 'MediQuee Hospital';
 
-  const getLinks = () => {
+  type NavItem = {
+    to: string;
+    icon: any;
+    label: string;
+    badge?: string;
+  };
+
+  const getLinks = (): NavItem[] => {
     switch (role) {
       case 'doctor':
         return [
           { to: '/doctor', icon: LayoutGrid, label: t('dashboard') },
-          { to: '/appointments', icon: Calendar, label: t('appointments') },
-          { to: '/video-consultations', icon: Video, label: 'Video Consults', badge: 'V2 Preview' },
+          { to: '/doctor/ops', icon: Stethoscope, label: 'OPs' },
+          { to: '/doctor/video-consultations', icon: Video, label: 'Video Consults' },
+          { to: '/doctor/availability', icon: CalendarClock, label: 'Availability' },
+          { to: '/book-marketing', icon: Megaphone, label: 'Book Marketing' },
           { to: '/profile', icon: User, label: t('profile') },
         ];
       case 'nurse':
@@ -41,6 +50,13 @@ export function SideNav({
           { to: '/receptionist/queue', icon: Users, label: 'Queue Management' },
           { to: '/receptionist/appointments', icon: Calendar, label: t('appointments') },
           { to: '/profile', icon: User, label: t('profile') },
+        ];
+      case 'lab':
+        return [
+          { to: '/lab', icon: LayoutGrid, label: t('dashboard') },
+          { to: '/lab/orders', icon: Calendar, label: 'Orders' },
+          { to: '/lab/reports', icon: Activity, label: 'Reports' },
+          { to: '/lab/profile', icon: User, label: t('profile') },
         ];
       case 'admin':
       default:
@@ -80,14 +96,20 @@ export function SideNav({
         <nav className="flex flex-col gap-2 flex-1">
         {links.map((link) => {
           const Icon = link.icon;
+          const isBaseRoleRoute = ['/dashboard', '/doctor', '/nurse', '/receptionist', '/lab'].includes(link.to);
           return (
             <NavLink 
               key={link.to}
-              to={link.to} 
-              className={({ isActive }) => 
-                cn("flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium relative", 
-                isActive || (link.to !== '/dashboard' && link.to !== '/doctor' && link.to !== '/nurse' && link.to !== '/receptionist' && location.pathname.includes(link.to)) ? "bg-primary/10 text-primary" : "text-muted hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-foreground")
-              }
+              to={link.to}
+              onClick={onClose}
+              end={isBaseRoleRoute}
+              className={({ isActive }) => {
+                const active = isActive || (!isBaseRoleRoute && location.pathname.startsWith(link.to));
+                return cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium relative interactive-element", 
+                  active ? "bg-primary/10 text-primary font-bold shadow-sm" : "text-muted hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-foreground"
+                );
+              }}
             >
               <Icon className="w-5 h-5" />
               <span>{link.label}</span>
