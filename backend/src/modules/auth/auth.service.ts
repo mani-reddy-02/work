@@ -17,25 +17,33 @@ const UI_ROLE_TO_DB_ROLE: Record<string, Role> = {
 
 export class AuthService {
   static async login(identifier: string, password: string, selectedRole?: string) {
-    // Find user by email or phone
+    console.log('[LOGIN_DEBUG] LOGIN REQUEST RECEIVED');
+    console.log('[LOGIN_DEBUG] IDENTIFIER TYPE:', identifier.includes('@') ? 'EMAIL' : 'PHONE');
+
+    // Find user by email or phone (case-insensitive for email)
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: identifier },
+          { email: { equals: identifier, mode: 'insensitive' } },
           { phone: identifier },
         ],
       },
     });
+
+    console.log('[LOGIN_DEBUG] USER FOUND:', user ? 'YES' : 'NO');
 
     if (!user) {
       throw new Error('Invalid credentials');
     }
 
     if (!user.active) {
+      console.log('[LOGIN_DEBUG] ACCOUNT IS DEACTIVATED');
       throw new Error('Account is deactivated');
     }
 
     const isValid = await bcrypt.compare(password, user.passwordHash);
+    console.log('[LOGIN_DEBUG] PASSWORD CHECK RESULT:', isValid ? 'MATCH' : 'NO MATCH');
+    
     if (!isValid) {
       throw new Error('Invalid credentials');
     }
