@@ -1536,14 +1536,10 @@ const LabTestList = () => {
                     View in My Bookings
                   </button>
                   <button
-                    onClick={() => {
-                      setViewState('LIST');
-                      setSelectedItem(null);
-                      setSelectedLab(null);
-                    }}
+                    onClick={() => navigate('/?bookingSuccess=true')}
                     className="flex-1 flex items-center justify-center gap-2 bg-white text-[#0055ff] border border-blue-200 py-2.5 rounded-xl text-[12px] font-bold transition-colors"
                   >
-                    Back to Tests
+                    Back to Home
                   </button>
                 </div>
               </div>

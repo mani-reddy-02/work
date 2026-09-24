@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
+import { Prisma } from '@prisma/client';
 import { Role } from '@prisma/client';
 
 // Generate unique human-readable booking number
@@ -566,6 +567,8 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
           totalAmount: trustedTotalAmount,
         },
       });
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
 
     res.status(201).json({

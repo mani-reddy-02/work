@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
+import { Prisma } from '@prisma/client';
 import { sendNotification } from '../notifications/notifications.service';
 import { LabBookingType, LabBookingStatus } from '@prisma/client';
 
@@ -56,6 +57,28 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
       // Add home collection fee to total amount
       if (bookingType === 'HOME_COLLECTION') {
         totalAmount += totalHomeCollectionFee;
+        
+        // Check for double booking conflict
+        const dateObj = new Date(collectionDate);
+        const nextDay = new Date(dateObj);
+        nextDay.setDate(nextDay.getDate() + 1);
+        
+        const conflict = await tx.labBooking.findFirst({
+          where: {
+            hospitalId,
+            bookingType: 'HOME_COLLECTION',
+            collectionDate: {
+              gte: dateObj,
+              lt: nextDay,
+            },
+            collectionTimeSlot,
+            status: { notIn: ['CANCELLED'] }
+          }
+        });
+        
+        if (conflict) {
+          throw new Error('SLOT_CONFLICT: The selected time slot is already booked.');
+        }
       }
 
       // 2. Create the booking
@@ -81,6 +104,8 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
       });
 
       return newBooking;
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
 
     // Fire notification to hospital
@@ -94,8 +119,11 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
 
     res.status(201).json({ success: true, data: booking });
   } catch (error: any) {
-    if (error.message && error.message.includes('not available') || error.message.includes('cannot be collected')) {
+    if (error.message && error.message.includes('not available') || error.message && error.message.includes('cannot be collected')) {
       return res.status(400).json({ success: false, error: { code: 'INVALID_REQUEST', message: error.message } });
+    }
+    if (error.message?.startsWith('SLOT_CONFLICT')) {
+      return res.status(409).json({ success: false, error: { code: 'CONFLICT', message: error.message.replace('SLOT_CONFLICT: ', '') } });
     }
     next(error);
   }

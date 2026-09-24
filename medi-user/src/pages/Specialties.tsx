@@ -314,7 +314,6 @@ type ViewState =
   | 'DOCTOR_LIST'
   | 'DOCTOR_PROFILE'
   | 'SELECT_SLOT'
-  | 'REASON'
   | 'REVIEW'
   | 'CONFIRMATION'
   | 'APPOINTMENT_STATUS'
@@ -390,21 +389,35 @@ const Specialties = () => {
       if (mounted && res.success && res.data) {
         const backendConditions = res.data.conditions;
 
+        const findBestMatch = (diseaseName: string) => {
+          const exactMatch = backendConditions.find(bc => bc.name.toLowerCase() === diseaseName.toLowerCase());
+          if (exactMatch) return exactMatch;
+          
+          const possibleMatches = backendConditions.filter(bc =>
+            bc.name.toLowerCase().includes(diseaseName.toLowerCase()) ||
+            diseaseName.toLowerCase().includes(bc.name.toLowerCase())
+          );
+          
+          if (possibleMatches.length > 0) {
+            // Prefer "General Medicine" if multiple exist, otherwise shortest name
+            const genMed = possibleMatches.find(bc => bc.specialtyName === 'General Medicine');
+            if (genMed) return genMed;
+            
+            possibleMatches.sort((a, b) => a.name.length - b.name.length);
+            return possibleMatches[0];
+          }
+          return null;
+        };
+
         // Enrich general diseases with real IDs if matched
         const enrichedGeneral = generalDiseases.map((gd) => {
-          const match = backendConditions.find(bc =>
-            bc.name.toLowerCase().includes(gd.name.toLowerCase()) ||
-            gd.name.toLowerCase().includes(bc.name.toLowerCase())
-          );
+          const match = findBestMatch(gd.name);
           return match ? { ...gd, id: match.id, specialtyId: match.specialtyId, specialtyName: match.specialtyName } : gd;
         });
 
         // Enrich advanced diseases with real IDs if matched
         const enrichedAdvanced = advancedDiseases.map((ad) => {
-          const match = backendConditions.find(bc =>
-            bc.name.toLowerCase().includes(ad.name.toLowerCase()) ||
-            ad.name.toLowerCase().includes(bc.name.toLowerCase())
-          );
+          const match = findBestMatch(ad.name);
           return match ? { ...ad, id: match.id, specialtyId: match.specialtyId, specialtyName: match.specialtyName } : ad;
         });
 
@@ -461,7 +474,7 @@ const Specialties = () => {
 
   // Fetch real doctors when entering doctor list
   useEffect(() => {
-    if (view === 'DOCTOR_LIST' || view === 'DOCTOR_PROFILE') {
+    if (view === 'DOCTOR_LIST' || view === 'DOCTOR_PROFILE' || (view === 'HOSPITAL_DETAILS' && selectedDisease)) {
       let active = true;
       setIsDoctorsLoading(true);
       if (selectedHospital?.id) {
@@ -587,16 +600,13 @@ const Specialties = () => {
         setView('HOSPITAL_RESULTS');
         break;
       case 'DOCTOR_PROFILE':
-        setView('DOCTOR_LIST');
+        setView(selectedDisease ? 'HOSPITAL_DETAILS' : 'DOCTOR_LIST');
         break;
       case 'SELECT_SLOT':
         setView('DOCTOR_PROFILE');
         break;
-      case 'REASON':
-        setView('SELECT_SLOT');
-        break;
       case 'REVIEW':
-        setView('REASON');
+        setView('SELECT_SLOT');
         break;
       case 'APPOINTMENT_STATUS':
       case 'VIDEO_UPCOMING':
@@ -1085,7 +1095,11 @@ const Specialties = () => {
         ) : (
         <div className="space-y-3">
           {filteredHospitals.map(hosp => (
-            <div key={hosp.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+            <div 
+              key={hosp.id} 
+              className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => { setSelectedHospital(hosp); setView(isVideo ? 'DOCTOR_LIST' : 'HOSPITAL_DETAILS'); }}
+            >
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-bold text-slate-900 text-[15px] flex items-center gap-1.5">
                   {hosp.name}
@@ -1109,12 +1123,9 @@ const Specialties = () => {
                 ))}
               </div>
 
-              <button 
-                onClick={() => { setSelectedHospital(hosp); setView(isVideo ? 'DOCTOR_LIST' : 'HOSPITAL_DETAILS'); }}
-                className="w-full py-2.5 rounded-xl bg-blue-50 text-blue-600 font-bold text-[12px]"
-              >
+              <div className="w-full py-2.5 rounded-xl bg-blue-50 text-blue-600 font-bold text-[12px] text-center flex items-center justify-center pointer-events-none">
                 {isVideo ? 'View Available Doctors' : 'View Hospital'}
-              </button>
+              </div>
             </div>
           ))}
         </div>
@@ -1156,35 +1167,85 @@ const Specialties = () => {
           </div>
         )}
       </div>
-
-      <h3 className="font-bold text-slate-800 text-[15px] mb-3">Departments</h3>
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        {(!selectedHospital.departments || selectedHospital.departments.length === 0) ? (
-          <div className="col-span-2 text-center py-6 bg-white rounded-xl border border-slate-100 text-xs text-slate-400 font-medium">
-            No departments currently listed for this hospital
-          </div>
-        ) : (
-          selectedHospital.departments.map((dept: string) => (
-            <div 
-              key={dept} 
-              onClick={() => { setSelectedDepartment(dept); setView('DOCTOR_LIST'); }}
-              className="bg-white rounded-xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-300 transition-colors"
-            >
-              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mb-2">
-                <Activity className="w-5 h-5 text-blue-500" />
-              </div>
-              <span className="text-[11px] font-bold text-slate-800">{dept}</span>
+      {selectedDisease ? (
+        <div className="mt-2">
+          <h3 className="font-bold text-slate-800 text-[15px] mb-3">Doctors for {selectedDisease.name}</h3>
+          
+          {isDoctorsLoading ? (
+            <div className="flex items-center justify-center py-6 text-blue-600 gap-2">
+              <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-xs font-semibold">Loading doctors...</span>
             </div>
-          ))
-        )}
-      </div>
+          ) : (!doctorsList || doctorsList.length === 0) ? (
+            <div className="text-center py-8 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+              <p className="text-[14px] text-slate-500 font-bold">No doctors found</p>
+              <p className="text-[11px] text-slate-400 mt-1">No doctors are currently available for {selectedDisease.name} at this hospital.</p>
+            </div>
+          ) : (
+            <div className="space-y-3 mb-6">
+              {doctorsList.map(doc => (
+                <div key={doc.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+                  <div className="flex gap-3">
+                    <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
+                      {doc.avatar ? (
+                        <img src={doc.avatar} alt={doc.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-6 h-6 text-slate-400" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-slate-900 text-[14px]">{doc.name}</h3>
+                      <p className="text-[11px] text-blue-600 font-medium mb-0.5">{doc.specialization} • {doc.qualification}</p>
+                      <p className="text-[10px] text-slate-500 mb-1">{doc.department}</p>
+                      <div className="flex items-center gap-3 text-[10px] text-slate-500">
+                        <span className="flex items-center gap-1"><Star className="w-3 h-3 text-amber-400" /> {doc.rating}</span>
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {doc.experience}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => { setSelectedDoctor(doc); setView('DOCTOR_PROFILE'); }}
+                    className="w-full mt-4 py-2.5 rounded-xl bg-blue-50 text-blue-600 font-bold text-[12px]"
+                  >
+                    View Doctor
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          <h3 className="font-bold text-slate-800 text-[15px] mb-3">Departments</h3>
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            {(!selectedHospital.departments || selectedHospital.departments.length === 0) ? (
+              <div className="col-span-2 text-center py-6 bg-white rounded-xl border border-slate-100 text-xs text-slate-400 font-medium">
+                No departments currently listed for this hospital
+              </div>
+            ) : (
+              selectedHospital.departments.map((dept: string) => (
+                <div 
+                  key={dept} 
+                  onClick={() => { setSelectedDepartment(dept); setView('DOCTOR_LIST'); }}
+                  className="bg-white rounded-xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-300 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mb-2">
+                    <Activity className="w-5 h-5 text-blue-500" />
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-800">{dept}</span>
+                </div>
+              ))
+            )}
+          </div>
 
-      <button 
-        onClick={() => { setSelectedDepartment(null); setView('DOCTOR_LIST'); }}
-        className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm"
-      >
-        View All Doctors
-      </button>
+          <button 
+            onClick={() => { setSelectedDepartment(null); setView('DOCTOR_LIST'); }}
+            className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm"
+          >
+            View All Doctors
+          </button>
+        </>
+      )}
     </div>
   );
 
@@ -1355,7 +1416,7 @@ const Specialties = () => {
 
         <button 
           disabled={!selectedTime}
-          onClick={() => setView('REASON')}
+          onClick={() => setView('REVIEW')}
           className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Continue
@@ -1364,27 +1425,6 @@ const Specialties = () => {
     );
   };
 
-  const renderReason = () => (
-    <div className="px-4 py-6 animate-in fade-in slide-in-from-right-4">
-      <h2 className="text-[15px] font-bold text-slate-800 mb-2">Reason for {isVideo ? 'Consultation' : 'Appointment'}</h2>
-      <p className="text-[11px] text-slate-500 mb-4">Please provide a brief description to help the doctor prepare for your visit.</p>
-      
-      <textarea 
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        className="w-full h-32 p-4 border border-slate-200 rounded-2xl bg-white text-[13px] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none mb-6 shadow-sm"
-        placeholder={isVideo ? "Briefly describe what you would like to discuss with the doctor..." : "Describe the reason for your visit..."}
-      ></textarea>
-
-      <button 
-        disabled={reason.length < 5}
-        onClick={() => setView('REVIEW')}
-        className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Review Details
-      </button>
-    </div>
-  );
 
   const renderReview = () => (
     <div className="px-4 py-6 animate-in fade-in slide-in-from-right-4">
@@ -1433,10 +1473,6 @@ const Specialties = () => {
               <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Time</div>
               <div className="font-bold text-slate-800 text-[13px]">{selectedTime}</div>
             </div>
-          </div>
-          <div>
-            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Reason</div>
-            <div className="text-[12px] text-slate-700 bg-slate-50 p-3 rounded-lg mt-1 border border-slate-100">{reason}</div>
           </div>
         </div>
       </div>
@@ -1521,7 +1557,7 @@ const Specialties = () => {
           <Calendar className="w-4 h-4" /> Go to My Bookings
         </button>
         <button 
-          onClick={() => setView('LANDING')}
+          onClick={() => navigate('/?bookingSuccess=true')}
           className="w-full py-3.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-[13px] hover:bg-slate-50 transition-colors"
         >
           Back to Home
@@ -1819,7 +1855,7 @@ const Specialties = () => {
              view === 'DOCTOR_LIST' ? 'Select Doctor' :
              view === 'DOCTOR_PROFILE' ? 'Doctor Profile' :
              view === 'SELECT_SLOT' ? 'Select Slot' :
-             view === 'REASON' ? 'Reason' :
+             view === 'REVIEW' ? 'Review Details' :
              view === 'REVIEW' ? 'Review' :
              view === 'APPOINTMENT_STATUS' ? 'Status' :
              view === 'VIDEO_UPCOMING' ? 'Upcoming' :
@@ -1838,7 +1874,6 @@ const Specialties = () => {
         {view === 'DOCTOR_LIST' && renderDoctorList()}
         {view === 'DOCTOR_PROFILE' && renderDoctorProfile()}
         {view === 'SELECT_SLOT' && renderSelectSlot()}
-        {view === 'REASON' && renderReason()}
         {view === 'REVIEW' && renderReview()}
         {view === 'CONFIRMATION' && renderConfirmation()}
         {view === 'APPOINTMENT_STATUS' && renderAppointmentStatus()}

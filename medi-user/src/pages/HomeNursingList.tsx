@@ -921,7 +921,7 @@ const HomeNursingList = () => {
                   Go to My Bookings
                 </button>
                 <button
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate('/?bookingSuccess=true')}
                   className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
                 >
                   Back to Home

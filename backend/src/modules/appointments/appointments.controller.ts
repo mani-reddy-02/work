@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
+import { Prisma } from '@prisma/client';
 import { Role } from '@prisma/client';
 import { sendNotification } from '../notifications/notifications.service';
 
@@ -245,6 +246,8 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       });
 
       return newBooking;
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
 
     // Broadcast real-time notification to hospital & doctor

@@ -191,6 +191,7 @@ export const getHospitalDoctors = async (req: Request, res: Response, next: Next
     const hospitalId = req.params.id as string;
     const departmentId = typeof req.query.departmentId === 'string' ? req.query.departmentId.trim() : '';
     const departmentName = typeof req.query.department === 'string' ? req.query.department.trim() : '';
+    const conditionId = typeof req.query.conditionId === 'string' ? req.query.conditionId.trim() : '';
 
     const hospital = await prisma.hospital.findUnique({
       where: { id: hospitalId },
@@ -204,13 +205,31 @@ export const getHospitalDoctors = async (req: Request, res: Response, next: Next
       });
     }
 
+    let targetSpecialtyId = '';
+    if (conditionId) {
+      const condition = await prisma.platformCondition.findUnique({
+        where: { id: conditionId },
+        select: { specialtyId: true }
+      });
+      if (condition) {
+        targetSpecialtyId = condition.specialtyId;
+      } else {
+        // Condition not found, strict matching returns empty
+        return res.json({ success: true, data: [] });
+      }
+    }
+
     const whereClause: any = {
       hospitalId,
       role: Role.DOCTOR,
       active: true
     };
 
-    if (departmentId) {
+    if (targetSpecialtyId) {
+      whereClause.department = {
+        specialtyId: targetSpecialtyId
+      };
+    } else if (departmentId) {
       whereClause.departmentId = departmentId;
     } else if (departmentName) {
       whereClause.department = {
@@ -239,7 +258,7 @@ export const getHospitalDoctors = async (req: Request, res: Response, next: Next
       orderBy: { name: 'asc' }
     });
 
-    if (doctors.length === 0 && (departmentId || departmentName)) {
+    if (doctors.length === 0 && (departmentId || departmentName) && !conditionId) {
       doctors = await prisma.user.findMany({
         where: {
           hospitalId,
