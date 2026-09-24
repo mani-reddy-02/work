@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import path from 'path';
 import apiRouter from './routes';
 import { errorHandler } from './middleware/errorHandler';
 import { env } from './config/env';
@@ -9,14 +10,19 @@ import { env } from './config/env';
 const app = express();
 
 // Security and middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(cors({
   origin: true,
   credentials: true,
 }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(morgan('dev'));
+
+// Static files for uploads (reports, certificates, etc.)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Root Route & Health Check
 app.get('/', (req, res) => {

@@ -16,15 +16,15 @@ export function DoctorDashboard() {
   const [isPresenceMenuOpen, setIsPresenceMenuOpen] = useState(false);
   const [isUpdatingPresence, setIsUpdatingPresence] = useState(false);
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const data = await doctorApi.getMyAppointments();
       setAppointments(data || []);
     } catch (err) {
       console.error("Failed to load doctor appointments:", err);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, []);
 
@@ -33,6 +33,19 @@ export function DoctorDashboard() {
     doctorApi.getDoctorPresence()
       .then(status => setPresenceStatus(status))
       .catch(err => console.error("Failed to load doctor presence:", err));
+
+    // Real-time live data polling every 4 seconds
+    const interval = setInterval(() => {
+      loadData(true);
+    }, 4000);
+
+    const handleFocus = () => loadData(true);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [loadData]);
 
   const handlePresenceChange = async (newStatus: DoctorPresenceStatus) => {
@@ -65,10 +78,29 @@ export function DoctorDashboard() {
   }));
 
   // Filter today's appointments
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayAppts = normalizedAppointments.filter(a => (a.date || '').startsWith(todayStr));
+  const getLocalDateStr = (d = new Date()) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayIso = new Date().toISOString().split('T')[0];
+  const todayLocal = getLocalDateStr();
+  const todayStr = todayLocal;
+
+  const isToday = (dateStr?: string) => {
+    if (!dateStr) return false;
+    const clean = dateStr.split('T')[0];
+    return clean === todayIso || clean === todayLocal;
+  };
+
+  const todayAppts = normalizedAppointments.filter(a => isToday(a.date));
   const upcomingAppts = normalizedAppointments
-    .filter(a => (a.date || '') > todayStr && a.status !== 'CANCELLED')
+    .filter(a => {
+      const clean = (a.date || '').split('T')[0];
+      return clean > todayIso && !isToday(a.date) && a.status !== 'CANCELLED';
+    })
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 
   const [scheduleTab, setScheduleTab] = useState<'today' | 'upcoming'>('today');
@@ -87,13 +119,13 @@ export function DoctorDashboard() {
 
   // Stats
   const todayOPsCount = todayAppts.length;
-  const pendingOPsCount = todayAppts.filter(a => a.status === 'WAITING' || a.status === 'PENDING' || a.status === 'IN_CONSULTATION').length;
-  const completedCount = todayAppts.filter(a => a.status === 'COMPLETED').length;
-  const videoCallsCount = todayAppts.filter(a => a.category === 'VIDEO').length;
+  const pendingOPsCount = normalizedAppointments.filter(a => (a.status === 'WAITING' || a.status === 'PENDING' || a.status === 'IN_CONSULTATION') && a.status !== 'CANCELLED').length;
+  const completedCount = normalizedAppointments.filter(a => a.status === 'COMPLETED').length;
+  const videoCallsCount = normalizedAppointments.filter(a => a.category === 'VIDEO' && a.status !== 'CANCELLED').length;
 
   const todaySchedule = todayAppts.slice(0, 10);
   const displayedSchedule = scheduleTab === 'today' ? todaySchedule : upcomingAppts.slice(0, 10);
-  const upcomingVideos = todayAppts.filter(a => a.category === 'VIDEO');
+  const upcomingVideos = normalizedAppointments.filter(a => a.category === 'VIDEO' && a.status !== 'CANCELLED');
 
   const formatScheduleDate = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -121,7 +153,7 @@ export function DoctorDashboard() {
   };
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-md mx-auto md:max-w-none md:p-4 pb-12 bg-[#F7F8FA] min-h-full px-4 pt-4">
+    <div className="flex flex-col gap-6 w-full max-w-md mx-auto md:max-w-7xl md:p-6 pb-12 bg-[#F7F8FA] min-h-full px-4 pt-4">
       
       {/* Compact Header Section with Presence Toggle */}
       <div className="flex items-center justify-between">
@@ -191,7 +223,7 @@ export function DoctorDashboard() {
           </div>
 
           <button
-            onClick={loadData}
+            onClick={() => loadData()}
             disabled={isLoading}
             className="p-2 rounded-xl bg-surface border border-border shadow-sm text-muted hover:text-[#1B5DF1] hover:border-[#1B5DF1]/30 transition-all active:scale-95 disabled:opacity-50"
             title="Refresh appointments"
@@ -310,36 +342,77 @@ export function DoctorDashboard() {
       </div>
 
       {/* Today's Overview (Grid) */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-surface rounded-[20px] p-4 flex flex-col gap-1 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-border">
-          <div className="flex items-baseline gap-2">
-            <span className="text-[24px] font-black text-[#0A1A3D]">{isLoading ? "..." : todayOPsCount}</span>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        {/* Today's OPs */}
+        <div 
+          onClick={() => navigate('/doctor/ops', { state: { date: todayStr, filter: 'all', status: 'ALL' } })}
+          className="bg-surface hover:bg-blue-50/50 rounded-[20px] p-4 flex flex-col gap-1 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-border hover:border-[#1B5DF1]/40 cursor-pointer transition-all active:scale-[0.98] group"
+          title="Click to view today's consultations"
+        >
+          <div className="flex items-baseline justify-between">
+            <span className="text-[24px] font-black text-[#0A1A3D] group-hover:text-[#1B5DF1] transition-colors">{isLoading ? "..." : todayOPsCount}</span>
             {upcomingAppts.length > 0 && (
               <span className="text-[10px] font-bold text-[#1B5DF1] bg-[#EBF5FF] px-2 py-0.5 rounded-full">
                 +{upcomingAppts.length} upcoming
               </span>
             )}
           </div>
-          <span className="text-[12px] font-bold text-muted">Today's OPs</span>
+          <div className="flex items-center justify-between mt-0.5">
+            <span className="text-[12px] font-bold text-muted group-hover:text-[#1B5DF1] transition-colors">Today's OPs</span>
+            <ChevronRight className="w-3.5 h-3.5 text-muted/40 group-hover:text-[#1B5DF1] group-hover:translate-x-0.5 transition-all" />
+          </div>
         </div>
-        <div className="bg-surface rounded-[20px] p-4 flex flex-col gap-1 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-border">
-          <span className="text-[24px] font-black text-[#1B5DF1]">{isLoading ? "..." : pendingOPsCount}</span>
-          <span className="text-[12px] font-bold text-[#1B5DF1]">Pending OPs</span>
+
+        {/* Pending OPs */}
+        <div 
+          onClick={() => navigate('/doctor/ops', { state: { status: 'PENDING', date: 'all' } })}
+          className="bg-surface hover:bg-blue-50/50 rounded-[20px] p-4 flex flex-col gap-1 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-border hover:border-[#1B5DF1]/40 cursor-pointer transition-all active:scale-[0.98] group"
+          title="Click to view all pending/waiting consultations"
+        >
+          <div className="flex items-baseline justify-between">
+            <span className="text-[24px] font-black text-[#1B5DF1]">{isLoading ? "..." : pendingOPsCount}</span>
+          </div>
+          <div className="flex items-center justify-between mt-0.5">
+            <span className="text-[12px] font-bold text-[#1B5DF1]">Pending OPs</span>
+            <ChevronRight className="w-3.5 h-3.5 text-[#1B5DF1]/40 group-hover:text-[#1B5DF1] group-hover:translate-x-0.5 transition-all" />
+          </div>
         </div>
-        <div className="bg-surface rounded-[20px] p-4 flex flex-col gap-1 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-border">
-          <span className="text-[24px] font-black text-emerald-500">{isLoading ? "..." : completedCount}</span>
-          <span className="text-[12px] font-bold text-muted">Completed</span>
+
+        {/* Completed */}
+        <div 
+          onClick={() => navigate('/doctor/ops', { state: { status: 'COMPLETED', date: 'all' } })}
+          className="bg-surface hover:bg-emerald-50/50 rounded-[20px] p-4 flex flex-col gap-1 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-border hover:border-emerald-500/40 cursor-pointer transition-all active:scale-[0.98] group"
+          title="Click to view completed consultations"
+        >
+          <div className="flex items-baseline justify-between">
+            <span className="text-[24px] font-black text-emerald-500">{isLoading ? "..." : completedCount}</span>
+          </div>
+          <div className="flex items-center justify-between mt-0.5">
+            <span className="text-[12px] font-bold text-muted group-hover:text-emerald-600 transition-colors">Completed</span>
+            <ChevronRight className="w-3.5 h-3.5 text-muted/40 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
+          </div>
         </div>
-        <div className="bg-surface rounded-[20px] p-4 flex flex-col gap-1 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-border">
-          <span className="text-[24px] font-black text-indigo-500">{isLoading ? "..." : videoCallsCount}</span>
-          <span className="text-[12px] font-bold text-muted">Video Calls</span>
+
+        {/* Video Calls */}
+        <div 
+          onClick={() => navigate('/doctor/video-consultations')}
+          className="bg-surface hover:bg-indigo-50/50 rounded-[20px] p-4 flex flex-col gap-1 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-border hover:border-indigo-500/40 cursor-pointer transition-all active:scale-[0.98] group"
+          title="Click to view video consultations"
+        >
+          <div className="flex items-baseline justify-between">
+            <span className="text-[24px] font-black text-indigo-500">{isLoading ? "..." : videoCallsCount}</span>
+          </div>
+          <div className="flex items-center justify-between mt-0.5">
+            <span className="text-[12px] font-bold text-muted group-hover:text-indigo-600 transition-colors">Video Calls</span>
+            <ChevronRight className="w-3.5 h-3.5 text-muted/40 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all" />
+          </div>
         </div>
       </div>
 
       {/* Book Marketing Tile */}
       <div 
         onClick={() => navigate('/book-marketing')}
-        className="mt-3 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[20px] p-6 md:p-8 flex items-center justify-between cursor-pointer shadow-[0_4px_12px_rgba(99,102,241,0.2)] hover:shadow-[0_4px_16px_rgba(99,102,241,0.3)] transition-all active:scale-[0.98] min-h-[110px]"
+        className="mt-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[20px] p-6 md:p-8 flex items-center justify-between cursor-pointer shadow-[0_4px_12px_rgba(99,102,241,0.2)] hover:shadow-[0_4px_16px_rgba(99,102,241,0.3)] transition-all active:scale-[0.98] min-h-[110px]"
       >
         <div className="flex items-center gap-5">
           <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-surface/20 flex items-center justify-center shrink-0 backdrop-blur-sm">
@@ -355,144 +428,147 @@ export function DoctorDashboard() {
         </div>
       </div>
 
-      {/* Schedule Feed with Today vs Upcoming Toggle */}
-      <div className="flex flex-col gap-4 mt-2">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setScheduleTab('today')}
-              className={`text-[14px] font-bold px-3 py-1.5 rounded-xl transition-all ${
-                scheduleTab === 'today'
-                  ? 'bg-[#0A1A3D] text-white shadow-sm'
-                  : 'text-[#667085] hover:text-[#0A1A3D] bg-surface border border-border'
-              }`}
+      {/* Responsive Grid for Schedule and Video Consultations */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
+        {/* Schedule Feed with Today vs Upcoming Toggle */}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setScheduleTab('today')}
+                className={`text-[14px] font-bold px-3 py-1.5 rounded-xl transition-all ${
+                  scheduleTab === 'today'
+                    ? 'bg-[#0A1A3D] text-white shadow-sm'
+                    : 'text-[#667085] hover:text-[#0A1A3D] bg-surface border border-border'
+                }`}
+              >
+                Today ({todaySchedule.length})
+              </button>
+              <button
+                onClick={() => setScheduleTab('upcoming')}
+                className={`text-[14px] font-bold px-3 py-1.5 rounded-xl transition-all ${
+                  scheduleTab === 'upcoming'
+                    ? 'bg-[#1B5DF1] text-white shadow-sm'
+                    : 'text-[#667085] hover:text-[#0A1A3D] bg-surface border border-border'
+                }`}
+              >
+                Upcoming ({upcomingAppts.length})
+              </button>
+            </div>
+            <button 
+              onClick={() => navigate('/doctor/ops')}
+              className="text-[#1B5DF1] text-[13px] font-bold hover:underline"
             >
-              Today ({todaySchedule.length})
-            </button>
-            <button
-              onClick={() => setScheduleTab('upcoming')}
-              className={`text-[14px] font-bold px-3 py-1.5 rounded-xl transition-all ${
-                scheduleTab === 'upcoming'
-                  ? 'bg-[#1B5DF1] text-white shadow-sm'
-                  : 'text-[#667085] hover:text-[#0A1A3D] bg-surface border border-border'
-              }`}
-            >
-              Upcoming ({upcomingAppts.length})
+              View All
             </button>
           </div>
-          <button 
-            onClick={() => navigate('/doctor/ops')}
-            className="text-[#1B5DF1] text-[13px] font-bold hover:underline"
-          >
-            View All
-          </button>
-        </div>
-        
-        <div className="flex flex-col bg-surface rounded-[24px] border border-border shadow-[0_2px_12px_rgba(0,0,0,0.02)] overflow-hidden">
-          {displayedSchedule.length === 0 ? (
-            <EmptyState 
-              icon={Calendar} 
-              title={scheduleTab === 'today' ? "No Consultations Today" : "No Upcoming Consultations"} 
-              description={
-                scheduleTab === 'today' 
-                  ? upcomingAppts.length > 0 
-                    ? `No consultations today. You have ${upcomingAppts.length} upcoming consultation(s).` 
-                    : "Today's schedule will appear here once booked."
-                  : "No upcoming consultations scheduled."
-              } 
-            />
-          ) : displayedSchedule.map((patient, index) => (
-            <div 
-              key={patient.id} 
-              onClick={() => navigate(patient.category === 'VIDEO' ? '/doctor/video-consultations' : '/doctor/ops')}
-              className={cn(
-                "p-4 flex items-start gap-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors",
-                index !== displayedSchedule.length - 1 ? "border-b border-border" : ""
-              )}
-            >
-              <div className="flex flex-col items-center min-w-[65px] pt-0.5">
-                <span className="text-[14px] font-black text-[#0A1A3D]">{patient.time}</span>
-                <span className="text-[10px] font-bold text-[#667085]">{patient.period}</span>
-                {patient.date && (
-                  <span className="text-[9px] font-bold text-[#1B5DF1] bg-[#EBF5FF] px-1.5 py-0.5 rounded mt-1 text-center whitespace-nowrap">
-                    {formatScheduleDate(patient.date)}
+          
+          <div className="flex flex-col bg-surface rounded-[24px] border border-border shadow-[0_2px_12px_rgba(0,0,0,0.02)] overflow-hidden">
+            {displayedSchedule.length === 0 ? (
+              <EmptyState 
+                icon={Calendar} 
+                title={scheduleTab === 'today' ? "No Consultations Today" : "No Upcoming Consultations"} 
+                description={
+                  scheduleTab === 'today' 
+                    ? upcomingAppts.length > 0 
+                      ? `No consultations today. You have ${upcomingAppts.length} upcoming consultation(s).` 
+                      : "Today's schedule will appear here once booked."
+                    : "No upcoming consultations scheduled."
+                } 
+              />
+            ) : displayedSchedule.map((patient, index) => (
+              <div 
+                key={patient.id} 
+                onClick={() => navigate(patient.category === 'VIDEO' ? '/doctor/video-consultations' : '/doctor/ops')}
+                className={cn(
+                  "p-4 flex items-start gap-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors",
+                  index !== displayedSchedule.length - 1 ? "border-b border-border" : ""
+                )}
+              >
+                <div className="flex flex-col items-center min-w-[65px] pt-0.5">
+                  <span className="text-[14px] font-black text-[#0A1A3D]">{patient.time}</span>
+                  <span className="text-[10px] font-bold text-[#667085]">{patient.period}</span>
+                  {patient.date && (
+                    <span className="text-[9px] font-bold text-[#1B5DF1] bg-[#EBF5FF] px-1.5 py-0.5 rounded mt-1 text-center whitespace-nowrap">
+                      {formatScheduleDate(patient.date)}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="flex flex-col flex-1">
+                  <span className="font-bold text-[#0A1A3D] text-[15px]">{patient.name}</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[12px] font-semibold text-muted flex items-center gap-1">
+                      {patient.category === 'VIDEO' ? <Video className="w-3.5 h-3.5 text-indigo-500" /> : <Stethoscope className="w-3.5 h-3.5 text-[#1B5DF1]" />}
+                      {patient.category}
+                    </span>
+                    <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                    <span className="text-[12px] font-medium text-muted">{patient.type}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center">
+                  <span className={cn("text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md", getStatusStyle(patient.status, patient.category))}>
+                    {patient.status}
                   </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Upcoming Video Consultation Preview */}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-[17px] font-bold text-[#0A1A3D] tracking-tight">
+              Video Consultations
+            </h3>
+            <button 
+              onClick={() => navigate('/doctor/video-consultations')}
+              className="text-indigo-600 text-[13px] font-bold"
+            >
+              View All
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {upcomingVideos.length === 0 ? (
+              <EmptyState icon={Video} title="No Video Consultations" description="Upcoming video consultations will appear here once available." />
+            ) : upcomingVideos.map((video) => (
+              <div key={video.id} className="bg-indigo-50/50 border border-indigo-100 p-4 rounded-[20px] flex items-center justify-between shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg shrink-0">
+                    {video.name.charAt(0)}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[14px] font-black text-[#0A1A3D] flex items-center gap-1.5">
+                      {video.time} <span className="text-muted/70 font-medium">·</span> {video.name}
+                    </span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[12px] font-medium text-muted">ID {video.mqId}</span>
+                      <span className="text-gray-300">·</span>
+                      <span className="text-[12px] font-medium text-muted">{video.type}</span>
+                    </div>
+                    <span className={cn(
+                      "text-[12px] font-bold mt-1.5",
+                      video.status.includes('Starts') ? "text-indigo-600" : "text-muted"
+                    )}>
+                      {video.status}
+                    </span>
+                  </div>
+                </div>
+
+                {video.status.includes('Starts') && (
+                  <button 
+                    onClick={() => navigate('/doctor/video-consultations')}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[13px] font-bold shadow-md hover:bg-indigo-700 active:scale-95 transition-all"
+                  >
+                    Join
+                  </button>
                 )}
               </div>
-              
-              <div className="flex flex-col flex-1">
-                <span className="font-bold text-[#0A1A3D] text-[15px]">{patient.name}</span>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[12px] font-semibold text-muted flex items-center gap-1">
-                    {patient.category === 'VIDEO' ? <Video className="w-3.5 h-3.5 text-indigo-500" /> : <Stethoscope className="w-3.5 h-3.5 text-[#1B5DF1]" />}
-                    {patient.category}
-                  </span>
-                  <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                  <span className="text-[12px] font-medium text-muted">{patient.type}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center">
-                <span className={cn("text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md", getStatusStyle(patient.status, patient.category))}>
-                  {patient.status}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Upcoming Video Consultation Preview */}
-      <div className="flex flex-col gap-4 mt-2">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-[17px] font-bold text-[#0A1A3D] tracking-tight">
-            Video Consultations
-          </h3>
-          <button 
-            onClick={() => navigate('/doctor/video-consultations')}
-            className="text-indigo-600 text-[13px] font-bold"
-          >
-            View All
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          {upcomingVideos.length === 0 ? (
-            <EmptyState icon={Video} title="No Video Consultations" description="Upcoming video consultations will appear here once available." />
-          ) : upcomingVideos.map((video) => (
-            <div key={video.id} className="bg-indigo-50/50 border border-indigo-100 p-4 rounded-[20px] flex items-center justify-between shadow-sm">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg shrink-0">
-                  {video.name.charAt(0)}
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[14px] font-black text-[#0A1A3D] flex items-center gap-1.5">
-                    {video.time} <span className="text-muted/70 font-medium">·</span> {video.name}
-                  </span>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[12px] font-medium text-muted">ID {video.mqId}</span>
-                    <span className="text-gray-300">·</span>
-                    <span className="text-[12px] font-medium text-muted">{video.type}</span>
-                  </div>
-                  <span className={cn(
-                    "text-[12px] font-bold mt-1.5",
-                    video.status.includes('Starts') ? "text-indigo-600" : "text-muted"
-                  )}>
-                    {video.status}
-                  </span>
-                </div>
-              </div>
-
-              {video.status.includes('Starts') && (
-                <button 
-                  onClick={() => navigate('/doctor/video-consultations')}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[13px] font-bold shadow-md hover:bg-indigo-700 active:scale-95 transition-all"
-                >
-                  Join
-                </button>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 

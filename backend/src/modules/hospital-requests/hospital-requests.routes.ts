@@ -16,7 +16,7 @@ const router = Router();
 
 // Protect all routes with authentication and role restrictions
 router.use(authenticate);
-router.use(requireRole(['HOSPITAL_ADMIN', 'SUPER_ADMIN']));
+router.use(requireRole(['HOSPITAL_ADMIN', 'DOCTOR', 'SUPER_ADMIN']));
 
 // POST /api/v1/hospital/marketing-requests
 router.post(

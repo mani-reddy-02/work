@@ -53,10 +53,10 @@ export function Availability() {
   };
 
   return (
-    <div className="flex flex-col bg-[#F7F8FA] min-h-full pb-20">
+    <div className="flex flex-col bg-[#F7F8FA] min-h-full pb-20 max-w-7xl mx-auto w-full">
       
       {/* Header Section */}
-      <div className="sticky top-0 z-30 bg-surface/95 backdrop-blur-xl pt-6 pb-4 px-4 flex flex-col gap-4 border-b border-border shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
+      <div className="sticky top-0 z-30 bg-surface/95 backdrop-blur-xl pt-4 md:pt-5 pb-4 px-4 md:px-6 flex flex-col gap-4 border-b border-border shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
         <div className="flex items-center justify-between">
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-[#0A1A3D] hover:bg-gray-100 rounded-xl transition-colors">
             <ArrowLeft className="w-5 h-5" />
@@ -67,7 +67,7 @@ export function Availability() {
         <p className="text-[13px] font-medium text-muted">Set your working hours for physical and remote consultations.</p>
       </div>
 
-      <div className="flex flex-col gap-4 p-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 md:p-6">
         {schedule.map((slot, index) => (
           <div key={slot.day} className={`bg-surface rounded-[24px] border ${slot.active ? 'border-[#1B5DF1]/20 shadow-[0_4px_20px_rgba(27,93,241,0.05)]' : 'border-border shadow-sm'} p-5 transition-all`}>
             

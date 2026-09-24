@@ -23,13 +23,19 @@ export const createMarketingRequest = async (req: Request, res: Response, next: 
     }
 
     const input: CreateMarketingRequestInput = req.body;
+    const isDoctor = req.user?.role === 'DOCTOR';
+    const doctorId = isDoctor ? req.user?.id : null;
+    const doctorName = isDoctor ? req.user?.name : null;
 
     // Resolve campaignType: prefer explicit string or join array of services
     const campaignType = input.campaignType || 
       (input.services && input.services.length > 0 ? input.services.join(', ') : 'Hospital Marketing Enquiry');
 
-    // Combine notes with preferredTime if present
+    // Combine notes with doctor details and preferredTime if present
     const noteParts: string[] = [];
+    if (isDoctor && doctorName) {
+      noteParts.push(`Requested by Doctor: Dr. ${doctorName}${req.user?.phone ? ` (Phone: ${req.user.phone})` : ''}`);
+    }
     if (input.preferredTime) {
       noteParts.push(`Preferred Contact Time: ${input.preferredTime}`);
     }
@@ -41,6 +47,8 @@ export const createMarketingRequest = async (req: Request, res: Response, next: 
     const request = await prisma.marketingRequest.create({
       data: {
         hospitalId,
+        doctorId,
+        doctorName,
         campaignType,
         budget: input.budget !== undefined && input.budget !== null ? Number(input.budget) : null,
         targetAudience: input.targetAudience || null,
@@ -60,16 +68,26 @@ export const createMarketingRequest = async (req: Request, res: Response, next: 
       select: { id: true },
     });
 
+    const adminNotifTitle = isDoctor
+      ? `New Marketing Request from Dr. ${doctorName}`
+      : `New Marketing Request: ${hospital?.name || 'Hospital'}`;
+
+    const adminNotifMessage = isDoctor
+      ? `Dr. ${doctorName} from ${hospital?.name || 'Hospital'} requested marketing services: "${campaignType}". Preferred time: ${input.preferredTime || 'Anytime'}.`
+      : `${hospital?.name || 'Hospital'} requested marketing services: "${campaignType}". Preferred time: ${input.preferredTime || 'Anytime'}.`;
+
     for (const admin of superAdmins) {
       await sendNotification({
         userId: admin.id,
-        title: `New Marketing Request: ${hospital?.name || 'Hospital'}`,
-        message: `${hospital?.name || 'Hospital'} requested marketing services: "${campaignType}". Preferred time: ${input.preferredTime || 'Anytime'}.`,
+        title: adminNotifTitle,
+        message: adminNotifMessage,
         type: 'marketing_request',
         metadata: {
           requestId: request.id,
           hospitalId,
           hospitalName: hospital?.name,
+          doctorId,
+          doctorName,
           campaignType,
           preferredTime: input.preferredTime,
           services: input.services,
@@ -78,14 +96,14 @@ export const createMarketingRequest = async (req: Request, res: Response, next: 
       });
     }
 
-    // Confirmation notification to the Hospital Admin
+    // Confirmation notification to the requesting user (Doctor or Hospital Admin)
     await sendNotification({
       hospitalId,
       userId: req.user?.id,
       title: 'Marketing Request Submitted',
       message: `Your marketing enquiry for "${campaignType}" has been received by MediQuee Admin.`,
       type: 'success',
-      metadata: { requestId: request.id, campaignType },
+      metadata: { requestId: request.id, campaignType, doctorId, doctorName },
     });
 
     return res.status(201).json({
@@ -426,6 +444,18 @@ export const updateRequestStatus = async (req: Request, res: Response, next: Nex
       type: status === 'APPROVED' ? 'success' : 'activity',
       metadata: { requestId: id, status, type },
     });
+
+    // Notify doctor directly if this request was submitted by a doctor
+    if (updated.doctorId) {
+      await sendNotification({
+        hospitalId: updated.hospitalId,
+        userId: updated.doctorId,
+        title: `Marketing Request ${status}`,
+        message: `Your marketing enquiry for "${updated.campaignType}" has been updated to "${status}" by MediQuee Admin.`,
+        type: status === 'APPROVED' ? 'success' : 'activity',
+        metadata: { requestId: id, status, type },
+      });
+    }
 
     return res.json({
       success: true,

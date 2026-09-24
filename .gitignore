@@ -83,3 +83,7 @@ yarn-error.log*
 # Secrets
 .env
 .env.*
+
+# Uploads
+uploads/
+*/uploads/
