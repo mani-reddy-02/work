@@ -278,10 +278,36 @@ export const getDoctorAvailableSlots = async (req: Request, res: Response, next:
       }
     }
 
-    const availableSlots = isAvailable ? allSlots.filter(slot => !bookedSlots.has(slot)) : [];
-
+    const serverTimeStr = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+    const serverNow = new Date(serverTimeStr);
     const pad = (n: number) => n.toString().padStart(2, '0');
     const returnDate = dateQuery || `${targetDate.getFullYear()}-${pad(targetDate.getMonth() + 1)}-${pad(targetDate.getDate())}`;
+    const serverTodayStr = `${serverNow.getFullYear()}-${pad(serverNow.getMonth() + 1)}-${pad(serverNow.getDate())}`;
+
+    const expiredSlots = new Set<string>();
+    
+    if (returnDate === serverTodayStr) {
+      const currentMinutes = serverNow.getHours() * 60 + serverNow.getMinutes();
+      for (const slot of allSlots) {
+        const match = slot.match(/(\d+):(\d+)\s+(AM|PM)/i);
+        if (match) {
+          let h = parseInt(match[1], 10);
+          const m = parseInt(match[2], 10);
+          const ampm = match[3].toUpperCase();
+          if (ampm === 'PM' && h !== 12) h += 12;
+          if (ampm === 'AM' && h === 12) h = 0;
+          if (h * 60 + m <= currentMinutes) {
+            expiredSlots.add(slot);
+          }
+        }
+      }
+    } else if (returnDate < serverTodayStr) {
+      for (const slot of allSlots) {
+        expiredSlots.add(slot);
+      }
+    }
+
+    const availableSlots = isAvailable ? allSlots.filter(slot => !bookedSlots.has(slot) && !expiredSlots.has(slot)) : [];
 
     res.json({
       success: true,
@@ -293,7 +319,8 @@ export const getDoctorAvailableSlots = async (req: Request, res: Response, next:
         isAvailable,
         allSlots,
         availableSlots,
-        bookedSlots: Array.from(bookedSlots)
+        bookedSlots: Array.from(bookedSlots),
+        expiredSlots: Array.from(expiredSlots)
       }
     });
   } catch (error) {

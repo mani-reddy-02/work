@@ -377,10 +377,35 @@ export const getNursingAvailability = async (req: Request, res: Response, next: 
 
     const bookedSlotsSet = new Set(existingBookings.map((b) => b.timeSlot));
 
-    const slots = standardSlots.map((slot) => ({
-      slot,
-      available: !bookedSlotsSet.has(slot),
-    }));
+    const serverTimeStr = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+    const serverNow = new Date(serverTimeStr);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const serverTodayStr = `${serverNow.getFullYear()}-${pad(serverNow.getMonth() + 1)}-${pad(serverNow.getDate())}`;
+
+    const slots = standardSlots.map((slot) => {
+      let isExpired = false;
+      if (targetDateStr === serverTodayStr) {
+        const match = slot.match(/(\d+):(\d+)\s+(AM|PM)/i);
+        if (match) {
+          let h = parseInt(match[1], 10);
+          const m = parseInt(match[2], 10);
+          const ampm = match[3].toUpperCase();
+          if (ampm === 'PM' && h !== 12) h += 12;
+          if (ampm === 'AM' && h === 12) h = 0;
+          const slotMinutes = h * 60 + m;
+          const currentMinutes = serverNow.getHours() * 60 + serverNow.getMinutes();
+          if (slotMinutes <= currentMinutes) {
+            isExpired = true;
+          }
+        }
+      } else if (targetDateStr < serverTodayStr) {
+        isExpired = true;
+      }
+      return {
+        slot,
+        available: !bookedSlotsSet.has(slot) && !isExpired,
+      };
+    });
 
     // Return next 5 selectable dates
     const dates: { label: string; date: string }[] = [];
@@ -520,6 +545,31 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
     const trustedTotalAmount = offering.price;
     const bookingNumber = generateBookingNumber();
 
+    // 5.5 Validate IST Time to prevent booking past slots today
+    const serverTimeStr = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+    const serverNow = new Date(serverTimeStr);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const serverTodayStr = `${serverNow.getFullYear()}-${pad(serverNow.getMonth() + 1)}-${pad(serverNow.getDate())}`;
+
+    if (dateStr === serverTodayStr && timeSlot) {
+       const match = timeSlot.match(/(\d+):(\d+)\s+(AM|PM)/i);
+       if (match) {
+         let h = parseInt(match[1], 10);
+         const m = parseInt(match[2], 10);
+         const ampm = match[3].toUpperCase();
+         if (ampm === 'PM' && h !== 12) h += 12;
+         if (ampm === 'AM' && h === 12) h = 0;
+         const slotMinutes = h * 60 + m;
+         const currentMinutes = serverNow.getHours() * 60 + serverNow.getMinutes();
+         if (slotMinutes <= currentMinutes) {
+           return res.status(400).json({
+             success: false,
+             error: { code: 'INVALID_TIME_SLOT', message: 'This time slot has already passed in IST time. Please select an upcoming slot.' }
+           });
+         }
+       }
+    }
+
     // 6. Execute in transaction to prevent race conditions and duplicate bookings
     const newBooking = await prisma.$transaction(async (tx) => {
       // Check for slot conflict
@@ -571,6 +621,27 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
     }, {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
+
+    // Fire notification to patient
+    const displayDate = new Date(newBooking.serviceDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+    sendNotification({
+      hospitalId: null, // Patient notification
+      userId: userId,
+      title: 'Booking Confirmed',
+      message: `Your Home Nursing service (${service.name}) is confirmed for ${displayDate} at ${newBooking.timeSlot}.`,
+      type: 'BOOKING_CONFIRMED',
+      metadata: { bookingId: newBooking.id, type: 'HOME_NURSING' }
+    }).catch(console.error);
+
+    // Fire notification to hospital
+    sendNotification({
+      hospitalId: newBooking.hospitalId,
+      userId: newBooking.nurseId,
+      title: 'New Home Nursing Booking',
+      message: `Patient ${newBooking.patientName} booked ${service.name} for ${displayDate} at ${newBooking.timeSlot}.`,
+      type: 'activity',
+      metadata: { bookingId: newBooking.id, type: 'HOME_NURSING' }
+    }).catch(console.error);
 
     res.status(201).json({
       success: true,

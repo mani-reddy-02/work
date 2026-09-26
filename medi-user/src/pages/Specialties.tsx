@@ -345,6 +345,9 @@ const Specialties = () => {
   const [hospitalsList, setHospitalsList] = useState<any[]>([]);
   const [doctorsList, setDoctorsList] = useState<any[]>([]);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [allSlots, setAllSlots] = useState<string[]>([]);
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [expiredSlots, setExpiredSlots] = useState<string[]>([]);
   const [isHospitalsLoading, setIsHospitalsLoading] = useState(false);
   const [isDoctorsLoading, setIsDoctorsLoading] = useState(false);
   const [isSlotsLoading, setIsSlotsLoading] = useState(false);
@@ -515,6 +518,9 @@ const Specialties = () => {
       let active = true;
       setIsSlotsLoading(true);
       setAvailableSlots([]);
+      setAllSlots([]);
+      setBookedSlots([]);
+      setExpiredSlots([]);
       const queryDate = selectedDateIso || new Date().toISOString().split('T')[0];
       const slotType = isVideo ? 'VIDEO' : 'OP';
       opAppointmentApi.fetchDoctorAvailability(selectedDoctor.id, queryDate, slotType).then((res) => {
@@ -523,8 +529,14 @@ const Specialties = () => {
           if (res.success && res.data) {
             setIsDoctorAvailable(res.data.isAvailable !== false);
             setAvailableSlots(res.data.availableSlots || []);
+            setAllSlots(res.data.allSlots || []);
+            setBookedSlots(res.data.bookedSlots || []);
+            setExpiredSlots(res.data.expiredSlots || []);
           } else {
             setAvailableSlots([]);
+            setAllSlots([]);
+            setBookedSlots([]);
+            setExpiredSlots([]);
             setIsDoctorAvailable(false);
           }
         }
@@ -532,6 +544,9 @@ const Specialties = () => {
         if (active) {
           setIsSlotsLoading(false);
           setAvailableSlots([]);
+          setAllSlots([]);
+          setBookedSlots([]);
+          setExpiredSlots([]);
           setIsDoctorAvailable(false);
         }
       });
@@ -698,13 +713,13 @@ const Specialties = () => {
 
     if (query) {
       filteredGeneral = diseasesList.general.filter(d => 
-        d.name.toLowerCase().includes(query)
+        (d?.name || (d as any)?.title || '').toLowerCase().includes(query)
       );
       filteredAdvanced = diseasesList.advanced.filter(d => 
-        d.name.toLowerCase().includes(query)
+        (d?.name || (d as any)?.title || '').toLowerCase().includes(query)
       );
       filteredCategorical = diseasesList.categorical.filter(d => 
-        d.name.toLowerCase().includes(query) || (d.desc && d.desc.toLowerCase().includes(query))
+        (d?.name || (d as any)?.title || '').toLowerCase().includes(query) || (d?.desc && typeof d.desc === 'string' && d.desc.toLowerCase().includes(query))
       );
     }
 
@@ -908,7 +923,7 @@ const Specialties = () => {
     const categoryDiseases = getDiseasesForCategory(selectedCategory.id, selectedCategory.name, diseasesList.raw);
     const query = categoricalDiseaseSearch.toLowerCase().trim();
     const filtered = query
-      ? categoryDiseases.filter(d => d.name.toLowerCase().includes(query) || (d.desc && d.desc.toLowerCase().includes(query)))
+      ? categoryDiseases.filter(d => (d?.name || (d as any)?.title || '').toLowerCase().includes(query) || (d?.desc && typeof d.desc === 'string' && d.desc.toLowerCase().includes(query)))
       : categoryDiseases;
 
     return (
@@ -1040,12 +1055,16 @@ const Specialties = () => {
     let filteredHospitals = hospitalsList;
     
     if (query) {
-      filteredHospitals = hospitalsList.filter(h => 
-        h.name.toLowerCase().includes(query) || 
-        (h.departments && h.departments.some((d: string) => d.toLowerCase().includes(query))) ||
-        (h.description && h.description.toLowerCase().includes(query)) ||
-        (h.city && h.city.toLowerCase().includes(query))
-      );
+      filteredHospitals = hospitalsList.filter(h => {
+        const name = (h?.name || h?.hospitalName || h?.title || '').toLowerCase();
+        const desc = (typeof h?.description === 'string' ? h.description : '').toLowerCase();
+        const city = (typeof h?.city === 'string' ? h.city : '').toLowerCase();
+        const loc = (typeof h?.location === 'string' ? h.location : '').toLowerCase();
+        const depts = Array.isArray(h?.departments) 
+          ? h.departments.some((d: any) => (typeof d === 'string' ? d : d?.name || '').toLowerCase().includes(query))
+          : false;
+        return name.includes(query) || desc.includes(query) || city.includes(query) || loc.includes(query) || depts;
+      });
     }
     
     let title = selectedDisease 
@@ -1102,7 +1121,7 @@ const Specialties = () => {
             >
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-bold text-slate-900 text-[15px] flex items-center gap-1.5">
-                  {hosp.name}
+                  {hosp.name || hosp.hospitalName || hosp.title || 'Hospital'}
                   {hosp.verified && <ShieldCheck className="w-4 h-4 text-emerald-500" />}
                 </h3>
               </div>
@@ -1393,13 +1412,13 @@ const Specialties = () => {
           {isSlotsLoading && <span className="text-[10px] text-blue-600 font-medium animate-pulse">Checking live availability...</span>}
         </div>
 
-        {isSlotsLoading && availableSlots.length === 0 ? (
+        {isSlotsLoading && allSlots.length === 0 ? (
           <div className="grid grid-cols-3 gap-3 mb-8">
             {[1, 2, 3, 4, 5, 6].map(i => (
               <div key={i} className="h-11 rounded-xl bg-slate-100 animate-pulse border border-slate-200/50" />
             ))}
           </div>
-        ) : !isDoctorAvailable || availableSlots.length === 0 ? (
+        ) : !isDoctorAvailable || allSlots.length === 0 ? (
           <div className="py-8 px-4 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 mb-8">
             <Calendar className="w-8 h-8 text-slate-400 mx-auto mb-2" />
             <p className="text-sm font-bold text-slate-700">No Slots Available</p>
@@ -1409,15 +1428,33 @@ const Specialties = () => {
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-3 mb-8">
-            {availableSlots.map(time => (
-              <div 
-                key={time}
-                onClick={() => setSelectedTime(time)}
-                className={`py-3 rounded-xl border text-center text-[12px] font-bold cursor-pointer transition-all ${selectedTime === time ? 'border-blue-600 bg-blue-600 text-white shadow-md' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'}`}
-              >
-                {time}
-              </div>
-            ))}
+            {allSlots.map(time => {
+              const isExpired = expiredSlots.includes(time);
+              const isBooked = bookedSlots.includes(time);
+              const isAvailable = !isExpired && !isBooked;
+              const isSelected = selectedTime === time;
+
+              return (
+                <div 
+                  key={time}
+                  onClick={() => isAvailable && setSelectedTime(time)}
+                  className={`py-2 px-1 rounded-xl border text-center transition-all flex flex-col items-center justify-center ${
+                    isExpired ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed opacity-70' :
+                    isBooked ? 'border-red-200 bg-red-50 text-red-500 cursor-not-allowed' :
+                    isSelected ? 'border-blue-600 bg-blue-600 text-white shadow-md cursor-pointer' :
+                    'border-slate-200 bg-white text-slate-700 hover:border-blue-300 cursor-pointer'
+                  }`}
+                >
+                  <span className="text-[12px] font-bold">{time}</span>
+                  {isBooked && (
+                    <span className="text-[9px] font-bold tracking-wider mt-0.5">BOOKED</span>
+                  )}
+                  {isExpired && !isBooked && (
+                    <span className="text-[9px] font-bold tracking-wider mt-0.5">EXPIRED</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -1564,7 +1601,7 @@ const Specialties = () => {
           <Calendar className="w-4 h-4" /> Go to My Bookings
         </button>
         <button 
-          onClick={() => navigate('/?bookingSuccess=true')}
+          onClick={() => navigate('/', { state: { bookingSuccess: true, newBooking: { serviceType: isVideo ? 'Video Consultation' : 'OP Consultation', provider: 'Dr. ' + selectedDoctor.name, date: selectedDate, time: selectedTime, bookingId: bookingId } }, replace: true })}
           className="w-full py-3.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-[13px] hover:bg-slate-50 transition-colors"
         >
           Back to Home

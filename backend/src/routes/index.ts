@@ -26,6 +26,7 @@ import clinicalRoutes from '../modules/clinical/clinical.routes';
 import notificationsRoutes from '../modules/notifications/notifications.routes';
 import userBookingsRoutes from '../modules/bookings/user-bookings.routes';
 import { prisma } from '../config/prisma';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
@@ -65,10 +66,14 @@ router.use('/appointments', appointmentsRoutes);
 router.use('/user/bookings/op', appointmentsRoutes);
 router.use('/user/bookings', userBookingsRoutes);
 router.use('/laboratories', laboratoriesRoutes);
-router.use('/lab-tests', labTestsRoutes);
+router.use('/hospital/lab-tests', authenticate, labTestsRoutes);
+router.use('/lab-tests', require('./../modules/laboratories/public-user-labs.routes').default);
 router.use('/lab-bookings', labBookingsRoutes);
 router.use('/home-nursing', homeNursingRoutes);
-router.use('/home-sample-collection', homeSampleRoutes);
+router.use('/home-sample-collection', homeSampleRoutes); // Requests endpoints (matches /requests, etc)
+router.use('/home-sample-collection/tests', require('./../modules/laboratories/public-user-labs.routes').default); 
+router.use('/home-sample-collection/categories', require('./../modules/laboratories/public-user-labs.routes').default); 
+router.use('/home-sample-collection', require('./../modules/laboratories/public-user-labs.routes').default); // Fallback for /laboratories/:id/availability
 router.use('/reports', reportsRoutes);
 router.use('/clinical', clinicalRoutes);
 router.use('/notifications', notificationsRoutes);

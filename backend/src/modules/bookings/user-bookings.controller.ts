@@ -69,6 +69,7 @@ export const getNearestUpcomingBooking = async (req: Request, res: Response, nex
     for (const b of opBookings) {
       upcomingBookings.push({
         bookingId: b.id,
+        createdAt: b.createdAt,
         serviceType: b.opType?.toLowerCase().includes('video') ? 'VIDEO' : 'OP',
         status: b.status,
         date: b.appointmentDate,
@@ -82,6 +83,7 @@ export const getNearestUpcomingBooking = async (req: Request, res: Response, nex
     for (const b of upcomingLabBookings) {
       upcomingBookings.push({
         bookingId: b.id,
+        createdAt: b.createdAt,
         serviceType: b.bookingType === 'HOME_COLLECTION' ? 'HOME_SAMPLE' : 'LAB',
         status: b.status,
         date: b.collectionDate || b.createdAt,
@@ -95,6 +97,7 @@ export const getNearestUpcomingBooking = async (req: Request, res: Response, nex
     for (const b of nursingBookings) {
       upcomingBookings.push({
         bookingId: b.id,
+        createdAt: b.createdAt,
         serviceType: 'HOME_NURSING',
         status: b.status,
         date: b.serviceDate,
@@ -105,18 +108,44 @@ export const getNearestUpcomingBooking = async (req: Request, res: Response, nex
       });
     }
 
-    // Filter out past times for today's bookings (simplistic check)
-    // and sort by nearest date/time
-    upcomingBookings.sort((a, b) => {
+    const serverTimeStr = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+    const serverNow = new Date(serverTimeStr);
+    const currentMinutes = serverNow.getHours() * 60 + serverNow.getMinutes();
+    
+    // Filter out past times for today's bookings
+    const validUpcomingBookings = upcomingBookings.filter(b => {
+      const bDate = new Date(b.date);
+      if (
+        bDate.getFullYear() === serverNow.getFullYear() &&
+        bDate.getMonth() === serverNow.getMonth() &&
+        bDate.getDate() === serverNow.getDate()
+      ) {
+        if (b.time && b.time !== 'N/A') {
+          const match = b.time.match(/(\d+):(\d+)\s+(AM|PM)/i);
+          if (match) {
+            let h = parseInt(match[1], 10);
+            const m = parseInt(match[2], 10);
+            const ampm = match[3].toUpperCase();
+            if (ampm === 'PM' && h !== 12) h += 12;
+            if (ampm === 'AM' && h === 12) h = 0;
+            if (h * 60 + m < currentMinutes) {
+              return false; // Past time today
+            }
+          }
+        }
+      }
+      return true;
+    });
+
+    validUpcomingBookings.sort((a, b) => {
       const dateA = new Date(a.date).getTime();
       const dateB = new Date(b.date).getTime();
       if (dateA !== dateB) return dateA - dateB;
       
-      // If same date, simple string comparison for time (assuming formatted similarly, this is a rough approximation)
       return (a.time || '').localeCompare(b.time || '');
     });
 
-    const nearestBooking = upcomingBookings.length > 0 ? upcomingBookings[0] : null;
+    const nearestBooking = validUpcomingBookings.length > 0 ? validUpcomingBookings[0] : null;
 
     res.status(200).json({
       success: true,

@@ -270,8 +270,8 @@ const HomeSampleList = () => {
       ? tests
       : tests.filter(
           (t) =>
-            t.category === selectedTab ||
-            ((t as any).categories && (t as any).categories.includes(selectedTab))
+            (t?.category || '').toLowerCase() === selectedTab.toLowerCase() ||
+            ((t as any)?.categories && (t as any)?.categories.includes(selectedTab))
         );
 
   const filteredByConcern =
@@ -279,27 +279,29 @@ const HomeSampleList = () => {
       ? filteredByCategory
       : filteredByCategory.filter(
           (t) =>
-            t.concern === selectedConcern ||
-            t.category?.toLowerCase() === selectedConcern.toLowerCase() ||
-            t.healthConcern?.toLowerCase() === selectedConcern.toLowerCase()
+            (t?.concern || '').toLowerCase() === selectedConcern.toLowerCase() ||
+            (t?.category || '').toLowerCase() === selectedConcern.toLowerCase() ||
+            (t?.healthConcern || '').toLowerCase() === selectedConcern.toLowerCase()
         );
 
   const filteredTests = q
     ? filteredByConcern.filter(
         (t) =>
-          t.name.toLowerCase().includes(q) ||
-          t.category?.toLowerCase().includes(q) ||
-          t.concern?.toLowerCase().includes(q) ||
-          t.description?.toLowerCase().includes(q)
+          (t?.name || (t as any)?.testName || (t as any)?.title || '').toLowerCase().includes(q) ||
+          (t?.category || '').toLowerCase().includes(q) ||
+          (t?.concern || (t as any)?.healthConcern || '').toLowerCase().includes(q) ||
+          (t?.description || (t as any)?.desc || '').toLowerCase().includes(q)
       )
     : filteredByConcern;
 
-  const allPackages = tests.filter((t) => t.category?.toLowerCase().includes('package'));
-  const allNonPackages = filteredTests.filter((t) => !t.category?.toLowerCase().includes('package'));
+  const allPackages = tests.filter((t) => (t?.category || '').toLowerCase().includes('package'));
+  const allNonPackages = filteredTests.filter((t) => !(t?.category || '').toLowerCase().includes('package'));
 
   const filteredPackages = q
     ? allPackages.filter(
-        (p) => p.name.toLowerCase().includes(q) || p.desc?.toLowerCase().includes(q)
+        (p) =>
+          (p?.name || (p as any)?.testName || (p as any)?.title || '').toLowerCase().includes(q) ||
+          (p?.desc || (p as any)?.description || '').toLowerCase().includes(q)
       )
     : allPackages;
 
@@ -584,7 +586,8 @@ const HomeSampleList = () => {
 
                       <div className="grid grid-cols-4 gap-y-5 gap-x-2 px-4 relative">
                         {displayedTests.map((item) => {
-                          const iconSrc = getTestIcon(item.name);
+                          const displayName = item?.name || (item as any)?.testName || (item as any)?.title || 'Test';
+                          const iconSrc = getTestIcon(displayName);
                           return (
                             <div
                               key={item.id}
@@ -599,7 +602,7 @@ const HomeSampleList = () => {
                                 {iconSrc ? (
                                   <img
                                     src={iconSrc}
-                                    alt={item.name}
+                                    alt={displayName.replace(/\n/g, ' ')}
                                     className="w-10 h-10 md:w-12 md:h-12 object-contain"
                                   />
                                 ) : item.icon ? (
@@ -617,7 +620,7 @@ const HomeSampleList = () => {
                                 )}
                               </div>
                               <span className="text-[10px] md:text-[11px] font-bold text-slate-800 text-center leading-tight">
-                                {item.name.replace('\n', ' ')}
+                                {displayName.replace(/\n/g, ' ')}
                               </span>
                             </div>
                           );
@@ -1164,8 +1167,8 @@ const HomeSampleList = () => {
           {/* VIEW: PATIENT */}
           {viewState === 'PATIENT' && (
             <section className="animate-in fade-in zoom-in-95 duration-300">
-              <h2 className="text-[18px] font-black text-slate-900 mb-1">Patient & Collection Address</h2>
-              <p className="text-[12px] text-slate-500 font-medium mb-4">
+              <h2 className="text-[18px] font-black text-slate-900 mb-1">Patient Details</h2>
+              <p className="text-[12px] text-slate-500 font-medium mb-6">
                 Sample will be collected at this location by a certified phlebotomist.
               </p>
 
@@ -1174,99 +1177,114 @@ const HomeSampleList = () => {
                   e.preventDefault();
                   handleProceedToDateTime();
                 }}
-                className="space-y-4"
+                className="space-y-6"
               >
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                    Patient Name *
-                  </label>
-                  <input
-                    name="name"
-                    value={patientDetails.name}
-                    onChange={handlePatientChange}
-                    required
-                    type="text"
-                    className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    placeholder="Enter full name"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-2">
+                    <User className="w-4 h-4 text-blue-600" />
+                    <h3 className="text-[13px] font-bold text-slate-800">Personal Information</h3>
+                  </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Age</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                      Patient Name *
+                    </label>
                     <input
-                      name="age"
-                      value={patientDetails.age}
+                      name="name"
+                      value={patientDetails.name}
                       onChange={handlePatientChange}
-                      type="number"
-                      className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                      placeholder="e.g. 30"
+                      required
+                      type="text"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="Enter full name"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Age *</label>
+                      <input
+                        name="age"
+                        value={patientDetails.age}
+                        onChange={handlePatientChange}
+                        type="number"
+                        required
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        placeholder="e.g. 30"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Gender *</label>
+                      <select
+                        name="gender"
+                        value={patientDetails.gender}
+                        onChange={handlePatientChange as any}
+                        required
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      >
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-2">
+                    <MapPin className="w-4 h-4 text-blue-600" />
+                    <h3 className="text-[13px] font-bold text-slate-800">Contact & Location</h3>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                      Contact Phone Number *
+                    </label>
+                    <input
+                      name="phone"
+                      value={patientDetails.phone}
+                      onChange={handlePatientChange}
+                      required
+                      type="tel"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="10-digit mobile number"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Gender</label>
-                    <select
-                      name="gender"
-                      value={patientDetails.gender}
-                      onChange={handlePatientChange as any}
-                      className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                    >
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Email</label>
+                    <input
+                      name="email"
+                      value={patientDetails.email}
+                      onChange={handlePatientChange}
+                      type="email"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="name@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                      Doorstep Home Collection Address *
+                    </label>
+                    <textarea
+                      name="address"
+                      value={patientDetails.address}
+                      onChange={handlePatientChange}
+                      required
+                      rows={3}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all"
+                      placeholder="House/Flat No., Building Name, Street, Area, City, PIN Code"
+                    ></textarea>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                    Contact Phone Number *
-                  </label>
-                  <input
-                    name="phone"
-                    value={patientDetails.phone}
-                    onChange={handlePatientChange}
-                    required
-                    type="tel"
-                    className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    placeholder="10-digit mobile number"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Email</label>
-                  <input
-                    name="email"
-                    value={patientDetails.email}
-                    onChange={handlePatientChange}
-                    type="email"
-                    className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    placeholder="name@example.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                    Doorstep Home Collection Address *
-                  </label>
-                  <textarea
-                    name="address"
-                    value={patientDetails.address}
-                    onChange={handlePatientChange}
-                    required
-                    rows={3}
-                    className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-                    placeholder="House/Flat No., Building Name, Street, Area, City, PIN Code"
-                  ></textarea>
-                </div>
 
-                <div className="space-y-3 mt-4">
+                <div className="space-y-3 mt-4 pt-2">
                   <button
                     type="submit"
-                    className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
+                    className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/30"
                   >
                     Continue to Schedule Slot
                   </button>
                   <button
                     type="button"
                     onClick={() => setViewState('HOME_COLLECTION')}
-                    className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
+                    className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-all"
                   >
                     Back
                   </button>
@@ -1279,16 +1297,23 @@ const HomeSampleList = () => {
           {viewState === 'DATE_TIME' && (
             <section className="animate-in fade-in zoom-in-95 duration-300">
               <h2 className="text-[18px] font-black text-slate-900 mb-1">Choose Collection Date & Slot</h2>
-              <p className="text-[12px] text-slate-500 font-medium mb-4">
+              <p className="text-[12px] text-slate-500 font-medium mb-6">
                 Select when our phlebotomist should arrive at your doorstep.
               </p>
 
               {/* Date selection */}
               <div className="mb-6">
-                <h3 className="text-[13px] font-bold text-slate-800 mb-3">Available Dates</h3>
-                <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <h3 className="text-[13px] font-bold text-slate-800">Available Dates</h3>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-4 hide-scrollbar snap-x">
                   {availableDates.map((d) => {
                     const isSelected = selectedDate === d.date;
+                    const parts = d.label.split(', ');
+                    const topLabel = parts.length > 1 ? parts[0] : '';
+                    const bottomLabel = parts.length > 1 ? parts[1] : d.label;
+                    
                     return (
                       <button
                         key={d.date}
@@ -1296,13 +1321,15 @@ const HomeSampleList = () => {
                           setSelectedDate(d.date);
                           if (selectedLab) loadSlots(selectedLab.id, d.date);
                         }}
-                        className={`shrink-0 px-4 py-2.5 rounded-xl text-[12px] font-bold border transition-colors ${
+                        className={`shrink-0 w-[72px] h-[84px] rounded-2xl flex flex-col items-center justify-center border transition-all duration-200 snap-center ${
                           isSelected
-                            ? 'bg-[#0055ff] border-[#0055ff] text-white shadow-md shadow-blue-500/20'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                            ? 'bg-[#0055ff] border-[#0055ff] text-white shadow-lg shadow-blue-500/30 scale-105'
+                            : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:shadow-md'
                         }`}
                       >
-                        {d.label}
+                        <span className={`text-[10px] font-bold uppercase mb-1 ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>{topLabel}</span>
+                        <span className={`text-[16px] font-black leading-none ${isSelected ? 'text-white' : 'text-slate-800'}`}>{bottomLabel.split(' ')[0]}</span>
+                        <span className={`text-[11px] font-bold mt-1 ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>{bottomLabel.split(' ')[1]}</span>
                       </button>
                     );
                   })}
@@ -1310,15 +1337,18 @@ const HomeSampleList = () => {
               </div>
 
               {/* Slot selection */}
-              <div className="mb-6">
-                <h3 className="text-[13px] font-bold text-slate-800 mb-3">Available Time Slots</h3>
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock className="w-4 h-4 text-blue-600" />
+                  <h3 className="text-[13px] font-bold text-slate-800">Available Time Slots</h3>
+                </div>
                 {isLoadingSlots ? (
-                  <div className="text-center py-6">
-                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                    <p className="text-xs text-slate-400 mt-2">Checking available slots...</p>
+                  <div className="bg-white rounded-2xl border border-slate-100 p-8 flex flex-col items-center justify-center shadow-sm">
+                    <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
+                    <p className="text-xs text-slate-500 font-medium">Fetching accurate slots...</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-3 gap-3">
                     {availableSlots.map((s) => {
                       const isSelected = selectedTime === s.slot;
                       return (
@@ -1326,12 +1356,12 @@ const HomeSampleList = () => {
                           key={s.slot}
                           disabled={!s.available}
                           onClick={() => setSelectedTime(s.slot)}
-                          className={`px-2 py-2.5 rounded-xl text-[11px] font-bold border transition-colors ${
+                          className={`px-2 py-3 rounded-xl text-[12px] font-bold border transition-all duration-200 flex items-center justify-center ${
                             !s.available
-                              ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed line-through'
+                              ? 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed line-through'
                               : isSelected
-                              ? 'bg-[#0055ff] border-[#0055ff] text-white shadow-md shadow-blue-500/20'
-                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                              ? 'bg-blue-50 border-[#0055ff] text-[#0055ff] shadow-sm ring-1 ring-blue-600'
+                              : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-slate-50'
                           }`}
                         >
                           {s.slot}
@@ -1366,67 +1396,96 @@ const HomeSampleList = () => {
               <h2 className="text-[18px] font-black text-slate-900 mb-4">Review Your Booking</h2>
 
               {bookingError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs font-medium mb-4 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
-                  <span>{bookingError}</span>
+                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-[13px] font-medium mb-5 flex items-start gap-3 shadow-sm">
+                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{bookingError}</span>
                 </div>
               )}
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 mb-4">
-                <div>
-                  <p className="text-[11px] font-bold text-slate-400 mb-0.5">Test</p>
-                  <p className="text-[13px] font-black text-slate-800">{selectedItem?.name}</p>
-                </div>
-
-                <div className="border-t border-slate-100 pt-3">
-                  <p className="text-[11px] font-bold text-slate-400 mb-0.5">Laboratory Provider</p>
-                  <p className="text-[13px] font-bold text-slate-800">{selectedLab?.name}</p>
-                  <p className="text-[11px] text-slate-500">{selectedLab?.address || selectedLab?.location}</p>
-                </div>
-
-                <div className="border-t border-slate-100 pt-3 grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-[11px] font-bold text-slate-400 mb-0.5">Date</p>
-                    <p className="text-[13px] font-bold text-slate-800">{selectedDate}</p>
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-5 overflow-hidden">
+                <div className="p-5 bg-slate-50/50 border-b border-slate-100 flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                    <TestTube className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold text-slate-400 mb-0.5">Time Slot</p>
-                    <p className="text-[13px] font-bold text-slate-800">{selectedTime}</p>
+                    <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Selected Test</p>
+                    <p className="text-[14px] font-black text-slate-900">{selectedItem?.name}</p>
+                    <div className="flex items-center gap-1.5 mt-2 text-[11px] font-bold text-emerald-600 bg-emerald-50 w-max px-2 py-1 rounded-md border border-emerald-100">
+                      <Home className="w-3 h-3" />
+                      Home Collection
+                    </div>
                   </div>
                 </div>
 
-                <div className="border-t border-slate-100 pt-3">
-                  <p className="text-[11px] font-bold text-slate-400 mb-0.5">Patient</p>
-                  <p className="text-[13px] font-bold text-slate-800">
-                    {patientDetails.name} ({patientDetails.gender}, {patientDetails.age} yrs)
-                  </p>
-                  <p className="text-[11px] text-slate-500">Phone: {patientDetails.phone}</p>
-                </div>
+                <div className="p-5 space-y-5">
+                  <div className="flex items-start gap-3">
+                    <Building2 className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Laboratory Partner</p>
+                      <p className="text-[13px] font-bold text-slate-800">{selectedLab?.name}</p>
+                      <p className="text-[11px] font-medium text-slate-500 mt-0.5">{selectedLab?.address || selectedLab?.location}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3">
+                    <Calendar className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Date & Time</p>
+                      <p className="text-[13px] font-bold text-slate-800">
+                        {selectedDate} <span className="text-slate-300 mx-1">•</span> {selectedTime}
+                      </p>
+                    </div>
+                  </div>
 
-                <div className="border-t border-slate-100 pt-3">
-                  <p className="text-[11px] font-bold text-slate-400 mb-0.5">Doorstep Collection Address</p>
-                  <p className="text-[13px] font-medium text-slate-800 leading-tight">
-                    {patientDetails.address}
-                  </p>
+                  <div className="flex items-start gap-3">
+                    <User className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Patient Details</p>
+                      <p className="text-[13px] font-bold text-slate-800">
+                        {patientDetails.name} <span className="text-slate-400 mx-1 font-medium">({patientDetails.gender}, {patientDetails.age} yrs)</span>
+                      </p>
+                      <p className="text-[11px] font-medium text-slate-500 mt-0.5">+91 {patientDetails.phone}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                    <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-500 mb-1 tracking-wide uppercase">Collection Address</p>
+                      <p className="text-[12px] font-bold text-slate-800 leading-snug">
+                        {patientDetails.address}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Price Breakdown */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2 mb-4 text-xs">
-                <h3 className="font-bold text-slate-800 text-[13px] mb-2">Price Breakdown</h3>
-                <div className="flex justify-between text-slate-600">
-                  <span>Diagnostic Test Price</span>
-                  <span className="font-semibold text-slate-800">₹{effectiveTestPrice}</span>
-                </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>Home Collection Fee</span>
-                  <span className="font-semibold text-slate-800">
-                    {effectiveCollectionFee > 0 ? `₹${effectiveCollectionFee}` : 'Free'}
-                  </span>
-                </div>
-                <div className="border-t border-slate-100 pt-2 flex justify-between text-sm font-black text-slate-900">
-                  <span>Total Amount</span>
-                  <span className="text-blue-600 text-[16px]">₹{effectiveTotal}</span>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-5 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-4 -mt-4 opacity-50 pointer-events-none"></div>
+                <h3 className="font-black text-slate-900 text-[14px] mb-4 flex items-center gap-2 relative z-10">
+                  <FileCheck className="w-4 h-4 text-blue-600" /> Payment Summary
+                </h3>
+                <div className="space-y-3 relative z-10">
+                  <div className="flex justify-between items-center text-[13px]">
+                    <span className="font-medium text-slate-600">Diagnostic Test Price</span>
+                    <span className="font-bold text-slate-800">₹{effectiveTestPrice}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[13px]">
+                    <span className="font-medium text-slate-600 flex items-center gap-1.5">
+                      Home Collection Fee
+                    </span>
+                    <span className="font-bold text-slate-800">
+                      {effectiveCollectionFee > 0 ? `₹${effectiveCollectionFee}` : 'Free'}
+                    </span>
+                  </div>
+                  <div className="h-[1px] w-full border-t border-dashed border-slate-200 my-2"></div>
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 mb-0.5 uppercase tracking-wide">Total Payable</span>
+                    </div>
+                    <span className="text-blue-600 font-black text-[20px] tracking-tight">₹{effectiveTotal}</span>
+                  </div>
                 </div>
               </div>
 

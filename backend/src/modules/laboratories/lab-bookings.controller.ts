@@ -58,6 +58,30 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
       if (bookingType === 'HOME_COLLECTION') {
         totalAmount += totalHomeCollectionFee;
         
+        // Validate IST Time to prevent booking past slots today
+        const serverTimeStr = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+        const serverNow = new Date(serverTimeStr);
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const serverTodayStr = `${serverNow.getFullYear()}-${pad(serverNow.getMonth() + 1)}-${pad(serverNow.getDate())}`;
+
+        const collectionDateStr = typeof collectionDate === 'string' ? collectionDate.split('T')[0] : '';
+
+        if (collectionDateStr === serverTodayStr && collectionTimeSlot) {
+           const match = collectionTimeSlot.match(/(\d+):(\d+)\s+(AM|PM)/i);
+           if (match) {
+             let h = parseInt(match[1], 10);
+             const m = parseInt(match[2], 10);
+             const ampm = match[3].toUpperCase();
+             if (ampm === 'PM' && h !== 12) h += 12;
+             if (ampm === 'AM' && h === 12) h = 0;
+             const slotMinutes = h * 60 + m;
+             const currentMinutes = serverNow.getHours() * 60 + serverNow.getMinutes();
+             if (slotMinutes <= currentMinutes) {
+               throw new Error('INVALID_TIME_SLOT: This time slot has already passed in IST time. Please select an upcoming slot.');
+             }
+           }
+        }
+
         // Check for double booking conflict
         const dateObj = new Date(collectionDate);
         const nextDay = new Date(dateObj);
@@ -117,6 +141,22 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
       metadata: { bookingId: booking.id }
     });
 
+    // Fire notification to patient
+    const displayDate = booking.collectionDate 
+      ? new Date(booking.collectionDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
+      : 'shortly';
+    const timeText = booking.collectionTimeSlot ? ` at ${booking.collectionTimeSlot}` : '';
+    const isHome = booking.bookingType === 'HOME_COLLECTION';
+
+    await sendNotification({
+      hospitalId: null, // Patient notification
+      userId: booking.patientId,
+      title: 'Booking Confirmed',
+      message: `Your ${isHome ? 'Home Sample Collection' : 'Lab Test'} booking is confirmed for ${displayDate}${timeText}.`,
+      type: 'BOOKING_CONFIRMED',
+      metadata: { bookingId: booking.id, type: isHome ? 'HOME_SAMPLE' : 'LAB' }
+    });
+
     res.status(201).json({ success: true, data: booking });
   } catch (error: any) {
     if (error.message && error.message.includes('not available') || error.message && error.message.includes('cannot be collected')) {
@@ -124,6 +164,9 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
     }
     if (error.message?.startsWith('SLOT_CONFLICT')) {
       return res.status(409).json({ success: false, error: { code: 'CONFLICT', message: error.message.replace('SLOT_CONFLICT: ', '') } });
+    }
+    if (error.message?.startsWith('INVALID_TIME_SLOT')) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_TIME_SLOT', message: error.message.replace('INVALID_TIME_SLOT: ', '') } });
     }
     next(error);
   }

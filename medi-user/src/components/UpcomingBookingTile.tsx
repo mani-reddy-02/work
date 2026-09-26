@@ -16,7 +16,7 @@ interface UpcomingBooking {
 }
 
 interface UpcomingBookingTileProps {
-  onLoad?: (hasBooking: boolean) => void;
+  onLoad?: (hasBooking: boolean, bookingData?: UpcomingBooking) => void;
 }
 
 const UpcomingBookingTile = ({ onLoad }: UpcomingBookingTileProps) => {
@@ -42,7 +42,7 @@ const UpcomingBookingTile = ({ onLoad }: UpcomingBookingTileProps) => {
         
         if (data.success && data.data) {
           setBooking(data.data);
-          onLoad?.(true);
+          onLoad?.(true, data.data);
         } else {
           onLoad?.(false);
         }
@@ -59,7 +59,7 @@ const UpcomingBookingTile = ({ onLoad }: UpcomingBookingTileProps) => {
 
   if (loading) {
     return (
-      <div className="fixed bottom-[72px] md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-80 z-40 bg-white rounded-2xl p-4 shadow-lg border border-slate-100 animate-pulse">
+      <div className="w-full bg-white rounded-2xl p-4 shadow-sm border border-slate-100 animate-pulse mb-3">
         <div className="h-4 bg-slate-200 rounded w-1/3 mb-3"></div>
         <div className="h-5 bg-slate-200 rounded w-2/3 mb-2"></div>
         <div className="h-4 bg-slate-200 rounded w-1/2"></div>
@@ -106,7 +106,7 @@ const UpcomingBookingTile = ({ onLoad }: UpcomingBookingTileProps) => {
 
   return (
     <div 
-      className="fixed bottom-[72px] md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-[340px] z-40 cursor-pointer group animate-in slide-in-from-bottom-8 fade-in duration-500"
+      className="w-full cursor-pointer group animate-in slide-in-from-bottom-2 fade-in duration-500 mb-3"
       onClick={handleClick}
     >
       <div className="bg-gradient-to-r from-[#0062e6] to-[#0070f3] rounded-2xl p-4 shadow-[0_8px_30px_rgb(0,98,230,0.3)] relative overflow-hidden transition-transform group-hover:scale-[1.02]">

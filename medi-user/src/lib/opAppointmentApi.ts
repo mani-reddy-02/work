@@ -229,6 +229,7 @@ export const opAppointmentApi = {
       allSlots: string[];
       availableSlots: string[];
       bookedSlots: string[];
+      expiredSlots?: string[];
     };
     error?: string;
   }> {

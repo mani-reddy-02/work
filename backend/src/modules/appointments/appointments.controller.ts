@@ -139,10 +139,29 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
         }
       }
 
-      // 7. Parse and validate date
-      const appointmentDate = new Date(date);
+      // 7. Parse and validate date and strictly validate against current time
+      const appointmentDateStr = typeof date === 'string' && date.includes('T') ? date.split('T')[0] : date;
+      const appointmentDate = new Date(appointmentDateStr);
       if (isNaN(appointmentDate.getTime())) {
-        throw { status: 400, code: 'BAD_REQUEST', message: 'Invalid appointment date format' };
+        throw { status: 400, code: 'INVALID_DATE', message: 'Invalid appointment date format' };
+      }
+      
+      const [reqHStr, reqMStr] = requestedSlot.split(' ')[0].split(':');
+      const reqPeriod = requestedSlot.split(' ')[1];
+      let reqH = parseInt(reqHStr, 10);
+      const reqM = parseInt(reqMStr, 10);
+      
+      if (reqPeriod === 'PM' && reqH !== 12) reqH += 12;
+      if (reqPeriod === 'AM' && reqH === 12) reqH = 0;
+      
+      const paddedH = reqH.toString().padStart(2, '0');
+      const paddedM = reqM.toString().padStart(2, '0');
+      const slotDateTimeStr = `${appointmentDateStr}T${paddedH}:${paddedM}:00+05:30`;
+      const slotDateTime = new Date(slotDateTimeStr);
+      
+      const now = new Date();
+      if (slotDateTime <= now) {
+        throw { status: 400, code: 'SLOT_EXPIRED', message: 'This appointment slot has already passed. Please select another available slot.' };
       }
 
       const startOfDay = new Date(appointmentDate);
@@ -167,11 +186,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       const startBound = isVideoReq && schedule.videoStartTime ? schedule.videoStartTime : schedule.startTime;
       const endBound = isVideoReq && schedule.videoEndTime ? schedule.videoEndTime : schedule.endTime;
 
-      const [reqH, reqM] = requestedSlot.split(':');
-      const reqPeriod = requestedSlot.split(' ')[1];
-      let reqMinutes = parseInt(reqH) * 60 + parseInt(reqM);
-      if (reqPeriod === 'PM' && parseInt(reqH) !== 12) reqMinutes += 12 * 60;
-      if (reqPeriod === 'AM' && parseInt(reqH) === 12) reqMinutes -= 12 * 60;
+      const reqMinutes = reqH * 60 + reqM;
 
       const [startH, startM] = startBound.split(':');
       const startMinutes = parseInt(startH) * 60 + parseInt(startM);
@@ -183,7 +198,33 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
          throw { status: 400, code: 'BAD_REQUEST', message: 'Invalid time slot for the selected consultation type' };
       }
 
-      // 8. Double-booking check: verify slot is not already taken
+      // 8a. Double-booking check: same user
+      const existingUserConflict = await tx.oPBooking.findFirst({
+        where: {
+          patientId,
+          OR: [
+            { timeSlot: requestedSlot },
+            { slotTime: requestedSlot }
+          ],
+          appointmentDate: {
+            gte: startOfDay,
+            lte: endOfDay
+          },
+          status: {
+            notIn: ['CANCELLED']
+          }
+        }
+      });
+
+      if (existingUserConflict) {
+        throw {
+          status: 409,
+          code: 'USER_CONFLICT',
+          message: `You already have an appointment at ${requestedSlot} on ${appointmentDateStr}. Please select another time.`
+        };
+      }
+
+      // 8b. Double-booking check: verify slot is not already taken by someone else
       const existingConflict = await tx.oPBooking.findFirst({
         where: {
           doctorId,
@@ -196,7 +237,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
             lte: endOfDay
           },
           status: {
-            not: 'CANCELLED'
+            notIn: ['CANCELLED']
           }
         }
       });
@@ -204,8 +245,8 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       if (existingConflict) {
         throw {
           status: 409,
-          code: 'CONFLICT',
-          message: 'This appointment slot is no longer available. Please select another time.'
+          code: 'SLOT_BOOKED',
+          message: 'This slot has already been booked. Please choose another slot.'
         };
       }
 
@@ -265,6 +306,18 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
         timeSlot: result.timeSlot,
         date: result.appointmentDate
       }
+    }).catch(console.error);
+
+    // Send notification to the patient
+    const displayDate = new Date(result.appointmentDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+    const isVideo = result.opType?.toLowerCase().includes('video');
+    sendNotification({
+      hospitalId: null, // Patient notification
+      userId: result.patientId,
+      title: 'Booking Confirmed',
+      message: `Your ${isVideo ? 'video ' : ''}consultation with Dr. ${result.doctor.name} is confirmed for ${displayDate} at ${result.timeSlot}.`,
+      type: 'BOOKING_CONFIRMED',
+      metadata: { bookingId: result.id, type: isVideo ? 'VIDEO' : 'OP' }
     }).catch(console.error);
 
     res.status(201).json({

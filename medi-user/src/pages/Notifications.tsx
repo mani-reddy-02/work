@@ -15,7 +15,11 @@ export default function Notifications() {
 
   const handleNotificationClick = (n: AppNotification) => {
     markAsRead(n.id);
-    navigate(n.route);
+    let route = '/bookings';
+    if (n.type === 'HOME_NURSING' || n.type === 'nursing') route = '/services/home-nursing';
+    else if (n.type === 'report') route = '/services/reports';
+    
+    navigate(route);
   };
 
   const getNotificationIcon = (type: string) => {
@@ -145,7 +149,7 @@ export default function Notifications() {
                     {notification.message}
                   </p>
                   <p className="text-xs text-slate-400 font-medium">
-                    {notification.time}
+                    {new Date(notification.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                   </p>
                 </div>
               </button>

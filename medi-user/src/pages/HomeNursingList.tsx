@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Search,
   Building,
+  Building2,
   Star,
   CheckCircle,
   Activity,
@@ -21,6 +22,9 @@ import {
   AlertCircle,
   Loader2,
   Calendar,
+  Heart,
+  FileCheck,
+  ChevronRight,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import HowItWorks from '../components/HowItWorks';
@@ -155,16 +159,16 @@ const HomeNursingList = () => {
     let list = services;
     if (selectedCategory && selectedCategory !== 'All Services') {
       list = list.filter(
-        (s) => s.category.toLowerCase() === selectedCategory.toLowerCase()
+        (s) => (s?.category || '').toLowerCase() === selectedCategory.toLowerCase()
       );
     }
     const q = searchQuery.toLowerCase().trim();
     if (!q) return list;
     return list.filter(
       (s) =>
-        s.name.toLowerCase().includes(q) ||
-        (s.description && s.description.toLowerCase().includes(q)) ||
-        (s.category && s.category.toLowerCase().includes(q))
+        (s?.name || (s as any)?.serviceName || (s as any)?.title || '').toLowerCase().includes(q) ||
+        (s?.description && typeof s.description === 'string' && s.description.toLowerCase().includes(q)) ||
+        (s?.category && typeof s.category === 'string' && s.category.toLowerCase().includes(q))
     );
   }, [services, selectedCategory, searchQuery]);
 
@@ -174,8 +178,8 @@ const HomeNursingList = () => {
     if (!q) return hospitals;
     return hospitals.filter(
       (h) =>
-        (h.hospitalName || h.name || '').toLowerCase().includes(q) ||
-        (h.location || '').toLowerCase().includes(q)
+        (h?.hospitalName || h?.name || (h as any)?.title || '').toLowerCase().includes(q) ||
+        (h?.location || h?.address || '').toLowerCase().includes(q)
     );
   }, [hospitals, searchQuery]);
 
@@ -410,7 +414,9 @@ const HomeNursingList = () => {
                             <ServiceIcon className="w-5 h-5" />
                           </div>
                           <div className="flex-1">
-                            <h3 className="font-bold text-slate-800 text-[14px]">{service.name}</h3>
+                            <h3 className="font-bold text-slate-800 text-[14px]">
+                              {service.name || (service as any).serviceName || (service as any).title || 'Nursing Service'}
+                            </h3>
                             <div className="flex items-center gap-3 text-[11px] text-slate-500 font-medium mt-1">
                               <span className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" /> {service.duration}
@@ -535,22 +541,33 @@ const HomeNursingList = () => {
           {/* VIEW: FORM */}
           {viewState === 'FORM' && (
             <section className="animate-in fade-in zoom-in-95 duration-300">
-              <h2 className="text-[16px] font-bold text-slate-900 mb-4">Patient Details & Date</h2>
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-6">
-                <p className="text-[11px] font-bold text-blue-800">Booking Summary:</p>
-                <p className="text-[13px] font-black text-blue-900">{selectedService?.name}</p>
-                <p className="text-[11px] text-blue-700 font-medium mt-1">
-                  {selectedHospital?.hospitalName || selectedHospital?.name} — {formattedDisplayPrice}
-                </p>
+              <h2 className="text-[18px] font-black text-slate-900 mb-1">Patient Details & Date</h2>
+              <p className="text-[12px] text-slate-500 font-medium mb-6">
+                Please provide the required details for the home nursing service.
+              </p>
+
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-6">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">Selected Service</p>
+                <p className="text-[14px] font-black text-slate-800">{selectedService?.name}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <Building2 className="w-4 h-4 text-slate-400" />
+                  <p className="text-[12px] font-bold text-slate-600">
+                    {selectedHospital?.hospitalName || selectedHospital?.name}
+                  </p>
+                </div>
+                <div className="mt-3 inline-flex px-2 py-1 bg-blue-50 text-blue-700 rounded-md font-bold text-[12px]">
+                  {formattedDisplayPrice}
+                </div>
               </div>
 
               {/* Optional Nurse Selection */}
               {selectedHospital?.nurses && selectedHospital.nurses.length > 0 && (
-                <div className="mb-4">
-                  <label className="block text-[11px] font-bold text-slate-700 mb-2">
-                    Select Specific Nurse (Optional)
+                <div className="mb-6">
+                  <label className="flex items-center gap-2 text-[13px] font-bold text-slate-800 mb-3">
+                    <User className="w-4 h-4 text-blue-600" />
+                    Select Specific Nurse <span className="text-slate-400 font-medium text-[11px]">(Optional)</span>
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     {selectedHospital.nurses.map((nurse: NurseRecord) => (
                       <button
                         key={nurse.id}
@@ -558,14 +575,14 @@ const HomeNursingList = () => {
                         onClick={() =>
                           setSelectedNurse(selectedNurse?.id === nurse.id ? null : nurse)
                         }
-                        className={`p-2.5 rounded-xl border text-left transition-all ${
+                        className={`p-3 rounded-xl border text-left transition-all duration-200 ${
                           selectedNurse?.id === nurse.id
-                            ? 'border-[#0055ff] bg-blue-50/60 ring-1 ring-[#0055ff]'
-                            : 'border-slate-200 bg-white hover:border-slate-300'
+                            ? 'border-[#0055ff] bg-blue-50/60 ring-1 ring-blue-600 shadow-sm'
+                            : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50'
                         }`}
                       >
-                        <p className="text-xs font-bold text-slate-800">{nurse.name}</p>
-                        <p className="text-[10px] text-slate-500 font-medium">
+                        <p className="text-[12px] font-bold text-slate-800">{nurse.name}</p>
+                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">
                           {nurse.designation || 'Certified Nurse'}
                         </p>
                       </button>
@@ -574,128 +591,156 @@ const HomeNursingList = () => {
                 </div>
               )}
 
-              <form onSubmit={handleSubmitForm} className="space-y-4">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                    Patient Name
-                  </label>
-                  <input
-                    name="name"
-                    value={patientDetails.name}
-                    onChange={handlePatientChange}
-                    required
-                    type="text"
-                    className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    placeholder="Enter patient name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                    Phone Number
-                  </label>
-                  <input
-                    name="phone"
-                    value={patientDetails.phone}
-                    onChange={handlePatientChange}
-                    required
-                    type="tel"
-                    className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    placeholder="Enter phone number"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                      Preferred Date
-                    </label>
-                    <input
-                      name="date"
-                      value={patientDetails.date}
-                      onChange={handlePatientChange}
-                      required
-                      type="date"
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    />
+              <form onSubmit={handleSubmitForm} className="space-y-6">
+                
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-2">
+                    <User className="w-4 h-4 text-blue-600" />
+                    <h3 className="text-[13px] font-bold text-slate-800">Personal Information</h3>
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                      Preferred Time
+                      Patient Name *
                     </label>
                     <input
-                      name="time"
-                      value={patientDetails.time}
+                      name="name"
+                      value={patientDetails.name}
                       onChange={handlePatientChange}
                       required
                       type="text"
-                      className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                      placeholder="e.g. 10:00 AM - 12:00 PM"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="Enter patient name"
+                    />
+                  </div>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-2">
+                    <Calendar className="w-4 h-4 text-blue-600" />
+                    <h3 className="text-[13px] font-bold text-slate-800">Date & Time</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                        Preferred Date *
+                      </label>
+                      <input
+                        name="date"
+                        value={patientDetails.date}
+                        onChange={handlePatientChange}
+                        required
+                        type="date"
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                        Preferred Time *
+                      </label>
+                      <input
+                        name="time"
+                        value={patientDetails.time}
+                        onChange={handlePatientChange}
+                        required
+                        type="text"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        placeholder="e.g. 10:00 AM - 12:00 PM"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Available Slots Pills (if loaded) */}
+                  {availableSlots.length > 0 && (
+                    <div className="pt-2">
+                      <label className="block text-[11px] font-bold text-slate-700 mb-2">
+                        Available Shift Slots
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {availableSlots.map((s) => (
+                          <button
+                            key={s.slot}
+                            type="button"
+                            disabled={!s.available}
+                            onClick={() => setPatientDetails((p) => ({ ...p, time: s.slot }))}
+                            className={`px-2 py-3 rounded-xl text-[12px] font-bold border transition-all duration-200 flex items-center justify-center ${
+                              !s.available
+                                ? 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed line-through'
+                                : patientDetails.time === s.slot
+                                ? 'bg-blue-50 border-[#0055ff] text-[#0055ff] shadow-sm ring-1 ring-blue-600'
+                                : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            {s.slot}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-2">
+                    <MapPin className="w-4 h-4 text-blue-600" />
+                    <h3 className="text-[13px] font-bold text-slate-800">Contact & Location</h3>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                      Phone Number *
+                    </label>
+                    <input
+                      name="phone"
+                      value={patientDetails.phone}
+                      onChange={handlePatientChange}
+                      required
+                      type="tel"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="Enter phone number"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                      Address *
+                    </label>
+                    <textarea
+                      name="address"
+                      value={patientDetails.address}
+                      onChange={handlePatientChange}
+                      required
+                      rows={2}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all"
+                      placeholder="Enter full address"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                      Additional Requirements
+                    </label>
+                    <textarea
+                      name="notes"
+                      value={patientDetails.notes}
+                      onChange={handlePatientChange}
+                      rows={2}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all"
+                      placeholder="Any specific needs..."
                     />
                   </div>
                 </div>
 
-                {/* Available Slots Pills (if loaded) */}
-                {availableSlots.length > 0 && (
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                      Available Shift Slots
-                    </label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {availableSlots.map((s) => (
-                        <button
-                          key={s.slot}
-                          type="button"
-                          disabled={!s.available}
-                          onClick={() => setPatientDetails((p) => ({ ...p, time: s.slot }))}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                            patientDetails.time === s.slot
-                              ? 'bg-[#0055ff] text-white shadow-sm'
-                              : s.available
-                              ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                              : 'bg-slate-50 text-slate-300 line-through cursor-not-allowed'
-                          }`}
-                        >
-                          {s.slot}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                    Address
-                  </label>
-                  <textarea
-                    name="address"
-                    value={patientDetails.address}
-                    onChange={handlePatientChange}
-                    required
-                    rows={2}
-                    className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-                    placeholder="Enter full address"
-                  />
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/30"
+                  >
+                    Proceed to Summary
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewState('SERVICES')}
+                    className="w-full mt-3 flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-all"
+                  >
+                    Back to Services
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                    Additional Requirements
-                  </label>
-                  <textarea
-                    name="notes"
-                    value={patientDetails.notes}
-                    onChange={handlePatientChange}
-                    rows={2}
-                    className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-                    placeholder="Any specific needs..."
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full mt-4 flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
-                >
-                  Proceed to Summary
-                </button>
               </form>
             </section>
           )}
@@ -705,77 +750,111 @@ const HomeNursingList = () => {
             <section className="animate-in fade-in zoom-in-95 duration-300">
               <h2 className="text-[18px] font-black text-slate-900 mb-4">Review Your Booking</h2>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 mb-6">
-                <div>
-                  <p className="text-[11px] font-bold text-slate-500 mb-0.5">Nursing Service</p>
-                  <p className="text-[13px] font-black text-slate-800">{selectedService?.name}</p>
-                </div>
-                <div className="border-t border-slate-100 pt-3">
-                  <p className="text-[11px] font-bold text-slate-500 mb-0.5">Hospital / Provider</p>
-                  <p className="text-[13px] font-bold text-slate-800">
-                    {selectedHospital?.hospitalName || selectedHospital?.name}
-                  </p>
-                </div>
-                {selectedNurse && (
-                  <div className="border-t border-slate-100 pt-3">
-                    <p className="text-[11px] font-bold text-slate-500 mb-0.5">Assigned Nurse</p>
-                    <p className="text-[13px] font-bold text-slate-800">
-                      {selectedNurse.name} ({selectedNurse.designation || 'Healthcare Nurse'})
-                    </p>
-                  </div>
-                )}
-                <div className="border-t border-slate-100 pt-3 grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-[11px] font-bold text-slate-500 mb-0.5">Date</p>
-                    <p className="text-[13px] font-bold text-slate-800">
-                      {patientDetails.date || 'Not set'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-slate-500 mb-0.5">Time</p>
-                    <p className="text-[13px] font-bold text-slate-800">
-                      {patientDetails.time || 'Not set'}
-                    </p>
-                  </div>
-                </div>
-                <div className="border-t border-slate-100 pt-3">
-                  <p className="text-[11px] font-bold text-slate-500 mb-0.5">Patient</p>
-                  <p className="text-[13px] font-bold text-slate-800">
-                    {patientDetails.name || 'Not set'} ({patientDetails.phone})
-                  </p>
-                </div>
-                <div className="border-t border-slate-100 pt-3">
-                  <p className="text-[11px] font-bold text-slate-500 mb-0.5">Address</p>
-                  <p className="text-[13px] font-bold text-slate-800 leading-tight">
-                    {patientDetails.address || 'Not set'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 flex items-center justify-between mb-6">
-                <span className="text-[14px] font-bold text-blue-900">Total Amount</span>
-                <span className="text-[18px] font-black text-blue-700">
-                  {formattedDisplayPrice}
-                </span>
-              </div>
-
               {bookingError && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-xl text-xs flex items-center gap-2 mb-4">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{bookingError}</span>
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl text-[13px] font-medium mb-5 flex items-start gap-3 shadow-sm">
+                  <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{bookingError}</span>
                 </div>
               )}
+
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-5 overflow-hidden">
+                <div className="p-5 bg-slate-50/50 border-b border-slate-100 flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                    <Heart className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Nursing Service</p>
+                    <p className="text-[14px] font-black text-slate-900">{selectedService?.name}</p>
+                  </div>
+                </div>
+
+                <div className="p-5 space-y-5">
+                  <div className="flex items-start gap-3">
+                    <Building2 className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Hospital / Provider</p>
+                      <p className="text-[13px] font-bold text-slate-800">
+                        {selectedHospital?.hospitalName || selectedHospital?.name}
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedNurse && (
+                    <div className="flex items-start gap-3">
+                      <User className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Assigned Nurse</p>
+                        <p className="text-[13px] font-bold text-slate-800">
+                          {selectedNurse.name} <span className="text-slate-400 font-medium mx-1">({selectedNurse.designation || 'Healthcare Nurse'})</span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-start gap-3">
+                    <Calendar className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Date & Time</p>
+                      <p className="text-[13px] font-bold text-slate-800">
+                        {patientDetails.date || 'Not set'} <span className="text-slate-300 mx-1">•</span> {patientDetails.time || 'Not set'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <User className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Patient</p>
+                      <p className="text-[13px] font-bold text-slate-800">
+                        {patientDetails.name || 'Not set'}
+                      </p>
+                      <p className="text-[11px] font-medium text-slate-500 mt-0.5">+91 {patientDetails.phone}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                    <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-500 mb-1 tracking-wide uppercase">Care Location</p>
+                      <p className="text-[12px] font-bold text-slate-800 leading-snug">
+                        {patientDetails.address || 'Not set'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Price Breakdown */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-5 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-4 -mt-4 opacity-50 pointer-events-none"></div>
+                <h3 className="font-black text-slate-900 text-[14px] mb-4 flex items-center gap-2 relative z-10">
+                  <FileCheck className="w-4 h-4 text-blue-600" /> Payment Summary
+                </h3>
+                <div className="space-y-3 relative z-10">
+                  <div className="flex justify-between items-center text-[13px]">
+                    <span className="font-medium text-slate-600">Service Fee</span>
+                    <span className="font-bold text-slate-800">{formattedDisplayPrice}</span>
+                  </div>
+                  <div className="h-[1px] w-full border-t border-dashed border-slate-200 my-2"></div>
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 mb-0.5 uppercase tracking-wide">Total Payable</span>
+                    </div>
+                    <span className="text-blue-600 font-black text-[20px] tracking-tight">{formattedDisplayPrice}</span>
+                  </div>
+                </div>
+              </div>
 
               <div className="space-y-3">
                 <button
                   onClick={() => setViewState('PAYMENT')}
-                  className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
+                  className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/30"
                 >
                   Proceed to Payment
                 </button>
                 <button
                   onClick={() => setViewState('FORM')}
-                  className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
+                  className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-all"
                 >
                   Back / Edit Details
                 </button>
@@ -788,51 +867,53 @@ const HomeNursingList = () => {
             <section className="animate-in fade-in zoom-in-95 duration-300">
               <h2 className="text-[18px] font-black text-slate-900 mb-4">Complete Payment</h2>
 
-              <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 mb-6 flex flex-col items-center justify-center text-center">
-                <span className="text-[12px] font-bold text-blue-800 mb-1">Amount to Pay</span>
-                <span className="text-[24px] font-black text-blue-900">{formattedDisplayPrice}</span>
+              <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 mb-6 flex flex-col items-center justify-center text-center relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-20 h-20 bg-blue-100 rounded-br-full -ml-4 -mt-4 opacity-50 pointer-events-none"></div>
+                <div className="absolute bottom-0 right-0 w-20 h-20 bg-blue-100 rounded-tl-full -mr-4 -mb-4 opacity-50 pointer-events-none"></div>
+                <span className="text-[12px] font-bold text-blue-800 mb-1 relative z-10 uppercase tracking-wide">Amount to Pay</span>
+                <span className="text-[28px] font-black text-blue-900 tracking-tight relative z-10">{formattedDisplayPrice}</span>
               </div>
 
               <div className="space-y-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                <p className="text-[13px] font-bold text-slate-800 text-center mb-2">
+                <p className="text-[13px] font-black text-slate-800 mb-1">
                   Select Payment Method
                 </p>
 
                 <button
                   disabled={isSubmitting}
                   onClick={() => handlePayment(true)}
-                  className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition-all disabled:opacity-50"
+                  className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-slate-100 hover:border-[#0055ff] hover:bg-blue-50 transition-all disabled:opacity-50 group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600">
+                    <div className="w-10 h-10 bg-slate-50 group-hover:bg-white rounded-xl flex items-center justify-center text-slate-600 group-hover:text-[#0055ff] shadow-sm transition-colors border border-slate-100">
                       <CreditCard className="w-5 h-5" />
                     </div>
-                    <span className="font-bold text-[14px] text-slate-700">
+                    <span className="font-bold text-[14px] text-slate-700 group-hover:text-slate-900">
                       Credit / Debit Card
                     </span>
                   </div>
                   {isSubmitting ? (
                     <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                   ) : (
-                    <ArrowLeft className="w-4 h-4 rotate-180 text-slate-400" />
+                    <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-colors" />
                   )}
                 </button>
 
                 <button
                   disabled={isSubmitting}
                   onClick={() => handlePayment(true)}
-                  className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition-all disabled:opacity-50"
+                  className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-slate-100 hover:border-[#0055ff] hover:bg-blue-50 transition-all disabled:opacity-50 group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600">
+                    <div className="w-10 h-10 bg-slate-50 group-hover:bg-white rounded-xl flex items-center justify-center text-slate-600 group-hover:text-[#0055ff] shadow-sm transition-colors border border-slate-100">
                       <Smartphone className="w-5 h-5" />
                     </div>
-                    <span className="font-bold text-[14px] text-slate-700">UPI (GPay, PhonePe)</span>
+                    <span className="font-bold text-[14px] text-slate-700 group-hover:text-slate-900">UPI (GPay, PhonePe)</span>
                   </div>
                   {isSubmitting ? (
                     <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                   ) : (
-                    <ArrowLeft className="w-4 h-4 rotate-180 text-slate-400" />
+                    <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-colors" />
                   )}
                 </button>
               </div>
@@ -840,7 +921,7 @@ const HomeNursingList = () => {
               <button
                 disabled={isSubmitting}
                 onClick={() => handlePayment(false)}
-                className="w-full mt-6 bg-slate-100 text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-200 transition-colors"
+                className="w-full mt-6 bg-slate-100 text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-200 transition-all"
               >
                 Cancel Payment
               </button>

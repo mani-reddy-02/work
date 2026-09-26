@@ -278,37 +278,39 @@ const LabTestList = () => {
       ? dbTests
       : dbTests.filter(
           (t) =>
-            t.category.toLowerCase() === selectedTab.toLowerCase() ||
-            (t as any).categories?.includes(selectedTab)
+            (t?.category || '').toLowerCase() === selectedTab.toLowerCase() ||
+            (t as any)?.categories?.includes(selectedTab)
         );
 
   const filteredLabTests = q
     ? filteredByCategory.filter(
         (t) =>
-          t.name.toLowerCase().includes(q) ||
-          t.desc.toLowerCase().includes(q) ||
-          t.category.toLowerCase().includes(q) ||
-          t.concern?.toLowerCase().includes(q)
+          (t?.name || (t as any)?.testName || (t as any)?.title || '').toLowerCase().includes(q) ||
+          (t?.desc || (t as any)?.description || '').toLowerCase().includes(q) ||
+          (t?.category || '').toLowerCase().includes(q) ||
+          (t?.concern || (t as any)?.healthConcern || '').toLowerCase().includes(q)
       )
     : filteredByCategory;
 
   const displayLabTests = showAllTests || q ? filteredLabTests : filteredLabTests.slice(0, 8);
   
   // Extract packages (Category contains "Package")
-  const allPackages = dbTests.filter((t) => t.category.toLowerCase().includes('package'));
-  const allNonPackages = dbTests.filter((t) => !t.category.toLowerCase().includes('package'));
+  const allPackages = dbTests.filter((t) => (t?.category || '').toLowerCase().includes('package'));
+  const allNonPackages = dbTests.filter((t) => !(t?.category || '').toLowerCase().includes('package'));
   
   const filteredPackages = q
     ? allPackages.filter(
-        (p) => p.name.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q)
+        (p) =>
+          (p?.name || (p as any)?.testName || (p as any)?.title || '').toLowerCase().includes(q) ||
+          (p?.desc || (p as any)?.description || '').toLowerCase().includes(q)
       )
     : allPackages;
 
   const concernTests = selectedConcern
     ? allNonPackages.filter(
         (t) =>
-          t.concern?.toLowerCase() === selectedConcern.toLowerCase() ||
-          t.healthConcern?.toLowerCase() === selectedConcern.toLowerCase()
+          (t?.concern || '').toLowerCase() === selectedConcern.toLowerCase() ||
+          (t?.healthConcern || '').toLowerCase() === selectedConcern.toLowerCase()
       )
     : [];
 
@@ -599,7 +601,8 @@ const LabTestList = () => {
                           {/* 4x2 Circular Grid */}
                           <div className="grid grid-cols-4 gap-y-5 gap-x-2 px-4 relative">
                             {displayLabTests.map((item) => {
-                              const iconSrc = getTestIcon(item.name);
+                              const displayName = item?.name || (item as any)?.testName || (item as any)?.title || 'Test';
+                              const iconSrc = getTestIcon(displayName);
                               return (
                                 <div
                                   key={item.id}
@@ -612,7 +615,7 @@ const LabTestList = () => {
                                     {iconSrc ? (
                                       <img
                                         src={iconSrc}
-                                        alt={item.name.replace('\n', ' ')}
+                                        alt={displayName.replace(/\n/g, ' ')}
                                         className="w-10 h-10 md:w-12 md:h-12 object-contain"
                                       />
                                     ) : (
@@ -620,10 +623,10 @@ const LabTestList = () => {
                                     )}
                                   </div>
                                   <span className="text-[10px] md:text-[11px] font-bold text-slate-800 text-center leading-tight">
-                                    {item.name.replace('\n', ' ')}
+                                    {displayName.replace(/\n/g, ' ')}
                                   </span>
                                   <span className="text-[10px] font-bold text-blue-600 -mt-1">
-                                    {item.price}
+                                    {item.price || `₹${item.numericPrice || 299}`}
                                   </span>
                                 </div>
                               );

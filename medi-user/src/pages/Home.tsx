@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import UpcomingBookingTile from '../components/UpcomingBookingTile';
+import { useNotifications } from '../lib/notifications';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -18,19 +19,43 @@ const Home = () => {
   const dragDistance = useRef(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isEmergencyHighlighted, setIsEmergencyHighlighted] = useState(true);
+  const { notifications, markAsRead } = useNotifications();
   const location = useLocation();
   const [showBookingPopup, setShowBookingPopup] = useState(false);
+  const [bookingData, setBookingData] = useState<any>(null);
   const [hasUpcomingBooking, setHasUpcomingBooking] = useState(false);
 
+  const handleUpcomingBookingLoad = (hasBooking: boolean, data?: any) => {
+    setHasUpcomingBooking(hasBooking);
+  };
+
   useEffect(() => {
-    if (location.search.includes('bookingSuccess=true')) {
+    // Check for real-time BOOKING_CONFIRMED notifications
+    const recentBookingNotification = notifications.find(n => 
+      n.type === 'BOOKING_CONFIRMED' && 
+      !n.read && 
+      (new Date().getTime() - new Date(n.createdAt).getTime() < 60000) // Within last 60 seconds
+    );
+
+    if (recentBookingNotification) {
+      setBookingData({
+        serviceType: recentBookingNotification.metadata?.type === 'VIDEO' ? 'Video Consultation' : 
+                     recentBookingNotification.metadata?.type === 'OP' ? 'OP Consultation' : 
+                     recentBookingNotification.metadata?.type === 'LAB' ? 'Lab Test' : 
+                     recentBookingNotification.metadata?.type === 'HOME_SAMPLE' ? 'Home Sample Collection' : 'Home Nursing',
+        message: recentBookingNotification.message,
+        bookingId: recentBookingNotification.metadata?.bookingId,
+        notificationId: recentBookingNotification.id
+      });
       setShowBookingPopup(true);
-      // Remove the query param from URL without reloading
-      window.history.replaceState({}, '', '/');
-      const timer = setTimeout(() => setShowBookingPopup(false), 5000);
+      
+      const timer = setTimeout(() => {
+        setShowBookingPopup(false);
+        markAsRead(recentBookingNotification.id);
+      }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [location]);
+  }, [notifications]);
 
   // Trigger Emergency tile highlight on every load/open, automatically clearing after noticeable pulse
   useEffect(() => {
@@ -163,27 +188,28 @@ const Home = () => {
 
   return (
     <div className={`p-4 space-y-5 overflow-x-hidden relative transition-all ${hasUpcomingBooking ? 'pb-32' : 'pb-8'}`}>
-      <UpcomingBookingTile onLoad={setHasUpcomingBooking} />
 
       {/* Booking Success Popup */}
       {showBookingPopup && (
         <div className="fixed bottom-20 left-4 right-4 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
           <div className="bg-white rounded-2xl p-4 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-green-100 flex items-start gap-3 relative">
-            <button 
-              onClick={() => setShowBookingPopup(false)}
-              className="absolute top-2 right-2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-50 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
             <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
               <CheckCircle2 className="w-6 h-6 text-green-600" />
             </div>
-            <div>
-              <h3 className="text-[14px] font-bold text-slate-800">Booking Confirmed!</h3>
-              <p className="text-[12px] text-slate-500 mt-0.5">Your booking has been successfully scheduled. Check My Bookings for details.</p>
+            <div className="flex-1 pr-4">
+              <h3 className="text-[14px] font-bold text-slate-800">
+                {bookingData ? `${bookingData.serviceType} Confirmed!` : 'Booking Confirmed!'}
+              </h3>
+              {bookingData?.message ? (
+                <div className="mt-1 space-y-0.5">
+                  <p className="text-[12px] font-medium text-slate-700 leading-snug">{bookingData.message}</p>
+                </div>
+              ) : (
+                <p className="text-[12px] text-slate-500 mt-0.5">Your booking has been successfully scheduled. Check My Bookings for details.</p>
+              )}
               <button 
                 onClick={() => navigate('/bookings')}
-                className="text-[12px] font-bold text-blue-600 mt-2 hover:text-blue-700"
+                className="text-[12px] font-bold text-blue-600 mt-2 hover:text-blue-700 inline-block"
               >
                 View Details
               </button>
@@ -394,6 +420,8 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      <UpcomingBookingTile onLoad={handleUpcomingBookingLoad} />
 
       {/* Consult Top Specialists */}
       <section>
