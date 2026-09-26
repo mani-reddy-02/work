@@ -175,7 +175,8 @@ export const getDoctorAvailableSlots = async (req: Request, res: Response, next:
   try {
     const doctorId = req.params.id as string;
     const dateQuery = typeof req.query.date === 'string' ? req.query.date.trim() : '';
-    const typeQuery = typeof req.query.type === 'string' ? req.query.type.trim().toUpperCase() : 'OP';
+    const rawType = (req.query.type || req.query.opType || req.query.consultationType || req.query.mode || '') as string;
+    const typeQuery = rawType.trim().toUpperCase() || 'OP';
 
     const doctor = await prisma.user.findFirst({
       where: {
@@ -241,9 +242,9 @@ export const getDoctorAvailableSlots = async (req: Request, res: Response, next:
         isAvailable = false;
         allSlots = [];
       } else {
-        const isVideo = typeQuery.includes('VIDEO');
-        const start = isVideo && schedule.videoStartTime ? schedule.videoStartTime : schedule.startTime;
-        const end = isVideo && schedule.videoEndTime ? schedule.videoEndTime : schedule.endTime;
+        const isVideo = typeQuery.includes('VIDEO') || typeQuery === 'DOCTOR' || typeQuery === 'VIDEO-CONSULT' || typeQuery === 'REMOTE';
+        const start = isVideo && schedule.videoStartTime ? schedule.videoStartTime : (isVideo ? '14:00' : schedule.startTime);
+        const end = isVideo && schedule.videoEndTime ? schedule.videoEndTime : (isVideo ? '18:00' : schedule.endTime);
         allSlots = generateSlots(start, end, schedule.slotDurationMinutes || 15);
       }
     } else {
@@ -279,12 +280,15 @@ export const getDoctorAvailableSlots = async (req: Request, res: Response, next:
 
     const availableSlots = isAvailable ? allSlots.filter(slot => !bookedSlots.has(slot)) : [];
 
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const returnDate = dateQuery || `${targetDate.getFullYear()}-${pad(targetDate.getMonth() + 1)}-${pad(targetDate.getDate())}`;
+
     res.json({
       success: true,
       data: {
         doctorId,
         doctorName: doctor.name,
-        date: targetDate.toISOString().split('T')[0],
+        date: returnDate,
         dayOfWeek: dayName,
         isAvailable,
         allSlots,

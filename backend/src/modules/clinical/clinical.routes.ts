@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { 
   recordConsultation, 
+  sendPrescriptionToPatient,
   getPatientHistory, 
   updateDoctorPresence, 
   getDoctorPresence 
@@ -19,6 +20,8 @@ router.use(authenticate, requireRole(['DOCTOR', 'SUPER_ADMIN']));
 
 // 1. Consultation Recording & Completion
 router.post('/consultations/:bookingId/record', validateRequest(recordConsultationSchema), recordConsultation);
+router.post('/consultations/:bookingId/send-prescription', sendPrescriptionToPatient);
+router.post('/send-prescription', sendPrescriptionToPatient);
 
 // 2. Patient Longitudinal Clinical History
 router.get('/patients/:patientId/history', getPatientHistory);

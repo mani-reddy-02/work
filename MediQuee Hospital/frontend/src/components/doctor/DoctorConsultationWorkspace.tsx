@@ -15,6 +15,7 @@ import {
 } from "@/services/doctorApi"
 import { adminApi } from "@/services/adminApi"
 import { cn } from "@/lib/utils"
+import { OfficialPrescriptionModal } from "./OfficialPrescriptionModal"
 
 export type DoctorAppointmentItem = {
   id: string;
@@ -56,12 +57,12 @@ export function DoctorConsultationWorkspace({
 }: DoctorConsultationWorkspaceProps) {
   const { toast } = useToast();
 
-  // Consultation state
   const [currentStatus, setCurrentStatus] = useState<string>('WAITING');
   const [diagnosis, setDiagnosis] = useState('');
   const [clinicalNotes, setClinicalNotes] = useState('');
   const [generalAdvice, setGeneralAdvice] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
+  const [completedPrescription, setCompletedPrescription] = useState<any | null>(null);
 
   // Vitals state
   const [isVitalsOpen, setIsVitalsOpen] = useState(true);
@@ -227,7 +228,14 @@ export function DoctorConsultationWorkspace({
       if (onConsultationCompleted) {
         onConsultationCompleted();
       }
-      onClose();
+      setCompletedPrescription({
+        diagnosis: payload.diagnosis,
+        clinicalNotes: payload.clinicalNotes,
+        generalAdvice: payload.generalAdvice,
+        followUpDate: payload.followUpDate,
+        items: payload.prescriptions,
+        vitals: payload.vitals,
+      });
     } catch (err: any) {
       console.error("Consultation completion failed:", err);
       toast(err.message || "Failed to complete consultation", "error");
@@ -718,6 +726,18 @@ export function DoctorConsultationWorkspace({
           </div>
         </motion.div>
       </div>
+
+      {completedPrescription && (
+        <OfficialPrescriptionModal
+          isOpen={!!completedPrescription}
+          onClose={() => {
+            setCompletedPrescription(null);
+            onClose();
+          }}
+          appointment={appointment}
+          prescription={completedPrescription}
+        />
+      )}
     </AnimatePresence>
   );
 }

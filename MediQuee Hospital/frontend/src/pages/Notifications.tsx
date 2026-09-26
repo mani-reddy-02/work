@@ -28,7 +28,7 @@ function formatTimeAgo(dateStr: string): string {
 
 export function Notifications() {
   const { t } = useTranslation();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const navigate = useNavigate();
   const { 
     notifications, 
@@ -40,6 +40,16 @@ export function Notifications() {
     markAllAsRead, 
     playChime 
   } = useNotifications();
+
+  // If nurse, strictly only show nurse-related notifications
+  const displayedNotifications = notifications.filter(notif => {
+    if (role === 'nurse') {
+      if (notif.userId && notif.userId === user?.id) return true;
+      const text = `${notif.title} ${notif.message}`.toLowerCase();
+      return text.includes('nurse') || text.includes('home visit') || text.includes('nursing');
+    }
+    return true;
+  });
 
   const getIconForType = (type: string) => {
     switch (type) {
@@ -172,7 +182,7 @@ export function Notifications() {
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-xs font-bold text-muted uppercase tracking-wider">Recent Activity</h2>
-            <span className="text-xs text-muted">{notifications.length} alerts</span>
+            <span className="text-xs text-muted">{displayedNotifications.length} alerts</span>
           </div>
 
           {isLoading ? (
@@ -181,13 +191,13 @@ export function Notifications() {
             </div>
           ) : (
             <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col gap-2.5">
-              {notifications.length === 0 ? (
+              {displayedNotifications.length === 0 ? (
                 <EmptyState
                   icon={Bell}
                   title="No Notifications"
-                  description="Real-time alerts for new appointments, department updates, and staff additions will appear here automatically."
+                  description={role === 'nurse' ? "New home nursing visit assignments and patient status alerts will appear here." : "Real-time alerts for new appointments, department updates, and staff additions will appear here automatically."}
                 />
-              ) : notifications.map((notif) => (
+              ) : displayedNotifications.map((notif) => (
                 <motion.div 
                   key={notif.id} 
                   variants={item}

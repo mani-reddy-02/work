@@ -1,9 +1,10 @@
-import { Search, Filter, Calendar, ArrowLeft, Video, FileText, X, RotateCcw, Play } from "lucide-react"
+import { Search, Filter, Calendar, ArrowLeft, Video, FileText, X, RotateCcw, Play, FileSignature } from "lucide-react"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useAuth } from "@/context/AuthContext"
 import { motion, AnimatePresence } from "framer-motion"
 import { VideoDetailModal } from "./VideoDetailModal"
 import { DoctorConsultationWorkspace } from "@/components/doctor/DoctorConsultationWorkspace"
+import { OfficialPrescriptionModal } from "@/components/doctor/OfficialPrescriptionModal"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { cn } from "@/lib/utils"
@@ -17,6 +18,7 @@ export function VideoConsultations() {
 
   const [selectedConsult, setSelectedConsult] = useState<any>(null);
   const [selectedWorkspaceApt, setSelectedWorkspaceApt] = useState<any>(null);
+  const [viewPrescriptionApt, setViewPrescriptionApt] = useState<any | null>(null);
   const [selectedFilter, setSelectedFilter] = useState(() => locationState?.filter || 'all');
   const [selectedDate, setSelectedDate] = useState(() => locationState?.date || 'upcoming');
   const [selectedStatus, setSelectedStatus] = useState<string>(() => locationState?.status || 'ALL');
@@ -128,6 +130,16 @@ export function VideoConsultations() {
       if (!silent) setIsLoading(false);
     }
   }, []);
+
+  const handleOpenPrescription = async (apt: VideoConsult) => {
+    try {
+      const full = await doctorApi.getAppointmentById(apt.id);
+      setViewPrescriptionApt(full || apt);
+    } catch (err) {
+      console.error("Failed to load appointment details:", err);
+      setViewPrescriptionApt(apt);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -625,14 +637,25 @@ export function VideoConsultations() {
                             
                             <div className="flex items-center gap-2">
                               {/* Clinical Workspace Consultation Button */}
-                              <button 
-                                onClick={() => setSelectedWorkspaceApt(apt)}
-                                className="flex items-center gap-1 text-gray-600 font-bold text-[12px] px-2.5 py-1.5 rounded-lg border border-border hover:bg-gray-50 transition-colors active:scale-95 cursor-pointer"
-                                title="Open clinical diagnosis & prescription workspace"
-                              >
-                                <FileText className="w-3.5 h-3.5" />
-                                Rx
-                              </button>
+                              {apt.status === 'COMPLETED' ? (
+                                <button 
+                                  onClick={() => handleOpenPrescription(apt)}
+                                  className="flex items-center gap-1 text-[#1B5DF1] font-bold text-[12px] px-2.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50/50 hover:bg-blue-100 transition-colors active:scale-95 cursor-pointer"
+                                  title="View official digitally-signed prescription"
+                                >
+                                  <FileSignature className="w-3.5 h-3.5" />
+                                  Rx
+                                </button>
+                              ) : (
+                                <button 
+                                  onClick={() => setSelectedWorkspaceApt(apt)}
+                                  className="flex items-center gap-1 text-gray-600 font-bold text-[12px] px-2.5 py-1.5 rounded-lg border border-border hover:bg-gray-50 transition-colors active:scale-95 cursor-pointer"
+                                  title="Open clinical diagnosis & prescription workspace"
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  Rx
+                                </button>
+                              )}
 
                               {/* Join Call Action */}
                               {apt.status === 'WAITING' || apt.status === 'PENDING' ? (
@@ -653,10 +676,11 @@ export function VideoConsultations() {
                                 </button>
                               ) : apt.status === 'COMPLETED' ? (
                                 <button 
-                                  onClick={() => setSelectedConsult(apt)}
-                                  className="flex items-center gap-1 text-emerald-700 font-bold text-[12px] px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer"
+                                  onClick={() => handleOpenPrescription(apt)}
+                                  className="flex items-center gap-1.5 text-emerald-700 font-bold text-[12px] px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer"
                                 >
-                                  Details
+                                  <FileSignature className="w-3.5 h-3.5" />
+                                  Prescription
                                 </button>
                               ) : (
                                 <span className="text-[12px] font-bold text-muted/60 px-2 py-1">--</span>
@@ -895,6 +919,14 @@ export function VideoConsultations() {
         onClose={() => setSelectedWorkspaceApt(null)}
         appointment={selectedWorkspaceApt}
         onConsultationCompleted={loadData}
+      />
+
+      {/* Official Digitally Signed Prescription Modal */}
+      <OfficialPrescriptionModal
+        isOpen={!!viewPrescriptionApt}
+        onClose={() => setViewPrescriptionApt(null)}
+        appointment={viewPrescriptionApt}
+        prescription={viewPrescriptionApt?.prescription}
       />
     </div>
   )

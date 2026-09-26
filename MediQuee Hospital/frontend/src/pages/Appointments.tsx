@@ -9,6 +9,8 @@ import { EmptyState } from "../components/ui/EmptyState"
 import { cn } from "@/lib/utils"
 import { useNavigate, useLocation, Navigate } from "react-router-dom"
 import { adminApi } from "@/services/adminApi"
+import { nurseApi } from "@/services/nurseApi"
+import { AssignNurseModal } from "../components/appointments/AssignNurseModal"
 import { useTranslation } from "react-i18next"
 
 export function Appointments() {
@@ -71,9 +73,12 @@ export function Appointments() {
   type Appointment = {
     id: string; mqId: string; patientName: string; patientPhone?: string; time: string; period: string;
     date: string; type: string; doctor: string; status: string; avatar: string;
+    isNursing?: boolean; nurseId?: string | null; nurseName?: string | null;
+    bookingNumber?: string; serviceName?: string; address?: string;
   };
   const [appointmentsList, setAppointmentsList] = useState<Appointment[]>([]);
   const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
+  const [nurseAssignModalBooking, setNurseAssignModalBooking] = useState<any>(null);
 
   const fetchBookings = useCallback(async (targetDate: string) => {
     setIsLoading(true);
@@ -86,8 +91,13 @@ export function Appointments() {
       } else {
         filters.date = targetDate;
       }
-      const data = await adminApi.getBookings(filters);
-      const mapped = (data || []).map((b: any) => {
+
+      const [data, nursingData] = await Promise.all([
+        adminApi.getBookings(filters).catch(() => []),
+        nurseApi.getHospitalBookings({ date: targetDate }).catch(() => []),
+      ]);
+
+      const mappedOps = (data || []).map((b: any) => {
         const timeStr = b.timeSlot || b.slotTime || new Date(b.appointmentDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const parts = timeStr.trim().split(' ');
         return {
@@ -101,10 +111,35 @@ export function Appointments() {
           type: b.opType || b.condition?.name || 'Walk-In',
           doctor: b.doctor?.name || 'Assigned Doctor',
           status: b.status || 'WAITING',
-          avatar: b.doctor?.avatar || ''
+          avatar: b.doctor?.avatar || '',
+          isNursing: false,
         };
       });
-      setAppointmentsList(mapped);
+
+      const mappedNursing = (nursingData || []).map((b: any) => {
+        const timeParts = (b.timeSlot || '08:00 AM').trim().split(' ');
+        return {
+          id: b.id,
+          mqId: b.mqId || `HN-${b.bookingNumber?.slice(-4) || b.id.substring(0, 6)}`,
+          patientName: b.patientName || 'Patient',
+          patientPhone: b.patientPhone,
+          time: timeParts[0] || '08:00',
+          period: timeParts[1] || 'AM',
+          date: b.serviceDate,
+          type: `Home Nursing · ${b.serviceName}`,
+          doctor: b.nurse?.name ? `Nurse: ${b.nurse.name}` : 'Unassigned Nurse',
+          status: b.status || 'CONFIRMED',
+          avatar: b.nurse?.avatar || '',
+          isNursing: true,
+          nurseId: b.nurseId,
+          nurseName: b.nurse?.name,
+          bookingNumber: b.bookingNumber,
+          serviceName: b.serviceName,
+          address: b.address,
+        };
+      });
+
+      setAppointmentsList([...mappedOps, ...mappedNursing]);
     } catch (err) {
       console.error('Failed to fetch bookings:', err);
     } finally {
@@ -144,9 +179,9 @@ export function Appointments() {
 
       // Filter by status if selected
       if (selectedStatus === 'WAITING') {
-        if (apt.status !== 'WAITING' && apt.status !== 'PENDING') return false;
+        if (apt.status !== 'WAITING' && apt.status !== 'PENDING' && apt.status !== 'CONFIRMED') return false;
       } else if (selectedStatus === 'IN_CONSULTATION') {
-        if (apt.status !== 'IN_CONSULTATION') return false;
+        if (apt.status !== 'IN_CONSULTATION' && apt.status !== 'IN_PROGRESS' && apt.status !== 'ASSIGNED') return false;
       } else if (selectedStatus === 'COMPLETED') {
         if (apt.status !== 'COMPLETED') return false;
       } else if (selectedStatus === 'CANCELLED') {
@@ -166,7 +201,9 @@ export function Appointments() {
       } else if (selectedFilter === 'home_sample') {
         if (!apt.type.toLowerCase().includes('sample')) return false;
       } else if (selectedFilter === 'home_nursing') {
-        if (!apt.type.toLowerCase().includes('nurs')) return false;
+        if (!apt.isNursing && !apt.type.toLowerCase().includes('nurs')) return false;
+      } else if (selectedFilter === 'ops') {
+        if (apt.isNursing || apt.type.toLowerCase().includes('video') || apt.type.toLowerCase().includes('lab') || apt.type.toLowerCase().includes('sample') || apt.type.toLowerCase().includes('nurs')) return false;
       }
 
       return true;
@@ -180,7 +217,14 @@ export function Appointments() {
 
   const updateStatus = async (id: string, newStatus: string) => {
     try {
-      await adminApi.updateBookingStatus(id, newStatus);
+      const apt = appointmentsList.find(a => a.id === id);
+      if (apt?.isNursing) {
+        if (newStatus === 'IN_PROGRESS' || newStatus === 'COMPLETED' || newStatus === 'ASSIGNED') {
+          await nurseApi.updateVisitStatus(id, newStatus as any);
+        }
+      } else {
+        await adminApi.updateBookingStatus(id, newStatus);
+      }
       fetchBookings(selectedDate); // Refresh the list
     } catch (err) {
       console.error(err);
@@ -551,21 +595,50 @@ export function Appointments() {
                           <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
                             <div className="flex items-center gap-1.5 text-muted text-[12px] font-semibold">
                               <FileText className="w-3.5 h-3.5" />
-                              <span>Consultation</span>
+                              <span>{apt.isNursing ? "Home Nursing Visit" : "Consultation"}</span>
                             </div>
                             
                             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/patients/${apt.id}`);
-                                }}
-                                className="flex items-center gap-1.5 text-[#1B5DF1] font-bold text-[12px] sm:text-[13px] px-3.5 py-1.5 rounded-xl border border-[#1B5DF1]/20 hover:bg-[#EBF5FF] transition-colors active:scale-95"
-                                title="View Detailed Patient Record"
-                              >
-                                <User className="w-3.5 h-3.5" />
-                                Patient View
-                              </button>
+                              {apt.isNursing ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setNurseAssignModalBooking({
+                                      id: apt.id,
+                                      bookingNumber: apt.bookingNumber || apt.mqId,
+                                      patientName: apt.patientName,
+                                      patientPhone: apt.patientPhone,
+                                      serviceName: apt.serviceName || apt.type,
+                                      date: apt.date,
+                                      time: `${apt.time} ${apt.period}`,
+                                      address: apt.address,
+                                      nurseId: apt.nurseId,
+                                      nurseName: apt.nurseName,
+                                    });
+                                  }}
+                                  className={cn(
+                                    "flex items-center gap-1.5 font-bold text-[12px] sm:text-[13px] px-3.5 py-1.5 rounded-xl transition-all active:scale-95",
+                                    apt.nurseId 
+                                      ? "text-[#1B5DF1] border border-[#1B5DF1]/20 hover:bg-[#EBF5FF]" 
+                                      : "bg-[#1B5DF1] text-white hover:bg-blue-700 shadow-sm"
+                                  )}
+                                >
+                                  <User className="w-3.5 h-3.5" />
+                                  {apt.nurseId ? "Change Nurse" : "Assign Nurse"}
+                                </button>
+                              ) : (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/patients/${apt.id}`);
+                                  }}
+                                  className="flex items-center gap-1.5 text-[#1B5DF1] font-bold text-[12px] sm:text-[13px] px-3.5 py-1.5 rounded-xl border border-[#1B5DF1]/20 hover:bg-[#EBF5FF] transition-colors active:scale-95"
+                                  title="View Detailed Patient Record"
+                                >
+                                  <User className="w-3.5 h-3.5" />
+                                  Patient View
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -748,6 +821,12 @@ export function Appointments() {
         isOpen={isWalkInModalOpen}
         onClose={() => setIsWalkInModalOpen(false)}
         onSuccess={() => fetchBookings(selectedDate)}
+      />
+      <AssignNurseModal
+        isOpen={!!nurseAssignModalBooking}
+        onClose={() => setNurseAssignModalBooking(null)}
+        booking={nurseAssignModalBooking}
+        onAssigned={() => fetchBookings(selectedDate)}
       />
     </div>
   )

@@ -324,10 +324,19 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
     let booking = null;
     const includeRelations = {
       hospital: {
-        select: { id: true, name: true, city: true, addressLine1: true, contactPhone: true }
+        select: { id: true, name: true, city: true, addressLine1: true, contactPhone: true, registrationNumber: true }
       },
       doctor: {
-        select: { id: true, name: true, designation: true, avatar: true }
+        select: { 
+          id: true, 
+          name: true, 
+          designation: true, 
+          avatar: true,
+          licenseNumber: true,
+          specialization: true,
+          qualification: true,
+          digitalSignature: true
+        }
       },
       department: {
         select: { id: true, name: true }
@@ -337,7 +346,13 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
       },
       patient: {
         select: { id: true, name: true, phone: true, dob: true, gender: true, avatar: true }
-      }
+      },
+      prescription: {
+        include: {
+          items: true
+        }
+      },
+      vitals: true
     };
 
     if (isFullUuid) {
@@ -430,6 +445,13 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
         fee: booking.fee,
         reason: booking.reason,
         createdAt: booking.createdAt,
+        prescription: booking.prescription || null,
+        vitals: booking.vitals || null,
+        doctorLicenseNumber: booking.doctor?.licenseNumber || null,
+        doctorSpecialization: booking.doctor?.specialization || null,
+        doctorQualification: booking.doctor?.qualification || null,
+        doctorDigitalSignature: booking.doctor?.digitalSignature || null,
+        hospitalRegNumber: booking.hospital?.registrationNumber || null,
         pastVisits: pastBookings.map(v => ({
           id: v.id,
           date: v.appointmentDate.toISOString().split('T')[0],

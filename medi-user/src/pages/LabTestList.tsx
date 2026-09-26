@@ -312,6 +312,20 @@ const LabTestList = () => {
       )
     : [];
 
+  const activeConcern = selectedConcern
+    ? healthConcerns.find(
+        (c) =>
+          c.name.toLowerCase() === selectedConcern.toLowerCase() ||
+          c.id.toLowerCase() === selectedConcern.toLowerCase()
+      ) || {
+        id: selectedConcern.toLowerCase(),
+        name: selectedConcern,
+        icon: Activity,
+        color: 'text-blue-500',
+        bg: 'bg-blue-50',
+      }
+    : null;
+
   const hasResults =
     filteredLabTests.length > 0 || filteredPackages.length > 0 || concernTests.length > 0;
 
@@ -695,66 +709,69 @@ const LabTestList = () => {
                               : 'flex overflow-x-auto hide-scrollbar gap-3 pb-2 px-4'
                           }
                         >
-                          {filteredPackages.map((item) => (
-                            <div
-                              key={item.id}
-                              className="bg-white rounded-2xl border border-slate-100 shadow-sm min-w-[210px] max-w-[240px] shrink-0 flex flex-col justify-between overflow-hidden hover:shadow-md transition-shadow"
-                            >
+                          {filteredPackages.map((item) => {
+                            const PackageIcon = (item as any).icon || Activity;
+                            return (
                               <div
-                                className={`h-1.5 w-full bg-gradient-to-r ${
-                                  (item as any).color === 'text-blue-600'
-                                    ? 'from-blue-500 to-blue-400'
-                                    : (item as any).color === 'text-rose-600'
-                                    ? 'from-rose-500 to-rose-400'
-                                    : (item as any).color === 'text-indigo-600'
-                                    ? 'from-indigo-500 to-indigo-400'
-                                    : 'from-blue-500 to-cyan-400'
-                                }`}
-                              ></div>
-                              <div className="p-3.5">
-                                <div className="mb-3">
-                                  <div className="flex items-start gap-2.5 mb-2">
-                                    <div
-                                      className={`w-10 h-10 rounded-xl ${(item as any).bg} ${(item as any).color} flex items-center justify-center shrink-0`}
-                                    >
-                                      <item.icon className="w-5 h-5" strokeWidth={2} />
-                                    </div>
-                                    <div>
-                                      <h3 className="font-bold text-slate-900 text-[12px] leading-tight mb-0.5 whitespace-pre-line">
-                                        {item.name}
-                                      </h3>
-                                      <p className="text-[9px] text-slate-500 font-medium">
-                                        ({(item as any).tests})
-                                      </p>
+                                key={item.id}
+                                className="bg-white rounded-2xl border border-slate-100 shadow-sm min-w-[210px] max-w-[240px] shrink-0 flex flex-col justify-between overflow-hidden hover:shadow-md transition-shadow"
+                              >
+                                <div
+                                  className={`h-1.5 w-full bg-gradient-to-r ${
+                                    (item as any).color === 'text-blue-600'
+                                      ? 'from-blue-500 to-blue-400'
+                                      : (item as any).color === 'text-rose-600'
+                                      ? 'from-rose-500 to-rose-400'
+                                      : (item as any).color === 'text-indigo-600'
+                                      ? 'from-indigo-500 to-indigo-400'
+                                      : 'from-blue-500 to-cyan-400'
+                                  }`}
+                                ></div>
+                                <div className="p-3.5">
+                                  <div className="mb-3">
+                                    <div className="flex items-start gap-2.5 mb-2">
+                                      <div
+                                        className={`w-10 h-10 rounded-xl ${(item as any).bg || 'bg-blue-50'} ${(item as any).color || 'text-blue-600'} flex items-center justify-center shrink-0`}
+                                      >
+                                        <PackageIcon className="w-5 h-5" strokeWidth={2} />
+                                      </div>
+                                      <div>
+                                        <h3 className="font-bold text-slate-900 text-[12px] leading-tight mb-0.5 whitespace-pre-line">
+                                          {item.name}
+                                        </h3>
+                                        <p className="text-[9px] text-slate-500 font-medium">
+                                          ({(item as any).tests})
+                                        </p>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                                <div className="flex items-center gap-1.5 text-[10px] text-slate-600 font-medium mb-3">
-                                  <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                  <span>Results in {item.time}</span>
-                                </div>
-                                <div className="flex items-center justify-between mt-auto">
-                                  <span className="text-[16px] font-black text-blue-600">{item.price}</span>
-                                </div>
-                                <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-                                  <button
-                                    onClick={() => handleBookNow(item)}
-                                    className="flex-1 bg-slate-50 text-slate-700 border border-slate-200 py-1.5 rounded-lg text-[10px] font-bold hover:bg-slate-100 transition-colors"
-                                  >
-                                    View
-                                  </button>
-                                  <button
-                                    onClick={() => handleBookNow(item)}
-                                    className={`flex-1 text-white py-1.5 rounded-lg text-[10px] font-bold ${
-                                      (item as any).btnBg || 'bg-[#0055ff]'
-                                    } hover:opacity-90 transition-opacity shadow-sm`}
-                                  >
-                                    Book
-                                  </button>
+                                  <div className="flex items-center gap-1.5 text-[10px] text-slate-600 font-medium mb-3">
+                                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>Results in {item.time}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between mt-auto">
+                                    <span className="text-[16px] font-black text-blue-600">{item.price}</span>
+                                  </div>
+                                  <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                                    <button
+                                      onClick={() => handleBookNow(item)}
+                                      className="flex-1 bg-slate-50 text-slate-700 border border-slate-200 py-1.5 rounded-lg text-[10px] font-bold hover:bg-slate-100 transition-colors"
+                                    >
+                                      View
+                                    </button>
+                                    <button
+                                      onClick={() => handleBookNow(item)}
+                                      className={`flex-1 text-white py-1.5 rounded-lg text-[10px] font-bold ${
+                                        (item as any).btnBg || 'bg-[#0055ff]'
+                                      } hover:opacity-90 transition-opacity shadow-sm`}
+                                    >
+                                      Book
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}

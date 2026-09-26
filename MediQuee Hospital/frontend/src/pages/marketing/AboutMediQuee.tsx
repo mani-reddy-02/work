@@ -34,8 +34,8 @@ export function AboutMediQuee() {
       await adminApi.requestInquiry({
         subject,
         message,
-        contactPerson: contactPerson || user?.name,
-        contactPhone: contactPhone || user?.phone,
+        contactPerson: contactPerson || user?.name || undefined,
+        contactPhone: (contactPhone || user?.phone) ?? undefined,
         contactEmail: contactEmail || user?.email,
       });
 

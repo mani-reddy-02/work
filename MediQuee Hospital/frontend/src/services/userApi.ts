@@ -12,7 +12,18 @@ export interface UserProfile {
   avatar?: string | null;
   dob?: string | null;
   gender?: string | null;
+  address?: string | null;
+  licenseNumber?: string | null;
+  qualification?: string | null;
+  specialization?: string | null;
+  experienceYears?: number | null;
+  consultationFee?: number | null;
+  bio?: string | null;
+  digitalSignature?: string | null;
+  prescriptionSettings?: any;
+  presenceStatus?: string | null;
   hospitalId?: string | null;
+  departmentId?: string | null;
   createdAt?: string;
   hospital?: {
     id: string;
@@ -23,18 +34,35 @@ export interface UserProfile {
     contactPhone?: string;
     contactEmail?: string;
     addressLine1?: string;
+    area?: string;
     city?: string;
     state?: string;
     pincode?: string;
+  } | null;
+  department?: {
+    id: string;
+    name: string;
+    code?: string | null;
   } | null;
 }
 
 export interface UpdateUserDto {
   name?: string;
+  email?: string;
   phone?: string;
-  dob?: string;
-  gender?: string;
-  avatar?: string;
+  dob?: string | null;
+  gender?: string | null;
+  avatar?: string | null;
+  designation?: string | null;
+  address?: string | null;
+  licenseNumber?: string | null;
+  qualification?: string | null;
+  specialization?: string | null;
+  experienceYears?: number | null;
+  consultationFee?: number | null;
+  bio?: string | null;
+  digitalSignature?: string | null;
+  prescriptionSettings?: any;
 }
 
 export interface UserResponse {

@@ -16,7 +16,18 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
         avatar: true,
         dob: true,
         gender: true,
+        address: true,
+        licenseNumber: true,
+        qualification: true,
+        specialization: true,
+        experienceYears: true,
+        consultationFee: true,
+        bio: true,
+        digitalSignature: true,
+        prescriptionSettings: true,
+        presenceStatus: true,
         hospitalId: true,
+        departmentId: true,
         createdAt: true,
         hospital: {
           select: {
@@ -32,6 +43,13 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
             city: true,
             state: true,
             pincode: true,
+          },
+        },
+        department: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
           },
         },
       },
@@ -50,7 +68,24 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
 export const updateMe = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.id;
-    const { name, email, phone, dob, gender, avatar } = req.body;
+    const {
+      name,
+      email,
+      phone,
+      dob,
+      gender,
+      avatar,
+      designation,
+      address,
+      licenseNumber,
+      qualification,
+      specialization,
+      experienceYears,
+      consultationFee,
+      bio,
+      digitalSignature,
+      prescriptionSettings,
+    } = req.body;
 
     // Check for duplicate email or phone if being updated
     if (email || phone) {
@@ -87,6 +122,16 @@ export const updateMe = async (req: Request, res: Response, next: NextFunction) 
         ...(dob !== undefined && { dob }),
         ...(gender !== undefined && { gender }),
         ...(avatar !== undefined && { avatar }),
+        ...(designation !== undefined && { designation }),
+        ...(address !== undefined && { address }),
+        ...(licenseNumber !== undefined && { licenseNumber }),
+        ...(qualification !== undefined && { qualification }),
+        ...(specialization !== undefined && { specialization }),
+        ...(experienceYears !== undefined && { experienceYears: experienceYears === null ? null : Number(experienceYears) }),
+        ...(consultationFee !== undefined && { consultationFee: consultationFee === null ? null : Number(consultationFee) }),
+        ...(bio !== undefined && { bio }),
+        ...(digitalSignature !== undefined && { digitalSignature }),
+        ...(prescriptionSettings !== undefined && { prescriptionSettings }),
       },
       select: {
         id: true,
@@ -98,8 +143,42 @@ export const updateMe = async (req: Request, res: Response, next: NextFunction) 
         avatar: true,
         dob: true,
         gender: true,
+        address: true,
+        licenseNumber: true,
+        qualification: true,
+        specialization: true,
+        experienceYears: true,
+        consultationFee: true,
+        bio: true,
+        digitalSignature: true,
+        prescriptionSettings: true,
+        presenceStatus: true,
         hospitalId: true,
+        departmentId: true,
         createdAt: true,
+        hospital: {
+          select: {
+            id: true,
+            name: true,
+            businessType: true,
+            facilityType: true,
+            registrationNumber: true,
+            contactPhone: true,
+            contactEmail: true,
+            addressLine1: true,
+            area: true,
+            city: true,
+            state: true,
+            pincode: true,
+          },
+        },
+        department: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
       },
     });
 

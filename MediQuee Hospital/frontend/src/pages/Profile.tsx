@@ -2,16 +2,20 @@ import { ArrowLeft, User, Bell, Shield, Settings, LogOut, ChevronRight, Building
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import { useAuth } from "@/context/AuthContext"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { ConfirmationSheet } from "@/components/ui/ConfirmationSheet"
 import { cn } from "@/lib/utils"
 
 export function Profile() {
   const navigate = useNavigate();
-  const { logout, role, user } = useAuth();
+  const { logout, role, user, refreshUser } = useAuth();
   const { t } = useTranslation();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  useEffect(() => {
+    refreshUser();
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -113,11 +117,18 @@ export function Profile() {
               <p className="text-[13px] font-medium text-muted">
                 {user?.email || "—"}
               </p>
-              <div className="mt-1.5 flex items-center">
+              <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                 {isDoctor ? (
-                  <span className="bg-[#EBF5FF] text-[#1B5DF1] text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border border-[#1B5DF1]/20 flex items-center gap-1">
-                    <Stethoscope className="w-3 h-3" /> Doctor
-                  </span>
+                  <>
+                    <span className="bg-[#EBF5FF] text-[#1B5DF1] text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border border-[#1B5DF1]/20 flex items-center gap-1">
+                      <Stethoscope className="w-3 h-3" /> Doctor
+                    </span>
+                    {(user?.designation || user?.specialization) && (
+                      <span className="text-[11px] font-semibold text-muted">
+                        • {user?.designation || user?.specialization}
+                      </span>
+                    )}
+                  </>
                 ) : role === 'nurse' ? (
                   <span className="bg-orange-50 text-orange-600 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border border-orange-100 flex items-center gap-1">
                     Home Care Nurse

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Prisma } from '@prisma/client';
 import { Role } from '@prisma/client';
+import { sendNotification } from '../notifications/notifications.service';
 
 // Generate unique human-readable booking number
 const generateBookingNumber = (): string => {
@@ -841,6 +842,576 @@ export const cancelNursingBooking = async (req: Request, res: Response, next: Ne
         paymentStatus: updated.paymentStatus,
         message: 'Home nursing booking has been cancelled successfully',
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/home-nursing/nurse/dashboard
+ * Authenticated endpoint for nurses to get their dashboard data (stats, next visit, today's visits).
+ */
+export const getNurseDashboard = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const nurseId = req.user?.id;
+    if (!nurseId) {
+      return res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+      });
+    }
+
+    // Nurse profile
+    const nurse = await prisma.user.findUnique({
+      where: { id: nurseId },
+      include: { hospital: true },
+    });
+
+    if (!nurse) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Nurse not found' },
+      });
+    }
+
+    // Find all bookings assigned to this nurse
+    const allAssigned = await prisma.homeNursingBooking.findMany({
+      where: { nurseId },
+      include: {
+        service: true,
+        hospital: true,
+      },
+      orderBy: [
+        { serviceDate: 'asc' },
+        { timeSlot: 'asc' },
+      ],
+    });
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+
+    // Helper to check if a date is today
+    const isToday = (d: Date) => {
+      const date = new Date(d);
+      return (
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth() &&
+        date.getDate() === now.getDate()
+      );
+    };
+
+    // Calculate real stats from DB
+    const visitsTodayList = allAssigned.filter(b => isToday(b.serviceDate) && b.status !== 'CANCELLED');
+    const visitsToday = visitsTodayList.length;
+    const inProgressList = allAssigned.filter(b => b.status === 'IN_PROGRESS');
+    const inProgress = inProgressList.length;
+    const completedList = allAssigned.filter(b => b.status === 'COMPLETED');
+    const completed = completedList.length;
+    
+    // Upcoming: future visits (or today not yet completed/cancelled)
+    const upcomingList = allAssigned.filter(b => 
+      (new Date(b.serviceDate) >= startOfToday) && 
+      ['CONFIRMED', 'ASSIGNED'].includes(b.status)
+    );
+    const upcoming = upcomingList.length;
+
+    // Determine Next Visit
+    // Priority: 1. Any currently in progress visit; 2. Earliest assigned visit today/upcoming
+    let nextBooking: any = inProgressList[0] || upcomingList[0] || null;
+    if (!nextBooking && visitsTodayList.length > 0) {
+      nextBooking = visitsTodayList.find(b => b.status !== 'CANCELLED') || null;
+    }
+
+    const formatVisit = (b: any) => ({
+      id: b.id,
+      bookingNumber: b.bookingNumber,
+      name: b.patientName,
+      patientPhone: b.patientPhone,
+      patientEmail: b.patientEmail,
+      service: b.service?.name || 'Home Nursing',
+      serviceCategory: b.service?.category,
+      time: b.timeSlot,
+      date: b.serviceDate.toISOString().split('T')[0],
+      address: b.address,
+      city: b.city,
+      pincode: b.pincode,
+      notes: b.notes,
+      status: b.status === 'IN_PROGRESS' ? 'In Progress' : b.status === 'COMPLETED' ? 'Completed' : 'Upcoming',
+      rawStatus: b.status,
+      duration: b.duration || b.service?.duration || 'Per Visit',
+      totalAmount: b.totalAmount,
+      distance: b.city ? `${b.city}` : 'Patient Home',
+    });
+
+    const formattedNextVisit = nextBooking ? formatVisit(nextBooking) : null;
+    const formattedTodayVisits = visitsTodayList.map(formatVisit);
+
+    res.json({
+      success: true,
+      data: {
+        nurse: {
+          id: nurse.id,
+          name: nurse.name,
+          email: nurse.email,
+          hospitalName: nurse.hospital?.name || 'MediQuee Partner Hospital',
+        },
+        stats: {
+          visitsToday,
+          upcoming,
+          inProgress,
+          completed,
+        },
+        nextVisit: formattedNextVisit,
+        todayVisits: formattedTodayVisits,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/home-nursing/nurse/visits
+ * Fetches all visits for the nurse separated by upcoming and history tabs.
+ */
+export const getNurseVisits = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const nurseId = req.user?.id;
+    if (!nurseId) {
+      return res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+      });
+    }
+
+    const { search, date } = req.query;
+
+    const where: any = { nurseId };
+    if (date && typeof date === 'string') {
+      const [y, m, d] = date.split('-').map(Number);
+      const start = new Date(y, m - 1, d, 0, 0, 0, 0);
+      const end = new Date(y, m - 1, d, 23, 59, 59, 999);
+      where.serviceDate = { gte: start, lte: end };
+    }
+
+    const bookings = await prisma.homeNursingBooking.findMany({
+      where,
+      include: {
+        service: true,
+        hospital: true,
+      },
+      orderBy: [
+        { serviceDate: 'asc' },
+        { timeSlot: 'asc' },
+      ],
+    });
+
+    const formatVisit = (b: any) => ({
+      id: b.id,
+      bookingNumber: b.bookingNumber,
+      name: b.patientName,
+      patientPhone: b.patientPhone,
+      patientEmail: b.patientEmail,
+      service: b.service?.name || 'Home Nursing',
+      serviceCategory: b.service?.category,
+      time: b.timeSlot,
+      date: b.serviceDate.toISOString().split('T')[0],
+      address: b.address,
+      city: b.city,
+      pincode: b.pincode,
+      notes: b.notes,
+      status: b.status === 'IN_PROGRESS' ? 'In Progress' : b.status === 'COMPLETED' ? 'Completed' : b.status === 'CANCELLED' ? 'Cancelled' : 'Upcoming',
+      rawStatus: b.status,
+      duration: b.duration || b.service?.duration || 'Per Visit',
+      totalAmount: b.totalAmount,
+      distance: b.city ? `${b.city}` : 'Patient Home',
+    });
+
+    const formatted = bookings.map(formatVisit);
+
+    // Apply search if provided
+    const filtered = (search && typeof search === 'string' && search.trim())
+      ? formatted.filter(v => 
+          v.name.toLowerCase().includes(search.toLowerCase()) ||
+          v.service.toLowerCase().includes(search.toLowerCase()) ||
+          v.address.toLowerCase().includes(search.toLowerCase())
+        )
+      : formatted;
+
+    const upcoming = filtered.filter(v => ['Upcoming', 'In Progress', 'Assigned'].includes(v.status));
+    const history = filtered.filter(v => ['Completed', 'Cancelled'].includes(v.status));
+
+    res.json({
+      success: true,
+      data: {
+        upcoming,
+        history,
+        all: filtered,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/v1/home-nursing/nurse/visits/:id/status
+ * Updates the visit status (e.g. IN_PROGRESS when nurse reaches home, COMPLETED when done).
+ */
+export const updateNurseVisitStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const nurseId = req.user?.id;
+    const id = req.params.id as string;
+    const { status, notes } = req.body;
+
+    if (!nurseId) {
+      return res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+      });
+    }
+
+    if (!['IN_PROGRESS', 'COMPLETED', 'ASSIGNED'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_STATUS', message: 'Status must be IN_PROGRESS, COMPLETED, or ASSIGNED' },
+      });
+    }
+
+    const booking = await prisma.homeNursingBooking.findFirst({
+      where: {
+        OR: [{ id: String(id) }, { bookingNumber: String(id) }],
+      },
+      include: {
+        service: true,
+        hospital: true,
+        nurse: true,
+      },
+    });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Visit booking not found' },
+      });
+    }
+
+    // Verify permission: nurse assigned or hospital admin
+    if (booking.nurseId !== nurseId && req.user?.role !== Role.HOSPITAL_ADMIN && req.user?.role !== Role.SUPER_ADMIN) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'You are not assigned to this home nursing visit' },
+      });
+    }
+
+    const updated = await prisma.homeNursingBooking.update({
+      where: { id: booking.id },
+      data: {
+        status,
+        notes: notes ? (booking.notes ? `${booking.notes}\n${notes}` : notes) : booking.notes,
+      },
+      include: {
+        service: true,
+        hospital: true,
+        nurse: true,
+      },
+    });
+
+    // Send Real-Time Notifications
+    const nurseName = updated.nurse?.name || 'Assigned Nurse';
+    if (status === 'IN_PROGRESS') {
+      // Notify patient
+      await sendNotification({
+        userId: updated.userId,
+        hospitalId: updated.hospitalId,
+        title: 'Nurse Reached - Service In Progress',
+        message: `${nurseName} has arrived and started the ${updated.service.name} service.`,
+        type: 'appointment',
+        metadata: { bookingId: updated.id, status: 'IN_PROGRESS' },
+      });
+    } else if (status === 'COMPLETED') {
+      // Notify patient that service is completed & request feedback
+      await sendNotification({
+        userId: updated.userId,
+        hospitalId: updated.hospitalId,
+        title: 'Home Nursing Service Completed',
+        message: `Your ${updated.service.name} service with ${nurseName} has been completed successfully. We value your feedback!`,
+        type: 'appointment',
+        metadata: { bookingId: updated.id, status: 'COMPLETED' },
+      });
+
+      // Notify hospital
+      await sendNotification({
+        hospitalId: updated.hospitalId,
+        title: 'Home Nursing Service Finished',
+        message: `${nurseName} has successfully completed ${updated.service.name} for ${updated.patientName}.`,
+        type: 'appointment',
+        metadata: { bookingId: updated.id, status: 'COMPLETED' },
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: updated.id,
+        bookingNumber: updated.bookingNumber,
+        status: updated.status,
+        patientName: updated.patientName,
+        message: `Visit marked as ${status === 'IN_PROGRESS' ? 'In Progress' : 'Completed'}`,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/home-nursing/hospital/bookings
+ * Authenticated endpoint for hospital to list all home nursing bookings and assign nurses.
+ */
+export const getHospitalNursingBookings = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = req.user?.hospitalId;
+    if (!hospitalId && req.user?.role !== Role.SUPER_ADMIN) {
+      return res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Hospital staff authentication required' },
+      });
+    }
+
+    const { status, date, search } = req.query;
+    const where: any = {};
+    if (hospitalId) where.hospitalId = hospitalId;
+
+    if (status && typeof status === 'string' && status !== 'ALL') {
+      if (status === 'PENDING_ASSIGNMENT') {
+        where.nurseId = null;
+        where.status = { notIn: ['CANCELLED'] };
+      } else {
+        where.status = status;
+      }
+    }
+
+    if (date && typeof date === 'string' && date !== 'all' && date !== 'upcoming') {
+      const [y, m, d] = date.split('-').map(Number);
+      const start = new Date(y, m - 1, d, 0, 0, 0, 0);
+      const end = new Date(y, m - 1, d, 23, 59, 59, 999);
+      where.serviceDate = { gte: start, lte: end };
+    } else if (date === 'upcoming') {
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      where.serviceDate = { gte: startOfToday };
+      where.status = { notIn: ['CANCELLED', 'COMPLETED'] };
+    }
+
+    const bookings = await prisma.homeNursingBooking.findMany({
+      where,
+      include: {
+        service: true,
+        nurse: {
+          select: { id: true, name: true, phone: true, email: true, avatar: true },
+        },
+        user: {
+          select: { id: true, name: true, phone: true, email: true },
+        },
+      },
+      orderBy: [
+        { serviceDate: 'asc' },
+        { timeSlot: 'asc' },
+      ],
+    });
+
+    const mapped = bookings.map(b => ({
+      id: b.id,
+      bookingNumber: b.bookingNumber,
+      mqId: `HN-${b.bookingNumber.split('-').slice(-2).join('-')}`,
+      patientName: b.patientName,
+      patientPhone: b.patientPhone,
+      patientEmail: b.patientEmail,
+      serviceName: b.service.name,
+      serviceCategory: b.service.category,
+      serviceDate: b.serviceDate.toISOString().split('T')[0],
+      timeSlot: b.timeSlot,
+      duration: b.duration,
+      address: b.address,
+      city: b.city,
+      status: b.status,
+      paymentStatus: b.paymentStatus,
+      totalAmount: b.totalAmount,
+      nurseId: b.nurseId,
+      nurse: b.nurse,
+      notes: b.notes,
+      createdAt: b.createdAt,
+    }));
+
+    // Apply search if provided
+    const filtered = (search && typeof search === 'string' && search.trim())
+      ? mapped.filter(b => 
+          b.patientName.toLowerCase().includes(search.toLowerCase()) ||
+          b.bookingNumber.toLowerCase().includes(search.toLowerCase()) ||
+          b.serviceName.toLowerCase().includes(search.toLowerCase()) ||
+          (b.nurse?.name && b.nurse.name.toLowerCase().includes(search.toLowerCase()))
+        )
+      : mapped;
+
+    res.json({
+      success: true,
+      data: filtered,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/v1/home-nursing/hospital/bookings/:id/assign
+ * Hospital accepts/arranges nurse: Assigns an active hospital nurse to the booking.
+ */
+export const assignNurseToBooking = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = req.user?.hospitalId;
+    const id = req.params.id as string;
+    const { nurseId } = req.body;
+
+    if (!hospitalId && req.user?.role !== Role.SUPER_ADMIN) {
+      return res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Hospital staff authentication required' },
+      });
+    }
+
+    if (!nurseId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'nurseId is required to assign a nurse' },
+      });
+    }
+
+    // Validate nurse belongs to hospital and has NURSE role
+    const nurse = await prisma.user.findFirst({
+      where: {
+        id: nurseId,
+        ...(hospitalId ? { hospitalId } : {}),
+        role: Role.NURSE,
+        active: true,
+      },
+    });
+
+    if (!nurse) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Selected nurse not found or inactive in this hospital' },
+      });
+    }
+
+    const booking = await prisma.homeNursingBooking.findFirst({
+      where: {
+        OR: [{ id: String(id) }, { bookingNumber: String(id) }],
+        ...(hospitalId ? { hospitalId } : {}),
+      },
+      include: {
+        service: true,
+        hospital: true,
+      },
+    });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Home nursing booking not found' },
+      });
+    }
+
+    const updated = await prisma.homeNursingBooking.update({
+      where: { id: booking.id },
+      data: {
+        nurseId: nurse.id,
+        status: 'ASSIGNED',
+      },
+      include: {
+        service: true,
+        nurse: true,
+        hospital: true,
+      },
+    });
+
+    // Notify Nurse
+    await sendNotification({
+      userId: nurse.id,
+      hospitalId: updated.hospitalId,
+      title: 'New Home Visit Assigned',
+      message: `You have been assigned to ${updated.service.name} for ${updated.patientName} on ${updated.serviceDate.toISOString().split('T')[0]} (${updated.timeSlot}).`,
+      type: 'appointment',
+      metadata: { bookingId: updated.id, nurseId: nurse.id },
+    });
+
+    // Notify Patient
+    await sendNotification({
+      userId: updated.userId,
+      hospitalId: updated.hospitalId,
+      title: 'Nurse Assigned to Your Booking',
+      message: `${nurse.name} has been assigned for your ${updated.service.name} on ${updated.serviceDate.toISOString().split('T')[0]}. Contact: ${nurse.phone || 'Available via App'}.`,
+      type: 'appointment',
+      metadata: { bookingId: updated.id, nurseId: nurse.id },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        id: updated.id,
+        bookingNumber: updated.bookingNumber,
+        status: updated.status,
+        nurse: {
+          id: nurse.id,
+          name: nurse.name,
+          phone: nurse.phone,
+          email: nurse.email,
+        },
+        message: `Nurse ${nurse.name} assigned successfully.`,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/home-nursing/hospital/nurses
+ * List all active nurses belonging to the hospital.
+ */
+export const getHospitalNursesList = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = req.user?.hospitalId;
+    if (!hospitalId && req.user?.role !== Role.SUPER_ADMIN) {
+      return res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Hospital staff authentication required' },
+      });
+    }
+
+    const nurses = await prisma.user.findMany({
+      where: {
+        ...(hospitalId ? { hospitalId } : {}),
+        role: Role.NURSE,
+        active: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        avatar: true,
+        qualification: true,
+        specialization: true,
+        experienceYears: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    res.json({
+      success: true,
+      data: nurses,
     });
   } catch (error) {
     next(error);

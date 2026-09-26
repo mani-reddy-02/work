@@ -19,14 +19,29 @@ export type User = {
   id: string;
   name: string;
   email: string;
-  phone: string;
+  phone?: string | null;
   role: string;
-  designation?: string;
-  hospitalId: string;
+  designation?: string | null;
+  avatar?: string | null;
+  dob?: string | null;
+  gender?: string | null;
+  address?: string | null;
+  licenseNumber?: string | null;
+  qualification?: string | null;
+  specialization?: string | null;
+  experienceYears?: number | null;
+  consultationFee?: number | null;
+  bio?: string | null;
+  digitalSignature?: string | null;
+  prescriptionSettings?: any;
+  presenceStatus?: string | null;
+  hospitalId?: string | null;
+  departmentId?: string | null;
+  createdAt?: string;
   hospital?: {
     id: string;
     name: string;
-    businessType: string;
+    businessType?: string | null;
     facilityType?: string;
     registrationNumber?: string;
     contactPhone?: string;
@@ -36,7 +51,12 @@ export type User = {
     city?: string;
     state?: string;
     pincode?: string;
-  };
+  } | null;
+  department?: {
+    id: string;
+    name: string;
+    code?: string | null;
+  } | null;
 };
 
 type AuthContextType = {

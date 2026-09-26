@@ -537,7 +537,7 @@ const Specialties = () => {
       });
       return () => { active = false; };
     }
-  }, [view, selectedDoctor, selectedDateIso]);
+  }, [view, selectedDoctor, selectedDateIso, isVideo]);
 
   const handleAiSelectConcern = (concern: any) => {
     const term = concern.diseaseSearchTerm || concern.name;
@@ -1382,7 +1382,14 @@ const Specialties = () => {
         </div>
 
         <div className="flex items-center justify-between mb-3 mt-6">
-          <h2 className="text-[15px] font-bold text-slate-800">Available Time Slots</h2>
+          <div>
+            <h2 className="text-[15px] font-bold text-slate-800">
+              {isVideo ? 'Available Video Consultation Slots' : 'Available Time Slots'}
+            </h2>
+            <p className="text-[11px] text-slate-500 font-medium">
+              {isVideo ? 'Doctor remote video consult hours' : 'In-person clinic physical visit hours'}
+            </p>
+          </div>
           {isSlotsLoading && <span className="text-[10px] text-blue-600 font-medium animate-pulse">Checking live availability...</span>}
         </div>
 
@@ -1856,7 +1863,6 @@ const Specialties = () => {
              view === 'DOCTOR_PROFILE' ? 'Doctor Profile' :
              view === 'SELECT_SLOT' ? 'Select Slot' :
              view === 'REVIEW' ? 'Review Details' :
-             view === 'REVIEW' ? 'Review' :
              view === 'APPOINTMENT_STATUS' ? 'Status' :
              view === 'VIDEO_UPCOMING' ? 'Upcoming' :
              view === 'VIDEO_COMPLETED' ? 'Summary' :

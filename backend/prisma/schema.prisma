@@ -124,6 +124,7 @@ model Hospital {
   labTests            LabTest[]
   labBookings         LabBooking[]
   labs                Lab[]
+  nursingBookings     HomeNursingBooking[]
 }
 
 model PlatformSpecialty {
@@ -175,6 +176,15 @@ model User {
   avatar       String?
   dob          String?
   gender       String?
+  address      String?
+  licenseNumber String?
+  qualification String?
+  specialization String?
+  experienceYears Int?
+  consultationFee Float?
+  bio          String?
+  digitalSignature String?
+  prescriptionSettings Json?
   active       Boolean @default(true)
   presenceStatus DoctorPresenceStatus? @default(OFF_DUTY)
 
@@ -188,7 +198,8 @@ model User {
   doctorBookings  OPBooking[] @relation("DoctorBookings")
   patientBookings OPBooking[] @relation("PatientBookings")
   labBookings     LabBooking[]
-  nursingBookings HomeNursingBooking[]
+  patientNursingBookings HomeNursingBooking[] @relation("PatientNursingBookings")
+  assignedNursingBookings HomeNursingBooking[] @relation("NurseAssignedNursingBookings")
   patientReports  PatientReport[]
   doctorSchedules DoctorSchedule[] @relation("DoctorSchedule")
   prescriptions   Prescription[]   @relation("DoctorPrescriptions")
@@ -338,11 +349,13 @@ model HomeNursingBooking {
   id            String         @id @default(uuid())
   bookingNumber String         @unique
   userId        String
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User           @relation("PatientNursingBookings", fields: [userId], references: [id], onDelete: Cascade)
   hospitalId    String
+  hospital      Hospital       @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
   serviceId     String
   service       NursingService @relation(fields: [serviceId], references: [id])
   nurseId       String?
+  nurse         User?          @relation("NurseAssignedNursingBookings", fields: [nurseId], references: [id])
 
   patientName   String
   patientPhone  String

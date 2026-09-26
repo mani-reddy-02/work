@@ -249,6 +249,25 @@ export const doctorApi = {
   },
 
   /**
+   * POST /api/v1/clinical/consultations/:bookingId/send-prescription
+   * Dispatches the official signed prescription directly into the patient's reports.
+   */
+  async sendPrescriptionToPatient(bookingId: string): Promise<{ success: boolean; message?: string; data?: any }> {
+    const res = await fetch(`${API_URL}/api/v1/clinical/consultations/${bookingId}/send-prescription`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({}),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || err.message || 'Failed to send prescription to patient');
+    }
+
+    return await res.json();
+  },
+
+  /**
    * GET /api/v1/clinical/patient-history?phone=... or ?patientId=...
    * Fetches authentic longitudinal patient clinical history with past vitals and prescriptions.
    */

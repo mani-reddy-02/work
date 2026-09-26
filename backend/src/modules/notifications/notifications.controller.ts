@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../../config/env';
 import { prisma } from '../../config/prisma';
+import { Role } from '@prisma/client';
 import { 
   notificationStreamManager, 
   getNotifications as fetchNotifications, 
@@ -31,7 +32,7 @@ export const streamNotifications = async (req: Request, res: Response) => {
     const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: string };
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, hospitalId: true, active: true }
+      select: { id: true, hospitalId: true, role: true, active: true }
     });
 
     if (!user || !user.active) {
@@ -40,7 +41,8 @@ export const streamNotifications = async (req: Request, res: Response) => {
     }
 
     userId = user.id;
-    hospitalId = user.hospitalId;
+    // Nurses only receive notifications targeted directly to them, not generic hospital broadcasts
+    hospitalId = user.role === Role.NURSE ? null : user.hospitalId;
   } catch (error) {
     res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Invalid token' } });
     return;
@@ -83,7 +85,8 @@ export const streamNotifications = async (req: Request, res: Response) => {
  */
 export const getNotifications = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const hospitalId = req.user?.hospitalId;
+    const isNurse = req.user?.role === Role.NURSE;
+    const hospitalId = isNurse ? null : req.user?.hospitalId;
     const userId = req.user?.id;
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
     const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
@@ -113,7 +116,8 @@ export const getNotifications = async (req: Request, res: Response, next: NextFu
  */
 export const getUnreadCount = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const hospitalId = req.user?.hospitalId;
+    const isNurse = req.user?.role === Role.NURSE;
+    const hospitalId = isNurse ? null : req.user?.hospitalId;
     const userId = req.user?.id;
 
     const count = await fetchUnreadCount({ hospitalId, userId });
@@ -134,7 +138,8 @@ export const getUnreadCount = async (req: Request, res: Response, next: NextFunc
 export const markAsRead = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const hospitalId = req.user?.hospitalId;
+    const isNurse = req.user?.role === Role.NURSE;
+    const hospitalId = isNurse ? null : req.user?.hospitalId;
 
     await updateMarkAsRead(id as string, hospitalId);
 
@@ -153,7 +158,8 @@ export const markAsRead = async (req: Request, res: Response, next: NextFunction
  */
 export const markAllAsRead = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const hospitalId = req.user?.hospitalId;
+    const isNurse = req.user?.role === Role.NURSE;
+    const hospitalId = isNurse ? null : req.user?.hospitalId;
     const userId = req.user?.id;
 
     await updateMarkAllAsRead({ hospitalId, userId });
