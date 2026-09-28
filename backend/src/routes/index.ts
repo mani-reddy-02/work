@@ -26,7 +26,7 @@ import clinicalRoutes from '../modules/clinical/clinical.routes';
 import notificationsRoutes from '../modules/notifications/notifications.routes';
 import userBookingsRoutes from '../modules/bookings/user-bookings.routes';
 import { prisma } from '../config/prisma';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireRole } from '../middleware/auth';
 
 const router = Router();
 
@@ -57,6 +57,7 @@ router.use('/hospital/bookings', bookingRoutes);
 router.use('/hospital/dashboard', dashboardRoutes);
 router.use('/hospital/payouts', payoutsRoutes);
 router.use('/hospital/profile', hospitalProfileRoutes);
+router.use('/hospital/lab-tests', authenticate, requireRole(['HOSPITAL_ADMIN', 'LAB_ADMIN', 'SUPER_ADMIN']), labTestsRoutes);
 router.use('/hospital', hospitalRequestsRoutes);
 router.use('/diseases', diseasesRoutes);
 router.use('/hospitals', hospitalsRoutes);
@@ -66,7 +67,6 @@ router.use('/appointments', appointmentsRoutes);
 router.use('/user/bookings/op', appointmentsRoutes);
 router.use('/user/bookings', userBookingsRoutes);
 router.use('/laboratories', laboratoriesRoutes);
-router.use('/hospital/lab-tests', authenticate, labTestsRoutes);
 router.use('/lab-tests', require('./../modules/laboratories/public-user-labs.routes').default);
 router.use('/lab-bookings', labBookingsRoutes);
 router.use('/home-nursing', homeNursingRoutes);

@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion"
-import { X, FlaskConical, Package, Upload, ChevronRight } from "lucide-react"
+import { X, FlaskConical, Package, Upload, ChevronRight, ClipboardList } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 interface LabQuickAddMenuProps {
@@ -9,12 +9,20 @@ interface LabQuickAddMenuProps {
 
 const options = [
   {
+    icon: ClipboardList,
+    title: "Create Order",
+    description: "Book an in-person walk-in test for a patient",
+    route: "/lab/create-order",
+    iconBg: "bg-blue-50",
+    iconColor: "text-primary",
+  },
+  {
     icon: FlaskConical,
     title: "Add Test",
     description: "Add a new test to your catalog",
     route: "/lab/add-test",
-    iconBg: "bg-blue-50",
-    iconColor: "text-primary",
+    iconBg: "bg-emerald-50",
+    iconColor: "text-emerald-600",
   },
   {
     icon: Package,

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowLeft, Loader2, User, FlaskConical, CheckCircle2, Plus } from "lucide-react"
 import { useNavigate } from "react-router-dom"
@@ -9,9 +9,6 @@ import { EmptyState } from "@/components/ui/EmptyState"
 import { cn } from "@/lib/utils"
 import { getConditionIconPath } from "@/components/shared/ConditionLabel"
 
-// The bookable test catalog comes from the backend. Empty until connected.
-const availableTests: { id: string; name: string; price: number }[] = []
-
 type Step = 1 | 2 | 3
 
 export function CreateOrder() {
@@ -20,6 +17,8 @@ export function CreateOrder() {
   const [step, setStep] = useState<Step>(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showExitConfirm, setShowExitConfirm] = useState(false)
+  const [availableTests, setAvailableTests] = useState<{ id: string; name: string; price: number }[]>([])
+  const [isLoadingTests, setIsLoadingTests] = useState(true)
 
   // Form data
   const [patientName, setPatientName] = useState('')
@@ -27,6 +26,25 @@ export function CreateOrder() {
   const [email, setEmail] = useState('')
   const [sampleType, setSampleType] = useState('')
   const [selectedTests, setSelectedTests] = useState<string[]>([])
+
+  useEffect(() => {
+    async function loadTests() {
+      try {
+        const res = await labApi.getHospitalLabMenu()
+        const tests = (res?.data || []).map((t: any) => ({
+          id: t.id,
+          name: t.platformTest?.name || 'Diagnostic Test',
+          price: t.price
+        }))
+        setAvailableTests(tests)
+      } catch (err) {
+        console.error("Failed to load catalog tests", err)
+      } finally {
+        setIsLoadingTests(false)
+      }
+    }
+    loadTests()
+  }, [])
 
   const handleBack = () => {
     if (patientName || mobile || selectedTests.length > 0) setShowExitConfirm(true)

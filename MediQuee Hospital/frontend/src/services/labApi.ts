@@ -87,8 +87,9 @@ export const labApi = {
     const res = await fetch(`${API_BASE}/hospital/lab-tests`, {
       headers: getAuthHeaders()
     });
-    if (!res.ok) throw new Error('Failed to fetch hospital tests');
-    return res.json();
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data?.error?.message || 'Failed to fetch hospital tests');
+    return data;
   },
 
   async saveHospitalLabTestsBatch(payload: any[]) {
@@ -108,8 +109,27 @@ export const labApi = {
       headers: getAuthHeaders(),
       body: JSON.stringify({ isActive: active })
     });
-    if (!res.ok) throw new Error('Failed to update test status');
-    return res.json();
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data?.error?.message || 'Failed to update test status');
+    return data;
+  },
+
+  async getLabDashboard() {
+    const res = await fetch(`${API_BASE}/lab-bookings/hospital/dashboard`, {
+      headers: getAuthHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data?.error?.message || 'Failed to fetch lab dashboard data');
+    return data;
+  },
+
+  async getLabBookingById(id: string) {
+    const res = await fetch(`${API_BASE}/lab-bookings/${id}`, {
+      headers: getAuthHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data?.error?.message || 'Failed to fetch lab booking details');
+    return data;
   },
 
   async getLabBookings(filters?: { status?: string; bookingType?: string }) {
@@ -121,8 +141,9 @@ export const labApi = {
     const res = await fetch(url, {
       headers: getAuthHeaders()
     });
-    if (!res.ok) throw new Error('Failed to fetch lab bookings');
-    return res.json();
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data?.error?.message || 'Failed to fetch lab bookings');
+    return data;
   },
 
   async updateLabBookingStatus(id: string, payload: { status: string; phlebotomistName?: string; phlebotomistPhone?: string; sampleCollectedAt?: string }) {
@@ -135,20 +156,71 @@ export const labApi = {
     return res.json();
   },
 
-  // Stub for existing orders/reports in other parts of the app
-  async createOrder(payload: unknown): Promise<{ id: string }> {
-    throw new Error('BACKEND_MISSING: POST /api/lab/orders is not implemented.');
+  async createOrder(payload: {
+    patientName: string;
+    mobile: string;
+    email?: string;
+    sampleType?: string;
+    tests: string[];
+    bookingType?: string;
+    address?: string;
+    collectionDate?: string;
+    collectionTimeSlot?: string;
+  }): Promise<{ id: string }> {
+    const res = await fetch(`${API_BASE}/lab-bookings`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        patientName: payload.patientName,
+        mobile: payload.mobile,
+        email: payload.email,
+        items: payload.tests,
+        bookingType: payload.bookingType || 'WALK_IN',
+        collectionAddress: payload.address,
+        collectionDate: payload.collectionDate,
+        collectionTimeSlot: payload.collectionTimeSlot
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data?.error?.message || 'Failed to create order');
+    }
+    return data.data;
   },
   async uploadReport(orderId: string, payload: unknown): Promise<{ id: string }> {
-    throw new Error('BACKEND_MISSING: POST /api/lab/orders/:id/report is not implemented.');
+    const res = await fetch(`${API_BASE}/lab-bookings/hospital/${orderId}/status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status: 'REPORT_READY' })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data?.error?.message || 'Failed to update order to Report Ready');
+    }
+    return { id: orderId };
   },
   async createPackage(payload: unknown): Promise<{ id: string }> {
-    throw new Error('BACKEND_MISSING: POST /api/lab/packages is not implemented.');
+    throw new Error('Test packages are managed through the master platform catalog.');
   },
-  async createHomeCollection(payload: unknown): Promise<{ id: string }> {
-    throw new Error('BACKEND_MISSING: POST /api/lab/home-collections is not implemented.');
+  async createHomeCollection(payload: {
+    patientName: string;
+    mobile: string;
+    address: string;
+    test: string;
+    date: string;
+    time: string;
+  }): Promise<{ id: string }> {
+    return this.createOrder({
+      patientName: payload.patientName,
+      mobile: payload.mobile,
+      tests: [payload.test],
+      bookingType: 'HOME_COLLECTION',
+      address: payload.address,
+      collectionDate: payload.date,
+      collectionTimeSlot: payload.time
+    });
   },
   async updateLabInfo(payload: unknown): Promise<void> {
-    throw new Error('BACKEND_MISSING: PUT /api/lab/me is not implemented.');
+    throw new Error('Lab information is managed by hospital administration.');
   }
 };

@@ -1,20 +1,23 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Search, Filter, ChevronRight, User, Calendar, X, Loader2, Home, Check } from "lucide-react"
-import { useNavigate } from "react-router-dom"
-import { StatusBadge } from "@/components/lab/LabUI"
+import { Search, Filter, ChevronRight, User, Calendar, X, Loader2, Home, Check, ArrowLeft } from "lucide-react"
+import { useNavigate, useSearchParams } from "react-router-dom"
+import { StatusBadge, LabDepartmentIcon } from "@/components/lab/LabUI"
 import { cn } from "@/lib/utils"
 import { labApi } from "@/services/labApi"
 import { useToast } from "@/context/ToastContext"
 
 const mainSections = ['All', 'In-Person', 'Home Collection'] as const;
+const statusFilters = ['All', 'Pending', 'Collected', 'Processing', 'Ready'] as const;
 
 export function LabOrders() {
   const navigate = useNavigate()
   const { toast } = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
   
   const [search, setSearch] = useState('')
   const [activeMainSection, setActiveMainSection] = useState<typeof mainSections[number]>('All')
+  const [selectedStatus, setSelectedStatus] = useState<string>(searchParams.get('status') || 'All')
   
   const [orders, setOrders] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -26,6 +29,12 @@ export function LabOrders() {
   const [phlebPhone, setPhlebPhone] = useState('')
   const [isAssigning, setIsAssigning] = useState(false)
 
+  // Sync state if URL search param changes
+  useEffect(() => {
+    const s = searchParams.get('status') || 'All'
+    setSelectedStatus(s)
+  }, [searchParams])
+
   const fetchOrders = async () => {
     setIsLoading(true)
     try {
@@ -33,7 +42,8 @@ export function LabOrders() {
       if (activeMainSection === 'In-Person') bookingType = 'WALK_IN'
       if (activeMainSection === 'Home Collection') bookingType = 'HOME_COLLECTION'
 
-      const res = await labApi.getLabBookings({ bookingType })
+      const statusFilterVal = selectedStatus !== 'All' ? selectedStatus : undefined
+      const res = await labApi.getLabBookings({ bookingType, status: statusFilterVal })
       setOrders(res.data)
     } catch (error) {
       toast("Failed to load lab orders", "error")
@@ -44,7 +54,7 @@ export function LabOrders() {
 
   useEffect(() => {
     fetchOrders()
-  }, [activeMainSection])
+  }, [activeMainSection, selectedStatus])
 
   const filtered = orders.filter(o => {
     const matchSearch = !search || 
@@ -97,23 +107,73 @@ export function LabOrders() {
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md px-4 md:px-6 pt-5 md:pt-6 pb-3 md:pb-4 border-b border-border/50">
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-[22px] md:text-[26px] font-bold text-[#172033]">Lab Queue</h1>
-          <button className="w-9 h-9 md:w-10 md:h-10 bg-surface rounded-xl border border-border/60 flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors">
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => navigate('/lab')} 
+              className="p-1.5 -ml-1 rounded-xl text-[#172033] hover:bg-gray-100 transition-colors"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
+            </button>
+            <h1 className="text-[20px] md:text-[24px] font-bold text-[#172033]">Lab Queue</h1>
+          </div>
+          <button 
+            onClick={() => fetchOrders()}
+            className="w-9 h-9 md:w-10 md:h-10 bg-surface rounded-xl border border-border/60 flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors"
+            title="Refresh Orders"
+          >
             <Filter className="w-4 h-4 md:w-5 md:h-5 text-[#667085]" />
           </button>
         </div>
         
-        {/* Main Sections */}
-        <div className="flex bg-gray-100/80 p-1 rounded-xl mb-4 max-w-md">
+        {/* Main Sections: Walk-in vs Home Collection */}
+        <div className="flex bg-gray-100/80 p-1 rounded-xl mb-3 max-w-md">
           {mainSections.map(section => (
             <button 
               key={section}
               onClick={() => setActiveMainSection(section)}
-              className={cn("flex-1 py-2 text-[13px] font-bold rounded-lg transition-all", activeMainSection === section ? "bg-surface text-primary shadow-sm" : "text-[#667085] hover:text-[#172033]")}
+              className={cn("flex-1 py-1.5 md:py-2 text-[12px] md:text-[13px] font-bold rounded-lg transition-all", activeMainSection === section ? "bg-surface text-primary shadow-sm" : "text-[#667085] hover:text-[#172033]")}
             >
               {section}
             </button>
           ))}
+        </div>
+
+        {/* Status Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-none">
+          {statusFilters.map(status => {
+            const isSelected = selectedStatus === status || 
+              (status === 'Pending' && selectedStatus === 'PENDING') ||
+              (status === 'Collected' && selectedStatus === 'SAMPLE_COLLECTED') ||
+              (status === 'Processing' && selectedStatus === 'IN_LAB_PROCESSING') ||
+              (status === 'Ready' && selectedStatus === 'REPORT_READY') ||
+              (status === 'All' && selectedStatus === 'All')
+
+            return (
+              <button
+                key={status}
+                onClick={() => {
+                  let nextVal: string = status
+                  if (status === 'Pending') nextVal = 'PENDING'
+                  else if (status === 'Collected') nextVal = 'SAMPLE_COLLECTED'
+                  else if (status === 'Processing') nextVal = 'IN_LAB_PROCESSING'
+                  else if (status === 'Ready') nextVal = 'REPORT_READY'
+
+                  setSelectedStatus(nextVal)
+                  if (status === 'All') setSearchParams({})
+                  else setSearchParams({ status: nextVal })
+                }}
+                className={cn(
+                  "px-3 py-1 rounded-full text-[12px] font-bold whitespace-nowrap border transition-all cursor-pointer",
+                  isSelected
+                    ? "bg-primary text-white border-primary shadow-xs"
+                    : "bg-surface text-[#667085] border-border hover:bg-gray-100"
+                )}
+              >
+                {status}
+              </button>
+            )
+          })}
         </div>
 
         {/* Search */}
@@ -169,7 +229,7 @@ export function LabOrders() {
                         <div className="mt-3 space-y-1.5">
                           {order.items.map((item: any, idx: number) => (
                             <div key={idx} className="flex items-center gap-2 bg-gray-50/80 p-2 rounded-lg border border-border">
-                              <span className="text-[16px]">{item.labTest.platformTest.department?.icon || '🔬'}</span>
+                              <LabDepartmentIcon icon={item.labTest.platformTest.department?.icon} className="w-4 h-4 text-primary shrink-0" />
                               <div className="min-w-0 flex-1">
                                 <p className="text-[13px] font-semibold text-[#172033] truncate">{item.labTest.platformTest.name}</p>
                                 <p className="text-[11px] text-[#667085]">Sample: {item.labTest.platformTest.specimenType}</p>

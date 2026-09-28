@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom"
 import { useToast } from "@/context/ToastContext"
 import { labApi } from "@/services/labApi"
 import { cn } from "@/lib/utils"
+import { LabDepartmentIcon } from "@/components/lab/LabUI"
 
 export function AddTest() {
   const navigate = useNavigate()
@@ -138,7 +139,9 @@ export function AddTest() {
                   )}
                 >
                   <div className="flex items-center justify-between w-full mb-2">
-                    <span className="text-[18px] md:text-[20px]">{d.icon || '🔬'}</span>
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                      <LabDepartmentIcon icon={d.icon} className="w-5 h-5 text-primary" />
+                    </div>
                     <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center transition-colors", selectedDeptId === d.id ? "border-primary bg-primary" : "border-gray-300")}>
                       {selectedDeptId === d.id && <Check className="w-3.5 h-3.5 text-white" />}
                     </div>

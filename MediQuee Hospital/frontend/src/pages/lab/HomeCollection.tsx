@@ -1,24 +1,60 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowLeft, Plus, MapPin, Clock, User, Home } from "lucide-react"
+import { ArrowLeft, Plus, MapPin, Clock, User, Home, Loader2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { StatusBadge } from "@/components/lab/LabUI"
 import { cn } from "@/lib/utils"
-
-// Home collection requests come from the backend. Empty until connected.
-const collectionRequests: {
-  id: string; patient: string; address: string; test: string; date: string; time: string;
-  status: 'pending' | 'collected' | 'processing' | 'ready' | 'delivered' | 'cancelled'; fee: string;
-}[] = []
+import { labApi } from "@/services/labApi"
 
 const filters = ['All', 'Pending', 'Collected', 'Completed']
-const filterMap: Record<string, string> = { 'Pending': 'pending', 'Collected': 'collected', 'Completed': 'delivered' }
+const filterMap: Record<string, string> = { 'Pending': 'pending', 'Collected': 'collected', 'Completed': 'ready' }
 
 export function HomeCollection() {
   const navigate = useNavigate()
   const [activeFilter, setActiveFilter] = useState('All')
+  const [collectionRequests, setCollectionRequests] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const filtered = activeFilter === 'All' ? collectionRequests : collectionRequests.filter(r => r.status === filterMap[activeFilter])
+  useEffect(() => {
+    async function loadHomeCollections() {
+      try {
+        const res = await labApi.getLabBookings({ bookingType: 'HOME_COLLECTION' })
+        const items = (res?.data || []).map((b: any) => {
+          let st: any = 'pending'
+          if (b.status === 'SAMPLE_COLLECTED') st = 'collected'
+          else if (b.status === 'IN_LAB_PROCESSING') st = 'processing'
+          else if (b.status === 'REPORT_READY') st = 'ready'
+          else if (b.status === 'CANCELLED') st = 'cancelled'
+
+          return {
+            id: b.id,
+            patient: b.patient?.name || 'Home Collection Patient',
+            test: b.items?.map((it: any) => it.labTest?.platformTest?.name).join(', ') || 'Diagnostic Test',
+            address: b.collectionAddress || 'Address on file',
+            date: b.collectionDate ? new Date(b.collectionDate).toLocaleDateString() : new Date(b.createdAt).toLocaleDateString(),
+            time: b.collectionTimeSlot || 'Standard Slot',
+            status: st,
+            fee: `₹${b.totalAmount}`
+          }
+        })
+        setCollectionRequests(items)
+      } catch (err) {
+        console.error("Failed to load home collection bookings", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadHomeCollections()
+  }, [])
+
+  const todayStr = new Date().toLocaleDateString()
+  const todaysCount = collectionRequests.filter(r => r.date === todayStr).length
+  const scheduledCount = collectionRequests.filter(r => r.status === 'pending' || r.status === 'collected').length
+  const completedCount = collectionRequests.filter(r => r.status === 'ready').length
+
+  const filtered = activeFilter === 'All' 
+    ? collectionRequests 
+    : collectionRequests.filter(r => r.status === filterMap[activeFilter])
 
   return (
     <div className="flex flex-col bg-background min-h-screen w-full">
@@ -36,9 +72,9 @@ export function HomeCollection() {
         {/* Summary */}
         <div className="grid grid-cols-3 gap-2 md:gap-4 max-w-3xl">
           {[
-            { label: "Today's", count: '—', color: 'text-primary', bg: 'bg-blue-50', border: 'border-blue-200' },
-            { label: 'Scheduled', count: '—', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
-            { label: 'Completed', count: '—', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+            { label: "Today's", count: isLoading ? '...' : String(todaysCount), color: 'text-primary', bg: 'bg-blue-50', border: 'border-blue-200' },
+            { label: 'Scheduled', count: isLoading ? '...' : String(scheduledCount), color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
+            { label: 'Completed', count: isLoading ? '...' : String(completedCount), color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
           ].map(s => (
             <div key={s.label} className={cn("flex flex-col items-center py-3 md:py-4 rounded-2xl md:rounded-3xl border transition-all hover:shadow-sm", s.bg, s.border)}>
               <span className={cn("text-[22px] md:text-[28px] font-bold", s.color)}>{s.count}</span>
@@ -66,11 +102,18 @@ export function HomeCollection() {
         {/* Request List */}
         <div className="pb-4 md:pb-8">
           <AnimatePresence mode="popLayout">
-            {filtered.length === 0 ? (
+            {isLoading ? (
+              <div className="flex justify-center p-12">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              </div>
+            ) : filtered.length === 0 ? (
               <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center py-16 md:py-24 text-center">
                 <div className="w-14 h-14 md:w-20 md:h-20 bg-gray-100 rounded-2xl flex items-center justify-center mb-3 md:mb-5"><Home className="w-6 h-6 md:w-8 md:h-8 text-[#98A2B3]" /></div>
                 <p className="text-[16px] md:text-[18px] font-semibold text-[#172033]">No Collection Requests</p>
-                <p className="text-[13px] md:text-[15px] text-[#667085] mt-1 md:mt-2">Scheduled collections will appear here</p>
+                <p className="text-[13px] md:text-[15px] text-[#667085] mt-1 md:mt-2">Scheduled home collections will appear here</p>
+                <button onClick={() => navigate('/lab/home-collection/create')} className="mt-4 md:mt-6 bg-primary text-white font-semibold px-5 md:px-6 py-2.5 md:py-3 rounded-xl md:rounded-2xl text-[14px] md:text-[15px] hover:bg-blue-700 transition-colors">
+                  Schedule Collection
+                </button>
               </motion.div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 w-full">
@@ -82,6 +125,7 @@ export function HomeCollection() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96 }}
                     transition={{ delay: i * 0.05 }}
+                    onClick={() => navigate('/lab/orders')}
                     className="bg-surface rounded-2xl border border-border shadow-sm p-4 md:p-5 flex flex-col gap-3 md:gap-4 hover:shadow-md hover:border-primary/20 transition-all cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -91,7 +135,7 @@ export function HomeCollection() {
                         </div>
                         <div>
                           <p className="text-[14px] md:text-[16px] font-bold text-[#172033]">{req.patient}</p>
-                          <p className="text-[12px] md:text-[14px] text-[#667085]">{req.test}</p>
+                          <p className="text-[12px] md:text-[14px] text-[#667085] truncate max-w-[200px]">{req.test}</p>
                         </div>
                       </div>
                       <StatusBadge status={req.status} />

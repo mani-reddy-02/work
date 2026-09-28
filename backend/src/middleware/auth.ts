@@ -16,7 +16,12 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+    let decoded: JwtPayload;
+    try {
+      decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+    } catch (jwtErr: any) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token. Please log in again.' } });
+    }
 
     // Fetch user from database to ensure they still exist and get authoritative role/hospitalId
     const user = await prisma.user.findUnique({
@@ -31,7 +36,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Invalid token' } });
+    next(error);
   }
 };
 

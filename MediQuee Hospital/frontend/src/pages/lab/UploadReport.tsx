@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowLeft, Search, CheckCircle2, Upload, X, FileText, Image, File, Loader2, Check } from "lucide-react"
 import { useNavigate } from "react-router-dom"
@@ -12,10 +12,6 @@ type UploadStep = 1 | 2 | 3 | 'success'
 interface SelectedOrder { id: string; patient: string; test: string; date: string }
 interface SelectedFile { name: string; type: string; size: string }
 
-// Searchable orders come from the backend (GET /api/lab/orders?q=…).
-// Empty until connected.
-const searchableOrders: SelectedOrder[] = []
-
 export function UploadReport() {
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -23,10 +19,32 @@ export function UploadReport() {
 
   const [step, setStep] = useState<UploadStep>(1)
   const [query, setQuery] = useState('')
+  const [searchableOrders, setSearchableOrders] = useState<SelectedOrder[]>([])
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true)
   const [selectedOrder, setSelectedOrder] = useState<SelectedOrder | null>(null)
   const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+
+  useEffect(() => {
+    async function loadOrders() {
+      try {
+        const res = await labApi.getLabBookings()
+        const orders = (res?.data || []).map((b: any) => ({
+          id: b.id,
+          patient: b.patient?.name || 'Walk-in Patient',
+          test: b.items?.map((it: any) => it.labTest?.platformTest?.name).join(', ') || 'Diagnostic Test',
+          date: new Date(b.createdAt).toLocaleDateString()
+        }))
+        setSearchableOrders(orders)
+      } catch (err) {
+        console.error("Failed to load orders for upload", err)
+      } finally {
+        setIsLoadingOrders(false)
+      }
+    }
+    loadOrders()
+  }, [])
 
   const results = searchableOrders.filter(o =>
     !query || o.patient.toLowerCase().includes(query.toLowerCase()) ||

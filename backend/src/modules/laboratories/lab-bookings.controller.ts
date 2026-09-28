@@ -1,23 +1,46 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Prisma } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 import { sendNotification } from '../notifications/notifications.service';
 import { LabBookingType, LabBookingStatus } from '@prisma/client';
 
 export const createLabBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const hospitalId = req.body.hospitalId || (req as any).user?.hospitalId;
+    let patientId = req.body.patientId;
+
+    if (!patientId && (req.body.mobile || req.body.phone)) {
+      const rawPhone = String(req.body.mobile || req.body.phone).trim();
+      let patient = await prisma.user.findFirst({ where: { phone: rawPhone } });
+      if (!patient) {
+        const defaultPasswordHash = await bcrypt.hash('123456', 10);
+        patient = await prisma.user.create({
+          data: {
+            phone: rawPhone,
+            name: req.body.patientName || 'Walk-in Patient',
+            email: req.body.email || null,
+            passwordHash: defaultPasswordHash,
+            role: 'PATIENT',
+            active: true
+          }
+        });
+      }
+      patientId = patient.id;
+    } else if (!patientId && (req as any).user?.role === 'PATIENT') {
+      patientId = (req as any).user.id;
+    }
+
+    const bookingType = req.body.bookingType || 'WALK_IN';
+    const items = req.body.items || req.body.tests;
     const { 
-      hospitalId, 
-      patientId, 
-      bookingType, 
-      items, // array of testId
       collectionAddress, 
       collectionDate, 
       collectionTimeSlot 
     } = req.body;
 
-    if (!hospitalId || !patientId || !bookingType || !items || !items.length) {
-      return res.status(400).json({ success: false, error: { code: 'INVALID_REQUEST', message: 'Missing required fields' } });
+    if (!hospitalId || !patientId || !items || !items.length) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_REQUEST', message: 'Missing required fields: hospital, patient, or tests' } });
     }
 
     if (bookingType === 'HOME_COLLECTION' && (!collectionAddress || !collectionDate || !collectionTimeSlot)) {
@@ -172,6 +195,201 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
   }
 };
 
+export const getHospitalLabDashboard = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = (req as any).user.hospitalId;
+    if (!hospitalId) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'User is not associated with a hospital' } });
+    }
+
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(startOfWeek.getDate() - 6);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const startOfMonth = new Date(now);
+    startOfMonth.setDate(startOfMonth.getDate() - 29);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const allBookings = await prisma.labBooking.findMany({
+      where: { hospitalId },
+      include: {
+        items: {
+          include: {
+            labTest: {
+              include: {
+                platformTest: {
+                  include: { department: true }
+                }
+              }
+            }
+          }
+        },
+        patient: { select: { id: true, name: true, phone: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const totalOrders = allBookings.length;
+    let pendingTests = 0;
+    let collectedCount = 0;
+    let processingCount = 0;
+    let reportsReady = 0;
+    let cancelledCount = 0;
+
+    let todayRevenue = 0;
+    let weekRevenue = 0;
+    let monthRevenue = 0;
+
+    const todayBuckets: Record<string, number> = {
+      '08:00': 0,
+      '10:00': 0,
+      '12:00': 0,
+      '14:00': 0,
+      '16:00': 0,
+      '18:00': 0,
+      '20:00': 0
+    };
+
+    const weekDaysMap: Record<string, number> = {};
+    const weekDaysList: { key: string; label: string }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dayKey = d.toISOString().split('T')[0];
+      const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
+      weekDaysMap[dayKey] = 0;
+      weekDaysList.push({ key: dayKey, label: dayLabel });
+    }
+
+    const monthBuckets = [
+      { label: 'Week 1', start: 29, end: 22, v: 0 },
+      { label: 'Week 2', start: 21, end: 15, v: 0 },
+      { label: 'Week 3', start: 14, end: 8, v: 0 },
+      { label: 'Week 4', start: 7, end: 0, v: 0 },
+    ];
+
+    for (const b of allBookings) {
+      const bTime = new Date(b.createdAt);
+      const isNotCancelled = b.status !== 'CANCELLED';
+
+      if (b.status === 'REQUESTED' || b.status === 'ASSIGNED') {
+        pendingTests++;
+      } else if (b.status === 'SAMPLE_COLLECTED') {
+        collectedCount++;
+      } else if (b.status === 'IN_LAB_PROCESSING') {
+        processingCount++;
+      } else if (b.status === 'REPORT_READY') {
+        reportsReady++;
+      } else if (b.status === 'CANCELLED') {
+        cancelledCount++;
+      }
+
+      if (isNotCancelled) {
+        if (bTime >= startOfToday) {
+          todayRevenue += b.totalAmount;
+          const hour = bTime.getHours();
+          if (hour <= 8) todayBuckets['08:00'] += b.totalAmount;
+          else if (hour <= 10) todayBuckets['10:00'] += b.totalAmount;
+          else if (hour <= 12) todayBuckets['12:00'] += b.totalAmount;
+          else if (hour <= 14) todayBuckets['14:00'] += b.totalAmount;
+          else if (hour <= 16) todayBuckets['16:00'] += b.totalAmount;
+          else if (hour <= 18) todayBuckets['18:00'] += b.totalAmount;
+          else todayBuckets['20:00'] += b.totalAmount;
+        }
+
+        if (bTime >= startOfWeek) {
+          weekRevenue += b.totalAmount;
+          const dayKey = bTime.toISOString().split('T')[0];
+          if (weekDaysMap[dayKey] !== undefined) {
+            weekDaysMap[dayKey] += b.totalAmount;
+          }
+        }
+
+        if (bTime >= startOfMonth) {
+          monthRevenue += b.totalAmount;
+          const diffDays = Math.floor((now.getTime() - bTime.getTime()) / (1000 * 60 * 60 * 24));
+          for (const mb of monthBuckets) {
+            if (diffDays <= mb.start && diffDays >= mb.end) {
+              mb.v += b.totalAmount;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    const todaySeries = Object.entries(todayBuckets).map(([t, v]) => ({ t, v }));
+    const weekSeries = weekDaysList.map(item => ({ t: item.label, v: weekDaysMap[item.key] || 0 }));
+    const monthSeries = monthBuckets.map(item => ({ t: item.label, v: item.v }));
+
+    const formatBookingItem = (b: any) => {
+      const tests = b.items.map((it: any) => it.labTest.platformTest.name).join(', ') || 'Diagnostic Test';
+      const sample = b.items[0]?.labTest.platformTest.specimenType || 'SAMPLE';
+      const timeStr = new Date(b.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      
+      let statusNorm = 'pending';
+      if (b.status === 'SAMPLE_COLLECTED') statusNorm = 'collected';
+      else if (b.status === 'IN_LAB_PROCESSING') statusNorm = 'processing';
+      else if (b.status === 'REPORT_READY') statusNorm = 'ready';
+      else if (b.status === 'CANCELLED') statusNorm = 'cancelled';
+
+      return {
+        id: b.id,
+        patient: b.patient?.name || 'Walk-in Patient',
+        phone: b.patient?.phone || '',
+        test: tests,
+        sample: sample,
+        time: timeStr,
+        rawStatus: b.status,
+        status: statusNorm,
+        totalAmount: b.totalAmount,
+        bookingType: b.bookingType,
+        collectionAddress: b.collectionAddress,
+        collectionDate: b.collectionDate,
+        collectionTimeSlot: b.collectionTimeSlot,
+        phlebotomistName: b.phlebotomistName,
+        phlebotomistPhone: b.phlebotomistPhone
+      };
+    };
+
+    const todayFiltered = allBookings.filter(b => new Date(b.createdAt) >= startOfToday);
+    const todayOrders = (todayFiltered.length > 0 ? todayFiltered : allBookings.slice(0, 10)).map(formatBookingItem);
+
+    res.json({
+      success: true,
+      data: {
+        kpis: {
+          totalOrders,
+          pendingTests,
+          reportsReady,
+          todayRevenue,
+          weekRevenue,
+          monthRevenue
+        },
+        testStatus: {
+          pending: pendingTests,
+          collected: collectedCount,
+          processing: processingCount,
+          ready: reportsReady,
+          cancelled: cancelledCount
+        },
+        revenueSeries: {
+          today: todaySeries,
+          week: weekSeries,
+          month: monthSeries
+        },
+        todayOrders
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getHospitalLabBookings = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const hospitalId = (req as any).user.hospitalId;
@@ -182,7 +400,21 @@ export const getHospitalLabBookings = async (req: Request, res: Response, next: 
     const { status, bookingType } = req.query;
     const where: any = { hospitalId };
 
-    if (status && status !== 'All') where.status = status as string;
+    if (status && status !== 'All') {
+      const s = (status as string).toUpperCase();
+      if (s === 'PENDING') {
+        where.status = { in: ['REQUESTED', 'ASSIGNED'] };
+      } else if (s === 'COLLECTED') {
+        where.status = 'SAMPLE_COLLECTED';
+      } else if (s === 'PROCESSING') {
+        where.status = 'IN_LAB_PROCESSING';
+      } else if (s === 'READY') {
+        where.status = 'REPORT_READY';
+      } else {
+        where.status = status as string;
+      }
+    }
+
     if (bookingType && bookingType !== 'All') where.bookingType = bookingType as string;
 
     const bookings = await prisma.labBooking.findMany({

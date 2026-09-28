@@ -1,314 +1,355 @@
-import { PrismaClient, BusinessType } from '@prisma/client';
+import { PrismaClient, LabBookingType, LabBookingStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const testCatalog = [
-  {
-    name: 'Complete Blood Count (CBC)',
-    category: 'Blood Tests',
-    sampleType: 'Blood',
-    price: 399,
-    turnaroundTime: '12 Hours',
-    parametersCount: 24,
-    healthConcern: 'fever',
-    description: 'A complete blood count (CBC) is a blood test used to evaluate your overall health and detect a wide range of disorders, including anemia, infection and leukemia.',
-    preparation: 'No special preparation required. Fasting is not needed.'
-  },
-  {
-    name: 'Liver Function Test (LFT)',
-    category: 'Liver',
-    sampleType: 'Blood',
-    price: 499,
-    turnaroundTime: '12 Hours',
-    parametersCount: 11,
-    healthConcern: 'liver',
-    description: 'Liver function tests are blood tests used to help diagnose and monitor liver disease or damage.',
-    preparation: '10-12 hours of fasting is required.'
-  },
-  {
-    name: 'Thyroid Profile (T3, T4, TSH)',
-    category: 'Thyroid',
-    sampleType: 'Blood',
-    price: 399,
-    turnaroundTime: '12 Hours',
-    parametersCount: 3,
-    healthConcern: 'thyroid',
-    description: 'Thyroid tests measure how well your thyroid gland is working.',
-    preparation: 'No special preparation required.'
-  },
-  {
-    name: 'Lipid Profile',
-    category: 'Heart',
-    sampleType: 'Blood',
-    price: 799,
-    turnaroundTime: '12 Hours',
-    parametersCount: 8,
-    healthConcern: 'heart',
-    description: 'Measures cholesterol and triglycerides in the blood.',
-    preparation: '12 hours of fasting is required.'
-  },
-  {
-    name: 'Blood Sugar Test (Fasting)',
-    category: 'Diabetes',
-    sampleType: 'Blood',
-    price: 149,
-    turnaroundTime: '6 Hours',
-    parametersCount: 1,
-    healthConcern: 'diabetes',
-    description: 'Measures blood glucose after an overnight fast.',
-    preparation: '10-12 hours of fasting is required.'
-  },
-  {
-    name: 'Kidney Function Test (KFT)',
-    category: 'Kidney',
-    sampleType: 'Blood',
-    price: 599,
-    turnaroundTime: '12 Hours',
-    parametersCount: 9,
-    healthConcern: 'kidney',
-    description: 'Assesses how well your kidneys are functioning.',
-    preparation: 'No special preparation required.'
-  },
-  {
-    name: 'Vitamin D Test',
-    category: 'Vitamins',
-    sampleType: 'Blood',
-    price: 1199,
-    turnaroundTime: '24 Hours',
-    parametersCount: 1,
-    healthConcern: 'vitamins',
-    description: 'Measures the level of Vitamin D in your blood.',
-    preparation: 'No special preparation required.'
-  },
-  {
-    name: 'Vitamin B12 Test',
-    category: 'Vitamins',
-    sampleType: 'Blood',
-    price: 899,
-    turnaroundTime: '24 Hours',
-    parametersCount: 1,
-    healthConcern: 'vitamins',
-    description: 'Measures the level of Vitamin B12 in your blood.',
-    preparation: 'No special preparation required.'
-  },
-  {
-    name: 'HbA1c Blood Test',
-    category: 'Diabetes',
-    sampleType: 'Blood',
-    price: 399,
-    turnaroundTime: '12 Hours',
-    parametersCount: 2,
-    healthConcern: 'diabetes',
-    description: 'Measures average blood sugar levels over the past 3 months.',
-    preparation: 'No special preparation required.'
-  },
-  {
-    name: 'Urine Routine & Microscopy',
-    category: 'Urine Tests',
-    sampleType: 'Urine',
-    price: 199,
-    turnaroundTime: '6 Hours',
-    parametersCount: 18,
-    healthConcern: 'kidney',
-    description: 'Examines physical, chemical, and microscopic properties of urine.',
-    preparation: 'First morning sample preferred.'
-  },
-  {
-    name: 'Cardiac Risk Profile',
-    category: 'Heart',
-    sampleType: 'Blood',
-    price: 1999,
-    turnaroundTime: '24 Hours',
-    parametersCount: 14,
-    healthConcern: 'heart',
-    description: 'Comprehensive test panel assessing heart health risk factors.',
-    preparation: '12 hours of fasting is required.'
-  },
-  {
-    name: 'Iron Profile Test',
-    category: 'Blood Tests',
-    sampleType: 'Blood',
-    price: 799,
-    turnaroundTime: '12 Hours',
-    parametersCount: 5,
-    healthConcern: 'fever',
-    description: 'Measures various iron levels to detect anemia and deficiency.',
-    preparation: 'No special preparation required.'
-  },
-  {
-    name: 'X-Ray Chest PA View',
-    category: 'Imaging',
-    sampleType: 'Imaging',
-    price: 350,
-    turnaroundTime: '1 Hour',
-    parametersCount: 1,
-    healthConcern: 'infection',
-    description: 'Standard radiographic chest examination to detect chest or respiratory conditions.',
-    preparation: 'Remove all metal objects and jewelry.'
-  }
-];
-
-const laboratoriesData = [
-  {
-    name: 'Apollo Diagnostics',
-    businessType: BusinessType.LABORATORY,
-    facilityType: 'Diagnostic Centre',
-    contactPhone: '+91 98765 43210',
-    contactEmail: 'contact@apollodiagnostics.in',
-    website: 'https://apollodiagnostics.in',
-    addressLine1: 'Road No 36, Jubilee Hills',
-    area: 'Jubilee Hills',
-    city: 'Hyderabad',
-    state: 'Telangana',
-    country: 'India',
-    pincode: '500033',
-    services: ['lab_tests', 'home_sample', 'diagnostics', 'pathology']
-  },
-  {
-    name: 'Vijaya Diagnostic Centre',
-    businessType: BusinessType.LABORATORY,
-    facilityType: 'Diagnostic Centre',
-    contactPhone: '+91 98765 43211',
-    contactEmail: 'support@vijayadiagnostic.com',
-    website: 'https://vijayadiagnostic.com',
-    addressLine1: 'Road No 1, Banjara Hills',
-    area: 'Banjara Hills',
-    city: 'Hyderabad',
-    state: 'Telangana',
-    country: 'India',
-    pincode: '500034',
-    services: ['lab_tests', 'home_sample', 'diagnostics', 'imaging']
-  },
-  {
-    name: 'Tenet Diagnostics',
-    businessType: BusinessType.LABORATORY,
-    facilityType: 'Diagnostic Centre',
-    contactPhone: '+91 98765 43212',
-    contactEmail: 'info@tenetmed.com',
-    website: 'https://tenetdiagnostics.com',
-    addressLine1: 'Mindspace Road, Madhapur',
-    area: 'Madhapur',
-    city: 'Hyderabad',
-    state: 'Telangana',
-    country: 'India',
-    pincode: '500081',
-    services: ['lab_tests', 'home_sample', 'diagnostics']
-  },
-  {
-    name: 'PathCare Labs',
-    businessType: BusinessType.LABORATORY,
-    facilityType: 'Clinical Pathology Lab',
-    contactPhone: '+91 98765 43213',
-    contactEmail: 'care@pathcare.com',
-    website: 'https://pathcarelabs.com',
-    addressLine1: 'Cyber Towers Lane, Hitec City',
-    area: 'Hitec City',
-    city: 'Hyderabad',
-    state: 'Telangana',
-    country: 'India',
-    pincode: '500081',
-    services: ['lab_tests', 'home_sample', 'diagnostics']
-  }
-];
-
 async function main() {
-  console.log('Seeding Real Laboratory & Lab Test Database...');
+  console.log('--- SEEDING REAL LAB DATA ---');
 
-  // 1. Seed or find laboratories
-  const labs: any[] = [];
-  for (const labInfo of laboratoriesData) {
-    let lab = await prisma.hospital.findFirst({
-      where: { name: labInfo.name }
-    });
-    if (!lab) {
-      lab = await prisma.hospital.create({
-        data: labInfo
-      });
-      console.log(`Created Laboratory: ${lab.name} (${lab.id})`);
-    } else {
-      console.log(`Found Existing Laboratory: ${lab.name} (${lab.id})`);
-    }
-    labs.push(lab);
-  }
+  const hospitalId = '9c2e7291-de11-4a74-9752-781454e0f99c'; // SM_Hospital
 
-  // Also include existing hospitals that offer lab_tests
-  const existingHospitals = await prisma.hospital.findMany({
-    where: {
-      businessType: BusinessType.HOSPITAL,
-      services: { hasSome: ['lab_tests', 'lab', 'laboratory', 'diagnostics'] }
-    }
+  // 1. Fetch available platform lab tests
+  const platformTests = await prisma.platformLabTest.findMany({
+    take: 20
   });
-  for (const h of existingHospitals) {
-    labs.push(h);
-    console.log(`Included In-House Hospital Lab: ${h.name} (${h.id})`);
+
+  if (platformTests.length === 0) {
+    console.error('No platform lab tests found! Please seed platform data first.');
+    return;
   }
 
-  // 2. Seed Lab Tests
-  const createdTests: any[] = [];
-  for (const testData of testCatalog) {
-    let test = await prisma.labTest.findFirst({
-      where: { name: testData.name }
+  console.log(`Found ${platformTests.length} platform tests.`);
+
+  // 2. Ensure hospital has offerings in LabTest
+  const createdLabTests: any[] = [];
+  for (const pt of platformTests) {
+    const existing = await prisma.labTest.findUnique({
+      where: {
+        hospitalId_platformTestId: {
+          hospitalId,
+          platformTestId: pt.id
+        }
+      }
     });
-    if (!test) {
-      test = await prisma.labTest.create({
-        data: testData
+
+    if (!existing) {
+      // Pick a realistic price based on test
+      let price = 399;
+      if (pt.name.includes('Culture')) price = 850;
+      else if (pt.name.includes('Heart') || pt.name.includes('Cardiac') || pt.name.includes('NT-proBNP')) price = 1200;
+      else if (pt.name.includes('X-Ray')) price = 500;
+      else if (pt.name.includes('CRP')) price = 450;
+      else if (pt.name.includes('Urine')) price = 250;
+      else if (pt.name.includes('Stool')) price = 300;
+      else if (pt.name.includes('Thyroid')) price = 650;
+      else if (pt.name.includes('CBC')) price = 350;
+
+      const lt = await prisma.labTest.create({
+        data: {
+          hospitalId,
+          platformTestId: pt.id,
+          price,
+          tatHours: pt.defaultTatHours || 12,
+          isHomeCollectionAvailable: pt.canBeCollectedAtHome,
+          homeCollectionFee: pt.canBeCollectedAtHome ? 100 : 0,
+          isActive: true
+        }
       });
-      console.log(`Created Lab Test: ${test.name} (${test.id})`);
+      createdLabTests.push(lt);
     } else {
-      test = await prisma.labTest.update({
-        where: { id: test.id },
-        data: testData
-      });
-      console.log(`Updated Lab Test: ${test.name} (${test.id})`);
+      createdLabTests.push(existing);
     }
-    createdTests.push(test);
+  }
+  console.log(`Ensured ${createdLabTests.length} hospital lab tests available.`);
+
+  // 3. Fetch patients
+  const patients = await prisma.user.findMany({
+    where: { role: 'PATIENT' },
+    take: 8
+  });
+
+  if (patients.length === 0) {
+    console.error('No patient users found.');
+    return;
   }
 
-  // 3. Seed Offerings linking tests to laboratories
-  console.log('Creating Laboratory Test Offerings with real prices...');
-  for (const test of createdTests) {
-    // Determine which labs offer this test (at least 2-4 labs per test to allow real comparison)
-    // Most tests offered at Apollo, Vijaya, and at least one hospital lab
-    for (let i = 0; i < labs.length; i++) {
-      const lab = labs[i];
-      // Vary prices slightly per lab for realism while keeping base test price accurate
-      const priceOffset = (i === 0) ? 0 : (i === 1) ? 50 : (i === 2) ? -30 : 20;
-      const labPrice = Math.max(99, test.price + priceOffset);
-      const homeFee = (i % 2 === 0) ? 0 : 50;
+  // 4. Clean up any previous test lab bookings for SM_Hospital to keep data fresh and clean
+  await prisma.labBooking.deleteMany({
+    where: { hospitalId }
+  });
+  console.log('Cleared previous lab bookings.');
 
-      await prisma.laboratoryTestOffering.upsert({
-        where: {
-          laboratoryId_testId: {
-            laboratoryId: lab.id,
-            testId: test.id
-          }
-        },
-        create: {
-          laboratoryId: lab.id,
-          testId: test.id,
-          price: labPrice,
-          homeCollectionAvailable: true,
-          homeCollectionFee: homeFee,
-          active: true
-        },
-        update: {
-          price: labPrice,
-          homeCollectionAvailable: true,
-          homeCollectionFee: homeFee,
-          active: true
+  const now = new Date();
+  const pad = (n: number) => n.toString().padStart(2, '0');
+
+  // Helper to create timestamp offsets
+  const getDateOffset = (daysAgo: number, hour: number, minute: number = 0) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(hour, minute, 0, 0);
+    return d;
+  };
+
+  // 5. Seed Real Bookings across various statuses:
+  // Today's bookings
+  const todaySpecs = [
+    {
+      patient: patients[0],
+      type: LabBookingType.HOME_COLLECTION,
+      status: LabBookingStatus.REQUESTED,
+      testIndices: [0], // e.g. Urine
+      hour: 8,
+      minute: 30,
+      slot: '09:00 AM - 10:00 AM',
+      address: 'Flat 302, Green View Apartments, Hyderabad',
+      phlebName: null,
+      phlebPhone: null
+    },
+    {
+      patient: patients[1] || patients[0],
+      type: LabBookingType.WALK_IN,
+      status: LabBookingStatus.REQUESTED,
+      testIndices: [1], // X-Ray
+      hour: 9,
+      minute: 15,
+      slot: '10:00 AM - 10:30 AM',
+      address: null,
+      phlebName: null,
+      phlebPhone: null
+    },
+    {
+      patient: patients[2] || patients[0],
+      type: LabBookingType.HOME_COLLECTION,
+      status: LabBookingStatus.ASSIGNED,
+      testIndices: [2, 3], // Typhoid + Blood Culture
+      hour: 9,
+      minute: 45,
+      slot: '11:00 AM - 12:00 PM',
+      address: 'Plot 55, Road No 12, Jubilee Hills, Hyderabad',
+      phlebName: 'Ramesh Verma',
+      phlebPhone: '9848022338'
+    },
+    {
+      patient: patients[3] || patients[0],
+      type: LabBookingType.WALK_IN,
+      status: LabBookingStatus.SAMPLE_COLLECTED,
+      testIndices: [4], // Stool
+      hour: 10,
+      minute: 10,
+      slot: '10:00 AM - 10:30 AM',
+      address: null,
+      phlebName: null,
+      phlebPhone: null,
+      collectedAt: getDateOffset(0, 10, 30)
+    },
+    {
+      patient: patients[4] || patients[0],
+      type: LabBookingType.HOME_COLLECTION,
+      status: LabBookingStatus.SAMPLE_COLLECTED,
+      testIndices: [5], // RF
+      hour: 10,
+      minute: 30,
+      slot: '09:30 AM - 10:30 AM',
+      address: 'Door 4-2-10, Madhapur, Hyderabad',
+      phlebName: 'Kishore G',
+      phlebPhone: '9849112233',
+      collectedAt: getDateOffset(0, 11, 0)
+    },
+    {
+      patient: patients[0],
+      type: LabBookingType.WALK_IN,
+      status: LabBookingStatus.IN_LAB_PROCESSING,
+      testIndices: [6, 7], // PT/INR + Cardiac Marker
+      hour: 11,
+      minute: 0,
+      slot: '11:00 AM - 11:30 AM',
+      address: null,
+      phlebName: null,
+      phlebPhone: null,
+      collectedAt: getDateOffset(0, 11, 20)
+    },
+    {
+      patient: patients[1] || patients[0],
+      type: LabBookingType.HOME_COLLECTION,
+      status: LabBookingStatus.IN_LAB_PROCESSING,
+      testIndices: [8], // Beta hCG
+      hour: 11,
+      minute: 45,
+      slot: '10:00 AM - 11:00 AM',
+      address: 'Villa 18, Rainbow Meadows, Kondapur',
+      phlebName: 'Ramesh Verma',
+      phlebPhone: '9848022338',
+      collectedAt: getDateOffset(0, 12, 15)
+    },
+    {
+      patient: patients[2] || patients[0],
+      type: LabBookingType.WALK_IN,
+      status: LabBookingStatus.REPORT_READY,
+      testIndices: [10], // hs-CRP
+      hour: 8,
+      minute: 0,
+      slot: '08:30 AM - 09:00 AM',
+      address: null,
+      phlebName: null,
+      phlebPhone: null,
+      collectedAt: getDateOffset(0, 9, 0)
+    },
+    {
+      patient: patients[3] || patients[0],
+      type: LabBookingType.HOME_COLLECTION,
+      status: LabBookingStatus.REPORT_READY,
+      testIndices: [11], // CPK-MB
+      hour: 8,
+      minute: 15,
+      slot: '08:00 AM - 09:00 AM',
+      address: 'H-No 12/A, Banjara Hills, Hyderabad',
+      phlebName: 'Kishore G',
+      phlebPhone: '9849112233',
+      collectedAt: getDateOffset(0, 8, 45)
+    },
+    {
+      patient: patients[4] || patients[0],
+      type: LabBookingType.WALK_IN,
+      status: LabBookingStatus.REPORT_READY,
+      testIndices: [0, 6], // CUE + PT/INR
+      hour: 7,
+      minute: 45,
+      slot: '08:00 AM - 08:30 AM',
+      address: null,
+      phlebName: null,
+      phlebPhone: null,
+      collectedAt: getDateOffset(0, 8, 30)
+    }
+  ];
+
+  for (const s of todaySpecs) {
+    const selectedTests = s.testIndices.map(idx => createdLabTests[idx % createdLabTests.length]);
+    const itemsTotal = selectedTests.reduce((acc, t) => acc + t.price, 0);
+    const homeFee = s.type === LabBookingType.HOME_COLLECTION ? 100 : 0;
+    const totalAmount = itemsTotal + homeFee;
+
+    const bDate = getDateOffset(0, s.hour, s.minute);
+
+    const b = await prisma.labBooking.create({
+      data: {
+        hospitalId,
+        patientId: s.patient.id,
+        bookingType: s.type,
+        status: s.status,
+        collectionAddress: s.address,
+        collectionDate: bDate,
+        collectionTimeSlot: s.slot,
+        phlebotomistName: s.phlebName,
+        phlebotomistPhone: s.phlebPhone,
+        sampleCollectedAt: s.collectedAt || null,
+        totalAmount,
+        homeCollectionFee: homeFee,
+        createdAt: bDate,
+        updatedAt: bDate,
+        items: {
+          create: selectedTests.map(t => ({
+            labTestId: t.id,
+            price: t.price
+          }))
+        }
+      }
+    });
+
+    // If report is ready, create PatientReport
+    if (s.status === LabBookingStatus.REPORT_READY) {
+      await prisma.patientReport.create({
+        data: {
+          userId: s.patient.id,
+          title: selectedTests.map(t => platformTests.find(pt => pt.id === t.platformTestId)?.name || 'Lab Test').join(' & '),
+          hospital: 'SM_Hospital',
+          doctor: 'Dr. Diagnostic Pathologist',
+          date: bDate.toISOString().split('T')[0],
+          pages: '2 pages',
+          status: 'Normal',
+          statusColor: 'text-emerald-600 bg-emerald-100/60',
+          fileUrl: '/uploads/reports/sample-lab-report.pdf'
         }
       });
     }
   }
 
-  console.log('Seeding completed successfully!');
+  // Past 6 days (This week's revenue)
+  const pastWeekDays = [1, 2, 3, 4, 5, 6];
+  for (const day of pastWeekDays) {
+    // 2-3 bookings per day
+    const numBookings = 2 + (day % 2);
+    for (let i = 0; i < numBookings; i++) {
+      const p = patients[(day + i) % patients.length];
+      const t1 = createdLabTests[(day * 2 + i) % createdLabTests.length];
+      const t2 = createdLabTests[(day * 2 + i + 1) % createdLabTests.length];
+      const tests = i % 2 === 0 ? [t1, t2] : [t1];
+      const itemsTotal = tests.reduce((acc, t) => acc + t.price, 0);
+      const isHome = i % 2 === 1;
+      const homeFee = isHome ? 100 : 0;
+      const totalAmount = itemsTotal + homeFee;
+      const bDate = getDateOffset(day, 10 + i * 2, 30);
+
+      await prisma.labBooking.create({
+        data: {
+          hospitalId,
+          patientId: p.id,
+          bookingType: isHome ? LabBookingType.HOME_COLLECTION : LabBookingType.WALK_IN,
+          status: LabBookingStatus.REPORT_READY,
+          collectionAddress: isHome ? 'Residential Address, Hyderabad' : null,
+          collectionDate: bDate,
+          collectionTimeSlot: '10:00 AM - 11:00 AM',
+          phlebotomistName: isHome ? 'Ramesh Verma' : null,
+          phlebotomistPhone: isHome ? '9848022338' : null,
+          sampleCollectedAt: bDate,
+          totalAmount,
+          homeCollectionFee: homeFee,
+          createdAt: bDate,
+          updatedAt: bDate,
+          items: {
+            create: tests.map(t => ({
+              labTestId: t.id,
+              price: t.price
+            }))
+          }
+        }
+      });
+    }
+  }
+
+  // Past 10-25 days (This month's revenue)
+  const olderDays = [8, 11, 14, 17, 20, 23, 27];
+  for (const day of olderDays) {
+    for (let i = 0; i < 2; i++) {
+      const p = patients[(day + i) % patients.length];
+      const t = createdLabTests[(day + i) % createdLabTests.length];
+      const bDate = getDateOffset(day, 11, 0);
+      const totalAmount = t.price;
+
+      await prisma.labBooking.create({
+        data: {
+          hospitalId,
+          patientId: p.id,
+          bookingType: LabBookingType.WALK_IN,
+          status: LabBookingStatus.REPORT_READY,
+          collectionDate: bDate,
+          collectionTimeSlot: '11:00 AM - 11:30 AM',
+          sampleCollectedAt: bDate,
+          totalAmount,
+          homeCollectionFee: 0,
+          createdAt: bDate,
+          updatedAt: bDate,
+          items: {
+            create: [{
+              labTestId: t.id,
+              price: t.price
+            }]
+          }
+        }
+      });
+    }
+  }
+
+  const finalCount = await prisma.labBooking.count({ where: { hospitalId } });
+  console.log(`SUCCESS! Seeded ${finalCount} real lab bookings for SM_Hospital.`);
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main().catch(console.error).finally(() => prisma.$disconnect());

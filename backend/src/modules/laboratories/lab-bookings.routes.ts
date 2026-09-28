@@ -4,6 +4,7 @@ import {
   createLabBooking,
   getMyLabBookings,
   getHospitalLabBookings,
+  getHospitalLabDashboard,
   getLabBookingById,
   cancelLabBooking,
   updateLabBookingStatus
@@ -16,6 +17,7 @@ router.use(authenticate);
 
 router.post('/', createLabBooking);
 router.get('/my', getMyLabBookings);
+router.get('/hospital/dashboard', getHospitalLabDashboard);
 router.get('/hospital', getHospitalLabBookings);
 router.get('/:id', getLabBookingById);
 router.patch('/hospital/:id/status', updateLabBookingStatus);

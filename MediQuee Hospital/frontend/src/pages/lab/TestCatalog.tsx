@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { useToast } from "@/context/ToastContext"
 import { labApi } from "@/services/labApi"
 import { cn } from "@/lib/utils"
+import { LabDepartmentIcon } from "@/components/lab/LabUI"
 
 export function TestCatalog() {
   const navigate = useNavigate()
@@ -20,7 +21,7 @@ export function TestCatalog() {
   const fetchTests = async () => {
     try {
       const res = await labApi.getHospitalLabMenu()
-      setTests(res.data)
+      setTests(res?.data || (Array.isArray(res) ? res : []))
     } catch (error) {
       toast("Failed to load catalog", "error")
     } finally {
@@ -31,7 +32,11 @@ export function TestCatalog() {
   const filtered = tests.filter(t => {
     if (!search) return true
     const q = search.toLowerCase()
-    return t.platformTest?.name?.toLowerCase().includes(q) || t.platformTest?.department?.name?.toLowerCase().includes(q)
+    return (
+      t.platformTest?.name?.toLowerCase().includes(q) || 
+      t.platformTest?.department?.name?.toLowerCase().includes(q) ||
+      t.platformTest?.code?.toLowerCase().includes(q)
+    )
   })
 
   const toggleStatus = async (id: string, active: boolean) => {
@@ -89,11 +94,7 @@ export function TestCatalog() {
                   <div className="flex items-start justify-between gap-2 md:gap-4">
                     <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
                       <div className="w-10 h-10 md:w-12 md:h-12 bg-primary/5 rounded-xl border border-primary/10 flex items-center justify-center shrink-0">
-                        {test.platformTest?.department?.icon ? (
-                          <span className="text-[18px] md:text-[20px]">{test.platformTest.department.icon}</span>
-                        ) : (
-                          <FlaskConical className="w-5 h-5 md:w-6 md:h-6 text-primary" strokeWidth={1.5} />
-                        )}
+                        <LabDepartmentIcon icon={test.platformTest?.department?.icon} className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-[14px] md:text-[16px] font-semibold text-[#172033] leading-snug truncate" title={test.platformTest?.name}>{test.platformTest?.name}</p>

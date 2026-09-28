@@ -1,32 +1,61 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Upload, User, Eye, FileText } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { StatusBadge } from "@/components/lab/LabUI"
 import { cn } from "@/lib/utils"
-
-// Labels and colors are static UI config; counts come from the backend.
-const summaryStats: { label: string; count: string; color: string; bg: string; border: string }[] = [
-  { label: 'Pending Upload', count: '—', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
-  { label: 'Ready', count: '—', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-  { label: 'Delivered', count: '—', color: 'text-[#667085]', bg: 'bg-gray-50', border: 'border-border' },
-]
-
-const filters = ['All', 'Pending', 'Ready', 'Delivered']
-
-// Report records come from the backend. Empty until connected.
-const allReports: {
-  id: string; patient: string; test: string; date: string;
-  status: 'pending' | 'collected' | 'processing' | 'ready' | 'delivered' | 'cancelled';
-  type: string; icon: string;
-}[] = []
-
-const filterMap: Record<string, string> = { 'Pending': 'pending', 'Ready': 'ready', 'Delivered': 'delivered' }
+import { labApi } from "@/services/labApi"
 
 export function LabReports() {
   const navigate = useNavigate()
   const [activeFilter, setActiveFilter] = useState('All')
   const [activeMainSection, setActiveMainSection] = useState<'In-Person' | 'Home Collection'>('In-Person')
+  const [allReports, setAllReports] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadReports() {
+      try {
+        const res = await labApi.getLabBookings()
+        const items = (res?.data || []).map((b: any) => {
+          let st: any = 'pending'
+          if (b.status === 'SAMPLE_COLLECTED') st = 'collected'
+          else if (b.status === 'IN_LAB_PROCESSING') st = 'processing'
+          else if (b.status === 'REPORT_READY') st = 'ready'
+          else if (b.status === 'CANCELLED') st = 'cancelled'
+
+          return {
+            id: b.id,
+            patient: b.patient?.name || 'Walk-in Patient',
+            test: b.items?.map((it: any) => it.labTest?.platformTest?.name).join(', ') || 'Diagnostic Test',
+            date: new Date(b.createdAt).toLocaleDateString(),
+            status: st,
+            type: b.bookingType === 'HOME_COLLECTION' ? 'Home Collection' : 'In-Person',
+            icon: ''
+          }
+        })
+        setAllReports(items)
+      } catch (err) {
+        console.error("Failed to load reports", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadReports()
+  }, [])
+
+  const pendingCount = allReports.filter(r => r.status === 'pending' || r.status === 'collected' || r.status === 'processing').length
+  const readyCount = allReports.filter(r => r.status === 'ready').length
+  const deliveredCount = allReports.filter(r => r.status === 'delivered').length
+
+  const summaryStats = [
+    { label: 'Pending Upload', count: isLoading ? '...' : String(pendingCount), color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
+    { label: 'Ready', count: isLoading ? '...' : String(readyCount), color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+    { label: 'Delivered', count: isLoading ? '...' : String(deliveredCount), color: 'text-[#667085]', bg: 'bg-gray-50', border: 'border-border' },
+  ]
+
+  const filters = ['All', 'Pending', 'Ready', 'Delivered']
+  const filterMap: Record<string, string> = { 'Pending': 'pending', 'Ready': 'ready', 'Delivered': 'delivered' }
 
   const filtered = allReports.filter(r => {
     const matchType = r.type === activeMainSection
