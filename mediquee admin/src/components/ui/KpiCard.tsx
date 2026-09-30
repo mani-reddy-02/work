@@ -18,8 +18,8 @@ const KpiCard: React.FC<KpiCardProps> = ({
   trend, 
   trendLabel = 'vs last month', 
   icon: Icon,
-  iconColor = 'text-blue-600 dark:text-blue-400',
-  iconBg = 'bg-blue-50 dark:bg-blue-900/20',
+  iconColor = 'text-blue-600 ',
+  iconBg = 'bg-blue-50 ',
   subtitle
 }) => {
   const renderTrend = () => {
@@ -28,14 +28,14 @@ const KpiCard: React.FC<KpiCardProps> = ({
     const isPositive = trend > 0;
     const isNegative = trend < 0;
 
-    let trendColor = 'text-slate-500 dark:text-slate-400';
+    let trendColor = 'text-slate-500 ';
     let TrendIcon = Minus;
 
     if (isPositive) {
-      trendColor = 'text-emerald-600 dark:text-emerald-400';
+      trendColor = 'text-emerald-600 ';
       TrendIcon = TrendingUp;
     } else if (isNegative) {
-      trendColor = 'text-rose-600 dark:text-rose-400';
+      trendColor = 'text-rose-600 ';
       TrendIcon = TrendingDown;
     }
 
@@ -45,26 +45,26 @@ const KpiCard: React.FC<KpiCardProps> = ({
           <TrendIcon size={14} />
           <span>{Math.abs(trend)}%</span>
         </div>
-        <span className="text-xs text-slate-400 dark:text-slate-500">{trendLabel}</span>
+        <span className="text-xs text-slate-400 ">{trendLabel}</span>
       </div>
     );
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md cursor-pointer">
+    <div className="bg-white  rounded-xl p-5 border border-slate-200  shadow-sm transition-all hover:shadow-md cursor-pointer">
       <div className="flex justify-between items-start mb-2">
-        <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</h3>
+        <h3 className="text-sm font-medium text-slate-500 ">{title}</h3>
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconBg} ${iconColor}`}>
           <Icon size={20} />
         </div>
       </div>
       
       <div>
-        <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+        <div className="text-3xl font-bold text-slate-900  tracking-tight">
           {typeof value === 'number' ? value.toLocaleString() : value}
         </div>
         {subtitle && (
-          <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-2">
+          <div className="text-xs font-medium text-slate-500  mt-2">
             {subtitle}
           </div>
         )}

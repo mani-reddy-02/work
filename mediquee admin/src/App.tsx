@@ -10,6 +10,8 @@ import AdminLogin from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Hospitals from './pages/Hospitals';
+import Departments from './pages/Departments';
+import DepartmentDetails from './pages/DepartmentDetails';
 import Doctors from './pages/Doctors';
 import Appointments from './pages/Appointments';
 import Verification from './pages/Verification';
@@ -61,6 +63,8 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="users" element={<Users />} />
               <Route path="hospitals" element={<Hospitals />} />
+              <Route path="departments" element={<Departments />} />
+              <Route path="departments/:id" element={<DepartmentDetails />} />
               <Route path="doctors" element={<Doctors />} />
               <Route path="providers" element={<Providers />} />
               

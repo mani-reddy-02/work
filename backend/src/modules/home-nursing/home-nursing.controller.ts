@@ -252,8 +252,8 @@ export const getNursingServiceProviders = async (req: Request, res: Response, ne
         logoUrl: h.logoUrl,
         rating: 4.8,
         registered: true,
-        price: offering ? `₹${offering.price.toLocaleString('en-IN')}` : '₹1,200',
-        numericPrice: offering ? offering.price : 1200,
+        price: offering ? `₹${offering.price.toLocaleString('en-IN')}` : 'Price not available',
+        numericPrice: offering ? offering.price : 0,
         duration: offering?.duration || '12 / 24 Hours',
         serviceArea: offering?.serviceArea || 'Standard Service Area',
         nurses: h.users || [],
@@ -405,7 +405,7 @@ export const getNursingAvailability = async (req: Request, res: Response, next: 
         slot,
         available: !bookedSlotsSet.has(slot) && !isExpired,
       };
-    });
+    }).filter(s => s.available);
 
     // Return next 5 selectable dates
     const dates: { label: string; date: string }[] = [];
@@ -731,8 +731,8 @@ export const getMyNursingBookings = async (req: Request, res: Response, next: Ne
         hospitalName: h?.name || 'Registered Hospital',
         hospitalLocation: h?.city || 'Hyderabad',
         hospitalPhone: h?.contactPhone || '',
-        nurseName: n ? n.name : 'Assigned Nurse',
-        nurseDesignation: n ? n.designation : 'Certified Healthcare Nurse',
+        nurseName: n ? n.name : null,
+        nurseDesignation: n ? n.designation : null,
         patientName: b.patientName,
         patientPhone: b.patientPhone,
         patientEmail: b.patientEmail,
@@ -825,9 +825,9 @@ export const getNursingBookingById = async (req: Request, res: Response, next: N
         hospitalAddress: hospital?.addressLine1 || '',
         hospitalLocation: [hospital?.area, hospital?.city].filter(Boolean).join(', ') || 'Hyderabad',
         hospitalPhone: hospital?.contactPhone || '',
-        nurseName: nurse ? nurse.name : 'Assigned Nurse',
-        nurseDesignation: nurse ? nurse.designation : 'Certified Healthcare Nurse',
-        nursePhone: nurse?.phone || hospital?.contactPhone || '',
+        nurseName: nurse ? nurse.name : null,
+        nurseDesignation: nurse ? nurse.designation : null,
+        nursePhone: nurse ? nurse.phone : null,
         patientName: booking.patientName,
         patientPhone: booking.patientPhone,
         patientEmail: booking.patientEmail,

@@ -25,9 +25,12 @@ import {
   Heart,
   FileCheck,
   ChevronRight,
+  Check,
+  Plus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import HowItWorks from '../components/HowItWorks';
+import { useProfile } from '../lib/profile';
 import {
   homeNursingApi,
   type NursingServiceRecord,
@@ -79,6 +82,33 @@ const getTomorrowDateString = () => {
 
 const HomeNursingList = () => {
   const navigate = useNavigate();
+  const { profile } = useProfile();
+  
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [isOtherAddress, setIsOtherAddress] = useState(false);
+
+  const handleAddressSelected = (addr: any) => {
+    setPatientDetails(prev => ({ ...prev, address: `${addr.street}, ${addr.city}, ${addr.state ? addr.state + ' ' : ''}${addr.pincode}` }));
+  };
+
+  useEffect(() => {
+    if (profile?.address) {
+      try {
+        const parsed = JSON.parse(profile.address);
+        if (Array.isArray(parsed)) {
+          setSavedAddresses(parsed);
+          if (parsed.length > 0 && !selectedAddressId && !isOtherAddress) {
+            setSelectedAddressId(parsed[0].id);
+            handleAddressSelected(parsed[0]);
+          }
+        }
+      } catch (e) {}
+    } else {
+      setSavedAddresses([]);
+    }
+  }, [profile.address]);
+
   const [viewState, setViewState] = useState<
     'SERVICES' | 'HOSPITALS' | 'FORM' | 'SUMMARY' | 'PAYMENT' | 'CONFIRMED'
   >('SERVICES');
@@ -104,7 +134,6 @@ const HomeNursingList = () => {
 
   const [selectedHospital, setSelectedHospital] = useState<any>(null);
   const [selectedService, setSelectedService] = useState<any>(null);
-  const [selectedNurse, setSelectedNurse] = useState<NurseRecord | null>(null);
 
   const [patientDetails, setPatientDetails] = useState({
     name: '',
@@ -203,7 +232,6 @@ const HomeNursingList = () => {
   // Handle Select Hospital -> fetch real availability
   const handleSelectHospital = async (hospital: any) => {
     setSelectedHospital(hospital);
-    setSelectedNurse(null);
     setViewState('FORM');
 
     if (selectedService?.id && hospital.id) {
@@ -251,7 +279,6 @@ const HomeNursingList = () => {
       const payload = {
         serviceId: selectedService?.id || mockServices[0].id,
         hospitalId: selectedHospital?.id || mockHospitals[0].id,
-        nurseId: selectedNurse?.id || undefined,
         patientName: patientDetails.name.trim(),
         patientPhone: patientDetails.phone.trim(),
         patientEmail: patientDetails.email.trim() || undefined,
@@ -280,7 +307,7 @@ const HomeNursingList = () => {
             patientName: patientDetails.name,
             date: patientDetails.date,
             timeSlot: patientDetails.time,
-            totalAmount: selectedHospital?.numericPrice || 1500,
+            totalAmount: selectedHospital?.numericPrice || 0,
             status: 'CONFIRMED',
             paymentStatus: 'PAID',
           });
@@ -299,7 +326,7 @@ const HomeNursingList = () => {
         patientName: patientDetails.name,
         date: patientDetails.date,
         timeSlot: patientDetails.time,
-        totalAmount: 1500,
+        totalAmount: selectedHospital?.numericPrice || 0,
         status: 'CONFIRMED',
         paymentStatus: 'PAID',
       });
@@ -313,8 +340,8 @@ const HomeNursingList = () => {
     selectedHospital?.numericPrice ||
     (selectedHospital?.price
       ? Number(String(selectedHospital.price).replace(/[^0-9]/g, ''))
-      : 1500) ||
-    1500;
+      : 0) ||
+    0;
 
   const formattedDisplayPrice = `₹${calculatedPriceNumber.toLocaleString('en-IN')}`;
 
@@ -322,41 +349,51 @@ const HomeNursingList = () => {
     <div className="flex flex-col h-full bg-slate-50 relative">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#0055ff] to-[#06b6d4] pt-4 pb-6 px-4 text-white rounded-b-3xl shrink-0 shadow-md">
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={() => {
-              if (viewState === 'SERVICES') {
-                if (window.history.state && window.history.state.idx > 0) navigate(-1);
-                else navigate('/');
-              } else if (viewState === 'HOSPITALS') setViewState('SERVICES');
-              else if (viewState === 'FORM') setViewState('HOSPITALS');
-              else if (viewState === 'SUMMARY') setViewState('FORM');
-              else if (viewState === 'PAYMENT') setViewState('SUMMARY');
-              else if (viewState === 'CONFIRMED') setViewState('SERVICES');
-            }}
-            className="p-1 hover:bg-white/20 rounded-full transition-colors"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold">Home Nursing</h1>
-            <p className="text-[11px] text-blue-100 mt-1">
-              Get trusted nursing care delivered to your home.
-            </p>
+        {!searchFocused && (
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              onClick={() => {
+                if (viewState === 'SERVICES') {
+                  if (window.history.state && window.history.state.idx > 0) navigate(-1);
+                  else navigate('/');
+                } else if (viewState === 'HOSPITALS') setViewState('SERVICES');
+                else if (viewState === 'FORM') setViewState('HOSPITALS');
+                else if (viewState === 'SUMMARY') setViewState('FORM');
+                else if (viewState === 'PAYMENT') setViewState('SUMMARY');
+                else if (viewState === 'CONFIRMED') setViewState('SERVICES');
+              }}
+              className="p-1 hover:bg-white/20 rounded-full transition-colors"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <div className="flex-1">
+              <h1 className="text-xl font-bold">Home Nursing</h1>
+              <p className="text-[11px] text-blue-100 mt-1">
+                Get trusted nursing care delivered to your home.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {(viewState === 'HOSPITALS' || viewState === 'SERVICES') && (
           <div className="relative max-w-md mx-auto">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-slate-400" />
-            </div>
+            {searchFocused ? (
+              <button 
+                onClick={() => { setSearchFocused(false); setSearchQuery(''); }}
+                className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 hover:text-slate-800 z-10"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            ) : (
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-slate-400" />
+              </div>
+            )}
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setSearchFocused(true)}
-              onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
               className="block w-full pl-12 pr-4 py-3 border-0 rounded-2xl bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-white/50 shadow-lg text-[13px]"
               placeholder={
                 viewState === 'SERVICES'
@@ -373,13 +410,15 @@ const HomeNursingList = () => {
           {/* VIEW: SERVICES */}
           {viewState === 'SERVICES' && (
             <>
-              <div className="-mx-4 md:mx-0">
-                <HowItWorks
-                  title="How Home Nursing Works"
-                  steps={homeNursingStepsData}
-                  className="rounded-2xl shadow-sm mb-6"
-                />
-              </div>
+              {!searchFocused && (
+                <div className="-mx-4 md:mx-0">
+                  <HowItWorks
+                    title="How Home Nursing Works"
+                    steps={homeNursingStepsData}
+                    className="rounded-2xl shadow-sm mb-6"
+                  />
+                </div>
+              )}
 
               {/* Category Pills */}
               <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
@@ -429,10 +468,6 @@ const HomeNursingList = () => {
                             </div>
                           </div>
                           <div className="text-right">
-                            <span className="text-[13px] font-black text-[#0055ff]">
-                              {service.price}
-                            </span>
-                            <p className="text-[9px] text-slate-400 font-semibold">Base Price</p>
                           </div>
                         </div>
                         <p className="text-[11px] text-slate-500 font-medium leading-relaxed mb-4">
@@ -517,11 +552,6 @@ const HomeNursingList = () => {
                           <span className="bg-emerald-50 text-emerald-600 text-[10px] px-2 py-1 rounded-full font-bold flex items-center gap-1">
                             <CheckCircle className="w-3 h-3" /> Registered Hospital
                           </span>
-                          {hospital.nurses && hospital.nurses.length > 0 && (
-                            <span className="bg-blue-50 text-blue-700 text-[10px] px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                              <Users className="w-3 h-3" /> {hospital.nurses.length} Dedicated Nurse(s)
-                            </span>
-                          )}
                         </div>
 
                         <button
@@ -560,36 +590,6 @@ const HomeNursingList = () => {
                 </div>
               </div>
 
-              {/* Optional Nurse Selection */}
-              {selectedHospital?.nurses && selectedHospital.nurses.length > 0 && (
-                <div className="mb-6">
-                  <label className="flex items-center gap-2 text-[13px] font-bold text-slate-800 mb-3">
-                    <User className="w-4 h-4 text-blue-600" />
-                    Select Specific Nurse <span className="text-slate-400 font-medium text-[11px]">(Optional)</span>
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {selectedHospital.nurses.map((nurse: NurseRecord) => (
-                      <button
-                        key={nurse.id}
-                        type="button"
-                        onClick={() =>
-                          setSelectedNurse(selectedNurse?.id === nurse.id ? null : nurse)
-                        }
-                        className={`p-3 rounded-xl border text-left transition-all duration-200 ${
-                          selectedNurse?.id === nurse.id
-                            ? 'border-[#0055ff] bg-blue-50/60 ring-1 ring-blue-600 shadow-sm'
-                            : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50'
-                        }`}
-                      >
-                        <p className="text-[12px] font-bold text-slate-800">{nurse.name}</p>
-                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                          {nurse.designation || 'Certified Nurse'}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               <form onSubmit={handleSubmitForm} className="space-y-6">
                 
@@ -618,7 +618,7 @@ const HomeNursingList = () => {
                     <Calendar className="w-4 h-4 text-blue-600" />
                     <h3 className="text-[13px] font-bold text-slate-800">Date & Time</h3>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
                         Preferred Date *
@@ -655,7 +655,7 @@ const HomeNursingList = () => {
                       <label className="block text-[11px] font-bold text-slate-700 mb-2">
                         Available Shift Slots
                       </label>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                         {availableSlots.map((s) => (
                           <button
                             key={s.slot}
@@ -681,7 +681,61 @@ const HomeNursingList = () => {
                 <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
                   <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-2">
                     <MapPin className="w-4 h-4 text-blue-600" />
-                    <h3 className="text-[13px] font-bold text-slate-800">Contact & Location</h3>
+                    <h3 className="text-[13px] font-bold text-slate-800">Select Service Address</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {savedAddresses.map((addr) => (
+                      <div 
+                        key={addr.id}
+                        onClick={() => { setSelectedAddressId(addr.id); setIsOtherAddress(false); handleAddressSelected(addr); }}
+                        className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedAddressId === addr.id && !isOtherAddress ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-slate-200 hover:border-blue-300'}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5">
+                            {selectedAddressId === addr.id && !isOtherAddress ? (
+                              <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center"><Check className="w-3 h-3" /></div>
+                            ) : (
+                              <div className="w-4 h-4 rounded-full border-2 border-slate-300" />
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="text-[13px] font-bold text-slate-900">{addr.type}</h4>
+                            <p className="text-[12px] text-slate-600 mt-1">{addr.street}</p>
+                            <p className="text-[12px] text-slate-600">{addr.city}{addr.state ? `, ${addr.state}` : ''} {addr.pincode}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {savedAddresses.length === 0 && (
+                      <div className="text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        <p className="text-[12px] text-slate-500 mb-2">No saved addresses</p>
+                      </div>
+                    )}
+                    
+                    <div 
+                      onClick={() => { setSelectedAddressId(null); setIsOtherAddress(true); setPatientDetails(p => ({...p, address: ''})); }}
+                      className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${isOtherAddress ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-slate-200 hover:border-blue-300'}`}
+                    >
+                       <div className="mt-0.5">
+                          {isOtherAddress ? (
+                            <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center"><Check className="w-3 h-3" /></div>
+                          ) : (
+                            <Plus className="w-4 h-4 text-slate-400" />
+                          )}
+                        </div>
+                        <span className="text-[13px] font-bold text-slate-700">
+                          {savedAddresses.length === 0 ? 'Add Address' : 'Use Other Address'}
+                        </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-2">
+                    <MapPin className="w-4 h-4 text-blue-600" />
+                    <h3 className="text-[13px] font-bold text-slate-800">Contact Details</h3>
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
@@ -697,20 +751,22 @@ const HomeNursingList = () => {
                       placeholder="Enter phone number"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                      Address *
-                    </label>
-                    <textarea
-                      name="address"
-                      value={patientDetails.address}
-                      onChange={handlePatientChange}
-                      required
-                      rows={2}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all"
-                      placeholder="Enter full address"
-                    />
-                  </div>
+                  {isOtherAddress && (
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                        Address *
+                      </label>
+                      <textarea
+                        name="address"
+                        value={patientDetails.address}
+                        onChange={handlePatientChange}
+                        required
+                        rows={2}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all"
+                        placeholder="Enter full address"
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
                       Additional Requirements
@@ -778,18 +834,6 @@ const HomeNursingList = () => {
                       </p>
                     </div>
                   </div>
-
-                  {selectedNurse && (
-                    <div className="flex items-start gap-3">
-                      <User className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Assigned Nurse</p>
-                        <p className="text-[13px] font-bold text-slate-800">
-                          {selectedNurse.name} <span className="text-slate-400 font-medium mx-1">({selectedNurse.designation || 'Healthcare Nurse'})</span>
-                        </p>
-                      </div>
-                    </div>
-                  )}
                   
                   <div className="flex items-start gap-3">
                     <Calendar className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />

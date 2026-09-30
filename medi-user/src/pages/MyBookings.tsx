@@ -154,7 +154,7 @@ const MyBookings = () => {
         type: 'NURSING',
         title: n.serviceName,
         subtitle: n.nurseName ? `${n.nurseName} • ${n.hospitalName}` : n.hospitalName,
-        detailTag: 'Home Nursing Care',
+        detailTag: n.nurseName ? 'Nurse Assigned' : 'Nurse Assignment Pending',
         date: n.date,
         timeSlot: n.timeSlot,
         location: n.address ? `Home: ${n.address}` : 'Home Service',
@@ -186,7 +186,7 @@ const MyBookings = () => {
     <div className="flex flex-col h-full bg-slate-50 min-h-screen">
       {/* Header with Tabs */}
       <div className="bg-gradient-to-r from-primary to-secondary pt-4 pb-14 px-4 text-white rounded-b-3xl shadow-sm">
-        <div className="flex items-center justify-between mb-6 max-w-md mx-auto">
+        <div className="flex items-center justify-between mb-6 max-w-md md:max-w-full md:px-4 mx-auto">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate(-1)}
@@ -207,7 +207,7 @@ const MyBookings = () => {
           </button>
         </div>
 
-        <div className="max-w-md mx-auto bg-white/20 p-1 rounded-full flex relative z-10 backdrop-blur-sm">
+        <div className="max-w-md md:max-w-md lg:max-w-lg mx-auto bg-white/20 p-1 rounded-full flex relative z-10 backdrop-blur-sm">
           <button
             className={cn(
               'flex-1 py-2 text-sm font-semibold rounded-full transition-all flex items-center justify-center gap-1.5',
@@ -251,7 +251,7 @@ const MyBookings = () => {
 
       {/* Bookings List */}
       <div className="px-4 -mt-8 flex-1 pb-24 overflow-y-auto">
-        <div className="max-w-md mx-auto space-y-4">
+        <div className="max-w-md md:max-w-full lg:max-w-5xl mx-auto space-y-4 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
           {/* Error Banner */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-2xl flex items-center justify-between text-xs">
@@ -355,7 +355,7 @@ const MyBookings = () => {
                             : 'bg-amber-50 text-amber-700 border-amber-200'
                         )}
                       >
-                        {isConfirmed ? 'Confirmed' : isCompleted ? 'Completed' : isCancelled ? 'Cancelled' : booking.status}
+                        {isConfirmed ? (booking.type === 'NURSING' ? (booking.nursingRecord?.nurseName ? 'Nurse Assigned' : 'Nurse Assignment Pending') : 'Confirmed') : isCompleted ? 'Completed' : isCancelled ? 'Cancelled' : booking.status}
                       </span>
                     </div>
 

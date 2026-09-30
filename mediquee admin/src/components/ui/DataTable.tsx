@@ -15,6 +15,7 @@ interface DataTableProps<T> {
   onSearch?: (value: string) => void;
   onRowClick?: (item: T) => void;
   actions?: React.ReactNode;
+  emptyMessage?: string;
 }
 
 function DataTable<T>({ 
@@ -24,7 +25,8 @@ function DataTable<T>({
   searchPlaceholder = 'Search...',
   onSearch,
   onRowClick,
-  actions
+  actions,
+  emptyMessage = 'No results found'
 }: DataTableProps<T>) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
@@ -88,7 +90,7 @@ function DataTable<T>({
                     <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
                       <Search size={24} className="text-slate-400" />
                     </div>
-                    <p className="text-base font-medium text-slate-900 mb-1">No results found</p>
+                    <p className="text-base font-medium text-slate-900 mb-1">{emptyMessage}</p>
                     <p className="text-sm">Try adjusting your search or filters to find what you're looking for.</p>
                   </div>
                 </td>

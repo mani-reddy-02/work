@@ -146,7 +146,7 @@ const CheckMyBMI = () => {
     <div className="flex flex-col h-full bg-slate-50">
       {/* Header */}
       <div className="bg-theme-gradient pt-4 pb-14 px-4 text-white rounded-b-3xl">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 max-w-md md:max-w-xl mx-auto">
           <button onClick={() => navigate(-1)} className="p-1 hover:bg-white/20 rounded-full transition-colors">
             <ChevronLeft className="w-6 h-6" />
           </button>
@@ -154,7 +154,7 @@ const CheckMyBMI = () => {
         </div>
       </div>
 
-      <div className="px-4 -mt-8 flex-1 pb-8 overflow-y-auto">
+      <div className="px-4 -mt-8 flex-1 pb-8 overflow-y-auto max-w-md md:max-w-xl mx-auto w-full">
         {!result ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
             <div className="flex items-center gap-3 mb-6">

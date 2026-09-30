@@ -2,30 +2,25 @@ import React, { useState, useEffect } from 'react';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { User } from '../types';
-import { mockUsers } from '../mock/data';
 import { UserPlus, UserCheck, UserX, ShieldAlert } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
 import { useAdminAuth } from '../contexts/AuthContext';
+import { userService } from '../services/userService';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 const Users: React.FC = () => {
   const { token } = useAdminAuth();
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
     const fetchUsers = async () => {
       if (!token) return;
       try {
-        const res = await fetch(`${API_BASE_URL}/admin/users`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-            setUsers(json.data);
-          }
+        const res = await userService.getUsers(token);
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          setUsers(res.data);
         }
       } catch (err) {
         console.error('Failed to fetch admin users:', err);
@@ -44,12 +39,12 @@ const Users: React.FC = () => {
       header: 'User',
       accessor: (user) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 font-semibold text-xs shrink-0">
+          <div className="w-8 h-8 rounded-full bg-slate-200  flex items-center justify-center text-slate-600  font-semibold text-xs shrink-0">
             {user.name.charAt(0)}
           </div>
           <div className="flex flex-col">
-            <span className="font-medium text-slate-900 dark:text-white">{user.name}</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">{user.email}</span>
+            <span className="font-medium text-slate-900 ">{user.name}</span>
+            <span className="text-xs text-slate-500 ">{user.email}</span>
           </div>
         </div>
       ),
@@ -57,7 +52,7 @@ const Users: React.FC = () => {
     {
       header: 'Role',
       accessor: (user) => (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100  text-slate-700  border border-slate-200 ">
           {user.role.replace('_', ' ')}
         </span>
       ),
@@ -75,7 +70,7 @@ const Users: React.FC = () => {
       accessor: (user) => (
         <div className="flex items-center gap-2">
           <button 
-            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 text-sm font-medium"
+            className="text-blue-600 hover:text-blue-800  text-sm font-medium"
             onClick={(e) => {
               e.stopPropagation();
               alert(`Viewing details for ${user.name}`);
@@ -92,8 +87,8 @@ const Users: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">User Management</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">View and manage all registered system accounts across roles</p>
+          <h2 className="text-2xl font-bold text-slate-900 ">User Management</h2>
+          <p className="text-sm text-slate-500 ">View and manage all registered system accounts across roles</p>
         </div>
         <button 
           onClick={() => alert('New user registration can be performed on the MediQuee User or Hospital portal.')}

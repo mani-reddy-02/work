@@ -317,7 +317,38 @@ export const getDoctorAvailability = async (req: Request, res: Response, next: N
       }
     }
 
-    const availableSlots = allSlots.filter(slot => !bookedSlots.has(slot));
+    const now = new Date();
+    const isToday = targetDate.toDateString() === now.toDateString();
+    let currentKolkataTimeInMinutes = 0;
+    
+    if (isToday) {
+      const kolkataTime = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: false
+      }).format(now);
+      const [h, m] = kolkataTime.split(':').map(Number);
+      currentKolkataTimeInMinutes = h * 60 + m;
+    }
+
+    const availableSlots = allSlots.filter(slot => {
+      if (bookedSlots.has(slot)) return false;
+      if (isToday) {
+        const match = slot.match(/(\d+):(\d+)\s+(AM|PM)/i);
+        if (match) {
+          let h = parseInt(match[1]);
+          const m = parseInt(match[2]);
+          const period = match[3].toUpperCase();
+          if (period === 'PM' && h !== 12) h += 12;
+          if (period === 'AM' && h === 12) h = 0;
+          const slotMinutes = h * 60 + m;
+          // Hide slot if its start time has already passed
+          if (slotMinutes <= currentKolkataTimeInMinutes) return false;
+        }
+      }
+      return true;
+    });
 
     res.json({
       success: true,

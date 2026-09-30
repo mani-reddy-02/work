@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { departmentIcons, allIcons, getDiseaseIconUrl } from '../utils/diseaseIcons';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   Search, Hospital, Video, Clock, CheckCircle2, ChevronLeft, 
@@ -65,245 +66,23 @@ export const getUpcomingDates = (): SlotDateOption[] => {
 
 const INITIAL_DATES = getUpcomingDates();
 
-const generalDiseases = [
-  { id: 'fever', name: 'Fever', image: '/optimized/Fever.webp', icon: ThermometerIcon, bg: 'bg-red-50' },
-  { id: 'common-cold', name: 'Common Cold', image: '/optimized/Common Cold.webp', icon: WindIcon, bg: 'bg-blue-50' },
-  { id: 'flu', name: 'Flu', image: '/optimized/Flu.webp', icon: VirusIcon, bg: 'bg-green-50' },
-  { id: 'cough', name: 'Cough', icon: WindIcon, bg: 'bg-cyan-50' },
-  { id: 'headache', name: 'Headache', icon: BrainIcon, bg: 'bg-purple-50' },
-  { id: 'migraine', name: 'Migraine', image: '/optimized/Migraine.webp', icon: HeadacheIcon, bg: 'bg-indigo-50' },
-  { id: 'body-pain', name: 'Body Pain', icon: BoneIcon, bg: 'bg-slate-50' },
-  { id: 'sore-throat', name: 'Sore Throat', image: '/optimized/Pharyngitis.webp', icon: ThroatIcon, bg: 'bg-orange-50' },
-  { id: 'acidity', name: 'Acidity', image: '/optimized/GERD.webp', icon: StomachIcon, bg: 'bg-amber-50' },
-  { id: 'gastritis', name: 'Gastritis', image: '/optimized/Gastritis.webp', icon: StomachIcon, bg: 'bg-orange-50' },
-  { id: 'constipation', name: 'Constipation', image: '/optimized/Constipation.webp', icon: IntestinesIcon, bg: 'bg-stone-50' },
-  { id: 'diarrhea', name: 'Diarrhea', image: '/optimized/Diarrhea.webp', icon: IntestinesIcon, bg: 'bg-yellow-50' },
-  { id: 'vomiting', name: 'Vomiting', icon: VomitIcon, bg: 'bg-lime-50' },
-  { id: 'allergies', name: 'Allergies', image: '/optimized/Allergy.webp', icon: SparklesIcon, bg: 'bg-pink-50' },
-  { id: 'skin-rash', name: 'Skin Rash', image: '/optimized/Eczema.webp', icon: SkinIcon, bg: 'bg-rose-50' },
-  { id: 'mild-infection', name: 'Mild Infection', image: '/optimized/Viral Infection.webp', icon: VirusIcon, bg: 'bg-teal-50' },
-  { id: 'back-pain', name: 'Back Pain', image: '/optimized/Back Pain.webp', icon: BoneIcon, bg: 'bg-slate-50' },
-  { id: 'joint-pain', name: 'Joint Pain', image: '/optimized/Joint Pain.webp', icon: JointIcon, bg: 'bg-blue-50' },
-  { id: 'toothache', name: 'Toothache', icon: ToothIcon, bg: 'bg-sky-50' },
-  { id: 'eye-irritation', name: 'Eye Irritation', image: '/optimized/Dry Eye.webp', icon: EyeIcon, bg: 'bg-cyan-50' },
-];
-
-const advancedDiseases = [
-  { id: 'cancer', name: 'Cancer', image: '/optimized/Cancer.webp', icon: RibbonIcon, bg: 'bg-pink-50' },
-  { id: 'heart', name: 'Heart Disease', image: '/optimized/Heart Disease.webp', icon: HeartIcon, bg: 'bg-red-50' },
-  { id: 'heart-attack', name: 'Heart Attack', image: '/optimized/Heart Attack.webp', icon: HeartIcon, bg: 'bg-rose-50' },
-  { id: 'stroke', name: 'Stroke', image: '/optimized/Stroke.webp', icon: BrainIcon, bg: 'bg-purple-50' },
-  { id: 'kidney', name: 'Kidney Disease', image: '/optimized/Kidney Disease.webp', icon: KidneyIcon, bg: 'bg-blue-50' },
-  { id: 'ckd', name: 'Chronic Kidney Disease', image: '/optimized/Kidney Disease.webp', icon: KidneyIcon, bg: 'bg-indigo-50' },
-  { id: 'liver', name: 'Liver Disease', image: '/optimized/Hepatitis.webp', icon: LiverIcon, bg: 'bg-orange-50' },
-  { id: 'cirrhosis', name: 'Cirrhosis', image: '/optimized/Fatty Liver Disease.webp', icon: LiverIcon, bg: 'bg-amber-50' },
-  { id: 'diabetes', name: 'Diabetes Complications', image: '/optimized/Diabetes.webp', icon: DropsIcon, bg: 'bg-cyan-50' },
-  { id: 'hypertension', name: 'Hypertension Complications', image: '/optimized/Hypertension.webp', icon: HeartIcon, bg: 'bg-red-50' },
-  { id: 'neuro', name: 'Neurological Disorders', icon: BrainIcon, bg: 'bg-fuchsia-50' },
-  { id: 'parkinsons', name: 'Parkinson\'s Disease', image: "/optimized/Parkinson's Disease.webp", icon: BrainIcon, bg: 'bg-violet-50' },
-  { id: 'alzheimers', name: 'Alzheimer\'s Disease', image: "/optimized/Alzheimer's Disease.webp", icon: BrainIcon, bg: 'bg-purple-50' },
-  { id: 'epilepsy', name: 'Epilepsy', image: '/optimized/Epilepsy.webp', icon: HeadacheIcon, bg: 'bg-indigo-50' },
-  { id: 'autoimmune', name: 'Autoimmune Disorders', icon: ShieldVirusIcon, bg: 'bg-emerald-50' },
-  { id: 'rheumatoid', name: 'Rheumatoid Arthritis', image: '/optimized/Arthritis.webp', icon: JointIcon, bg: 'bg-sky-50' },
-  { id: 'asthma', name: 'Asthma', image: '/optimized/Asthma.webp', icon: LungsIcon, bg: 'bg-pink-50' },
-  { id: 'copd', name: 'COPD', image: '/optimized/COPD.webp', icon: LungsIcon, bg: 'bg-rose-50' },
-  { id: 'tb', name: 'Tuberculosis', image: '/optimized/Tuberculosis.webp', icon: LungsIcon, bg: 'bg-fuchsia-50' },
-  { id: 'severe-respiratory', name: 'Severe Respiratory Disorders', image: '/optimized/Pneumonia.webp', icon: LungsIcon, bg: 'bg-purple-50' },
-];
-
-const categoricalDiseases = [
-  { id: 'diet', name: 'Diet & Nutrition / Dietitian', desc: 'Diet and nutrition plans.', icon: SparklesIcon, bg: 'bg-emerald-50' },
-  { id: 'yoga', name: 'Yoga & Wellness', desc: 'Physical and mental well-being.', icon: SparklesIcon, bg: 'bg-cyan-50' },
-  { id: 'sexual', name: 'Sexual Health', desc: 'Sexual and reproductive health.', icon: HeartIcon, bg: 'bg-rose-50' },
-  { id: 'cardio', name: 'Cardiology', desc: 'Heart and cardiovascular conditions.', icon: HeartIcon, bg: 'bg-red-50' },
-  { id: 'neuro', name: 'Neurology', desc: 'Brain and nervous-system conditions.', icon: BrainIcon, bg: 'bg-purple-50' },
-  { id: 'derm', name: 'Dermatology', desc: 'Skin, hair and nail conditions.', icon: SkinIcon, bg: 'bg-rose-50' },
-  { id: 'ortho', name: 'Orthopedics', desc: 'Bones, joints, muscles and spine.', icon: BoneIcon, bg: 'bg-slate-50' },
-  { id: 'gastro', name: 'Gastroenterology', desc: 'Digestive-system conditions.', icon: StomachIcon, bg: 'bg-orange-50' },
-  { id: 'pulmo', name: 'Pulmonology', desc: 'Lung and respiratory conditions.', icon: LungsIcon, bg: 'bg-pink-50' },
-  { id: 'endo', name: 'Endocrinology', desc: 'Hormonal and metabolic conditions.', icon: DropsIcon, bg: 'bg-cyan-50' },
-  { id: 'nephro', name: 'Nephrology', desc: 'Kidney and urinary-system conditions.', icon: KidneyIcon, bg: 'bg-blue-50' },
-  { id: 'hepato', name: 'Hepatology', desc: 'Liver-related conditions.', icon: LiverIcon, bg: 'bg-amber-50' },
-  { id: 'onco', name: 'Oncology', desc: 'Cancer-related conditions.', icon: RibbonIcon, bg: 'bg-fuchsia-50' },
-  { id: 'ophthal', name: 'Ophthalmology', desc: 'Eye-related conditions.', icon: EyeIcon, bg: 'bg-sky-50' },
-  { id: 'ent', name: 'ENT', desc: 'Ear, nose and throat conditions.', icon: EarIcon, bg: 'bg-orange-50' },
-  { id: 'gynae', name: 'Gynecology', desc: 'Women\'s reproductive health conditions.', icon: FemaleIcon, bg: 'bg-pink-50' },
-  { id: 'pedia', name: 'Pediatrics', desc: 'Childhood diseases and conditions.', icon: ChildIcon, bg: 'bg-amber-50' },
-  { id: 'uro', name: 'Urology', desc: 'Urinary and male reproductive conditions.', icon: MaleIcon, bg: 'bg-blue-50' },
-  { id: 'psych', name: 'Psychiatry', desc: 'Mental and behavioral health conditions.', icon: PsychiatryIcon, bg: 'bg-indigo-50' },
-  { id: 'rheumato', name: 'Rheumatology', desc: 'Autoimmune and inflammatory conditions.', icon: JointIcon, bg: 'bg-teal-50' },
-  { id: 'infectious', name: 'Infectious Disease', desc: 'Bacterial, viral, fungal and other infections.', icon: VirusIcon, bg: 'bg-green-50' },
-  { id: 'respiratory', name: 'Pulmonary / Respiratory', desc: 'Respiratory conditions.', icon: LungsIcon, bg: 'bg-rose-50' },
-  { id: 'dental', name: 'Dental', desc: 'Teeth, gums and oral conditions.', icon: ToothIcon, bg: 'bg-slate-50' },
-];
-
-const CATEGORICAL_DISEASE_MAP: Record<string, Array<{ id: string; name: string; desc: string; icon: any; bg: string }>> = {
-  cardio: [
-    { id: 'heart-disease', name: 'Heart Disease', desc: 'Coronary artery disease, valve disorders & cardiac care.', icon: HeartIcon, bg: 'bg-red-50' },
-    { id: 'hypertension', name: 'Hypertension / High BP', desc: 'Chronic high blood pressure management & monitoring.', icon: HeartIcon, bg: 'bg-rose-50' },
-    { id: 'chest-pain', name: 'Angina & Chest Discomfort', desc: 'Exertional chest tightness, pain or pressure symptoms.', icon: PainIcon, bg: 'bg-orange-50' },
-    { id: 'arrhythmia', name: 'Heart Palpitations & Arrhythmia', desc: 'Irregular, rapid, or fluttering heartbeat evaluation.', icon: Activity, bg: 'bg-red-50' },
-    { id: 'heart-failure', name: 'Heart Failure Care', desc: 'Fluid retention, shortness of breath & cardiac rehabilitation.', icon: HeartIcon, bg: 'bg-pink-50' },
-    { id: 'cholesterol', name: 'Hyperlipidemia & Cholesterol', desc: 'High triglycerides and cardiovascular preventive care.', icon: DropsIcon, bg: 'bg-amber-50' },
-  ],
-  neuro: [
-    { id: 'migraine', name: 'Migraine & Chronic Headache', desc: 'Throbbing head pain, light sensitivity & aura symptoms.', icon: HeadacheIcon, bg: 'bg-indigo-50' },
-    { id: 'stroke', name: 'Stroke Recovery & TIA', desc: 'Post-stroke rehab, weakness & cerebrovascular health.', icon: BrainIcon, bg: 'bg-purple-50' },
-    { id: 'epilepsy', name: 'Epilepsy & Seizure Disorders', desc: 'Convulsions, blackouts and neurological diagnosis.', icon: BrainIcon, bg: 'bg-violet-50' },
-    { id: 'parkinsons', name: 'Parkinson\'s & Tremors', desc: 'Movement disorders, stiffness & progressive motor care.', icon: BrainIcon, bg: 'bg-fuchsia-50' },
-    { id: 'alzheimers', name: 'Dementia & Memory Loss', desc: 'Cognitive decline, Alzheimer\'s & geriatric neuro care.', icon: BrainIcon, bg: 'bg-purple-50' },
-    { id: 'neuropathy', name: 'Peripheral Neuropathy', desc: 'Numbness, tingling or nerve pain in hands & feet.', icon: PainIcon, bg: 'bg-blue-50' },
-  ],
-  derm: [
-    { id: 'skin-rash', name: 'Skin Rash & Hives (Urticaria)', desc: 'Itchy, red, inflammatory allergic flare-ups.', icon: SkinIcon, bg: 'bg-rose-50' },
-    { id: 'acne', name: 'Acne & Facial Breakouts', desc: 'Pimples, cysts, hormonal acne & scar prevention.', icon: SparklesIcon, bg: 'bg-pink-50' },
-    { id: 'eczema', name: 'Eczema & Atopic Dermatitis', desc: 'Dry, cracked, sensitive and itchy skin patches.', icon: SkinIcon, bg: 'bg-orange-50' },
-    { id: 'psoriasis', name: 'Psoriasis & Scalp Care', desc: 'Silvery plaques, skin flaking & chronic inflammation.', icon: SkinIcon, bg: 'bg-amber-50' },
-    { id: 'fungal-infection', name: 'Fungal & Ringworm Infections', desc: 'Tinea, athlete\'s foot and persistent skin fungal care.', icon: VirusIcon, bg: 'bg-teal-50' },
-    { id: 'hair-loss', name: 'Hair Loss & Alopecia', desc: 'Thinning hair, scalp dermatitis & follicle treatments.', icon: SparklesIcon, bg: 'bg-purple-50' },
-  ],
-  ortho: [
-    { id: 'joint-pain', name: 'Knee & Joint Pain', desc: 'Swelling, stiffness and reduced joint mobility.', icon: JointIcon, bg: 'bg-blue-50' },
-    { id: 'back-pain', name: 'Back Pain & Sciatica', desc: 'Lower back stiffness, herniated disc & radiating pain.', icon: BoneIcon, bg: 'bg-slate-50' },
-    { id: 'arthritis', name: 'Osteoarthritis & Gout', desc: 'Degenerative joint cartilage wear & inflammatory pain.', icon: JointIcon, bg: 'bg-sky-50' },
-    { id: 'neck-shoulder', name: 'Cervical Spondylosis & Neck Pain', desc: 'Stiff neck, shoulder impingement & postural strain.', icon: PainIcon, bg: 'bg-indigo-50' },
-    { id: 'osteoporosis', name: 'Osteoporosis & Bone Density', desc: 'Weak fragile bones & fracture risk management.', icon: BoneIcon, bg: 'bg-stone-50' },
-    { id: 'sports-injury', name: 'Sports Injuries & Ligament Sprain', desc: 'ACL tears, sprains, muscle strains & rehab.', icon: BoneIcon, bg: 'bg-amber-50' },
-  ],
-  gastro: [
-    { id: 'gerd-acidity', name: 'Acidity & Acid Reflux (GERD)', desc: 'Heartburn, chest burning & sour regurgitation.', icon: StomachIcon, bg: 'bg-amber-50' },
-    { id: 'gastritis', name: 'Gastritis & Stomach Ulcers', desc: 'Upper abdominal burning, nausea and stomach irritation.', icon: StomachIcon, bg: 'bg-orange-50' },
-    { id: 'constipation', name: 'Chronic Constipation', desc: 'Infrequent bowel movements & digestive discomfort.', icon: IntestinesIcon, bg: 'bg-stone-50' },
-    { id: 'ibs', name: 'Irritable Bowel Syndrome (IBS)', desc: 'Cramping, bloating, diarrhea or alternating constipation.', icon: IntestinesIcon, bg: 'bg-yellow-50' },
-    { id: 'fatty-liver', name: 'Fatty Liver & Liver Care', desc: 'Hepatic steatosis, digestive metabolism & enzyme elevation.', icon: LiverIcon, bg: 'bg-lime-50' },
-    { id: 'gallbladder', name: 'Gallstones & Abdominal Colic', desc: 'Right upper quadrant abdominal pain after fatty meals.', icon: StomachIcon, bg: 'bg-teal-50' },
-  ],
-  pulmo: [
-    { id: 'asthma', name: 'Asthma & Wheezing', desc: 'Bronchial constriction, nighttime coughing & shortness of breath.', icon: LungsIcon, bg: 'bg-pink-50' },
-    { id: 'copd', name: 'COPD & Chronic Bronchitis', desc: 'Persistent phlegm, smoker\'s cough & reduced lung airflow.', icon: LungsIcon, bg: 'bg-rose-50' },
-    { id: 'chronic-cough', name: 'Persistent / Chronic Cough', desc: 'Cough lasting over 3 weeks, allergy or post-nasal drip.', icon: WindIcon, bg: 'bg-cyan-50' },
-    { id: 'pneumonia', name: 'Pneumonia & Chest Infection', desc: 'Fever, chest congestion & deep productive coughing.', icon: LungsIcon, bg: 'bg-fuchsia-50' },
-    { id: 'sleep-apnea', name: 'Sleep Apnea & Snoring', desc: 'Daytime fatigue, interrupted sleep & respiratory screening.', icon: WindIcon, bg: 'bg-blue-50' },
-    { id: 'pulmonary-allergy', name: 'Allergic Rhinitis & Bronchospasm', desc: 'Dust, pollen and environmental respiratory allergies.', icon: SparklesIcon, bg: 'bg-teal-50' },
-  ],
-  pedia: [
-    { id: 'child-fever', name: 'Child Viral Fever', desc: 'High temperature, chills & infant pediatric care.', icon: ChildIcon, bg: 'bg-amber-50' },
-    { id: 'pedia-cough', name: 'Pediatric Cough & Cold', desc: 'Runny nose, congestion & childhood viral respiratory care.', icon: WindIcon, bg: 'bg-blue-50' },
-    { id: 'child-stomach', name: 'Colic & Childhood Stomach Pain', desc: 'Infant crying, digestive gas and abdominal distress.', icon: StomachIcon, bg: 'bg-orange-50' },
-    { id: 'pedia-skin', name: 'Diaper Rash & Pediatric Eczema', desc: 'Childhood sensitive skin flare-ups & rashes.', icon: SkinIcon, bg: 'bg-rose-50' },
-    { id: 'vaccination', name: 'Child Vaccinations & Immunization', desc: 'Standard national pediatric vaccination schedules.', icon: ShieldCheck, bg: 'bg-teal-50' },
-    { id: 'growth-nutrition', name: 'Childhood Growth & Nutrition', desc: 'Milestones, appetite concerns & pediatric development.', icon: ChildIcon, bg: 'bg-yellow-50' },
-  ],
-  gynae: [
-    { id: 'pcos-pcod', name: 'PCOD / PCOS Assessment', desc: 'Hormonal imbalance, irregular periods & cystic ovaries.', icon: FemaleIcon, bg: 'bg-pink-50' },
-    { id: 'period-pain', name: 'Menstrual Disorders & Dysmenorrhea', desc: 'Heavy flow, severe cramping or missed periods.', icon: FemaleIcon, bg: 'bg-rose-50' },
-    { id: 'pregnancy-care', name: 'Pregnancy & Prenatal Care', desc: 'Trimester checkups, fetal monitoring & maternal health.', icon: FemaleIcon, bg: 'bg-purple-50' },
-    { id: 'pelvic-infection', name: 'Pelvic Infection & Vaginitis', desc: 'Unusual discharge, itching and lower abdominal discomfort.', icon: PainIcon, bg: 'bg-orange-50' },
-    { id: 'fibroids', name: 'Uterine Fibroids & Polyps', desc: 'Benign growths, pelvic pressure & non-surgical monitoring.', icon: FemaleIcon, bg: 'bg-amber-50' },
-    { id: 'menopause', name: 'Menopause Support & Hot Flashes', desc: 'Hormone transitions, mood shifts & bone health.', icon: FemaleIcon, bg: 'bg-red-50' },
-  ],
-  ent: [
-    { id: 'sinusitis', name: 'Sinusitis & Nasal Blockage', desc: 'Facial pain, headache, sinus pressure & congested breathing.', icon: WindIcon, bg: 'bg-cyan-50' },
-    { id: 'throat-infection', name: 'Sore Throat & Tonsillitis', desc: 'Swollen tonsils, painful swallowing & pharyngeal redness.', icon: ThroatIcon, bg: 'bg-orange-50' },
-    { id: 'ear-infection', name: 'Ear Pain & Otitis Media', desc: 'Ear discharge, fluid buildup, throbbing pain or itching.', icon: EarIcon, bg: 'bg-blue-50' },
-    { id: 'hearing-loss', name: 'Hearing Loss & Tinnitus', desc: 'Ringing in ears, muffled sound & audiology assessment.', icon: EarIcon, bg: 'bg-indigo-50' },
-    { id: 'vertigo-ent', name: 'Inner Ear Balance & Vertigo (BPPV)', desc: 'Spinning sensation when turning head & balance care.', icon: BrainIcon, bg: 'bg-purple-50' },
-  ],
-  dental: [
-    { id: 'toothache', name: 'Severe Toothache', desc: 'Sharp, throbbing tooth pain when eating or drinking.', icon: ToothIcon, bg: 'bg-sky-50' },
-    { id: 'bleeding-gums', name: 'Bleeding Gums & Gingivitis', desc: 'Gum redness, swelling and tenderness during brushing.', icon: ToothIcon, bg: 'bg-red-50' },
-    { id: 'cavities', name: 'Dental Cavities & Decay', desc: 'Holes in teeth, enamel erosion and dark tooth spots.', icon: ToothIcon, bg: 'bg-slate-50' },
-    { id: 'root-canal', name: 'Root Canal & Nerve Infection', desc: 'Pulp inflammation, dental abscess and restorative care.', icon: ToothIcon, bg: 'bg-amber-50' },
-    { id: 'teeth-alignment', name: 'Teeth Alignment & Orthodontics', desc: 'Crooked teeth, bite correction, braces & aligners.', icon: SparklesIcon, bg: 'bg-emerald-50' },
-  ],
-  endo: [
-    { id: 'diabetes', name: 'Diabetes Mellitus (Type 1 & 2)', desc: 'Blood sugar fluctuations, HbA1c control & insulin guidance.', icon: DropsIcon, bg: 'bg-cyan-50' },
-    { id: 'thyroid', name: 'Thyroid Disorders (Hypo / Hyper)', desc: 'Fatigue, unexplained weight changes & TSH management.', icon: DropsIcon, bg: 'bg-purple-50' },
-    { id: 'hormonal-metabolic', name: 'Metabolic Syndrome & Obesity', desc: 'Insulin resistance, visceral fat & metabolic wellness.', icon: Activity, bg: 'bg-amber-50' },
-    { id: 'osteoporosis-endo', name: 'Calcium & Parathyroid Disorders', desc: 'Bone density deficiency, calcium and vitamin D management.', icon: BoneIcon, bg: 'bg-teal-50' },
-  ],
-  nephro: [
-    { id: 'kidney-stones', name: 'Kidney Stones (Renal Calculi)', desc: 'Severe flank pain, blood in urine and urinary colic.', icon: KidneyIcon, bg: 'bg-indigo-50' },
-    { id: 'ckd', name: 'Chronic Kidney Disease (CKD)', desc: 'Elevated creatinine, eGFR monitoring & renal function.', icon: KidneyIcon, bg: 'bg-blue-50' },
-    { id: 'uti', name: 'Urinary Tract Infection (UTI)', desc: 'Burning during urination, frequency and bladder discomfort.', icon: DropsIcon, bg: 'bg-amber-50' },
-    { id: 'proteinuria', name: 'Proteinuria & Kidney Swelling', desc: 'Edema in legs/face, protein leakage & nephrotic care.', icon: DropsIcon, bg: 'bg-cyan-50' },
-  ],
-  hepato: [
-    { id: 'fatty-liver-hepato', name: 'Fatty Liver Disease (NAFLD)', desc: 'Fat accumulation in liver, elevated ALT/AST & diet care.', icon: LiverIcon, bg: 'bg-amber-50' },
-    { id: 'hepatitis', name: 'Viral Hepatitis (A, B, C, E)', desc: 'Jaundice, dark urine, liver swelling & antiviral monitoring.', icon: LiverIcon, bg: 'bg-orange-50' },
-    { id: 'cirrhosis', name: 'Liver Cirrhosis & Portal Pressure', desc: 'Liver scarring, ascites, fluid buildup & specialist care.', icon: LiverIcon, bg: 'bg-yellow-50' },
-  ],
-  onco: [
-    { id: 'cancer-screening', name: 'Cancer Screening & Diagnosis', desc: 'Preventative diagnostic checks, biopsy & second opinion.', icon: RibbonIcon, bg: 'bg-fuchsia-50' },
-    { id: 'chemotherapy-care', name: 'Chemotherapy & Medical Oncology', desc: 'Systemic cancer treatments, immunotherapy & side effect care.', icon: RibbonIcon, bg: 'bg-pink-50' },
-    { id: 'tumor-evaluation', name: 'Tumor & Mass Evaluation', desc: 'Unexplained lumps, weight loss and multidisciplinary oncology.', icon: RibbonIcon, bg: 'bg-rose-50' },
-  ],
-  ophthal: [
-    { id: 'dry-eye', name: 'Dry Eye Syndrome & Irritation', desc: 'Burning, redness, gritty sensation and screen fatigue.', icon: EyeIcon, bg: 'bg-cyan-50' },
-    { id: 'vision-blur', name: 'Blurry Vision & Refraction', desc: 'Difficulty focusing, myopia, astigmatism & lens check.', icon: EyeIcon, bg: 'bg-blue-50' },
-    { id: 'conjunctivitis', name: 'Conjunctivitis & Eye Infection', desc: 'Pink eye, discharge, morning crusting and eyelid swelling.', icon: EyeIcon, bg: 'bg-rose-50' },
-    { id: 'cataract', name: 'Cataract Consultation', desc: 'Cloudy vision, glare, halos and intraocular lens guidance.', icon: EyeIcon, bg: 'bg-sky-50' },
-  ],
-  uro: [
-    { id: 'uro-stones', name: 'Bladder & Ureteral Stones', desc: 'Sharp lower abdominal or groin pain with urination changes.', icon: KidneyIcon, bg: 'bg-cyan-50' },
-    { id: 'prostate', name: 'Prostate Enlargement (BPH)', desc: 'Weak stream, nocturnal urination and urinary hesitancy.', icon: MaleIcon, bg: 'bg-indigo-50' },
-    { id: 'uro-infection', name: 'Urinary Tract Infection & Incontinence', desc: 'Urgency, leaking, dysuria and urological diagnostics.', icon: MaleIcon, bg: 'bg-blue-50' },
-  ],
-  psych: [
-    { id: 'anxiety-panic', name: 'Anxiety & Panic Disorders', desc: 'Excessive worry, nervousness, racing heart & panic episodes.', icon: PsychiatryIcon, bg: 'bg-indigo-50' },
-    { id: 'depression', name: 'Depression & Mood Disorders', desc: 'Persistent sadness, low energy, loss of interest & support.', icon: PsychiatryIcon, bg: 'bg-purple-50' },
-    { id: 'stress-insomnia', name: 'Severe Stress & Sleep Disorders', desc: 'Difficulty falling asleep, daytime fatigue & burnout care.', icon: BrainIcon, bg: 'bg-blue-50' },
-  ],
-  rheumato: [
-    { id: 'rheumatoid-arthritis', name: 'Rheumatoid Arthritis (RA)', desc: 'Symmetrical morning joint stiffness and autoimmune pain.', icon: JointIcon, bg: 'bg-teal-50' },
-    { id: 'gout', name: 'Gout & Uric Acid Crystals', desc: 'Acute big toe or joint redness, warmth and throbbing pain.', icon: JointIcon, bg: 'bg-amber-50' },
-    { id: 'ankylosing', name: 'Ankylosing Spondylitis', desc: 'Chronic inflammatory spine stiffness & sacroiliac joint care.', icon: BoneIcon, bg: 'bg-sky-50' },
-  ],
-  infectious: [
-    { id: 'viral-fever', name: 'Viral Fever & Seasonal Infection', desc: 'High fever, body aches, exhaustion & blood count check.', icon: VirusIcon, bg: 'bg-green-50' },
-    { id: 'dengue-malaria', name: 'Dengue & Malaria Screening', desc: 'Sudden high fever, severe eye/bone pain & platelet care.', icon: VirusIcon, bg: 'bg-teal-50' },
-    { id: 'typhoid', name: 'Typhoid & Intestinal Infection', desc: 'Step-ladder fever, stomach pain, headache & antibiotics.', icon: VirusIcon, bg: 'bg-orange-50' },
-  ],
-  diet: [
-    { id: 'weight-management', name: 'Weight Loss & Obesity Diet', desc: 'Personalized calorie-deficit & nutrient-dense eating plans.', icon: SparklesIcon, bg: 'bg-emerald-50' },
-    { id: 'diabetic-diet', name: 'Diabetic Nutrition Plan', desc: 'Low GI foods, carbohydrate counting & glycemic control.', icon: DropsIcon, bg: 'bg-cyan-50' },
-    { id: 'cardiac-diet', name: 'Heart-Healthy Nutrition', desc: 'Low sodium, heart-healthy fats and lipid-lowering meal plans.', icon: HeartIcon, bg: 'bg-red-50' },
-  ],
-  yoga: [
-    { id: 'stress-relief', name: 'Stress Relief & Meditation', desc: 'Pranayama, mindfulness and nervous system relaxation.', icon: SparklesIcon, bg: 'bg-cyan-50' },
-    { id: 'spine-flexibility', name: 'Spine & Joint Flexibility', desc: 'Asanas for back stiffness, posture correction & mobility.', icon: BoneIcon, bg: 'bg-teal-50' },
-  ],
-  sexual: [
-    { id: 'sexual-wellness', name: 'Sexual Wellness & Counseling', desc: 'Confidential consultation for reproductive health concerns.', icon: HeartIcon, bg: 'bg-rose-50' },
-    { id: 'hormonal-vitality', name: 'Hormonal Balance & Vitality', desc: 'Libido, hormone therapy & confidential specialist care.', icon: DropsIcon, bg: 'bg-purple-50' },
-  ]
-};
+// Disease data loaded dynamically from API
 
 const getDiseasesForCategory = (catId: string, catName: string, rawConditions: any[] = []) => {
-  // If backend has conditions for this category/specialty, prioritize them
+  // Return any diseases associated with this category/specialty in the backend
   const backendMatches = rawConditions.filter(c => 
     c.specialtyId === catId || (c.specialtyName && c.specialtyName.toLowerCase().includes(catName.toLowerCase()))
   );
 
-  if (backendMatches.length > 0) {
-    return backendMatches.map((bm, idx) => ({
-      id: bm.id,
-      name: bm.name,
-      desc: bm.description || `Specialized clinical care and diagnosis for ${bm.name}.`,
-      icon: Stethoscope,
-      bg: ['bg-red-50', 'bg-blue-50', 'bg-emerald-50', 'bg-purple-50', 'bg-amber-50'][idx % 5]
-    }));
-  }
-
-  if (CATEGORICAL_DISEASE_MAP[catId]) {
-    return CATEGORICAL_DISEASE_MAP[catId];
-  }
-  return [
-    { id: `${catId}-1`, name: `${catName} Consultation`, desc: `General consultation and assessment for ${catName}.`, icon: Stethoscope, bg: 'bg-blue-50' },
-    { id: `${catId}-2`, name: `Acute ${catName} Condition`, desc: `Recent or sudden symptoms requiring diagnosis.`, icon: Activity, bg: 'bg-red-50' },
-    { id: `${catId}-3`, name: `Chronic ${catName} Care`, desc: `Long-term symptom management and follow-up care.`, icon: ShieldCheck, bg: 'bg-teal-50' },
-    { id: `${catId}-4`, name: `Preventative ${catName} Checkup`, desc: `Preventative screening and wellness review.`, icon: SparklesIcon, bg: 'bg-emerald-50' },
-  ];
+  return backendMatches.map((bm, idx) => ({
+    id: bm.id,
+    name: bm.name,
+    desc: bm.description || `Specialized clinical care and diagnosis for ${bm.name}.`,
+    icon: Stethoscope,
+    image: getDiseaseIconUrl(bm.name, bm.icon),
+    bg: ['bg-red-50', 'bg-blue-50', 'bg-emerald-50', 'bg-purple-50', 'bg-amber-50'][idx % 5],
+    iconName: bm.icon || (departmentIcons[catName] ? departmentIcons[catName][0] : allIcons[0])
+  }));
 };
 
 type ViewState = 
@@ -337,9 +116,9 @@ const Specialties = () => {
   
   // Real Data State
   const [diseasesList, setDiseasesList] = useState({
-    general: generalDiseases,
-    advanced: advancedDiseases,
-    categorical: categoricalDiseases,
+    general: [] as any[],
+    advanced: [] as any[],
+    categorical: [] as any[],
     raw: [] as any[]
   });
   const [hospitalsList, setHospitalsList] = useState<any[]>([]);
@@ -357,6 +136,7 @@ const Specialties = () => {
   // Selection State
   const [hospitalSearch, setHospitalSearch] = useState('');
   const [diseaseSearch, setDiseaseSearch] = useState('');
+  const [diseaseSearchMode, setDiseaseSearchMode] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [selectedDisease, setSelectedDisease] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
@@ -390,54 +170,37 @@ const Specialties = () => {
     let mounted = true;
     opAppointmentApi.fetchDiseases().then((res) => {
       if (mounted && res.success && res.data) {
-        const backendConditions = res.data.conditions;
-
-        const findBestMatch = (diseaseName: string) => {
-          const exactMatch = backendConditions.find(bc => bc.name.toLowerCase() === diseaseName.toLowerCase());
-          if (exactMatch) return exactMatch;
-          
-          const possibleMatches = backendConditions.filter(bc =>
-            bc.name.toLowerCase().includes(diseaseName.toLowerCase()) ||
-            diseaseName.toLowerCase().includes(bc.name.toLowerCase())
-          );
-          
-          if (possibleMatches.length > 0) {
-            // Prefer "General Medicine" if multiple exist, otherwise shortest name
-            const genMed = possibleMatches.find(bc => bc.specialtyName === 'General Medicine');
-            if (genMed) return genMed;
-            
-            possibleMatches.sort((a, b) => a.name.length - b.name.length);
-            return possibleMatches[0];
-          }
-          return null;
-        };
-
-        // Enrich general diseases with real IDs if matched
-        const enrichedGeneral = generalDiseases.map((gd) => {
-          const match = findBestMatch(gd.name);
-          return match ? { ...gd, id: match.id, specialtyId: match.specialtyId, specialtyName: match.specialtyName } : gd;
-        });
-
-        // Enrich advanced diseases with real IDs if matched
-        const enrichedAdvanced = advancedDiseases.map((ad) => {
-          const match = findBestMatch(ad.name);
-          return match ? { ...ad, id: match.id, specialtyId: match.specialtyId, specialtyName: match.specialtyName } : ad;
-        });
-
-        // Enrich categorical with real specialty IDs
-        const enrichedCategorical = categoricalDiseases.map((cd) => {
-          const match = res.data!.categorical.find(cat =>
-            cat.name.toLowerCase().includes(cd.name.toLowerCase()) ||
-            cd.name.toLowerCase().includes(cat.name.toLowerCase())
-          );
-          return match ? { ...cd, id: match.id, specialtyId: match.id } : cd;
-        });
+        
+        // Map general
+        const general = (res.data.general || []).map((d: any, idx: number) => ({
+          ...d,
+          icon: Activity,
+          image: getDiseaseIconUrl(d.name, d.icon),
+          bg: ['bg-red-50', 'bg-blue-50', 'bg-emerald-50', 'bg-purple-50', 'bg-amber-50'][idx % 5]
+        }));
+        
+        // Map advanced
+        const advanced = (res.data.advanced || []).map((d: any, idx: number) => ({
+          ...d,
+          icon: ShieldCheck,
+          image: getDiseaseIconUrl(d.name, d.icon),
+          bg: ['bg-pink-50', 'bg-blue-50', 'bg-orange-50', 'bg-fuchsia-50', 'bg-rose-50'][idx % 5]
+        }));
+        
+        // Map categorical
+        const categorical = (res.data.categorical || []).map((s: any, idx: number) => ({
+          ...s,
+          desc: s.description || 'Specialized clinical care',
+          icon: Stethoscope,
+          image: getDiseaseIconUrl(s.name, s.icon),
+          bg: ['bg-emerald-50', 'bg-cyan-50', 'bg-rose-50', 'bg-red-50', 'bg-purple-50'][idx % 5]
+        }));
 
         setDiseasesList({
-          general: enrichedGeneral,
-          advanced: enrichedAdvanced,
-          categorical: enrichedCategorical,
-          raw: backendConditions
+          general,
+          advanced,
+          categorical,
+          raw: res.data.conditions || []
         });
       }
     }).catch(() => {});
@@ -445,31 +208,26 @@ const Specialties = () => {
     return () => { mounted = false; };
   }, []);
 
-  // Pre-load real hospitals on mount
-  useEffect(() => {
-    let active = true;
-    hospitalApi.getHospitals().then((res) => {
-      if (active && res.success && res.data && res.data.length > 0) {
-        setHospitalsList(res.data);
-      }
-    }).catch(() => {});
-    return () => { active = false; };
-  }, []);
-
   // Fetch real hospitals when entering hospital view or changing search/disease
   useEffect(() => {
     if (view === 'HOSPITAL_RESULTS' || view === 'HOSPITAL_DETAILS') {
       let active = true;
+      setHospitalsList([]);
       setIsHospitalsLoading(true);
       hospitalApi.getHospitals({ search: hospitalSearch, conditionId: selectedDisease?.id }).then((res) => {
         if (active) {
           setIsHospitalsLoading(false);
           if (res.success && res.data) {
             setHospitalsList(res.data);
+          } else {
+            setHospitalsList([]);
           }
         }
       }).catch(() => {
-        if (active) setIsHospitalsLoading(false);
+        if (active) {
+          setIsHospitalsLoading(false);
+          setHospitalsList([]);
+        }
       });
       return () => { active = false; };
     }
@@ -479,6 +237,7 @@ const Specialties = () => {
   useEffect(() => {
     if (view === 'DOCTOR_LIST' || view === 'DOCTOR_PROFILE' || (view === 'HOSPITAL_DETAILS' && selectedDisease)) {
       let active = true;
+      setDoctorsList([]);
       setIsDoctorsLoading(true);
       if (selectedHospital?.id) {
         hospitalApi.getHospitalDoctors(selectedHospital.id, selectedDepartment || undefined, selectedDisease?.id).then((res) => {
@@ -486,10 +245,15 @@ const Specialties = () => {
             setIsDoctorsLoading(false);
             if (res.success && res.data) {
               setDoctorsList(res.data);
+            } else {
+              setDoctorsList([]);
             }
           }
         }).catch(() => {
-          if (active) setIsDoctorsLoading(false);
+          if (active) {
+            setIsDoctorsLoading(false);
+            setDoctorsList([]);
+          }
         });
       } else {
         doctorApi.getDoctors({
@@ -502,10 +266,15 @@ const Specialties = () => {
             setIsDoctorsLoading(false);
             if (res.success && res.data) {
               setDoctorsList(res.data);
+            } else {
+              setDoctorsList([]);
             }
           }
         }).catch(() => {
-          if (active) setIsDoctorsLoading(false);
+          if (active) {
+            setIsDoctorsLoading(false);
+            setDoctorsList([]);
+          }
         });
       }
       return () => { active = false; };
@@ -571,6 +340,19 @@ const Specialties = () => {
       setView('HOSPITAL_RESULTS');
     }
   };
+
+  // Handle deep link to specific category
+  useEffect(() => {
+    const categoryQuery = searchParams.get('category');
+    if (categoryQuery && diseasesList.categorical.length > 0) {
+      const matchedCategory = diseasesList.categorical.find(
+        c => c.name.toLowerCase() === categoryQuery.toLowerCase()
+      );
+      if (matchedCategory) {
+        handleCategorySelect(matchedCategory);
+      }
+    }
+  }, [searchParams, diseasesList.categorical]);
 
   // Reset state when tab changes
   useEffect(() => {
@@ -731,20 +513,30 @@ const Specialties = () => {
 
     return (
       <div className="bg-slate-50 p-4 py-5">
-      <h2 className="text-[17px] font-bold text-slate-900 mb-1">Browse Diseases</h2>
-      <p className="text-[12px] text-slate-500 mb-4">
+      {!diseaseSearchMode && <h2 className="text-[17px] font-bold text-slate-900 mb-1">Browse Diseases</h2>}
+      {!diseaseSearchMode && <p className="text-[12px] text-slate-500 mb-4">
         {isVideo ? 'Select a disease to find available doctors' : 'Select a disease to find suitable hospitals'}
-      </p>
+      </p>}
 
       {/* Disease Search Bar */}
       <div className="relative mb-6">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-          <Search className="h-4 w-4 text-slate-400" />
-        </div>
+        {diseaseSearchMode ? (
+          <button 
+            onClick={() => { setDiseaseSearchMode(false); setDiseaseSearch(''); }}
+            className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 hover:text-slate-800 z-10"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        ) : (
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-slate-400" />
+          </div>
+        )}
         <input
           type="text"
           value={diseaseSearch}
           onChange={(e) => setDiseaseSearch(e.target.value)}
+          onFocus={() => setDiseaseSearchMode(true)}
           placeholder="Search for a disease or condition..."
           className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm text-[13px] font-medium transition-all"
         />
@@ -785,7 +577,7 @@ const Specialties = () => {
          <div className="p-4">
            {activeTab === 'general' && (
              <>
-               <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-3 gap-y-4">
+               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-3 gap-y-4">
                  {displayedGeneral.map((item) => (
                     <div key={item.id} onClick={() => handleDiseaseSelect(item)} className="flex flex-col items-center bg-white rounded-2xl p-2 cursor-pointer border border-slate-50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-shadow h-[90px] justify-center">
                       <div className={`w-[54px] h-[54px] rounded-full ${item.bg} flex items-center justify-center mb-2 shadow-sm overflow-hidden p-1`}>
@@ -817,7 +609,7 @@ const Specialties = () => {
 
            {activeTab === 'advanced' && (
              <>
-               <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-3 gap-y-4">
+               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-3 gap-y-4">
                  {displayedAdvanced.map((item) => (
                     <div key={item.id} onClick={() => handleDiseaseSelect(item)} className="flex flex-col items-center bg-white rounded-2xl p-2 cursor-pointer border border-slate-50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-shadow h-[90px] justify-center">
                       <div className={`w-[54px] h-[54px] rounded-full ${item.bg} flex items-center justify-center mb-2 shadow-sm overflow-hidden p-1`}>
@@ -851,12 +643,16 @@ const Specialties = () => {
 
       <div>
          <h2 className="text-[17px] font-bold text-slate-900 mb-3">Categorical Diseases</h2>
-         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
            {displayedCategorical.map((cat) => (
               <div key={cat.id} onClick={() => handleCategorySelect(cat)} className="flex items-center justify-between bg-white rounded-2xl p-3 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
                  <div className="flex items-center gap-3">
-                    <div className={`w-14 h-14 rounded-full ${cat.bg} flex items-center justify-center shrink-0 shadow-sm border border-slate-100/50`}>
-                       <cat.icon className={`w-8 h-8`} />
+                    <div className={`w-14 h-14 rounded-full ${cat.bg} flex items-center justify-center shrink-0 shadow-sm border border-slate-100/50 p-1.5`}>
+                       {cat.image ? (
+                           <img src={cat.image} alt={cat.name} className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" />
+                       ) : (
+                           <cat.icon className={`w-8 h-8`} />
+                       )}
                     </div>
                     <div>
                        <h3 className="font-bold text-slate-900 text-[13px] mb-0.5">{cat.name}</h3>
@@ -888,30 +684,34 @@ const Specialties = () => {
   const renderLanding = () => {
     return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-gradient-to-r from-[#0055ff] to-[#06b6d4] pt-5 pb-8 px-4 text-white rounded-b-3xl relative overflow-hidden">
-        {isVideo && (
-          <div className="absolute right-0 top-0 opacity-10">
-            <Video className="w-32 h-32 -mr-6 -mt-4" strokeWidth={1} />
+      {!diseaseSearchMode && (
+        <div className="bg-gradient-to-r from-[#0055ff] to-[#06b6d4] pt-5 pb-8 px-4 text-white rounded-b-3xl relative overflow-hidden">
+          {isVideo && (
+            <div className="absolute right-0 top-0 opacity-10">
+              <Video className="w-32 h-32 -mr-6 -mt-4" strokeWidth={1} />
+            </div>
+          )}
+          <div className="flex items-center gap-3 mb-1 relative z-10">
+            <button onClick={() => navigate(-1)} className="p-1 hover:bg-white/20 rounded-full transition-colors -ml-1">
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <h1 className="text-[20px] font-bold">{isVideo ? 'Video Consultation' : 'Book an OP Appointment'}</h1>
           </div>
-        )}
-        <div className="flex items-center gap-3 mb-1 relative z-10">
-          <button onClick={() => navigate(-1)} className="p-1 hover:bg-white/20 rounded-full transition-colors -ml-1">
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-          <h1 className="text-[20px] font-bold">{isVideo ? 'Video Consultation' : 'Book an OP Appointment'}</h1>
+          <p className="text-[11px] text-blue-100 mb-5 max-w-[280px] relative z-10">
+            {isVideo 
+              ? 'Consult with a doctor online from wherever you are.' 
+              : 'Find a hospital, choose a doctor, and book an available appointment.'}
+          </p>
         </div>
-        <p className="text-[11px] text-blue-100 mb-5 max-w-[280px] relative z-10">
-          {isVideo 
-            ? 'Consult with a doctor online from wherever you are.' 
-            : 'Find a hospital, choose a doctor, and book an available appointment.'}
-        </p>
-      </div>
+      )}
 
-      <HowItWorks 
-        title={isVideo ? "How Video Consultation Works" : "How OP Booking Works"}
-        steps={isVideo ? videoConsultationStepsData : opBookingStepsData}
-        className="shadow-sm -mt-2 relative z-20 rounded-t-3xl mb-2"
-      />
+      {!diseaseSearchMode && (
+        <HowItWorks 
+          title={isVideo ? "How Video Consultation Works" : "How OP Booking Works"}
+          steps={isVideo ? videoConsultationStepsData : opBookingStepsData}
+          className="shadow-sm -mt-2 relative z-20 rounded-t-3xl mb-2"
+        />
+      )}
 
       {renderDiseaseCategories()}
     </div>
@@ -1008,7 +808,7 @@ const Specialties = () => {
           </div>
 
           {filtered.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {filtered.map((item) => {
                 const ItemIcon = item.icon || Stethoscope;
                 return (
@@ -1018,8 +818,12 @@ const Specialties = () => {
                     className="flex items-start justify-between bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm cursor-pointer hover:border-blue-200 hover:shadow-md transition-all group"
                   >
                     <div className="flex items-start gap-3 min-w-0 pr-2">
-                      <div className={`w-11 h-11 rounded-xl ${item.bg || 'bg-blue-50'} flex items-center justify-center shrink-0 shadow-sm border border-slate-100 group-hover:scale-105 transition-transform`}>
-                        <ItemIcon className="w-6 h-6 text-slate-700" />
+                      <div className={`w-11 h-11 rounded-xl ${item.bg || 'bg-blue-50'} flex items-center justify-center shrink-0 shadow-sm border border-slate-100 group-hover:scale-105 transition-transform p-1`}>
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" />
+                        ) : (
+                          <ItemIcon className="w-6 h-6 text-slate-700" />
+                        )}
                       </div>
                       <div className="min-w-0">
                         <h4 className="font-bold text-slate-900 text-[13px] leading-tight mb-1 group-hover:text-blue-600 transition-colors">
@@ -1083,15 +887,23 @@ const Specialties = () => {
     return (
       <div className={`px-4 py-6 ${!hasSearch ? 'animate-in fade-in slide-in-from-right-4' : ''}`}>
         <div className="relative max-w-md mx-auto z-10 mb-6">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-slate-400" />
-          </div>
+          {searchFocused ? (
+            <button 
+              onClick={() => { setSearchFocused(false); setHospitalSearch(''); }}
+              className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 hover:text-slate-800 z-10"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          ) : (
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-400" />
+            </div>
+          )}
           <input 
             type="text" 
             value={hospitalSearch}
             onChange={(e) => setHospitalSearch(e.target.value)}
             onFocus={() => setSearchFocused(true)}
-            onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
             className="block w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-2xl bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm text-[13px] font-medium" 
             placeholder={isVideo ? "Search hospital, doctor..." : "Search hospital by name, city, location..."}
           />
@@ -1236,7 +1048,7 @@ const Specialties = () => {
       ) : (
         <>
           <h3 className="font-bold text-slate-800 text-[15px] mb-3">Departments</h3>
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
             {(!selectedHospital.departments || selectedHospital.departments.length === 0) ? (
               <div className="col-span-2 text-center py-6 bg-white rounded-xl border border-slate-100 text-xs text-slate-400 font-medium">
                 No departments currently listed for this hospital
@@ -1418,40 +1230,29 @@ const Specialties = () => {
               <div key={i} className="h-11 rounded-xl bg-slate-100 animate-pulse border border-slate-200/50" />
             ))}
           </div>
-        ) : !isDoctorAvailable || allSlots.length === 0 ? (
+        ) : !isDoctorAvailable || availableSlots.length === 0 ? (
           <div className="py-8 px-4 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 mb-8">
             <Calendar className="w-8 h-8 text-slate-400 mx-auto mb-2" />
             <p className="text-sm font-bold text-slate-700">No Slots Available</p>
             <p className="text-xs text-slate-500 mt-1">
-              {selectedDoctor?.name ? `Dr. ${selectedDoctor.name.replace(/^Dr\.\s*/i, '')}` : 'The doctor'} is not available on this day ({selectedDate}). Please select another date.
+              {selectedDoctor?.name ? `Dr. ${selectedDoctor.name.replace(/^Dr\.\s*/i, '')}` : 'The doctor'} has no available slots on this day ({selectedDate}). Please select another date.
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-3 mb-8">
-            {allSlots.map(time => {
-              const isExpired = expiredSlots.includes(time);
-              const isBooked = bookedSlots.includes(time);
-              const isAvailable = !isExpired && !isBooked;
+            {availableSlots.map(time => {
               const isSelected = selectedTime === time;
 
               return (
                 <div 
                   key={time}
-                  onClick={() => isAvailable && setSelectedTime(time)}
-                  className={`py-2 px-1 rounded-xl border text-center transition-all flex flex-col items-center justify-center ${
-                    isExpired ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed opacity-70' :
-                    isBooked ? 'border-red-200 bg-red-50 text-red-500 cursor-not-allowed' :
-                    isSelected ? 'border-blue-600 bg-blue-600 text-white shadow-md cursor-pointer' :
-                    'border-slate-200 bg-white text-slate-700 hover:border-blue-300 cursor-pointer'
+                  onClick={() => setSelectedTime(time)}
+                  className={`py-3 px-1 rounded-xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer ${
+                    isSelected ? 'border-blue-600 bg-blue-600 text-white shadow-md' :
+                    'border-slate-200 bg-white text-slate-700 hover:border-blue-300'
                   }`}
                 >
                   <span className="text-[12px] font-bold">{time}</span>
-                  {isBooked && (
-                    <span className="text-[9px] font-bold tracking-wider mt-0.5">BOOKED</span>
-                  )}
-                  {isExpired && !isBooked && (
-                    <span className="text-[9px] font-bold tracking-wider mt-0.5">EXPIRED</span>
-                  )}
                 </div>
               );
             })}

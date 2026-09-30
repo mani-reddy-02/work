@@ -22,7 +22,6 @@ import Ambulance from './pages/Ambulance';
 import Medicines from './pages/Medicines';
 import ProfilePersonal from './pages/ProfilePersonal';
 import ProfileAddresses from './pages/ProfileAddresses';
-import ProfilePayment from './pages/ProfilePayment';
 import ProfilePreferences from './pages/ProfilePreferences';
 import FamilyMembers from './pages/FamilyMembers';
 import HelpSupport from './pages/HelpSupport';
@@ -96,7 +95,6 @@ function App() {
             <Route path="medicines" element={<Medicines />} />
             <Route path="profile/personal" element={<ProfilePersonal />} />
             <Route path="profile/addresses" element={<ProfileAddresses />} />
-            <Route path="profile/payment" element={<ProfilePayment />} />
             <Route path="profile/preferences" element={<ProfilePreferences />} />
             <Route path="family" element={<FamilyMembers />} />
             <Route path="help" element={<HelpSupport />} />

@@ -24,8 +24,11 @@ import {
   RefreshCw,
   CreditCard,
   ShieldCheck,
+  Check,
+  Plus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useProfile } from '../lib/profile';
 import {
   homeSampleCollectionApi,
   type LabTestRecord,
@@ -33,6 +36,7 @@ import {
   type LabBookingRecord,
 } from '../lib/homeSampleCollectionApi';
 import { profileApi } from '../lib/profileApi';
+import HowItWorks from '../components/HowItWorks';
 
 // Icon mapping: test name -> optimized medical illustration
 const testIconMap: Record<string, string> = {
@@ -119,6 +123,32 @@ type ViewState =
 
 const HomeSampleList = () => {
   const navigate = useNavigate();
+  const { profile } = useProfile();
+  
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [isOtherAddress, setIsOtherAddress] = useState(false);
+
+  const handleAddressSelected = (addr: any) => {
+    setPatientDetails(prev => ({ ...prev, address: `${addr.street}, ${addr.city}, ${addr.state ? addr.state + ' ' : ''}${addr.pincode}` }));
+  };
+
+  useEffect(() => {
+    if (profile?.address) {
+      try {
+        const parsed = JSON.parse(profile.address);
+        if (Array.isArray(parsed)) {
+          setSavedAddresses(parsed);
+          if (parsed.length > 0 && !selectedAddressId && !isOtherAddress) {
+            setSelectedAddressId(parsed[0].id);
+            handleAddressSelected(parsed[0]);
+          }
+        }
+      } catch (e) {}
+    } else {
+      setSavedAddresses([]);
+    }
+  }, [profile.address]);
 
   const [viewState, setViewState] = useState<ViewState>('LIST');
   const [showAll, setShowAll] = useState(false);
@@ -126,6 +156,7 @@ const HomeSampleList = () => {
   const [tests, setTests] = useState<any[]>(initialTests);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchMode, setSearchMode] = useState(false);
   const [selectedTab, setSelectedTab] = useState('All Tests');
   const [selectedConcern, setSelectedConcern] = useState<string | null>(null);
   const [categoryTabs, setCategoryTabs] = useState<string[]>([
@@ -461,29 +492,41 @@ const HomeSampleList = () => {
 
       {/* Header */}
       <div className="bg-gradient-to-r from-[#0055ff] to-[#06b6d4] pt-4 pb-5 px-4 text-white shrink-0">
-        <div className="flex items-center gap-3 mb-4">
-          <button onClick={handleBack} className="p-1.5 hover:bg-white/20 rounded-full transition-colors" aria-label="Go back">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex-1">
-            <h1 className="text-[17px] font-bold">Home Sample Collection</h1>
-            {viewState !== 'LIST' && (
-              <p className="text-[11px] text-blue-100 mt-0.5 capitalize">
-                {viewState.replace('_', ' ').toLowerCase()}
-              </p>
-            )}
+        {!searchMode && (
+          <div className="flex items-center gap-3 mb-4">
+            <button onClick={handleBack} className="p-1.5 hover:bg-white/20 rounded-full transition-colors" aria-label="Go back">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex-1">
+              <h1 className="text-[17px] font-bold">Home Sample Collection</h1>
+              {viewState !== 'LIST' && (
+                <p className="text-[11px] text-blue-100 mt-0.5 capitalize">
+                  {viewState.replace('_', ' ').toLowerCase()}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {viewState === 'LIST' && (
           <div className="relative max-w-md mx-auto">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-slate-400" />
-            </div>
+            {searchMode ? (
+              <button 
+                onClick={() => { setSearchMode(false); setSearchQuery(''); }}
+                className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 hover:text-slate-800 z-10"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            ) : (
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-slate-400" />
+              </div>
+            )}
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setSearchMode(true)}
               className="block w-full pl-10 pr-10 py-2.5 border-0 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-white/50 shadow-lg text-[13px] font-medium"
               placeholder="Search tests, packages, health concerns..."
             />
@@ -509,46 +552,10 @@ const HomeSampleList = () => {
               </div>
             ) : (
               <>
-                {!q && (
+                {!searchMode && !q && (
                   <>
                     {/* How it works Marquee */}
-                    <div className="bg-white pt-6 pb-2 mb-2 shadow-sm overflow-hidden">
-                      <div className="flex items-center justify-center gap-3 mb-5">
-                        <div className="h-[1px] w-6 bg-blue-600/30"></div>
-                        <h2 className="font-bold text-slate-800 text-[15px]">
-                          How Home Sample Collection Works
-                        </h2>
-                        <div className="h-[1px] w-6 bg-blue-600/30"></div>
-                      </div>
-
-                      <div className="relative group w-full overflow-hidden">
-                        <div
-                          className="flex gap-3 hide-scrollbar px-4 pb-4 w-max animate-marquee"
-                          style={{ whiteSpace: 'nowrap' }}
-                        >
-                          {[...homeSampleStepsData, ...homeSampleStepsData].map((step, index) => (
-                            <div
-                              key={step.id + '-' + index}
-                              className="shrink-0 w-[150px] bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col relative overflow-hidden"
-                              style={{ whiteSpace: 'normal' }}
-                            >
-                              <div className="absolute top-0 right-0 bg-blue-50 text-blue-600 font-black text-[10px] px-2 py-1 rounded-bl-xl border-b border-l border-blue-100">
-                                {step.id}
-                              </div>
-                              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
-                                <step.icon className="w-5 h-5" strokeWidth={2} />
-                              </div>
-                              <h3 className="font-bold text-slate-900 text-[13px] mb-1 leading-tight">
-                                {step.title}
-                              </h3>
-                              <p className="text-[10px] text-slate-500 font-medium leading-relaxed whitespace-pre-line">
-                                {step.desc.replace(/\n/g, ' ')}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                    <HowItWorks title="How Home Sample Collection Works" steps={homeSampleStepsData} className="pt-6 pb-2 mb-2 shadow-sm" />
 
                     {/* Lab Tests - Circular Grid */}
                     <div className="bg-white pt-5 pb-6 mb-2 shadow-sm">
@@ -584,7 +591,7 @@ const HomeSampleList = () => {
                         ))}
                       </div>
 
-                      <div className="grid grid-cols-4 gap-y-5 gap-x-2 px-4 relative">
+                      <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-y-5 gap-x-2 px-4 relative">
                         {displayedTests.map((item) => {
                           const displayName = item?.name || (item as any)?.testName || (item as any)?.title || 'Test';
                           const iconSrc = getTestIcon(displayName);
@@ -764,7 +771,7 @@ const HomeSampleList = () => {
                     <div
                       className={
                         showAllPackages
-                          ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 px-4'
+                          ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 px-4'
                           : 'flex overflow-x-auto hide-scrollbar gap-3 pb-2 px-4'
                       }
                     >
@@ -1198,7 +1205,7 @@ const HomeSampleList = () => {
                       placeholder="Enter full name"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Age *</label>
                       <input
@@ -1258,19 +1265,73 @@ const HomeSampleList = () => {
                       placeholder="name@example.com"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                  <div className="pt-2 border-t border-slate-50 mt-4">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-3">
                       Doorstep Home Collection Address *
                     </label>
-                    <textarea
-                      name="address"
-                      value={patientDetails.address}
-                      onChange={handlePatientChange}
-                      required
-                      rows={3}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all"
-                      placeholder="House/Flat No., Building Name, Street, Area, City, PIN Code"
-                    ></textarea>
+                    <div className="grid grid-cols-1 gap-3">
+                      {savedAddresses.map((addr) => (
+                        <div 
+                          key={addr.id}
+                          onClick={() => { setSelectedAddressId(addr.id); setIsOtherAddress(false); handleAddressSelected(addr); }}
+                          className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedAddressId === addr.id && !isOtherAddress ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-slate-200 hover:border-blue-300'}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5">
+                              {selectedAddressId === addr.id && !isOtherAddress ? (
+                                <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center"><Check className="w-3 h-3" /></div>
+                              ) : (
+                                <div className="w-4 h-4 rounded-full border-2 border-slate-300" />
+                              )}
+                            </div>
+                            <div>
+                              <h4 className="text-[13px] font-bold text-slate-900">{addr.type}</h4>
+                              <p className="text-[12px] text-slate-600 mt-1">{addr.street}</p>
+                              <p className="text-[12px] text-slate-600">{addr.city}{addr.state ? `, ${addr.state}` : ''} {addr.pincode}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {savedAddresses.length === 0 && (
+                        <div className="text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                          <p className="text-[12px] text-slate-500 mb-2">No saved addresses</p>
+                        </div>
+                      )}
+                      
+                      <div 
+                        onClick={() => { setSelectedAddressId(null); setIsOtherAddress(true); setPatientDetails(p => ({...p, address: ''})); }}
+                        className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${isOtherAddress ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-slate-200 hover:border-blue-300'}`}
+                      >
+                         <div className="mt-0.5">
+                            {isOtherAddress ? (
+                              <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center"><Check className="w-3 h-3" /></div>
+                            ) : (
+                              <Plus className="w-4 h-4 text-slate-400" />
+                            )}
+                          </div>
+                          <span className="text-[13px] font-bold text-slate-700">
+                            {savedAddresses.length === 0 ? 'Add Address' : 'Use Other Address'}
+                          </span>
+                      </div>
+                    </div>
+
+                    {isOtherAddress && (
+                      <div className="mt-4">
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                          Enter Address Manually *
+                        </label>
+                        <textarea
+                          name="address"
+                          value={patientDetails.address}
+                          onChange={handlePatientChange}
+                          required
+                          rows={3}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all"
+                          placeholder="House/Flat No., Building Name, Street, Area, City, PIN Code"
+                        ></textarea>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1492,7 +1553,7 @@ const HomeSampleList = () => {
               {/* Payment Mode Selection */}
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2 mb-6">
                 <h3 className="font-bold text-slate-800 text-xs mb-2">Select Payment Mode</h3>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('ONLINE')}

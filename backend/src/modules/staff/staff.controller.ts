@@ -104,13 +104,7 @@ export const createStaff = async (req: Request, res: Response, next: NextFunctio
       },
     });
 
-    sendNotification({
-      hospitalId,
-      title: 'New Staff Registered',
-      message: `${user.name} was added as ${user.role.replace(/_/g, ' ')}${user.department ? ` (${user.department.name})` : ''}`,
-      type: 'staff',
-      metadata: { userId: user.id, name: user.name, role: user.role }
-    }).catch(console.error);
+    // INTERNAL_EVENT: New staff registered. No user notification generated.
 
     res.status(201).json({ success: true, data: user });
   } catch (error) {

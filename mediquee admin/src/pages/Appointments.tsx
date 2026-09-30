@@ -1,14 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { Appointment } from '../types';
-import { mockAppointments } from '../mock/data';
 import { CalendarCheck, CalendarDays, CalendarOff, CalendarClock } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
+import { useAdminAuth } from '../contexts/AuthContext';
+import { appointmentService } from '../services/appointmentService';
 
 const Appointments: React.FC = () => {
-  const [appointments] = useState<Appointment[]>(mockAppointments);
+  const { token } = useAdminAuth();
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      if (!token) return;
+      try {
+        const res = await appointmentService.getAppointments(token);
+        if (res.success && Array.isArray(res.data)) {
+          setAppointments(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch admin appointments:', err);
+      }
+    };
+    fetchAppointments();
+  }, [token]);
 
   const filteredAppointments = appointments.filter(a => 
     a.id.toLowerCase().includes(search.toLowerCase()) || 

@@ -8,6 +8,7 @@ export interface UserProfile {
   dob: string;
   gender: string;
   avatar?: string;
+  address?: string;
 }
 
 const emptyProfile: UserProfile = {
@@ -17,6 +18,7 @@ const emptyProfile: UserProfile = {
   dob: '',
   gender: '',
   avatar: '',
+  address: '',
 };
 
 const getSavedProfile = (): UserProfile => {
@@ -84,6 +86,7 @@ export const useProfile = () => {
           dob: res.data.dob || '',
           gender: res.data.gender || '',
           avatar: res.data.avatar || '',
+          address: res.data.address || '',
         });
         setError(null);
       } else if (res.error) {
@@ -112,6 +115,7 @@ export const useProfile = () => {
         dob: res.data.dob || '',
         gender: res.data.gender || '',
         avatar: res.data.avatar || '',
+        address: res.data.address || '',
       });
       return { success: true, data: res.data };
     } else {

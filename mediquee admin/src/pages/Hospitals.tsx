@@ -2,30 +2,25 @@ import React, { useState, useEffect } from 'react';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { Hospital } from '../types';
-import { mockHospitals } from '../mock/data';
 import { Building2, Building, ShieldCheck, ShieldAlert } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
 import { useAdminAuth } from '../contexts/AuthContext';
+import { hospitalService } from '../services/hospitalService';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 const Hospitals: React.FC = () => {
   const { token } = useAdminAuth();
-  const [hospitals, setHospitals] = useState<Hospital[]>(mockHospitals);
+  const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
     const fetchHospitals = async () => {
       if (!token) return;
       try {
-        const res = await fetch(`${API_BASE_URL}/admin/hospitals`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-            setHospitals(json.data);
-          }
+        const res = await hospitalService.getHospitals(token);
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          setHospitals(res.data);
         }
       } catch (err) {
         console.error('Failed to fetch admin hospitals:', err);
@@ -44,7 +39,7 @@ const Hospitals: React.FC = () => {
       header: 'Hospital',
       accessor: (h) => (
         <div className="flex flex-col">
-          <span className="font-medium text-slate-900 dark:text-white">{h.name}</span>
+          <span className="font-medium text-slate-900 ">{h.name}</span>
           <span className="text-xs text-slate-500">{h.registrationNumber}</span>
         </div>
       ),
@@ -53,7 +48,7 @@ const Hospitals: React.FC = () => {
       header: 'Location',
       accessor: (h) => (
         <div className="flex flex-col">
-          <span className="text-sm text-slate-700 dark:text-slate-300">{h.city}</span>
+          <span className="text-sm text-slate-700 ">{h.city}</span>
           <span className="text-xs text-slate-500">{h.state}</span>
         </div>
       ),
@@ -80,7 +75,7 @@ const Hospitals: React.FC = () => {
       accessor: (h) => (
         <button 
           onClick={() => alert(`Viewing hospital: ${h.name}`)}
-          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 text-sm font-medium"
+          className="text-blue-600 hover:text-blue-800  text-sm font-medium"
         >
           View
         </button>
@@ -92,8 +87,8 @@ const Hospitals: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Hospital Management</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">View and manage registered hospitals and medical centers</p>
+          <h2 className="text-2xl font-bold text-slate-900 ">Hospital Management</h2>
+          <p className="text-sm text-slate-500 ">View and manage registered hospitals and medical centers</p>
         </div>
         <button 
           onClick={() => alert('New hospital registration can be performed on the Onboarding portal.')}

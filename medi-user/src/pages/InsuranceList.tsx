@@ -245,7 +245,7 @@ const InsuranceList = () => {
                               <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Full Name</label>
                               <input type="text" required value={applicant.fullName} onChange={(e) => setApplicant({...applicant, fullName: e.target.value})} className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
                            </div>
-                           <div className="grid grid-cols-2 gap-3">
+                           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                               <div>
                                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Date of Birth</label>
                                  <input type="date" required value={applicant.dob} onChange={(e) => setApplicant({...applicant, dob: e.target.value})} className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
@@ -466,34 +466,6 @@ const InsuranceList = () => {
                   </section>
                )}
 
-               {/* Insurance at a Glance */}
-               {!searchQuery && (
-                  <section>
-                     <h2 className="text-[16px] font-bold text-slate-900 mb-4 flex items-center gap-2">
-                        Insurance at a Glance
-                        <span className="bg-blue-100 text-blue-700 text-[9px] px-2 py-0.5 rounded-full font-bold">Demo Data</span>
-                     </h2>
-                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                        <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
-                           <p className="text-[10px] text-slate-500 font-medium mb-1">Avg. Settlement Ratio</p>
-                           <p className="text-[18px] font-black text-slate-800">92%</p>
-                        </div>
-                        <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
-                           <p className="text-[10px] text-slate-500 font-medium mb-1">Most Popular</p>
-                           <p className="text-[16px] font-black text-slate-800">Star Health</p>
-                        </div>
-                        <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
-                           <p className="text-[10px] text-slate-500 font-medium mb-1">Network Hospitals</p>
-                           <p className="text-[18px] font-black text-slate-800">10,000+</p>
-                        </div>
-                        <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
-                           <p className="text-[10px] text-slate-500 font-medium mb-1">Plans Available</p>
-                           <p className="text-[18px] font-black text-slate-800">15+</p>
-                        </div>
-                     </div>
-                  </section>
-               )}
-
                {/* Explore Health Insurance */}
                <section>
                   <div className="flex items-center justify-between mb-4">
@@ -534,7 +506,7 @@ const InsuranceList = () => {
                                  </div>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-2 mb-4">
+                              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-4">
                                  <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
                                     <p className="text-[10px] text-slate-500 font-medium mb-0.5">Coverage</p>
                                     <p className="text-[13px] font-bold text-slate-800">{item.coverage}</p>
@@ -653,7 +625,7 @@ const InsuranceList = () => {
                               <AlertCircle className="w-4 h-4 text-amber-600" />
                               Claim Information
                            </h4>
-                           <div className="grid grid-cols-2 gap-4 mt-3">
+                           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-3">
                               <div>
                                  <p className="text-[11px] text-amber-700/80 mb-0.5 font-medium">Settlement Ratio</p>
                                  <p className="text-[14px] font-bold text-amber-900">{selectedInsurance.claimSettlementRatio || 'N/A'}</p>

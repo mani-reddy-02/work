@@ -171,10 +171,17 @@ export async function getUnreadCount(params: {
   return await prisma.notification.count({ where });
 }
 
-export async function markAsRead(id: string, hospitalId?: string | null) {
+export async function markAsRead(id: string, params: { hospitalId?: string | null; userId?: string | null } = {}) {
+  const { hospitalId, userId } = params;
   const where: any = { id };
   if (hospitalId) {
     where.hospitalId = hospitalId;
+  }
+  if (userId) {
+    where.OR = [
+      { userId },
+      ...(hospitalId ? [{ hospitalId, userId: null }] : [])
+    ];
   }
 
   return await prisma.notification.updateMany({

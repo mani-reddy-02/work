@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const getStoredLocation = () => localStorage.getItem('mediquee_location') || 'Hyderabad, Telangana';
+const getStoredLocation = () => localStorage.getItem('mediquee_location') || 'Select Location';
 
 let listeners = new Set<() => void>();
 let isMobileMenuOpen = false;

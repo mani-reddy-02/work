@@ -11,7 +11,7 @@ const AdminLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex overflow-hidden font-sans transition-colors">
+    <div className="min-h-screen bg-slate-50  flex overflow-hidden font-sans transition-colors">
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex flex-col w-full min-w-0">

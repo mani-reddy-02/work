@@ -33,6 +33,7 @@ import {
   type LabSlot,
 } from '../lib/labTestApi';
 import { profileApi } from '../lib/profileApi';
+import HowItWorks from '../components/HowItWorks';
 
 // Icon mapping: test name (cleaned) -> optimized medical illustration
 const testIconMap: Record<string, string> = {
@@ -112,6 +113,7 @@ const LabTestList = () => {
 
   // Search & Categories
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchMode, setSearchMode] = useState(false);
   const [selectedTab, setSelectedTab] = useState('All Tests');
   const [categoryTabs, setCategoryTabs] = useState<string[]>([
     'All Tests',
@@ -433,32 +435,44 @@ const LabTestList = () => {
     <div className="flex flex-col h-full bg-slate-50 overflow-x-hidden relative min-h-screen">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#0055ff] to-[#06b6d4] pt-4 pb-5 px-4 text-white shrink-0 shadow-md">
-        <div className="flex items-center gap-3 mb-4">
-          <button
-            onClick={handleBack}
-            className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex-1">
-            <h1 className="text-[17px] font-bold">Lab Tests</h1>
-            {viewState !== 'LIST' && (
-              <p className="text-[11px] text-blue-100 mt-0.5 capitalize">
-                {viewState.replace('_', ' ').toLowerCase()}
-              </p>
-            )}
+        {!searchMode && (
+          <div className="flex items-center gap-3 mb-4">
+            <button
+              onClick={handleBack}
+              className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex-1">
+              <h1 className="text-[17px] font-bold">Lab Tests</h1>
+              {viewState !== 'LIST' && (
+                <p className="text-[11px] text-blue-100 mt-0.5 capitalize">
+                  {viewState.replace('_', ' ').toLowerCase()}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
         {viewState === 'LIST' && (
           <div className="relative max-w-md mx-auto">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-slate-400" />
-            </div>
+            {searchMode ? (
+              <button 
+                onClick={() => { setSearchMode(false); setSearchQuery(''); }}
+                className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 hover:text-slate-800 z-10"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            ) : (
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-slate-400" />
+              </div>
+            )}
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setSearchMode(true)}
               className="block w-full pl-10 pr-10 py-2.5 border-0 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-white/50 shadow-lg text-[13px] font-medium"
               placeholder="Search tests, packages, health concerns..."
             />
@@ -526,40 +540,7 @@ const LabTestList = () => {
                     {!q && (
                       <>
                         {/* How it works? */}
-                        <div className="bg-white pt-6 pb-2 mb-2 shadow-sm overflow-hidden">
-                          <div className="flex items-center justify-center gap-3 mb-5">
-                            <div className="h-[1px] w-6 bg-blue-600/30"></div>
-                            <h2 className="font-bold text-slate-800 text-[15px]">How Lab Testing Works</h2>
-                            <div className="h-[1px] w-6 bg-blue-600/30"></div>
-                          </div>
-
-                          <div className="relative group w-full">
-                            <div
-                              className="flex gap-3 overflow-x-auto hide-scrollbar px-4 pb-4 snap-x"
-                              style={{ scrollSnapType: 'x mandatory' }}
-                            >
-                              {howItWorks.map((step) => (
-                                <div
-                                  key={step.id}
-                                  className="snap-center shrink-0 w-[150px] bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col relative overflow-hidden"
-                                >
-                                  <div className="absolute top-0 right-0 bg-blue-50 text-blue-600 font-black text-[10px] px-2 py-1 rounded-bl-xl border-b border-l border-blue-100">
-                                    {step.id}
-                                  </div>
-                                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
-                                    <step.icon className="w-5 h-5" strokeWidth={2} />
-                                  </div>
-                                  <h3 className="font-bold text-slate-900 text-[13px] mb-1 leading-tight">
-                                    {step.title}
-                                  </h3>
-                                  <p className="text-[10px] text-slate-500 font-medium leading-relaxed whitespace-pre-line">
-                                    {step.desc}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
+                        <HowItWorks title="How Lab Testing Works" steps={howItWorks} className="pt-6 pb-2 mb-2 shadow-sm" />
 
                         {/* Lab Tests - CIRCLE STYLE */}
                         <div className="bg-white pt-5 pb-6 mb-2 shadow-sm">
@@ -599,7 +580,7 @@ const LabTestList = () => {
                           </div>
 
                           {/* 4x2 Circular Grid */}
-                          <div className="grid grid-cols-4 gap-y-5 gap-x-2 px-4 relative">
+                          <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-y-5 gap-x-2 px-4 relative">
                             {displayLabTests.map((item) => {
                               const displayName = item?.name || (item as any)?.testName || (item as any)?.title || 'Test';
                               const iconSrc = getTestIcon(displayName);
@@ -708,7 +689,7 @@ const LabTestList = () => {
                         <div
                           className={
                             showAllPackages
-                              ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 px-4'
+                              ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 px-4'
                               : 'flex overflow-x-auto hide-scrollbar gap-3 pb-2 px-4'
                           }
                         >
@@ -1087,7 +1068,7 @@ const LabTestList = () => {
               ) : (
                 <div className="mb-6 animate-in slide-in-from-top-2 duration-200">
                   <h3 className="text-[13px] font-bold text-slate-800 mb-3">Available Collection Slots</h3>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                     {availableSlots.map((s) => (
                       <button
                         key={s.slot}
@@ -1218,7 +1199,7 @@ const LabTestList = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Age *</label>
                     <input

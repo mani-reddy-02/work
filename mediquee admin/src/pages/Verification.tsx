@@ -2,14 +2,31 @@ import React, { useState } from 'react';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { VerificationRequest } from '../types';
-import { mockVerifications } from '../mock/data';
 import { ShieldAlert, ShieldCheck, Clock } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
+import { useAdminAuth } from '../contexts/AuthContext';
+import { verificationService } from '../services/verificationService';
 
 const Verification: React.FC = () => {
-  const [requests] = useState<VerificationRequest[]>(mockVerifications);
+  const { token } = useAdminAuth();
+  const [requests, setRequests] = React.useState<VerificationRequest[]>([]);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'HOSPITAL' | 'DOCTOR'>('HOSPITAL');
+
+  React.useEffect(() => {
+    const fetchRequests = async () => {
+      if (!token) return;
+      try {
+        const res = await verificationService.getVerificationRequests(token);
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          setRequests(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch verification requests:', err);
+      }
+    };
+    fetchRequests();
+  }, [token]);
 
   const filteredRequests = requests.filter(r => 
     r.entityType === activeTab &&

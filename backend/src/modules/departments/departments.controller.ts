@@ -141,13 +141,7 @@ export const createDepartment = async (req: Request, res: Response, next: NextFu
       }
     });
 
-    sendNotification({
-      hospitalId,
-      title: 'New Department Created',
-      message: `Department "${trimmedName}" (${trimmedCode}) was created.`,
-      type: 'department',
-      metadata: { departmentId: department.id, name: trimmedName, code: trimmedCode }
-    }).catch(console.error);
+    // INTERNAL_EVENT: New department created. No user notification generated.
 
     res.status(201).json({ success: true, data: department });
   } catch (error) {

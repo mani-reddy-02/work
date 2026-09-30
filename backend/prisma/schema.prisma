@@ -143,6 +143,7 @@ model PlatformCondition {
   id          String  @id @default(uuid())
   name        String  @unique
   description String?
+  icon        String?
 
   specialtyId String
   specialty   PlatformSpecialty @relation(fields: [specialtyId], references: [id])

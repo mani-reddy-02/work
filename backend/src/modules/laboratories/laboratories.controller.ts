@@ -408,13 +408,7 @@ export const createHospitalLab = async (req: Request, res: Response, next: NextF
       return { lab, department: dept, user };
     });
 
-    sendNotification({
-      hospitalId,
-      title: 'Laboratory Registered',
-      message: `${platformDept.name} Lab registered with license ${labLicenseNumber}`,
-      type: 'lab',
-      metadata: { labId: result.lab.id, departmentId: result.department.id }
-    }).catch(console.error);
+    // INTERNAL_EVENT: Laboratory registered. No user notification generated.
 
     res.status(201).json({
       success: true,

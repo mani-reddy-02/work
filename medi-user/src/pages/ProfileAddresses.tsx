@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useProfile } from '../lib/profile';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Plus, Trash2, Edit2, Home, Briefcase, Map } from 'lucide-react';
 
@@ -11,40 +12,43 @@ interface Address {
   pincode: string;
 }
 
-const initialAddresses: Address[] = [
-  {
-    id: '1',
-    type: 'Home',
-    street: '123 Health Avenue, Block B',
-    city: 'Tirupati',
-    state: 'Andhra Pradesh',
-    pincode: '517501'
-  },
-  {
-    id: '2',
-    type: 'Work',
-    street: 'Tech Park, Floor 4',
-    city: 'Tirupati',
-    state: 'Andhra Pradesh',
-    pincode: '517502'
-  }
-];
-
 export default function ProfileAddresses() {
   const navigate = useNavigate();
-  const [addresses, setAddresses] = useState<Address[]>(initialAddresses);
+  const { profile, updateProfile } = useProfile();
+  const [addresses, setAddresses] = useState<Address[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [newAddress, setNewAddress] = useState<Partial<Address>>({ type: 'Home' });
 
-  const handleDelete = (id: string) => {
-    setAddresses(addresses.filter(a => a.id !== id));
+  useEffect(() => {
+    if (profile.address) {
+      try {
+        const parsed = JSON.parse(profile.address);
+        if (Array.isArray(parsed)) {
+          setAddresses(parsed);
+        } else {
+          setAddresses([{ id: 'default-1', type: 'Home', street: profile.address, city: '', state: '', pincode: '' }]);
+        }
+      } catch (e) {
+        setAddresses([{ id: 'default-1', type: 'Home', street: profile.address, city: '', state: '', pincode: '' }]);
+      }
+    } else {
+      setAddresses([]);
+    }
+  }, [profile.address]);
+
+  const handleDelete = async (id: string) => {
+    const newAddresses = addresses.filter(a => a.id !== id);
+    setAddresses(newAddresses);
+    await updateProfile({ address: JSON.stringify(newAddresses) });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (newAddress.street && newAddress.city) {
-      setAddresses([...addresses, { ...newAddress, id: Date.now().toString() } as Address]);
+      const newAddresses = [...addresses, { ...newAddress, id: Date.now().toString() } as Address];
+      setAddresses(newAddresses);
       setIsAdding(false);
       setNewAddress({ type: 'Home' });
+      await updateProfile({ address: JSON.stringify(newAddresses) });
     }
   };
 

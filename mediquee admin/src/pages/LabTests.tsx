@@ -2,14 +2,13 @@ import React, { useState } from 'react';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { Transaction } from '../types';
-import { mockTransactions } from '../mock/data';
 import { formatCurrency } from '../utils/finance';
 import { TestTube, CheckCircle, XCircle, Clock, IndianRupee } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const LabTests: React.FC = () => {
-  const labTransactions = mockTransactions.filter(t => t.serviceType === 'LAB_TEST');
+  const labTransactions = ([] as any[]).filter(t => t.serviceType === 'LAB_TEST');
   const [search, setSearch] = useState('');
 
   const filteredTransactions = labTransactions.filter(t => 
@@ -23,26 +22,26 @@ const LabTests: React.FC = () => {
       header: 'Order ID',
       accessor: (t) => (
         <div className="flex flex-col">
-          <span className="font-medium text-slate-900 dark:text-white">{t.relatedOrderId}</span>
-          <span className="text-xs text-slate-500 dark:text-slate-400">{new Date(t.date).toLocaleDateString()}</span>
+          <span className="font-medium text-slate-900 ">{t.relatedOrderId}</span>
+          <span className="text-xs text-slate-500 ">{new Date(t.date).toLocaleDateString()}</span>
         </div>
       ),
     },
     {
       header: 'Patient',
-      accessor: (t) => <span className="text-slate-900 dark:text-slate-300">{t.customerName}</span>,
+      accessor: (t) => <span className="text-slate-900 ">{t.customerName}</span>,
     },
     {
       header: 'Lab',
-      accessor: (t) => <span className="text-slate-900 dark:text-slate-300 font-medium">{t.providerName}</span>,
+      accessor: (t) => <span className="text-slate-900  font-medium">{t.providerName}</span>,
     },
     {
       header: 'Gross Revenue',
-      accessor: (t) => <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(t.grossAmount)}</span>,
+      accessor: (t) => <span className="font-medium text-slate-900 ">{formatCurrency(t.grossAmount)}</span>,
     },
     {
       header: 'Lab Share (80%)',
-      accessor: (t) => <span className="font-medium text-blue-600 dark:text-blue-400">{formatCurrency(t.providerShare)}</span>,
+      accessor: (t) => <span className="font-medium text-blue-600 ">{formatCurrency(t.providerShare)}</span>,
     },
     {
       header: 'Status',
@@ -58,20 +57,20 @@ const LabTests: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Lab Tests Analytics</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Monitor diagnostic test orders and lab revenue.</p>
+          <h2 className="text-2xl font-bold text-slate-900  tracking-tight">Lab Tests Analytics</h2>
+          <p className="text-sm text-slate-500 ">Monitor diagnostic test orders and lab revenue.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard title="Total Test Orders" value={labTransactions.length} icon={TestTube} />
-        <KpiCard title="Gross Lab Revenue" value={formatCurrency(totalGross)} icon={IndianRupee} iconColor="text-emerald-600" iconBg="bg-emerald-50 dark:bg-emerald-500/10" />
-        <KpiCard title="Admin Commission" value={formatCurrency(totalAdmin)} icon={IndianRupee} iconColor="text-blue-600" iconBg="bg-blue-50 dark:bg-blue-500/10" />
-        <KpiCard title="Lab Share" value={formatCurrency(totalProvider)} icon={IndianRupee} iconColor="text-purple-600" iconBg="bg-purple-50 dark:bg-purple-500/10" />
+        <KpiCard title="Gross Lab Revenue" value={formatCurrency(totalGross)} icon={IndianRupee} iconColor="text-emerald-600" iconBg="bg-emerald-50 " />
+        <KpiCard title="Admin Commission" value={formatCurrency(totalAdmin)} icon={IndianRupee} iconColor="text-blue-600" iconBg="bg-blue-50 " />
+        <KpiCard title="Lab Share" value={formatCurrency(totalProvider)} icon={IndianRupee} iconColor="text-purple-600" iconBg="bg-purple-50 " />
       </div>
 
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
-        <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-4">Tests by Category</h3>
+      <div className="bg-white  p-5 rounded-xl border border-slate-200  shadow-sm transition-colors">
+        <h3 className="text-base font-semibold text-slate-900  mb-4">Tests by Category</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={[

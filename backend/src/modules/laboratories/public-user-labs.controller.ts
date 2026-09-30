@@ -163,12 +163,48 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
       });
     }
 
-    const slots = [
+    const baseSlots = [
       { slot: '08:00 AM - 09:00 AM', available: true },
       { slot: '09:00 AM - 10:00 AM', available: true },
       { slot: '10:00 AM - 11:00 AM', available: false },
-      { slot: '11:00 AM - 12:00 PM', available: true }
+      { slot: '11:00 AM - 12:00 PM', available: true },
+      { slot: '12:00 PM - 01:00 PM', available: true },
+      { slot: '01:00 PM - 02:00 PM', available: true },
+      { slot: '02:00 PM - 03:00 PM', available: true }
     ];
+
+    const targetDateStr = dateStr || dates[0].date;
+    const now = new Date();
+    const isToday = targetDateStr === now.toISOString().split('T')[0];
+    let currentKolkataTimeInMinutes = 0;
+    
+    if (isToday) {
+      const kolkataTime = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: false
+      }).format(now);
+      const [h, m] = kolkataTime.split(':').map(Number);
+      currentKolkataTimeInMinutes = h * 60 + m;
+    }
+
+    const slots = baseSlots.filter(s => {
+      if (!s.available) return false;
+      if (isToday) {
+        const match = s.slot.match(/(\d+):(\d+)\s+(AM|PM)/i);
+        if (match) {
+          let h = parseInt(match[1]);
+          const m = parseInt(match[2]);
+          const period = match[3].toUpperCase();
+          if (period === 'PM' && h !== 12) h += 12;
+          if (period === 'AM' && h === 12) h = 0;
+          const slotMinutes = h * 60 + m;
+          if (slotMinutes <= currentKolkataTimeInMinutes) return false;
+        }
+      }
+      return true;
+    });
 
     res.json({
       success: true,

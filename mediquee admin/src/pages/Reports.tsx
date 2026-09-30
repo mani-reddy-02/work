@@ -1,7 +1,6 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Download } from 'lucide-react';
-import { mockChartData } from '../mock/data';
 
 const Reports: React.FC = () => {
   return (
@@ -24,8 +23,8 @@ const Reports: React.FC = () => {
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <h3 className="text-base font-semibold text-slate-900 mb-4">Weekly Appointment Volume</h3>
           <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockChartData.appointmentTrends} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            {false ? <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={[]} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
@@ -38,7 +37,7 @@ const Reports: React.FC = () => {
                 <Bar dataKey="cancelled" name="Cancelled" fill="#ef4444" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="pending" name="Pending" fill="#f59e0b" radius={[4, 4, 0, 0]} />
               </BarChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer> : <div className="flex items-center justify-center h-full text-sm text-slate-500">No data available yet.</div>}
           </div>
         </div>
       </div>

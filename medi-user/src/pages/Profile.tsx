@@ -24,13 +24,6 @@ const menuItems = [
     colorClass: 'text-emerald-500 bg-emerald-50'
   },
   { 
-    icon: CreditCard, 
-    label: 'Payment Methods', 
-    subLabel: 'Manage cards, UPI & wallets',
-    path: '/profile/payment',
-    colorClass: 'text-purple-500 bg-purple-50'
-  },
-  { 
     icon: Users, 
     label: 'Family Members', 
     subLabel: 'Manage your family profiles',
@@ -143,12 +136,12 @@ const Profile = () => {
       <div className="px-4 -mt-10 relative z-20 flex-1">
 
         {/* Menu Options */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden divide-y divide-slate-50 mb-6">
+        <div className="bg-white md:bg-transparent rounded-2xl shadow-sm md:shadow-none border border-slate-100 md:border-none overflow-hidden md:overflow-visible divide-y divide-slate-50 md:divide-y-0 mb-6 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
           {menuItems.map((item, index) => (
             <Link 
               key={index}
               to={item.path}
-              className="flex items-center p-4 hover:bg-slate-50 transition-colors group"
+              className="flex items-center p-4 hover:bg-slate-50 transition-colors group md:bg-white md:rounded-2xl md:border md:border-slate-100 md:shadow-sm"
             >
               <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 shrink-0 transition-colors ${item.colorClass}`}>
                 <item.icon className="w-5 h-5" />
@@ -163,7 +156,7 @@ const Profile = () => {
 
           <button 
             onClick={() => setShowLogoutModal(true)}
-            className="w-full flex items-center p-4 hover:bg-red-50 transition-colors group"
+            className="w-full flex items-center p-4 hover:bg-red-50 transition-colors group md:bg-white md:rounded-2xl md:border md:border-slate-100 md:shadow-sm"
           >
             <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500 mr-4 shrink-0">
               <LogOut className="w-5 h-5" />

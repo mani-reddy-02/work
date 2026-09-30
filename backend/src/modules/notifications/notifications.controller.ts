@@ -41,8 +41,8 @@ export const streamNotifications = async (req: Request, res: Response) => {
     }
 
     userId = user.id;
-    // Nurses only receive notifications targeted directly to them, not generic hospital broadcasts
-    hospitalId = user.role === Role.NURSE ? null : user.hospitalId;
+    // Nurses and Patients only receive notifications targeted directly to them, not generic hospital broadcasts
+    hospitalId = (user.role === Role.NURSE || user.role === Role.PATIENT) ? null : user.hospitalId;
   } catch (error) {
     res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Invalid token' } });
     return;
@@ -85,8 +85,8 @@ export const streamNotifications = async (req: Request, res: Response) => {
  */
 export const getNotifications = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isNurse = req.user?.role === Role.NURSE;
-    const hospitalId = isNurse ? null : req.user?.hospitalId;
+    const isRestrictedRole = req.user?.role === Role.NURSE || req.user?.role === Role.PATIENT;
+    const hospitalId = isRestrictedRole ? null : req.user?.hospitalId;
     const userId = req.user?.id;
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
     const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
@@ -116,8 +116,8 @@ export const getNotifications = async (req: Request, res: Response, next: NextFu
  */
 export const getUnreadCount = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isNurse = req.user?.role === Role.NURSE;
-    const hospitalId = isNurse ? null : req.user?.hospitalId;
+    const isRestrictedRole = req.user?.role === Role.NURSE || req.user?.role === Role.PATIENT;
+    const hospitalId = isRestrictedRole ? null : req.user?.hospitalId;
     const userId = req.user?.id;
 
     const count = await fetchUnreadCount({ hospitalId, userId });
@@ -138,10 +138,11 @@ export const getUnreadCount = async (req: Request, res: Response, next: NextFunc
 export const markAsRead = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const isNurse = req.user?.role === Role.NURSE;
-    const hospitalId = isNurse ? null : req.user?.hospitalId;
+    const isRestrictedRole = req.user?.role === Role.NURSE || req.user?.role === Role.PATIENT;
+    const hospitalId = isRestrictedRole ? null : req.user?.hospitalId;
+    const userId = req.user?.id;
 
-    await updateMarkAsRead(id as string, hospitalId);
+    await updateMarkAsRead(id as string, { hospitalId, userId });
 
     res.json({
       success: true,
@@ -158,8 +159,8 @@ export const markAsRead = async (req: Request, res: Response, next: NextFunction
  */
 export const markAllAsRead = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isNurse = req.user?.role === Role.NURSE;
-    const hospitalId = isNurse ? null : req.user?.hospitalId;
+    const isRestrictedRole = req.user?.role === Role.NURSE || req.user?.role === Role.PATIENT;
+    const hospitalId = isRestrictedRole ? null : req.user?.hospitalId;
     const userId = req.user?.id;
 
     await updateMarkAllAsRead({ hospitalId, userId });

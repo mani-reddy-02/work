@@ -1,14 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { Doctor } from '../types';
-import { mockDoctors } from '../mock/data';
 import { Stethoscope, UserCheck, UserX, ShieldCheck } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
+import { useAdminAuth } from '../contexts/AuthContext';
+import { userService } from '../services/userService';
 
 const Doctors: React.FC = () => {
-  const [doctors] = useState<Doctor[]>(mockDoctors);
+  const { token } = useAdminAuth();
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      if (!token) return;
+      try {
+        const res = await userService.getUsers(token);
+        if (res.success && Array.isArray(res.data)) {
+          setDoctors(res.data.filter((u: any) => u.role === 'DOCTOR'));
+        }
+      } catch (err) {
+        console.error('Failed to fetch admin doctors:', err);
+      }
+    };
+    fetchDoctors();
+  }, [token]);
 
   const filteredDoctors = doctors.filter(d => 
     d.name.toLowerCase().includes(search.toLowerCase()) || 

@@ -33,11 +33,12 @@ export default function HowItWorks({ title, steps, className = '' }: HowItWorksP
           if (isAtEnd) {
             scrollContainer.scrollTo({ left: 0, behavior: 'smooth' });
           } else {
-            // Scroll by one card width (~148px)
-            scrollContainer.scrollBy({ left: 148, behavior: 'smooth' });
+            const firstChild = scrollContainer.firstElementChild as HTMLElement;
+            const scrollAmount = firstChild ? firstChild.clientWidth + 12 : 160; // 12px is gap-3
+            scrollContainer.scrollBy({ left: scrollAmount, behavior: 'smooth' });
           }
         }
-      }, 3000); // Scroll every 3 seconds
+      }, 4000); // Standard slow scroll every 4 seconds
     }
 
     return () => {
@@ -49,7 +50,7 @@ export default function HowItWorks({ title, steps, className = '' }: HowItWorksP
     <div className={`bg-white p-5 pt-6 text-center ${className}`}>
       <div className="flex items-center justify-center gap-3 mb-6">
         <div className="h-[1px] w-6 bg-blue-600/30"></div>
-        <h2 className="font-bold text-slate-800 text-[14px]">{title}</h2>
+        <h2 className="font-bold text-slate-800 text-[15px]">{title}</h2>
         <div className="h-[1px] w-6 bg-blue-600/30"></div>
       </div>
       
@@ -59,28 +60,30 @@ export default function HowItWorks({ title, steps, className = '' }: HowItWorksP
         onMouseLeave={() => setIsPaused(false)}
         onTouchStart={() => setIsPaused(true)}
         onTouchEnd={() => setIsPaused(false)}
-        className="flex overflow-x-auto hide-scrollbar gap-2 pb-2 -mx-4 px-4 snap-x"
+        className="flex overflow-x-auto hide-scrollbar gap-3 pb-2 -mx-4 px-4 snap-x"
       >
         {steps.map((step) => (
-          <div key={step.id} className="flex flex-col items-center bg-white border border-slate-100 shadow-sm rounded-xl p-3 shrink-0 w-[160px] sm:w-[150px] md:w-[140px] snap-center hover:shadow-md transition-shadow">
-             
+          <div 
+            key={step.id} 
+            className="snap-center shrink-0 w-[150px] sm:w-[160px] md:w-[180px] lg:w-[200px] h-[190px] bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col items-center justify-start hover:shadow-md transition-shadow relative overflow-hidden"
+          >
              {/* Number */}
-             <span className="text-[14px] font-bold text-slate-300 mb-2 w-full text-center tracking-tight">
+             <div className="absolute top-0 right-0 bg-blue-50 text-blue-600 font-black text-[10px] px-2 py-1 rounded-bl-xl border-b border-l border-blue-100">
                {step.id}
-             </span>
+             </div>
              
              {/* Icon Container */}
-             <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mb-2.5 shrink-0 text-blue-600">
-               <step.icon className="w-[18px] h-[18px]" strokeWidth={1.5} />
+             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3 mt-1 shrink-0">
+               <step.icon className="w-5 h-5" strokeWidth={2} />
              </div>
              
              {/* Title */}
-             <h3 className="text-[11px] font-bold text-slate-800 mb-1 text-center w-full">
+             <h3 className="font-bold text-slate-900 text-[13px] mb-1.5 leading-tight text-center w-full">
                {step.title}
              </h3>
              
              {/* Description */}
-             <p className="text-[9px] text-slate-500 leading-snug text-center font-medium line-clamp-3">
+             <p className="text-[10px] text-slate-500 leading-relaxed text-center font-medium">
                {step.desc}
              </p>
           </div>
