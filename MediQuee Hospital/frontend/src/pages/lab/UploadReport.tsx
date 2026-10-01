@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowLeft, Search, CheckCircle2, Upload, X, FileText, Image, File, Loader2, Check } from "lucide-react"
-import { useNavigate } from "react-router-dom"
+import { ArrowLeft, Search, CheckCircle2, Upload, X, FileText, Image, File, Loader2, Check, Eye, AlertCircle } from "lucide-react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { useToast } from "@/context/ToastContext"
 import { labApi } from "@/services/labApi"
 import { cn } from "@/lib/utils"
@@ -9,11 +9,12 @@ import { ConditionLabel } from "@/components/shared/ConditionLabel"
 
 type UploadStep = 1 | 2 | 3 | 'success'
 
-interface SelectedOrder { id: string; patient: string; test: string; date: string }
+interface SelectedOrder { id: string; patient: string; test: string; date: string; status?: string }
 interface SelectedFile { name: string; type: string; size: string }
 
 export function UploadReport() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { toast } = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -34,9 +35,19 @@ export function UploadReport() {
           id: b.id,
           patient: b.patient?.name || 'Walk-in Patient',
           test: b.items?.map((it: any) => it.labTest?.platformTest?.name).join(', ') || 'Diagnostic Test',
-          date: new Date(b.createdAt).toLocaleDateString()
+          date: new Date(b.createdAt).toLocaleDateString(),
+          status: b.status
         }))
         setSearchableOrders(orders)
+
+        const orderIdParam = searchParams.get('orderId')
+        if (orderIdParam) {
+          const match = orders.find((o: any) => o.id === orderIdParam || o.id.startsWith(orderIdParam))
+          if (match) {
+            setSelectedOrder(match)
+            setStep(2)
+          }
+        }
       } catch (err) {
         console.error("Failed to load orders for upload", err)
       } finally {
@@ -44,7 +55,7 @@ export function UploadReport() {
       }
     }
     loadOrders()
-  }, [])
+  }, [searchParams])
 
   const results = searchableOrders.filter(o =>
     !query || o.patient.toLowerCase().includes(query.toLowerCase()) ||
@@ -98,9 +109,13 @@ export function UploadReport() {
           <h2 className="text-[22px] font-bold text-[#172033]">Report Uploaded</h2>
           <p className="text-[14px] text-[#667085] mt-2">The report has been successfully attached to the order.</p>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="flex flex-col gap-2 w-full">
-          <button onClick={() => navigate(`/lab/report/${selectedOrder?.id}`)} className="w-full bg-primary text-white font-semibold py-3.5 rounded-xl">View Report</button>
-          <button onClick={() => navigate('/lab/reports')} className="w-full bg-surface border border-border text-[#172033] font-semibold py-3.5 rounded-xl">Done</button>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="flex flex-col gap-2.5 w-full">
+          <button onClick={() => navigate(`/lab/report/${selectedOrder?.id}`)} className="w-full bg-primary text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-sm">
+            <Eye className="w-4 h-4" /> View Attached Report
+          </button>
+          <button onClick={() => navigate('/lab/orders?status=REPORT_READY')} className="w-full bg-surface border border-border text-[#172033] font-semibold py-3.5 rounded-xl hover:bg-gray-50 active:scale-[0.98] transition-all">
+            Return to Ready Orders
+          </button>
         </motion.div>
       </div>
     )
@@ -182,6 +197,16 @@ export function UploadReport() {
                 <span className="text-[#667085]">· {selectedOrder.id}</span>
               </div>
             </div>
+
+            {selectedOrder.status === 'REPORT_READY' && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3.5 rounded-2xl text-[13px] flex items-center gap-2.5">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                <div>
+                  <p className="font-bold">Correcting / Replacing Report</p>
+                  <p className="text-[12px] text-amber-700 mt-0.5">A report was already recorded for this order. Choosing a new file here will replace it with the corrected version.</p>
+                </div>
+              </div>
+            )}
 
             <div>
               <h2 className="text-[17px] md:text-[20px] font-bold text-[#172033]">Upload Report File</h2>

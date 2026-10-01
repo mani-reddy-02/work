@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Search, Filter, ChevronRight, User, Calendar, X, Loader2, Home, Check, ArrowLeft } from "lucide-react"
+import { Search, Filter, ChevronRight, User, Calendar, X, Loader2, Home, Check, ArrowLeft, ArrowUpRight, Eye, Upload } from "lucide-react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { StatusBadge, LabDepartmentIcon } from "@/components/lab/LabUI"
+import { LabOrderQuickModal } from "@/components/lab/LabOrderQuickModal"
 import { cn } from "@/lib/utils"
 import { labApi } from "@/services/labApi"
 import { useToast } from "@/context/ToastContext"
@@ -21,6 +22,10 @@ export function LabOrders() {
   
   const [orders, setOrders] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  // Order Detail Modal State
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
 
   // Phlebotomist Modal State
   const [assignModalOpen, setAssignModalOpen] = useState(false)
@@ -57,10 +62,11 @@ export function LabOrders() {
   }, [activeMainSection, selectedStatus])
 
   const filtered = orders.filter(o => {
+    const patientName = (typeof o.patient === 'object' ? o.patient?.name : o.patient) || ''
     const matchSearch = !search || 
-      o.patient?.name?.toLowerCase().includes(search.toLowerCase()) || 
-      o.id.toLowerCase().includes(search.toLowerCase()) ||
-      o.items.some((i: any) => i.labTest.platformTest.name.toLowerCase().includes(search.toLowerCase()))
+      patientName.toLowerCase().includes(search.toLowerCase()) || 
+      o.id?.toLowerCase().includes(search.toLowerCase()) ||
+      o.items?.some((i: any) => i.labTest?.platformTest?.name?.toLowerCase().includes(search.toLowerCase()))
     return matchSearch
   })
 
@@ -90,7 +96,7 @@ export function LabOrders() {
     } else if (order.status === 'SAMPLE_COLLECTED') {
       updateStatus(order.id, 'IN_LAB_PROCESSING')
     } else if (order.status === 'IN_LAB_PROCESSING') {
-      updateStatus(order.id, 'REPORT_READY')
+      navigate(`/lab/upload-report?orderId=${order.id}`)
     }
   }
 
@@ -202,7 +208,7 @@ export function LabOrders() {
               <p className="text-[13px] md:text-[15px] text-[#667085] mt-1">Adjust your search or filter</p>
             </motion.div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5 w-full">
               {filtered.map((order, i) => {
                 const actionText = getActionText(order)
                 return (
@@ -213,26 +219,37 @@ export function LabOrders() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96 }}
                     transition={{ delay: i * 0.04 }}
-                    className="w-full bg-surface rounded-2xl border border-border shadow-sm transition-all hover:border-primary/20 hover:shadow-md flex flex-col overflow-hidden"
+                    onClick={() => {
+                      setSelectedOrder(order)
+                      setIsDetailModalOpen(true)
+                    }}
+                    className="w-full bg-surface rounded-2xl border border-border shadow-xs transition-all hover:border-primary/40 hover:shadow-md flex flex-col overflow-hidden cursor-pointer group active:scale-[0.99]"
                   >
-                    <div className="p-4 md:p-5 flex items-start gap-4 flex-1">
+                    <div className="p-4 md:p-5 flex items-start gap-3.5 flex-1">
                       <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
                         <User className="w-5 h-5 md:w-6 md:h-6 text-primary" strokeWidth={1.5} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-[15px] md:text-[16px] font-semibold text-[#172033] truncate">{order.patient?.name}</p>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <p className="text-[15px] md:text-[16px] font-bold text-[#172033] truncate group-hover:text-primary transition-colors">
+                              {(typeof order.patient === 'object' ? order.patient?.name : order.patient) || 'Walk-in Patient'}
+                            </p>
+                            <ChevronRight className="w-4 h-4 text-[#98A2B3] group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                          </div>
                           <span className="text-[14px] md:text-[15px] font-bold text-primary shrink-0">₹{order.totalAmount}</span>
                         </div>
-                        <p className="text-[12px] md:text-[13px] text-[#667085]">{order.patient?.phone} • ID: {order.id.slice(0,8).toUpperCase()}</p>
+                        <p className="text-[12px] md:text-[13px] text-[#667085] truncate">
+                          {((typeof order.patient === 'object' ? order.patient?.phone : order.phone) ? `${typeof order.patient === 'object' ? order.patient?.phone : order.phone} • ` : '')}ID: {order.id?.slice(0, 8)?.toUpperCase()}
+                        </p>
                         
                         <div className="mt-3 space-y-1.5">
-                          {order.items.map((item: any, idx: number) => (
+                          {order.items?.map((item: any, idx: number) => (
                             <div key={idx} className="flex items-center gap-2 bg-gray-50/80 p-2 rounded-lg border border-border">
-                              <LabDepartmentIcon icon={item.labTest.platformTest.department?.icon} className="w-4 h-4 text-primary shrink-0" />
+                              <LabDepartmentIcon icon={item.labTest?.platformTest?.department?.icon} className="w-4 h-4 text-primary shrink-0" />
                               <div className="min-w-0 flex-1">
-                                <p className="text-[13px] font-semibold text-[#172033] truncate">{item.labTest.platformTest.name}</p>
-                                <p className="text-[11px] text-[#667085]">Sample: {item.labTest.platformTest.specimenType}</p>
+                                <p className="text-[13px] font-semibold text-[#172033] truncate">{item.labTest?.platformTest?.name || item.testName || 'Diagnostic Test'}</p>
+                                <p className="text-[11px] text-[#667085]">Sample: {item.labTest?.platformTest?.specimenType || item.specimenType || 'Specimen'}</p>
                               </div>
                             </div>
                           ))}
@@ -247,11 +264,11 @@ export function LabOrders() {
                             <Home className="w-4 h-4 text-green-700" />
                             <span className="text-[13px] font-bold text-green-800">Home Collection Request</span>
                           </div>
-                          <p className="text-[12px] text-green-700 font-medium">Slot: {new Date(order.collectionDate).toLocaleDateString()} • {order.collectionTimeSlot}</p>
-                          <p className="text-[12px] text-green-600 truncate">{order.collectionAddress}</p>
+                          <p className="text-[12px] text-green-700 font-medium">Slot: {order.collectionDate ? new Date(order.collectionDate).toLocaleDateString() : 'Today'} • {order.collectionTimeSlot || 'Standard Slot'}</p>
+                          {order.collectionAddress && <p className="text-[12px] text-green-600 truncate">{order.collectionAddress}</p>}
                           {order.phlebotomistName && (
                             <p className="text-[12px] text-green-800 mt-2 font-medium bg-green-100 px-2 py-1 rounded-md w-fit">
-                              Assigned: {order.phlebotomistName} ({order.phlebotomistPhone})
+                              Assigned: {order.phlebotomistName} {order.phlebotomistPhone ? `(${order.phlebotomistPhone})` : ''}
                             </p>
                           )}
                         </div>
@@ -259,12 +276,57 @@ export function LabOrders() {
                       
                       <div className="flex items-center justify-between gap-3">
                         <StatusBadge status={order.status} />
-                        <div className="flex gap-2">
-                          {actionText && (
-                            <button onClick={() => handleAction(order)} className="px-3 py-1.5 md:px-4 md:py-2 bg-primary text-white text-[12px] md:text-[13px] font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedOrder(order)
+                              setIsDetailModalOpen(true)
+                            }} 
+                            className="text-[12px] md:text-[13px] font-semibold text-primary hover:underline px-1 py-1"
+                          >
+                            Details
+                          </button>
+                          {order.status === 'REPORT_READY' ? (
+                            <div className="flex items-center gap-1.5">
+                              <button 
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigate(`/lab/report/${order.id}`)
+                                }} 
+                                className="px-2.5 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[12px] md:text-[13px] font-semibold rounded-xl hover:bg-emerald-100 active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                                title="View uploaded diagnostic report"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-emerald-700" />
+                                <span>View Report</span>
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigate(`/lab/upload-report?orderId=${order.id}`)
+                                }} 
+                                className="px-2 py-1.5 bg-surface text-[#667085] hover:text-[#172033] border border-border text-[12px] md:text-[13px] font-semibold rounded-xl hover:bg-gray-100 active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                                title="Upload again if any mistake was made"
+                              >
+                                <Upload className="w-3.5 h-3.5" />
+                                <span>Change</span>
+                              </button>
+                            </div>
+                          ) : actionText ? (
+                            <button 
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleAction(order)
+                              }} 
+                              className="px-3.5 py-1.5 md:px-4 md:py-2 bg-primary text-white text-[12px] md:text-[13px] font-semibold rounded-xl hover:bg-blue-700 active:scale-95 transition-all shadow-xs"
+                            >
                               {actionText}
                             </button>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -275,6 +337,19 @@ export function LabOrders() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Order Quick Details Modal */}
+      <LabOrderQuickModal
+        order={selectedOrder}
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false)
+          setSelectedOrder(null)
+        }}
+        onOrderUpdated={() => {
+          fetchOrders()
+        }}
+      />
 
       {/* Assign Technician Modal */}
       <AnimatePresence>

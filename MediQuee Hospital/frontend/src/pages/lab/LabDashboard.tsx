@@ -182,10 +182,6 @@ export function LabDashboard() {
             <h1 className="text-2xl md:text-3xl font-bold text-[#172033]">
               {getGreeting()} 👋
             </h1>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Live DB
-            </span>
           </div>
           <p className="text-sm text-[#667085] mt-0.5">
             {getFormattedDate()} · Here's your real-time laboratory activity.

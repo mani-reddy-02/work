@@ -54,25 +54,32 @@ export function LabDepartmentIcon({
 }
 
 interface StatusBadgeProps {
-  status: 'pending' | 'collected' | 'processing' | 'ready' | 'delivered' | 'cancelled'
+  status: string
   size?: 'sm' | 'md'
   className?: string
 }
 
 const config: Record<string, { label: string; className: string }> = {
-  pending:    { label: 'Pending',    className: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  collected:  { label: 'Collected',  className: 'bg-blue-50 text-blue-700 border border-blue-200' },
-  processing: { label: 'Processing', className: 'bg-purple-50 text-purple-700 border border-purple-200' },
-  ready:      { label: 'Ready',      className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
-  delivered:  { label: 'Delivered',  className: 'bg-gray-50 text-[#667085] border border-border' },
-  cancelled:  { label: 'Cancelled',  className: 'bg-red-50 text-red-600 border border-red-200' },
+  pending:          { label: 'Pending',    className: 'bg-amber-50 text-amber-700 border border-amber-200' },
+  requested:        { label: 'Pending',    className: 'bg-amber-50 text-amber-700 border border-amber-200' },
+  assigned:         { label: 'Assigned',   className: 'bg-cyan-50 text-cyan-700 border border-cyan-200' },
+  collected:        { label: 'Collected',  className: 'bg-blue-50 text-blue-700 border border-blue-200' },
+  sample_collected: { label: 'Collected',  className: 'bg-blue-50 text-blue-700 border border-blue-200' },
+  processing:       { label: 'Processing', className: 'bg-purple-50 text-purple-700 border border-purple-200' },
+  in_lab_processing:{ label: 'Processing', className: 'bg-purple-50 text-purple-700 border border-purple-200' },
+  ready:            { label: 'Completed',  className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+  report_ready:     { label: 'Completed',  className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+  completed:        { label: 'Completed',  className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+  delivered:        { label: 'Delivered',  className: 'bg-gray-50 text-[#667085] border border-border' },
+  cancelled:        { label: 'Cancelled',  className: 'bg-red-50 text-red-600 border border-red-200' },
 }
 
 export function StatusBadge({ status, size = 'sm', className }: StatusBadgeProps) {
-  const c = config[status] ?? config.pending
+  const key = (status || '').toLowerCase()
+  const c = config[key] ?? config.pending
   return (
     <span className={cn(
-      'rounded-full font-semibold',
+      'rounded-full font-semibold inline-flex items-center justify-center',
       size === 'sm' ? 'text-xs px-2 py-0.5' : 'text-sm px-3 py-1',
       c.className,
       className

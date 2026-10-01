@@ -278,17 +278,38 @@ export function LabOrderDetail() {
               {booking.status === 'IN_LAB_PROCESSING' && (
                 <button
                   disabled={isUpdating}
-                  onClick={() => updateStatus('REPORT_READY')}
-                  className="w-full py-3 px-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"
+                  onClick={() => navigate(`/lab/upload-report?orderId=${booking.id}`)}
+                  className="w-full py-3 px-4 bg-primary text-white font-bold rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"
                 >
-                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Mark Report Ready"}
+                  <Upload className="w-4 h-4" />
+                  Upload Diagnostic Report
                 </button>
               )}
 
               {booking.status === 'REPORT_READY' && (
-                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-3 text-[13px] font-semibold flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                  Report is completed and available for patient.
+                <div className="flex flex-col gap-3">
+                  <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-3 text-[13px] font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                    Report is completed and available for patient.
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/lab/report/${booking.id}`)}
+                      className="w-full sm:flex-1 py-2.5 px-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-xs text-[13px]"
+                    >
+                      <Eye className="w-4 h-4" /> View Report
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/lab/upload-report?orderId=${booking.id}`)}
+                      className="w-full sm:flex-1 py-2.5 px-3 bg-surface border border-emerald-300 text-emerald-800 font-bold rounded-xl hover:bg-emerald-50 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 text-[13px]"
+                      title="Upload new file if any mistake"
+                    >
+                      <Upload className="w-4 h-4" /> Change / Re-upload
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

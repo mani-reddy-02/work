@@ -11,17 +11,31 @@ const LAB_HEADER_HIDDEN = ['/lab/add-test', '/lab/create-order', '/lab/upload-re
 export function LabLayout() {
   const location = useLocation()
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false)
+  // Initially hidden as requested
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const hideHeader = LAB_HEADER_HIDDEN.some(r => location.pathname.startsWith(r))
 
   return (
     <div className="h-screen bg-background flex font-sans relative overflow-hidden selection:bg-primary/20">
       
-      {/* Desktop Sidebar */}
-      <LabSideNav onQuickAdd={() => setIsQuickAddOpen(true)} />
+      {/* Slide-in / Collapsible Side Navigation (initially hidden) */}
+      <LabSideNav 
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        onQuickAdd={() => {
+          setIsSidebarOpen(false)
+          setIsQuickAddOpen(true)
+        }} 
+      />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative h-full max-w-[100vw]">
-        {!hideHeader && <LabHeader />}
+        {!hideHeader && (
+          <LabHeader 
+            isSidebarOpen={isSidebarOpen}
+            onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
+          />
+        )}
 
         <main className="flex-1 w-full max-w-7xl mx-auto md:p-6 relative overflow-y-auto pb-[100px] md:pb-0">
           <AnimatePresence mode="wait">
