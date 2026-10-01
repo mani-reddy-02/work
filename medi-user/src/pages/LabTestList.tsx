@@ -137,6 +137,10 @@ const LabTestList = () => {
   const [isTestsLoading, setIsTestsLoading] = useState(false);
   const [testsError, setTestsError] = useState<string | null>(null);
 
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<LabTestRecord[]>([]);
+
   // Workflow Selection State
   const [selectedItem, setSelectedItem] = useState<LabTestRecord | any>(null);
   const [selectedLab, setSelectedLab] = useState<LaboratoryRecord | any>(null);
@@ -201,6 +205,40 @@ const LabTestList = () => {
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  // Debounce search query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // Real Backend Search
+  useEffect(() => {
+    let active = true;
+    if (!debouncedSearchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const search = async () => {
+      setIsSearching(true);
+      try {
+        const res = await labTestApi.getLabTests({ search: debouncedSearchQuery.trim() });
+        if (active && res.success && res.data) {
+          setSearchResults(res.data);
+        }
+      } catch (err) {
+        console.error('Search failed', err);
+      } finally {
+        if (active) setIsSearching(false);
+      }
+    };
+    search();
+    return () => {
+      active = false;
+    };
+  }, [debouncedSearchQuery]);
 
   // Pre-fill Authenticated User Profile
   useEffect(() => {
@@ -274,39 +312,27 @@ const LabTestList = () => {
   }, [viewState, selectedLab, selectedDate]);
 
   // Filtering
-  const q = searchQuery.toLowerCase().trim();
+  const q = debouncedSearchQuery.toLowerCase().trim();
+  const sourceTests = q ? searchResults : dbTests;
+
   const filteredByCategory =
     selectedTab === 'All Tests'
-      ? dbTests
-      : dbTests.filter(
+      ? sourceTests
+      : sourceTests.filter(
           (t) =>
             (t?.category || '').toLowerCase() === selectedTab.toLowerCase() ||
             (t as any)?.categories?.includes(selectedTab)
         );
 
-  const filteredLabTests = q
-    ? filteredByCategory.filter(
-        (t) =>
-          (t?.name || (t as any)?.testName || (t as any)?.title || '').toLowerCase().includes(q) ||
-          (t?.desc || (t as any)?.description || '').toLowerCase().includes(q) ||
-          (t?.category || '').toLowerCase().includes(q) ||
-          (t?.concern || (t as any)?.healthConcern || '').toLowerCase().includes(q)
-      )
-    : filteredByCategory;
+  const filteredLabTests = filteredByCategory;
 
   const displayLabTests = showAllTests || q ? filteredLabTests : filteredLabTests.slice(0, 8);
   
   // Extract packages (Category contains "Package")
-  const allPackages = dbTests.filter((t) => (t?.category || '').toLowerCase().includes('package'));
-  const allNonPackages = dbTests.filter((t) => !(t?.category || '').toLowerCase().includes('package'));
+  const allPackages = sourceTests.filter((t) => (t?.category || '').toLowerCase().includes('package'));
+  const allNonPackages = sourceTests.filter((t) => !(t?.category || '').toLowerCase().includes('package'));
   
-  const filteredPackages = q
-    ? allPackages.filter(
-        (p) =>
-          (p?.name || (p as any)?.testName || (p as any)?.title || '').toLowerCase().includes(q) ||
-          (p?.desc || (p as any)?.description || '').toLowerCase().includes(q)
-      )
-    : allPackages;
+  const filteredPackages = allPackages;
 
   const concernTests = selectedConcern
     ? allNonPackages.filter(
@@ -435,25 +461,23 @@ const LabTestList = () => {
     <div className="flex flex-col h-full bg-slate-50 overflow-x-hidden relative min-h-screen">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#0055ff] to-[#06b6d4] pt-4 pb-5 px-4 text-white shrink-0 shadow-md">
-        {!searchMode && (
-          <div className="flex items-center gap-3 mb-4">
-            <button
-              onClick={handleBack}
-              className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-              aria-label="Go back"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div className="flex-1">
-              <h1 className="text-[17px] font-bold">Lab Tests</h1>
-              {viewState !== 'LIST' && (
-                <p className="text-[11px] text-blue-100 mt-0.5 capitalize">
-                  {viewState.replace('_', ' ').toLowerCase()}
-                </p>
-              )}
-            </div>
+        <div className="flex items-center gap-3 mb-4">
+          <button
+            onClick={handleBack}
+            className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-[17px] font-bold">Lab Tests</h1>
+            {viewState !== 'LIST' && (
+              <p className="text-[11px] text-blue-100 mt-0.5 capitalize">
+                {viewState.replace('_', ' ').toLowerCase()}
+              </p>
+            )}
           </div>
-        )}
+        </div>
         {viewState === 'LIST' && (
           <div className="relative max-w-md mx-auto">
             {searchMode ? (
@@ -523,7 +547,13 @@ const LabTestList = () => {
 
             {(!isTestsLoading || dbTests.length > 0) && (
               <>
-                {q && !hasResults ? (
+                {q && isSearching ? (
+                  <div className="bg-white p-8 rounded-2xl mx-4 my-6 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
+                    <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+                    <p className="text-sm font-bold text-slate-800">Searching Lab Tests...</p>
+                    <p className="text-xs text-slate-400 mt-1">Fetching results from MediQuee...</p>
+                  </div>
+                ) : q && !hasResults ? (
                   <div className="text-center py-12 px-4 bg-white rounded-2xl mx-4 my-6 border border-slate-100 shadow-sm">
                     <TestTube className="w-12 h-12 text-slate-300 mx-auto mb-2" />
                     <p className="text-[15px] text-slate-700 font-bold">No matching tests found</p>
@@ -537,33 +567,15 @@ const LabTestList = () => {
                   </div>
                 ) : (
                   <>
+                    {/* EXTRAS - ONLY WHEN NOT SEARCHING */}
                     {!q && (
                       <>
                         {/* How it works? */}
                         <HowItWorks title="How Lab Testing Works" steps={howItWorks} className="pt-6 pb-2 mb-2 shadow-sm" />
 
-                        {/* Lab Tests - CIRCLE STYLE */}
-                        <div className="bg-white pt-5 pb-6 mb-2 shadow-sm">
-                          <div className="px-4 mb-4 flex items-center justify-between">
-                            <div>
-                              <h2 className="text-[16px] font-bold text-slate-800">Lab Tests</h2>
-                              <p className="text-[11px] text-slate-400 font-medium">Real tests from MediQuee Diagnostic Network</p>
-                            </div>
-                            {filteredByCategory.length > 8 && (
-                              <button
-                                onClick={() => setShowAllTests(!showAllTests)}
-                                className="flex items-center text-blue-600 cursor-pointer hover:text-blue-700 transition-colors"
-                              >
-                                <span className="text-[11px] font-bold">
-                                  {showAllTests ? 'Show Less' : `View All (${filteredByCategory.length})`}
-                                </span>
-                                <ChevronRight className="w-4 h-4 ml-0.5" />
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Category Tabs */}
-                          <div className="flex gap-2 overflow-x-auto hide-scrollbar px-4 mb-6 pb-1">
+                        {/* Category Tabs */}
+                        <div className="bg-white pt-5 shadow-sm border-b border-slate-100">
+                          <div className="flex gap-2 overflow-x-auto hide-scrollbar px-4 pb-4">
                             {categoryTabs.map((tab) => (
                               <button
                                 key={tab}
@@ -578,101 +590,128 @@ const LabTestList = () => {
                               </button>
                             ))}
                           </div>
-
-                          {/* 4x2 Circular Grid */}
-                          <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-y-5 gap-x-2 px-4 relative">
-                            {displayLabTests.map((item) => {
-                              const displayName = item?.name || (item as any)?.testName || (item as any)?.title || 'Test';
-                              const iconSrc = getTestIcon(displayName);
-                              return (
-                                <div
-                                  key={item.id}
-                                  onClick={() => handleBookNow(item)}
-                                  className="flex flex-col items-center gap-2 cursor-pointer group"
-                                >
-                                  <div
-                                    className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-blue-50 flex items-center justify-center border border-slate-100 group-hover:shadow-lg group-hover:scale-110 transition-all duration-200 overflow-hidden"
-                                  >
-                                    {iconSrc ? (
-                                      <img
-                                        src={iconSrc}
-                                        alt={displayName.replace(/\n/g, ' ')}
-                                        className="w-10 h-10 md:w-12 md:h-12 object-contain"
-                                      />
-                                    ) : (
-                                      <TestTube className="w-6 h-6 text-blue-600" strokeWidth={1.5} />
-                                    )}
-                                  </div>
-                                  <span className="text-[10px] md:text-[11px] font-bold text-slate-800 text-center leading-tight">
-                                    {displayName.replace(/\n/g, ' ')}
-                                  </span>
-                                  <span className="text-[10px] font-bold text-blue-600 -mt-1">
-                                    {item.price || `₹${item.numericPrice || 299}`}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
                         </div>
-
-                        {/* Find Tests by Health Concern */}
-                        {dynamicHealthConcerns.length > 0 && (
-                          <div className="bg-white pt-5 pb-6 mb-2 shadow-sm">
-                            <div className="px-4 mb-4">
-                              <h2 className="text-[16px] font-bold text-slate-800">Find Tests by Health Concern</h2>
-                            </div>
-                            <div className="flex gap-3 overflow-x-auto hide-scrollbar px-4 mb-5 pb-1">
-                              {dynamicHealthConcerns.map((concernStr) => {
-                                const staticMatch = healthConcerns.find(
-                                  (c) => c.id.toLowerCase() === concernStr.toLowerCase() || c.name.toLowerCase() === concernStr.toLowerCase()
-                                );
-                                const bg = staticMatch?.bg || 'bg-blue-50';
-                                const Icon = staticMatch?.icon || Activity;
-                                const color = staticMatch?.color || 'text-blue-500';
-                                const iconUrl = healthConcernIconMap[concernStr.toLowerCase()] || (staticMatch ? healthConcernIconMap[staticMatch.id] : null);
-
-                                return (
-                                  <div
-                                    key={concernStr}
-                                    onClick={() => {
-                                      setSelectedConcern(concernStr);
-                                      setViewState('CONCERN_RESULTS');
-                                    }}
-                                    className="flex flex-col items-center shrink-0 w-[72px] cursor-pointer group"
-                                  >
-                                    <div
-                                      className={`w-14 h-14 rounded-full ${bg} flex items-center justify-center mb-1.5 border border-slate-100 group-hover:shadow-lg group-hover:scale-110 transition-all duration-200 overflow-hidden`}
-                                    >
-                                      {iconUrl ? (
-                                        <img
-                                          src={iconUrl}
-                                          alt={concernStr}
-                                          className="w-10 h-10 object-contain"
-                                        />
-                                      ) : (
-                                        <Icon className={`w-6 h-6 ${color}`} />
-                                      )}
-                                    </div>
-                                    <span className="text-[11px] font-bold text-slate-700 text-center">
-                                      {concernStr}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
                       </>
                     )}
 
-                    {/* Diagnostic Packages */}
-                    {filteredPackages.length > 0 && (
+                    {/* SINGLE TESTS SECTION */}
+                    {displayLabTests.length > 0 ? (
+                      <div className="bg-white pt-5 pb-6 mb-2 shadow-sm">
+                        <div className="px-4 mb-4 flex items-center justify-between">
+                          <div>
+                            <h2 className="text-[16px] font-bold text-slate-800 uppercase tracking-tight">Single Tests</h2>
+                            {!q && <p className="text-[11px] text-slate-400 font-medium">Real tests from MediQuee Diagnostic Network</p>}
+                          </div>
+                          {filteredByCategory.length > 8 && (
+                            <button
+                              onClick={() => setShowAllTests(!showAllTests)}
+                              className="flex items-center text-blue-600 cursor-pointer hover:text-blue-700 transition-colors"
+                            >
+                              <span className="text-[11px] font-bold">
+                                {showAllTests ? 'Show Less' : `View All (${filteredByCategory.length})`}
+                              </span>
+                              <ChevronRight className="w-4 h-4 ml-0.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* 4x2 Circular Grid */}
+                        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-y-5 gap-x-2 px-4 relative">
+                          {displayLabTests.map((item) => {
+                            const displayName = item?.name || (item as any)?.testName || (item as any)?.title || 'Test';
+                            const iconSrc = getTestIcon(displayName);
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => handleBookNow(item)}
+                                className="flex flex-col items-center gap-2 cursor-pointer group"
+                              >
+                                <div
+                                  className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-blue-50 flex items-center justify-center border border-slate-100 group-hover:shadow-lg group-hover:scale-110 transition-all duration-200 overflow-hidden"
+                                >
+                                  {iconSrc ? (
+                                    <img
+                                      src={iconSrc}
+                                      alt={displayName.replace(/\n/g, ' ')}
+                                      className="w-10 h-10 md:w-12 md:h-12 object-contain"
+                                    />
+                                  ) : (
+                                    <TestTube className="w-6 h-6 text-blue-600" strokeWidth={1.5} />
+                                  )}
+                                </div>
+                                <span className="text-[10px] md:text-[11px] font-bold text-slate-800 text-center leading-tight">
+                                  {displayName.replace(/\n/g, ' ')}
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-500 -mt-1">
+                                  Select for details
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-white p-6 mb-2 shadow-sm text-center">
+                        <p className="text-[14px] text-slate-500 font-bold">No single tests available.</p>
+                      </div>
+                    )}
+
+                    {/* HEALTH CONCERNS - ONLY WHEN NOT SEARCHING */}
+                    {!q && dynamicHealthConcerns.length > 0 && (
+                      <div className="bg-white pt-5 pb-6 mb-2 shadow-sm">
+                        <div className="px-4 mb-4">
+                          <h2 className="text-[16px] font-bold text-slate-800">Find Tests by Health Concern</h2>
+                        </div>
+                        <div className="flex gap-3 overflow-x-auto hide-scrollbar px-4 mb-5 pb-1">
+                          {dynamicHealthConcerns.map((concernStr) => {
+                            const staticMatch = healthConcerns.find(
+                              (c) => c.id.toLowerCase() === concernStr.toLowerCase() || c.name.toLowerCase() === concernStr.toLowerCase()
+                            );
+                            const bg = staticMatch?.bg || 'bg-blue-50';
+                            const Icon = staticMatch?.icon || Activity;
+                            const color = staticMatch?.color || 'text-blue-500';
+                            const iconUrl = healthConcernIconMap[concernStr.toLowerCase()] || (staticMatch ? healthConcernIconMap[staticMatch.id] : null);
+
+                            return (
+                              <div
+                                key={concernStr}
+                                onClick={() => {
+                                  setSelectedConcern(concernStr);
+                                  setViewState('CONCERN_RESULTS');
+                                }}
+                                className="flex flex-col items-center shrink-0 w-[72px] cursor-pointer group"
+                              >
+                                <div
+                                  className={`w-14 h-14 rounded-full ${bg} flex items-center justify-center mb-1.5 border border-slate-100 group-hover:shadow-lg group-hover:scale-110 transition-all duration-200 overflow-hidden`}
+                                >
+                                  {iconUrl ? (
+                                    <img
+                                      src={iconUrl}
+                                      alt={concernStr}
+                                      className="w-10 h-10 object-contain"
+                                    />
+                                  ) : (
+                                    <Icon className={`w-6 h-6 ${color}`} />
+                                  )}
+                                </div>
+                                <span className="text-[11px] font-bold text-slate-700 text-center">
+                                  {concernStr}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* PACKAGES SECTION */}
+                    {filteredPackages.length > 0 ? (
                       <div className="pt-5 pb-6 bg-white shadow-sm">
                         <div className="flex items-center justify-between mb-4 px-4">
-                          <h2 className="text-[15px] font-bold text-slate-800">
-                            {q ? 'Matching Packages' : 'Diagnostic Packages'}
+                          <h2 className="text-[16px] font-bold text-slate-800 uppercase tracking-tight">
+                            Packages
                           </h2>
-                          {!q && (
+                          {filteredPackages.length > 4 && (
                             <button
                               onClick={() => setShowAllPackages(!showAllPackages)}
                               className="flex items-center text-blue-600 cursor-pointer hover:text-blue-700 transition-colors"
@@ -734,7 +773,6 @@ const LabTestList = () => {
                                     <span>Results in {item.time}</span>
                                   </div>
                                   <div className="flex items-center justify-between mt-auto">
-                                    <span className="text-[16px] font-black text-blue-600">{item.price}</span>
                                   </div>
                                   <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
                                     <button
@@ -757,6 +795,10 @@ const LabTestList = () => {
                             );
                           })}
                         </div>
+                      </div>
+                    ) : (
+                      <div className="bg-white p-6 mb-2 shadow-sm text-center">
+                        <p className="text-[14px] text-slate-500 font-bold">No packages available.</p>
                       </div>
                     )}
                   </>
@@ -845,8 +887,7 @@ const LabTestList = () => {
                             <span>Report within {item.time}</span>
                           </div>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[16px] font-black text-blue-600">{item.price}</span>
+                        <div className="flex items-center justify-end">
                           <button
                             onClick={() => handleBookNow(item)}
                             className="bg-[#0055ff] text-white px-5 py-2 rounded-xl text-[12px] font-bold shadow-md shadow-blue-500/20 hover:bg-blue-600 transition-colors shrink-0"
@@ -911,11 +952,7 @@ const LabTestList = () => {
                   </div>
                 </div>
 
-                <div className="mt-6 flex items-center justify-between">
-                  <div>
-                    <span className="text-[11px] text-slate-400 block font-semibold">Starting From</span>
-                    <span className="text-[22px] font-black text-blue-600">{selectedItem?.price}</span>
-                  </div>
+                <div className="mt-6 flex items-center justify-end">
                   <button
                     onClick={() => setViewState('LAB_SELECT')}
                     className="bg-[#0055ff] text-white px-6 py-2.5 rounded-xl text-[13px] font-bold shadow-md shadow-blue-500/20 hover:bg-blue-600 transition-colors"

@@ -27,7 +27,7 @@ export const getPublicLabTests = async (req: Request, res: Response, next: NextF
     let platformTests: any = [];
     try {
       platformTests = await prisma.platformLabTest.findMany({
-        where: search ? { name: { contains: String(search), mode: 'insensitive' } } : {},
+        where: whereClause,
         include: {
           department: true,
           hospitalOfferings: {
@@ -46,7 +46,7 @@ export const getPublicLabTests = async (req: Request, res: Response, next: NextF
       const offerings = pt.hospitalOfferings || [];
       const minPrice = offerings.length > 0 ? offerings.reduce((min: number, o: any) => Math.min(min, o.price), Infinity) : Infinity;
       const minTat = offerings.length > 0 ? offerings.reduce((min: number, o: any) => Math.min(min, o.tatHours), Infinity) : Infinity;
-      const anyHomeCollection = offerings.some((o: any) => o.isHomeCollectionAvailable) || true;
+      const anyHomeCollection = offerings.some((o: any) => o.isHomeCollectionAvailable);
       const finalPrice = minPrice === Infinity ? (pt.basePrice || 299) : minPrice;
       const finalTat = minTat === Infinity ? 24 : minTat;
 
