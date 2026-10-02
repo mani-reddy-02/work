@@ -57,6 +57,7 @@ import { ConsultationHistory } from "./pages/profile/ConsultationHistory"
 import { AboutMediQuee } from "./pages/marketing/AboutMediQuee"
 import { BookMedicalCamp } from "./pages/marketing/BookMedicalCamp"
 import { BookMarketing } from "./pages/marketing/BookMarketing"
+import { Requests } from "./pages/marketing/Requests"
 
 // Lab layout & pages
 import { LabLayout } from "./components/lab/LabLayout"
@@ -149,6 +150,7 @@ function AnimatedRoutes() {
           <Route path="/about" element={<AboutMediQuee />} />
           <Route path="/book-camp" element={<BookMedicalCamp />} />
           <Route path="/book-marketing" element={<BookMarketing />} />
+          <Route path="/requests" element={<Requests />} />
 
           {/* Doctor Routes */}
           <Route element={<RoleProtectedRoute allowedRoles={['doctor']} />}>

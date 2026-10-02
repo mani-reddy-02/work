@@ -1,6 +1,5 @@
 import React from 'react';
 
-const Providers = () => <div className="p-6 bg-white  rounded-xl shadow-sm border border-slate-200 "><h2 className="text-xl font-bold ">Providers Placeholder</h2></div>;
 const OPBookings = () => <div className="p-6 bg-white  rounded-xl shadow-sm border border-slate-200 "><h2 className="text-xl font-bold ">OP Bookings Placeholder</h2></div>;
 const VideoConsultations = () => <div className="p-6 bg-white  rounded-xl shadow-sm border border-slate-200 "><h2 className="text-xl font-bold ">Video Consultations Placeholder</h2></div>;
 const LabTests = () => <div className="p-6 bg-white  rounded-xl shadow-sm border border-slate-200 "><h2 className="text-xl font-bold ">Lab Tests Placeholder</h2></div>;
@@ -11,7 +10,6 @@ const Settlements = () => <div className="p-6 bg-white  rounded-xl shadow-sm bor
 const ActivityLog = () => <div className="p-6 bg-white  rounded-xl shadow-sm border border-slate-200 "><h2 className="text-xl font-bold ">Activity Log Placeholder</h2></div>;
 
 export {
-  Providers,
   OPBookings,
   VideoConsultations,
   LabTests,

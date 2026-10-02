@@ -39,6 +39,8 @@ export interface DashboardOverview {
   revenueTrends?: RevenueTrends;
   todayAppointments: DashboardAppointment[];
   upcomingAppointments?: DashboardAppointment[];
+  hospitalSharePercentage?: number;
+  mediqueeCommissionPercentage?: number;
 }
 
 

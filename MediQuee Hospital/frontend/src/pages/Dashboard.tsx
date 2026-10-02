@@ -413,7 +413,7 @@ export function Dashboard() {
           </div>
         </div>
         
-        <div className="flex items-end justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div className="flex flex-col min-h-[32px] justify-center">
             {isLoading && !overview ? (
               <Skeleton className="h-7 w-24" />
@@ -423,6 +423,16 @@ export function Dashboard() {
               </span>
             )}
           </div>
+          {!isLoading && overview && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+                Hospital Share: {overview.hospitalSharePercentage ?? 80}%
+              </span>
+              <span className="text-[11px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/60">
+                Platform Fee: {overview.mediqueeCommissionPercentage ?? 20}%
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="h-[120px] w-full mt-2 -ml-2">

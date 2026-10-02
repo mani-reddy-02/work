@@ -45,17 +45,14 @@ const navGroups = [
     items: [
       { name: 'Users', path: '/admin/users', icon: Users },
       { name: 'Patients', path: '/admin/users?role=patient', icon: UserCircle },
-      { name: 'Doctors', path: '/admin/doctors', icon: Stethoscope },
-      { name: 'Nurses', path: '/admin/providers?type=nurse', icon: HeartHandshake }
+      { name: 'Doctors', path: '/admin/doctors', icon: Stethoscope }
     ]
   },
   {
     title: 'Healthcare Network',
     items: [
       { name: 'Hospitals', path: '/admin/hospitals', icon: Building2 },
-      { name: 'Departments', path: '/admin/departments', icon: Network },
-      { name: 'Labs', path: '/admin/providers?type=lab', icon: TestTube },
-      { name: 'All Providers', path: '/admin/providers', icon: Landmark }
+      { name: 'Departments', path: '/admin/departments', icon: Network }
     ]
   },
   {
@@ -100,7 +97,8 @@ const navGroups = [
   {
     title: 'System',
     items: [
-      { name: 'Settings', path: '/admin/settings', icon: Settings }
+      { name: 'Settings', path: '/admin/settings', icon: Settings },
+      { name: 'Home Posters', path: '/admin/home-posters', icon: LayoutDashboard }
     ]
   }
 ];

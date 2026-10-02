@@ -64,6 +64,7 @@ export function SideNav({
           { to: '/dashboard', icon: LayoutGrid, label: t('dashboard') },
           { to: '/appointments', icon: Calendar, label: t('appointments') },
           { to: '/payouts', icon: IndianRupee, label: t('payout') },
+          { to: '/requests', icon: Megaphone, label: 'My Requests' },
           { to: '/profile', icon: User, label: t('profile') },
         ];
     }

@@ -52,6 +52,8 @@ const Requests: React.FC = () => {
 
   // Modal State
   const [selectedRequest, setSelectedRequest] = useState<{ type: 'camp' | 'marketing'; data: any } | null>(null);
+  const [rejectMode, setRejectMode] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   const fetchRequests = useCallback(async () => {
     if (!token) return;
@@ -78,31 +80,36 @@ const Requests: React.FC = () => {
     return () => clearInterval(interval);
   }, [fetchRequests]);
 
-  const handleUpdateStatus = async (type: 'camp' | 'marketing', id: string, newStatus: string) => {
+  const handleUpdateStatus = async (type: 'camp' | 'marketing', id: string, newStatus: string, notes?: string) => {
     if (!token) return;
     setActionLoading(id);
     try {
+      const payload: any = { status: newStatus };
+      if (notes) payload.notes = notes;
+
       const res = await fetch(`${API_BASE_URL}/admin/hospital-requests/${type}/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
         if (type === 'camp') {
-          setCamps(prev => prev.map(c => c.id === id ? { ...c, status: newStatus as any } : c));
+          setCamps(prev => prev.map(c => c.id === id ? { ...c, status: newStatus as any, ...(notes ? { notes } : {}) } : c));
           if (selectedRequest?.data.id === id) {
-            setSelectedRequest(prev => prev ? { ...prev, data: { ...prev.data, status: newStatus } } : null);
+            setSelectedRequest(prev => prev ? { ...prev, data: { ...prev.data, status: newStatus, ...(notes ? { notes } : {}) } } : null);
           }
         } else {
-          setMarketing(prev => prev.map(m => m.id === id ? { ...m, status: newStatus as any } : m));
+          setMarketing(prev => prev.map(m => m.id === id ? { ...m, status: newStatus as any, ...(notes ? { notes } : {}) } : m));
           if (selectedRequest?.data.id === id) {
-            setSelectedRequest(prev => prev ? { ...prev, data: { ...prev.data, status: newStatus } } : null);
+            setSelectedRequest(prev => prev ? { ...prev, data: { ...prev.data, status: newStatus, ...(notes ? { notes } : {}) } } : null);
           }
         }
+        setRejectMode(false);
+        setRejectReason('');
       }
     } catch (err) {
       console.error('Failed to update status:', err);
@@ -301,7 +308,7 @@ const Requests: React.FC = () => {
                 {selectedRequest.type === 'camp' ? 'Medical Camp Request Details' : 'Marketing/Inquiry Details'}
               </h3>
               <button 
-                onClick={() => setSelectedRequest(null)}
+                onClick={() => { setSelectedRequest(null); setRejectMode(false); setRejectReason(''); }}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
               >
                 <X size={20} />
@@ -454,43 +461,80 @@ const Requests: React.FC = () => {
             </div>
 
             {/* Modal Footer Actions */}
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
-              {selectedRequest.data.status === 'PENDING' && (
-                <>
-                  <button
-                    onClick={() => handleUpdateStatus(selectedRequest.type, selectedRequest.data.id, 'REVIEWING')}
-                    disabled={actionLoading === selectedRequest.data.id}
-                    className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors shadow-sm"
-                  >
-                    Mark Reviewing
-                  </button>
-                  <button
-                    onClick={() => handleUpdateStatus(selectedRequest.type, selectedRequest.data.id, 'APPROVED')}
-                    disabled={actionLoading === selectedRequest.data.id}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors shadow-sm"
-                  >
-                    <CheckCircle2 size={16} /> 
-                    {selectedRequest.type === 'camp' ? 'Approve Camp' : 'Mark as Contacted'}
-                  </button>
-                </>
-              )}
-              {selectedRequest.data.status === 'REVIEWING' && (
-                <button
-                  onClick={() => handleUpdateStatus(selectedRequest.type, selectedRequest.data.id, 'APPROVED')}
-                  disabled={actionLoading === selectedRequest.data.id}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors shadow-sm"
-                >
-                  <CheckCircle2 size={16} /> Approve
-                </button>
-              )}
-              {selectedRequest.data.status === 'APPROVED' && (
-                <button
-                  onClick={() => handleUpdateStatus(selectedRequest.type, selectedRequest.data.id, 'COMPLETED')}
-                  disabled={actionLoading === selectedRequest.data.id}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
-                >
-                  Mark Completed
-                </button>
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex flex-col gap-3">
+              {rejectMode ? (
+                <div className="flex flex-col gap-3 w-full">
+                  <textarea
+                    placeholder="Provide a reason for rejection..."
+                    className="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
+                    rows={3}
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => { setRejectMode(false); setRejectReason(''); }}
+                      className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleUpdateStatus(selectedRequest.type, selectedRequest.data.id, 'REJECTED', `Rejection Reason: ${rejectReason}`)}
+                      disabled={!rejectReason.trim() || actionLoading === selectedRequest.data.id}
+                      className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-lg disabled:opacity-50"
+                    >
+                      Confirm Reject
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-end gap-3 w-full">
+                  {(selectedRequest.data.status === 'PENDING' || selectedRequest.data.status === 'REVIEWING') && (
+                    <button
+                      onClick={() => setRejectMode(true)}
+                      className="px-4 py-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-sm font-medium rounded-lg transition-colors shadow-sm"
+                    >
+                      Reject Request
+                    </button>
+                  )}
+                  {selectedRequest.data.status === 'PENDING' && (
+                    <>
+                      <button
+                        onClick={() => handleUpdateStatus(selectedRequest.type, selectedRequest.data.id, 'REVIEWING')}
+                        disabled={actionLoading === selectedRequest.data.id}
+                        className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors shadow-sm"
+                      >
+                        Mark Reviewing
+                      </button>
+                      <button
+                        onClick={() => handleUpdateStatus(selectedRequest.type, selectedRequest.data.id, 'APPROVED')}
+                        disabled={actionLoading === selectedRequest.data.id}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors shadow-sm"
+                      >
+                        <CheckCircle2 size={16} /> 
+                        {selectedRequest.type === 'camp' ? 'Approve Camp' : 'Mark as Contacted'}
+                      </button>
+                    </>
+                  )}
+                  {selectedRequest.data.status === 'REVIEWING' && (
+                    <button
+                      onClick={() => handleUpdateStatus(selectedRequest.type, selectedRequest.data.id, 'APPROVED')}
+                      disabled={actionLoading === selectedRequest.data.id}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors shadow-sm"
+                    >
+                      <CheckCircle2 size={16} /> Approve
+                    </button>
+                  )}
+                  {selectedRequest.data.status === 'APPROVED' && (
+                    <button
+                      onClick={() => handleUpdateStatus(selectedRequest.type, selectedRequest.data.id, 'COMPLETED')}
+                      disabled={actionLoading === selectedRequest.data.id}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
+                    >
+                      Mark Completed
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>

@@ -80,8 +80,8 @@ const Settlements: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900  tracking-tight">Provider Settlements</h2>
-          <p className="text-sm text-slate-500 ">Manage and process 80% payouts to network providers.</p>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Provider Settlements</h2>
+          <p className="text-sm text-slate-500 ">Manage and process revenue share payouts to network providers.</p>
         </div>
       </div>
 

@@ -11,6 +11,8 @@ import { opAppointmentApi } from '../lib/opAppointmentApi';
 import { getDiseaseIconUrl } from '../utils/diseaseIcons';
 import { useUIStore } from '../lib/uiStore';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+
 const Home = () => {
   const navigate = useNavigate();
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
@@ -28,6 +30,7 @@ const Home = () => {
   const [showBookingPopup, setShowBookingPopup] = useState(false);
   const [bookingData, setBookingData] = useState<any>(null);
   const [hasUpcomingBooking, setHasUpcomingBooking] = useState(false);
+  const [posters, setPosters] = useState<any[]>([]);
 
   const [topSpecialists, setTopSpecialists] = useState<any[]>([]);
   const [isSpecialistsLoading, setIsSpecialistsLoading] = useState(true);
@@ -142,52 +145,74 @@ const Home = () => {
     setExpandedFaq(expandedFaq === index ? null : index);
   };
 
-  const BOOKING_SLIDES = [
-    { 
-      title: 'Book Now', 
-      subtitle: 'Doctor Appointments & Hospital Visits',
-      description: 'Find verified doctors, book clinic visits & hospital appointments',
-      cta: 'Book Now',
-      color: 'bg-gradient-to-r from-[#0062e6] via-[#0070f3] to-[#70a6ff]', 
-      icon: Hospital, 
-      icon2: Stethoscope,
-      path: '/services',
-      hasDoctorImage: true,
-    },
-    { 
-      title: 'Book Video Consultation', 
-      subtitle: 'Instant Online Care with Top Doctors',
-      description: 'Connect with certified specialists within 15 mins from home',
-      cta: 'Consult Now',
-      color: 'bg-gradient-to-r from-[#0055d4] via-[#0284c7] to-[#0ea5e9]', 
-      icon: Video, 
-      icon2: Sparkles,
-      path: '/specialties?type=doctor',
-      hasDoctorImage: false,
-    },
-    { 
-      title: 'Book Lab Test', 
-      subtitle: 'Flat 20% OFF on Diagnostic Tests',
-      description: 'Certified diagnostic packages with fast digital test reports',
-      cta: 'Explore Tests',
-      color: 'bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#38bdf8]', 
-      icon: TestTube, 
-      icon2: ShieldCheck,
-      path: '/services/lab-tests',
-      hasDoctorImage: false,
-    },
-    { 
-      title: 'Book Home Sample Collection', 
-      subtitle: 'Hassle-free Sample Pickup at Home',
-      description: 'Safe & hygienic diagnostic sample collection at your doorstep',
-      cta: 'Book Collection',
-      color: 'bg-gradient-to-r from-[#0369a1] via-[#0284c7] to-[#14b8a6]', 
-      icon: Activity, 
-      icon2: HomeIcon,
-      path: '/services/home-sample',
-      hasDoctorImage: false,
-    },
-  ];
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/home-posters`)
+      .then(res => res.json())
+      .then(res => {
+        if (res.success && res.data) {
+           const DEFAULT_TEMPLATES: any = {
+             'Book Now': {
+                title: 'Book Now',
+                subtitle: 'Doctor Appointments & Hospital Visits',
+                description: 'Find verified doctors, book clinic visits & hospital appointments',
+                cta: 'Book Now',
+                color: 'bg-gradient-to-r from-[#0062e6] via-[#0070f3] to-[#70a6ff]', 
+                icon: Hospital, 
+                icon2: Stethoscope,
+                hasDoctorImage: true,
+             },
+             'Video Consult': { 
+                title: 'Book Video Consultation',
+                subtitle: 'Instant Online Care with Top Doctors',
+                description: 'Connect with certified specialists within 15 mins from home',
+                cta: 'Consult Now',
+                color: 'bg-gradient-to-r from-[#0055d4] via-[#0284c7] to-[#0ea5e9]', 
+                icon: Video, 
+                icon2: Sparkles,
+                hasDoctorImage: false,
+             },
+             'Lab Tests': { 
+                title: 'Book Lab Test',
+                subtitle: 'Flat 20% OFF on Diagnostic Tests',
+                description: 'Certified diagnostic packages with fast digital test reports',
+                cta: 'Explore Tests',
+                color: 'bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#38bdf8]', 
+                icon: TestTube, 
+                icon2: ShieldCheck,
+                hasDoctorImage: false,
+             },
+             'Home Services': { 
+                title: 'Book Home Sample Collection',
+                subtitle: 'Hassle-free Sample Pickup at Home',
+                description: 'Safe & hygienic diagnostic sample collection at your doorstep',
+                cta: 'Book Collection',
+                color: 'bg-gradient-to-r from-[#0369a1] via-[#0284c7] to-[#14b8a6]', 
+                icon: Activity, 
+                icon2: HomeIcon,
+                hasDoctorImage: false,
+             },
+           };
+
+           const mappedPosters = res.data.map((p: any) => {
+             if (p.isDefault && DEFAULT_TEMPLATES[p.title]) {
+               return {
+                 ...p,
+                 ...DEFAULT_TEMPLATES[p.title],
+                 path: p.buttonAction,
+                 isCustom: false
+               };
+             }
+             return {
+               ...p,
+               path: p.buttonAction,
+               isCustom: true
+             };
+           });
+           setPosters(mappedPosters);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   // Auto-scroll logic for Booking Carousel
   useEffect(() => {
@@ -195,7 +220,7 @@ const Home = () => {
     
     const interval = setInterval(() => {
       if (sliderRef.current) {
-        const nextSlide = (activeSlide + 1) % BOOKING_SLIDES.length;
+        const nextSlide = (activeSlide + 1) % (posters.length || 1);
         sliderRef.current.scrollTo({
           left: nextSlide * sliderRef.current.offsetWidth,
           behavior: 'smooth'
@@ -205,14 +230,14 @@ const Home = () => {
     }, 3500);
     
     return () => clearInterval(interval);
-  }, [activeSlide, isPaused, BOOKING_SLIDES.length]);
+  }, [activeSlide, isPaused, posters.length]);
 
   // Handle native scroll updates (e.g. from swiping on mobile)
   const handleScroll = () => {
     if (sliderRef.current) {
       const slideWidth = sliderRef.current.offsetWidth;
       const newActive = Math.round(sliderRef.current.scrollLeft / slideWidth);
-      if (newActive !== activeSlide && newActive >= 0 && newActive < BOOKING_SLIDES.length) {
+      if (newActive !== activeSlide && newActive >= 0 && newActive < posters.length) {
         setActiveSlide(newActive);
       }
     }
@@ -307,12 +332,30 @@ const Home = () => {
           onMouseLeave={handleMouseUpOrLeave}
           className="flex overflow-x-auto hide-scrollbar snap-x snap-mandatory cursor-grab active:cursor-grabbing w-full select-none"
         >
-          {BOOKING_SLIDES.map((slide, idx) => {
+          {posters.map((slide, idx) => {
+            if (slide.isCustom) {
+              return (
+                <div 
+                  key={slide.id || idx} 
+                  onClick={() => {
+                    if (dragDistance.current < 10) navigate(slide.path);
+                  }}
+                  className={`w-full flex-shrink-0 snap-center min-h-[170px] md:min-h-[220px] relative cursor-pointer overflow-hidden bg-slate-100 flex items-center justify-center`}
+                >
+                  {slide.imageUrl ? (
+                    <img src={slide.imageUrl} alt="Poster" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-slate-400 font-medium text-sm">No Image Provided</span>
+                  )}
+                </div>
+              );
+            }
+
             const Icon1 = slide.icon;
             const Icon2 = slide.icon2;
             return (
               <div 
-                key={idx} 
+                key={slide.id || idx} 
                 onClick={() => {
                   if (dragDistance.current < 10) navigate(slide.path);
                 }}
@@ -373,7 +416,7 @@ const Home = () => {
         
         {/* Pagination Dots */}
         <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-          {BOOKING_SLIDES.map((_, idx) => (
+          {posters.map((_, idx) => (
             <button 
               key={idx} 
               type="button"

@@ -36,6 +36,8 @@ export interface Hospital extends BaseEntity {
   logo?: string;
   departmentCount: number;
   doctorCount: number;
+  hospitalShare?: number;
+  mediqueeCommission?: number;
 }
 
 // Doctor Entity

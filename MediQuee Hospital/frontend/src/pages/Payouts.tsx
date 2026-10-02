@@ -134,9 +134,12 @@ export function Payouts() {
   const byService = payoutsData?.byService;
   const summary = payoutsData?.payoutSummary;
 
-  // 20% Admin deduction calculations
+  // Dynamic rates (fallback to 80/20 while loading)
+  const hospitalSharePercent = Math.round((payoutsData?.hospitalShareRate ?? 0.8) * 100);
+  const adminSharePercent = Math.round((payoutsData?.adminCommissionRate ?? 0.2) * 100);
+
   const totalGross = payoutsData?.totalGross ?? payoutsData?.totalPayout ?? 0;
-  const totalAdminCommission = payoutsData?.totalAdminCommission ?? Math.round(totalGross * 0.20);
+  const totalAdminCommission = payoutsData?.totalAdminCommission ?? Math.round(totalGross * (payoutsData?.adminCommissionRate ?? 0.20));
   const totalHospitalPayout = payoutsData?.totalHospitalPayout ?? (totalGross - totalAdminCommission);
 
   return (
@@ -146,7 +149,7 @@ export function Payouts() {
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md pt-4 pb-3 px-4 flex justify-between items-center border-b border-border shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
         <div>
           <h1 className="text-[22px] font-semibold text-foreground">{t('payout')}</h1>
-          <span className="text-[12px] text-muted font-medium">Hospital Share: 80% &middot; Platform Fee: 20%</span>
+          <span className="text-[12px] text-muted font-medium">Hospital Share: {hospitalSharePercent}% &middot; Platform Fee: {adminSharePercent}%</span>
         </div>
         <button 
           onClick={() => fetchPayouts(startDate, endDate, true)}
@@ -255,7 +258,7 @@ export function Payouts() {
             <div className="flex flex-col bg-amber-50/70 rounded-xl p-2.5 border border-amber-100/70">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-amber-800">Admin Cut</span>
-                <span className="text-[10px] font-bold text-amber-700 bg-amber-100/90 px-1.5 py-0.2 rounded">20% off</span>
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-100/90 px-1.5 py-0.2 rounded">{adminSharePercent}% off</span>
               </div>
               <span className="text-[16px] font-bold text-amber-900 mt-0.5">
                 {isLoading && !payoutsData ? (
@@ -299,12 +302,12 @@ export function Payouts() {
                   <>
                     <div className="flex items-baseline gap-1">
                       <span className="text-[15px] font-bold text-emerald-600">
-                        {formatCurrency(byService?.op.hospitalPayout ?? Math.round((byService?.op.revenue ?? 0) * 0.8))}
+                        {formatCurrency(byService?.op.hospitalPayout ?? Math.round((byService?.op.revenue ?? 0) * (hospitalSharePercent / 100)))}
                       </span>
-                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">80%</span>
+                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">{hospitalSharePercent}%</span>
                     </div>
                     <span className="text-[10px] text-muted mt-0.5 text-right">
-                      Gross: {formatCurrency(byService?.op.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.op.adminCommission ?? Math.round((byService?.op.revenue ?? 0) * 0.2))}</span>
+                      Gross: {formatCurrency(byService?.op.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.op.adminCommission ?? Math.round((byService?.op.revenue ?? 0) * (adminSharePercent / 100)))}</span>
                     </span>
                   </>
                 )}
@@ -331,12 +334,12 @@ export function Payouts() {
                   <>
                     <div className="flex items-baseline gap-1">
                       <span className="text-[15px] font-bold text-emerald-600">
-                        {formatCurrency(byService?.videoConsultation.hospitalPayout ?? Math.round((byService?.videoConsultation.revenue ?? 0) * 0.8))}
+                        {formatCurrency(byService?.videoConsultation.hospitalPayout ?? Math.round((byService?.videoConsultation.revenue ?? 0) * (hospitalSharePercent / 100)))}
                       </span>
-                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">80%</span>
+                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">{hospitalSharePercent}%</span>
                     </div>
                     <span className="text-[10px] text-muted mt-0.5 text-right">
-                      Gross: {formatCurrency(byService?.videoConsultation.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.videoConsultation.adminCommission ?? Math.round((byService?.videoConsultation.revenue ?? 0) * 0.2))}</span>
+                      Gross: {formatCurrency(byService?.videoConsultation.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.videoConsultation.adminCommission ?? Math.round((byService?.videoConsultation.revenue ?? 0) * (adminSharePercent / 100)))}</span>
                     </span>
                   </>
                 )}
@@ -363,12 +366,12 @@ export function Payouts() {
                   <>
                     <div className="flex items-baseline gap-1">
                       <span className="text-[15px] font-bold text-emerald-600">
-                        {formatCurrency(byService?.homeNursing.hospitalPayout ?? Math.round((byService?.homeNursing.revenue ?? 0) * 0.8))}
+                        {formatCurrency(byService?.homeNursing.hospitalPayout ?? Math.round((byService?.homeNursing.revenue ?? 0) * (hospitalSharePercent / 100)))}
                       </span>
-                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">80%</span>
+                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">{hospitalSharePercent}%</span>
                     </div>
                     <span className="text-[10px] text-muted mt-0.5 text-right">
-                      Gross: {formatCurrency(byService?.homeNursing.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.homeNursing.adminCommission ?? Math.round((byService?.homeNursing.revenue ?? 0) * 0.2))}</span>
+                      Gross: {formatCurrency(byService?.homeNursing.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.homeNursing.adminCommission ?? Math.round((byService?.homeNursing.revenue ?? 0) * (adminSharePercent / 100)))}</span>
                     </span>
                   </>
                 )}
@@ -395,12 +398,12 @@ export function Payouts() {
                   <>
                     <div className="flex items-baseline gap-1">
                       <span className="text-[15px] font-bold text-emerald-600">
-                        {formatCurrency(byService?.labTests.hospitalPayout ?? Math.round((byService?.labTests.revenue ?? 0) * 0.8))}
+                        {formatCurrency(byService?.labTests.hospitalPayout ?? Math.round((byService?.labTests.revenue ?? 0) * (hospitalSharePercent / 100)))}
                       </span>
-                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">80%</span>
+                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">{hospitalSharePercent}%</span>
                     </div>
                     <span className="text-[10px] text-muted mt-0.5 text-right">
-                      Gross: {formatCurrency(byService?.labTests.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.labTests.adminCommission ?? Math.round((byService?.labTests.revenue ?? 0) * 0.2))}</span>
+                      Gross: {formatCurrency(byService?.labTests.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.labTests.adminCommission ?? Math.round((byService?.labTests.revenue ?? 0) * (adminSharePercent / 100)))}</span>
                     </span>
                   </>
                 )}
@@ -427,12 +430,12 @@ export function Payouts() {
                   <>
                     <div className="flex items-baseline gap-1">
                       <span className="text-[15px] font-bold text-emerald-600">
-                        {formatCurrency(byService?.homeSampleCollection.hospitalPayout ?? Math.round((byService?.homeSampleCollection.revenue ?? 0) * 0.8))}
+                        {formatCurrency(byService?.homeSampleCollection.hospitalPayout ?? Math.round((byService?.homeSampleCollection.revenue ?? 0) * (hospitalSharePercent / 100)))}
                       </span>
-                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">80%</span>
+                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">{hospitalSharePercent}%</span>
                     </div>
                     <span className="text-[10px] text-muted mt-0.5 text-right">
-                      Gross: {formatCurrency(byService?.homeSampleCollection.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.homeSampleCollection.adminCommission ?? Math.round((byService?.homeSampleCollection.revenue ?? 0) * 0.2))}</span>
+                      Gross: {formatCurrency(byService?.homeSampleCollection.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.homeSampleCollection.adminCommission ?? Math.round((byService?.homeSampleCollection.revenue ?? 0) * (adminSharePercent / 100)))}</span>
                     </span>
                   </>
                 )}
@@ -596,7 +599,7 @@ export function Payouts() {
                         +{formatCurrency(txn.hospitalPayout ?? Math.round(txn.amount * 0.8))}
                       </span>
                       <span className="text-[10px] text-[#98A2B3]">
-                        Gross: {formatCurrency(txn.amount)} &middot; Admin: -{formatCurrency(txn.adminCommission ?? Math.round(txn.amount * 0.2))}
+                        Gross: {formatCurrency(txn.amount)} &middot; Admin: -{formatCurrency(txn.adminCommission ?? Math.round(txn.amount * (adminSharePercent / 100)))}
                       </span>
                     </div>
                   </div>

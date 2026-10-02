@@ -21,7 +21,8 @@ const Dashboard: React.FC = () => {
   const [kpis, setKpis] = useState({
     totalUsers: 0, totalPatients: 0, totalDoctors: 0, totalHospitals: 0, totalLabs: 0, totalNurses: 0,
     grossRevenue: 0, adminCommission: 0, providerShare: 0, transactions: 0, pendingSettlements: 0,
-    pendingVerifications: 0, opAppointments: 0, videoConsultations: 0, labTests: 0, homeSample: 0, homeNursing: 0
+    pendingVerifications: 0, opAppointments: 0, videoConsultations: 0, labTests: 0, homeSample: 0, homeNursing: 0,
+    revenueTrend: [] as any[], revenueByService: [] as any[]
   });
 
   React.useEffect(() => {
@@ -29,25 +30,24 @@ const Dashboard: React.FC = () => {
       if (!token) return;
       try {
         const res = await adminService.getAdminDashboardStats(token);
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.data) {
-            setKpis((prev) => ({
-              ...prev,
-              totalUsers: json.data.totalUsers ?? prev.totalUsers,
-              totalPatients: json.data.totalPatients ?? prev.totalPatients,
-              totalDoctors: json.data.totalDoctors ?? prev.totalDoctors,
-              totalHospitals: json.data.totalHospitals ?? prev.totalHospitals,
-              totalLabs: json.data.totalLabs ?? prev.totalLabs,
-              totalNurses: json.data.totalNurses ?? prev.totalNurses,
-              grossRevenue: json.data.grossRevenue ?? prev.grossRevenue,
-              adminCommission: json.data.adminCommission ?? prev.adminCommission,
-              providerShare: json.data.providerShare ?? prev.providerShare,
-              transactions: json.data.transactions ?? prev.transactions,
-              pendingSettlements: json.data.pendingSettlements ?? prev.pendingSettlements,
-              pendingVerifications: json.data.pendingVerifications ?? prev.pendingVerifications,
-            }));
-          }
+        if (res.success && res.data) {
+          setKpis((prev) => ({
+            ...prev,
+            totalUsers: res.data.totalUsers ?? prev.totalUsers,
+            totalPatients: res.data.totalPatients ?? prev.totalPatients,
+            totalDoctors: res.data.totalDoctors ?? prev.totalDoctors,
+            totalHospitals: res.data.totalHospitals ?? prev.totalHospitals,
+            totalLabs: res.data.totalLabs ?? prev.totalLabs,
+            totalNurses: res.data.totalNurses ?? prev.totalNurses,
+            grossRevenue: res.data.grossRevenue ?? prev.grossRevenue,
+            adminCommission: res.data.adminCommission ?? prev.adminCommission,
+            providerShare: res.data.providerShare ?? prev.providerShare,
+            transactions: res.data.transactions ?? prev.transactions,
+            pendingSettlements: res.data.pendingSettlements ?? prev.pendingSettlements,
+            pendingVerifications: res.data.pendingVerifications ?? prev.pendingVerifications,
+            revenueTrend: res.data.revenueTrend ?? prev.revenueTrend,
+            revenueByService: res.data.revenueByService ?? prev.revenueByService,
+          }));
         }
       } catch (err) {
         console.error('Failed to fetch admin stats:', err);
@@ -97,10 +97,14 @@ const Dashboard: React.FC = () => {
           <AlertCircle className="text-amber-600  shrink-0 mt-0.5" size={20} />
           <div>
             <h3 className="text-sm font-semibold text-amber-800 ">Action Center Insights</h3>
-            <ul className="mt-1 text-sm text-amber-700  space-y-1">
+            <ul className="mt-1 text-sm text-amber-700 space-y-1">
               <li><Link to="/admin/settlements" className="hover:underline font-medium">{formatCurrency(kpis.pendingSettlements)} in pending settlements require processing.</Link></li>
-              <li><Link to="/admin/verification" className="hover:underline font-medium">{kpis.pendingVerifications} providers waiting for verification approval.</Link></li>
-              <li>OP Booking is currently the highest-revenue service this month.</li>
+              <li><Link to="/admin/verification" className="hover:underline font-medium">{kpis.pendingVerifications} hospitals waiting for verification approval.</Link></li>
+              {kpis.grossRevenue > 0 ? (
+                <li>Revenue data is being tracked from active hospital transactions.</li>
+              ) : (
+                <li>No revenue data available for this period.</li>
+              )}
             </ul>
           </div>
         </div>
@@ -111,13 +115,13 @@ const Dashboard: React.FC = () => {
         <h3 className="text-lg font-semibold text-slate-900  mb-4">Financial Overview</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <Link to="/admin/transactions" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Total Gross Revenue" value={formatCurrency(kpis.grossRevenue, true)} icon={IndianRupee} iconColor="text-emerald-600" iconBg="bg-emerald-50 " subtitle="All services" />
+            <KpiCard title="Total Gross Revenue" value={formatCurrency(kpis.grossRevenue, true)} icon={IndianRupee} iconColor="text-emerald-600" iconBg="bg-emerald-50" subtitle="All services" />
           </Link>
           <Link to="/admin/transactions?type=commission" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Admin Commission" value={formatCurrency(kpis.adminCommission, true)} icon={TrendingUp} iconColor="text-blue-600" iconBg="bg-blue-50 " subtitle="20% platform share" />
+            <KpiCard title="Admin Commission" value={formatCurrency(kpis.adminCommission, true)} icon={TrendingUp} iconColor="text-blue-600" iconBg="bg-blue-50" subtitle="Calculated from actual transactions" />
           </Link>
           <Link to="/admin/settlements" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Provider Share" value={formatCurrency(kpis.providerShare, true)} icon={Landmark} iconColor="text-purple-600" iconBg="bg-purple-50 " subtitle="80% provider share" />
+            <KpiCard title="Provider Share" value={formatCurrency(kpis.providerShare, true)} icon={Landmark} iconColor="text-purple-600" iconBg="bg-purple-50" subtitle="Calculated from actual transactions" />
           </Link>
           <Link to="/admin/transactions" className="block hover:scale-[1.02] transition-transform">
             <KpiCard title="Total Transactions" value={kpis.transactions.toLocaleString()} icon={CreditCard} iconColor="text-slate-600" iconBg="bg-slate-100 " subtitle="Completed payments" />
@@ -144,12 +148,6 @@ const Dashboard: React.FC = () => {
           <Link to="/admin/hospitals" className="block hover:scale-[1.02] transition-transform">
             <KpiCard title="Hospitals" value={kpis.totalHospitals} icon={Building2} />
           </Link>
-          <Link to="/admin/providers?type=lab" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Labs" value={kpis.totalLabs || 0} icon={TestTube} />
-          </Link>
-          <Link to="/admin/providers?type=nurse" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Nurses" value={kpis.totalNurses || 0} icon={HeartHandshake} />
-          </Link>
         </div>
       </section>
 
@@ -159,15 +157,8 @@ const Dashboard: React.FC = () => {
         <div className="bg-white  p-5 rounded-xl border border-slate-200  shadow-sm transition-colors">
           <h3 className="text-base font-semibold text-slate-900  mb-4">Revenue Trend</h3>
           <div className="h-72">
-            {false ? <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={[
-                { name: 'Jan', gross: 400000, admin: 80000, provider: 320000 },
-                { name: 'Feb', gross: 550000, admin: 110000, provider: 440000 },
-                { name: 'Mar', gross: 480000, admin: 96000, provider: 384000 },
-                { name: 'Apr', gross: 650000, admin: 130000, provider: 520000 },
-                { name: 'May', gross: 720000, admin: 144000, provider: 576000 },
-                { name: 'Jun', gross: 890000, admin: 178000, provider: 712000 },
-              ]} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            {kpis.revenueTrend && kpis.revenueTrend.length > 0 ? <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={kpis.revenueTrend} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.2} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `₹${val/1000}k`} />
@@ -187,14 +178,8 @@ const Dashboard: React.FC = () => {
         <div className="bg-white  p-5 rounded-xl border border-slate-200  shadow-sm transition-colors">
           <h3 className="text-base font-semibold text-slate-900  mb-4">Revenue by Service</h3>
           <div className="h-72 relative">
-            {false ? <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={[
-                { name: 'OP Booking', admin: 280000, provider: 1120000 },
-                { name: 'Video Consult', admin: 120000, provider: 480000 },
-                { name: 'Lab Tests', admin: 350000, provider: 1400000 },
-                { name: 'Home Sample', admin: 90000, provider: 360000 },
-                { name: 'Home Nursing', admin: 132000, provider: 528000 },
-              ]} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+            {kpis.revenueByService && kpis.revenueByService.length > 0 ? <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={kpis.revenueByService} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" opacity={0.2} />
                 <XAxis type="number" axisLine={false} tickLine={false} tickFormatter={(val) => `₹${val/1000}k`} tick={{ fontSize: 12, fill: '#64748b' }} />
                 <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} width={100} />
@@ -203,8 +188,8 @@ const Dashboard: React.FC = () => {
                   contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#1e293b', color: '#f8fafc' }}
                 />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                <Bar dataKey="provider" name="Provider Share (80%)" stackId="a" fill="#8b5cf6" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="admin" name="Admin Commission (20%)" stackId="a" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="provider" name="Provider Share" stackId="a" fill="#8b5cf6" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="admin" name="Admin Commission" stackId="a" fill="#3b82f6" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer> : <div className="flex items-center justify-center h-full text-sm text-slate-500">No data available yet.</div>}
           </div>

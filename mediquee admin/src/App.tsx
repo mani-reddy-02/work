@@ -19,11 +19,11 @@ import Reports from './pages/Reports';
 import Notifications from './pages/Notifications';
 import Requests from './pages/Requests';
 import Settings from './pages/Settings';
+import HomePosters from './pages/HomePosters';
 
 // Advanced Pages
 import Transactions from './pages/Transactions';
 import Settlements from './pages/Settlements';
-import Providers from './pages/Providers';
 import LabTests from './pages/LabTests';
 import {
   OPBookings,
@@ -66,7 +66,6 @@ function App() {
               <Route path="departments" element={<Departments />} />
               <Route path="departments/:id" element={<DepartmentDetails />} />
               <Route path="doctors" element={<Doctors />} />
-              <Route path="providers" element={<Providers />} />
               
               <Route path="appointments" element={<Appointments />} />
               <Route path="services/op" element={<OPBookings />} />
@@ -82,6 +81,7 @@ function App() {
               <Route path="notifications" element={<Notifications />} />
               <Route path="requests" element={<Requests />} />
               <Route path="activity" element={<ActivityLog />} />
+              <Route path="home-posters" element={<HomePosters />} />
               <Route path="settings" element={<Settings />} />
             </Route>
 
