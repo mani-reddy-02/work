@@ -4,7 +4,7 @@ import { ArrowLeft, Lock, Save, Eye, EyeOff } from "lucide-react";
 import { useToast } from "../context/ToastContext";
 import { useTranslation } from "react-i18next";
 
-const API_URL = "http://127.0.0.1:5000";
+import { API_URL } from "../services/apiConfig";
 
 export function ChangePassword() {
   const { t } = useTranslation();

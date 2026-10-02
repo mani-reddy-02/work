@@ -1,3 +1,5 @@
+import { API_URL } from './apiConfig';
+
 export interface DashboardAppointment {
   id: string;
   patientId?: string;
@@ -39,7 +41,6 @@ export interface DashboardOverview {
   upcomingAppointments?: DashboardAppointment[];
 }
 
-const API_URL = 'http://127.0.0.1:5000';
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('mediquee_token');

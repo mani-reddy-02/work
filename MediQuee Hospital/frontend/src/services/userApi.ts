@@ -2,6 +2,8 @@
 // USER ACCOUNT & PERSONAL PROFILE API SERVICE LAYER
 // ----------------------------------------------------------------------------
 
+import { API_BASE_URL } from './apiConfig';
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -71,7 +73,6 @@ export interface UserResponse {
   message?: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api/v1';
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('mediquee_token');

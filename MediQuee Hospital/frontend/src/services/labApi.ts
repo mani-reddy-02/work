@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:5000/api/v1';
+import { API_BASE_URL as API_BASE } from './apiConfig';
 
 function getAuthToken(): string {
   return localStorage.getItem('mediquee_token') || localStorage.getItem('token') || '';

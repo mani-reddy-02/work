@@ -1,3 +1,5 @@
+import { API_URL } from './apiConfig';
+
 export interface ServicePayout {
   revenue: number;           // Gross revenue
   count: number;
@@ -58,7 +60,6 @@ export interface PayoutsResponse {
   };
 }
 
-const API_URL = 'http://127.0.0.1:5000';
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('mediquee_token');

@@ -2,7 +2,7 @@
 // ADMIN / HOSPITAL API SERVICE LAYER
 // ----------------------------------------------------------------------------
 
-const API_URL = 'http://127.0.0.1:5000';
+import { API_URL } from './apiConfig';
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('mediquee_token');

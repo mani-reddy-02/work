@@ -3,7 +3,7 @@
 // Direct real-time database connection to Supabase backend
 // ----------------------------------------------------------------------------
 
-const API_BASE_URL = 'http://127.0.0.1:5000/api/v1';
+import { API_BASE_URL } from './apiConfig';
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('mediquee_token');

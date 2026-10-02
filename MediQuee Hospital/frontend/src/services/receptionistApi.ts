@@ -1,3 +1,5 @@
+import { API_URL } from './apiConfig';
+
 export type QueueStatus = 'ARRIVED' | 'WAITING' | 'CALLED' | 'IN_CONSULTATION' | 'COMPLETED' | 'CANCELLED';
 
 export interface QueueEntry {
@@ -50,7 +52,6 @@ export interface BookAppointmentRequest {
 // server-side, NOT client-side.
 // ----------------------------------------------------------------------------
 
-const API_URL = 'http://127.0.0.1:5000';
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('mediquee_token');
