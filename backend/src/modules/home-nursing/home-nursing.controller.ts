@@ -593,6 +593,12 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
         throw new Error('SLOT_CONFLICT: The selected time slot is already booked. Please choose another slot.');
       }
 
+      const hospitalConfig = await tx.hospital.findUnique({ where: { id: hospitalId }, select: { hospitalShare: true } });
+      const hospitalSharePct = hospitalConfig?.hospitalShare ?? 80.0;
+      const mediqueeCommissionPct = 100.0 - hospitalSharePct;
+      const hospitalAmt = trustedTotalAmount * (hospitalSharePct / 100);
+      const mediqueeAmt = trustedTotalAmount * (mediqueeCommissionPct / 100);
+
       return await tx.homeNursingBooking.create({
         data: {
           bookingNumber,
@@ -616,6 +622,10 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
           paymentStatus: 'PAID',
           paymentMethod,
           totalAmount: trustedTotalAmount,
+          hospitalSharePercentage: hospitalSharePct,
+          mediqueeCommissionPercentage: mediqueeCommissionPct,
+          hospitalAmount: hospitalAmt,
+          mediqueeAmount: mediqueeAmt,
         },
       });
     }, {

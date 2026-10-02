@@ -11,6 +11,14 @@ export const getHospitalDashboardOverview = async (req: Request, res: Response, 
       });
     }
 
+    const hospital = await prisma.hospital.findUnique({
+      where: { id: hospitalId },
+      select: { hospitalShare: true }
+    });
+
+    const hospitalShare = hospital?.hospitalShare ?? 80;
+    const mediqueeCommission = 100 - hospitalShare;
+
     const now = new Date();
 
     // 1. Time range for Today: 00:00:00.000 to 23:59:59.999
@@ -251,8 +259,8 @@ export const getHospitalDashboardOverview = async (req: Request, res: Response, 
         date: b.appointmentDate.toISOString().split('T')[0],
         time: timeStr,
         name: b.patientName,
-        dept: b.department?.name || 'General',
-        doctor: b.doctor?.name || 'Assigned Doctor',
+        dept: b.department?.name || 'Not assigned',
+        doctor: b.doctor?.name || 'Not assigned',
         status: b.status,
         statusColor,
         avatar: b.doctor?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(b.patientName)}`
@@ -282,7 +290,9 @@ export const getHospitalDashboardOverview = async (req: Request, res: Response, 
           year: trendYear
         },
         todayAppointments: formattedTodayAppointments,
-        upcomingAppointments: formattedUpcomingAppointments
+        upcomingAppointments: formattedUpcomingAppointments,
+        hospitalSharePercentage: hospitalShare,
+        mediqueeCommissionPercentage: mediqueeCommission
       }
     });
   } catch (error) {

@@ -55,6 +55,13 @@ export const createWalkInBooking = async (req: Request, res: Response, next: Nex
       });
     }
 
+    const hospitalConfig = await prisma.hospital.findUnique({ where: { id: hospitalId }, select: { hospitalShare: true } });
+    const hospitalSharePct = hospitalConfig?.hospitalShare ?? 80.0;
+    const mediqueeCommissionPct = 100.0 - hospitalSharePct;
+    const feeAmount = fee || 0;
+    const hospitalAmt = feeAmount * (hospitalSharePct / 100);
+    const mediqueeAmt = feeAmount * (mediqueeCommissionPct / 100);
+
     const booking = await prisma.oPBooking.create({
       data: {
         hospitalId,
@@ -65,10 +72,14 @@ export const createWalkInBooking = async (req: Request, res: Response, next: Nex
         patientAge,
         patientGender,
         opType: opType || 'Normal',
-        fee: fee || 0,
+        fee: feeAmount,
         timeSlot: assignedSlot,
         status: 'WAITING',
-        appointmentDate: apptDate
+        appointmentDate: apptDate,
+        hospitalSharePercentage: hospitalSharePct,
+        mediqueeCommissionPercentage: mediqueeCommissionPct,
+        hospitalAmount: hospitalAmt,
+        mediqueeAmount: mediqueeAmt
       },
       include: {
         doctor: { select: { id: true, name: true, avatar: true } },

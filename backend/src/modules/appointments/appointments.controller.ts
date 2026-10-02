@@ -250,6 +250,13 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
         };
       }
 
+      const hospitalConfig = await tx.hospital.findUnique({ where: { id: hospitalId }, select: { hospitalShare: true } });
+      const hospitalSharePct = hospitalConfig?.hospitalShare ?? 80.0;
+      const mediqueeCommissionPct = 100.0 - hospitalSharePct;
+      const feeAmount = 500;
+      const hospitalAmt = feeAmount * (hospitalSharePct / 100);
+      const mediqueeAmt = feeAmount * (mediqueeCommissionPct / 100);
+
       // 9. Create appointment
       const newBooking = await tx.oPBooking.create({
         data: {
@@ -268,7 +275,11 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
           opType: opType || 'Normal',
           status: 'WAITING',
           appointmentDate,
-          fee: 500
+          fee: feeAmount,
+          hospitalSharePercentage: hospitalSharePct,
+          mediqueeCommissionPercentage: mediqueeCommissionPct,
+          hospitalAmount: hospitalAmt,
+          mediqueeAmount: mediqueeAmt
         },
         include: {
           hospital: {

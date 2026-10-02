@@ -25,6 +25,7 @@ import reportsRoutes from '../modules/reports/reports.routes';
 import clinicalRoutes from '../modules/clinical/clinical.routes';
 import notificationsRoutes from '../modules/notifications/notifications.routes';
 import userBookingsRoutes from '../modules/bookings/user-bookings.routes';
+import homePostersRoutes from '../modules/home-posters/home-posters.routes';
 import { prisma } from '../config/prisma';
 import { authenticate, requireRole } from '../middleware/auth';
 
@@ -77,5 +78,6 @@ router.use('/home-sample-collection', require('./../modules/laboratories/public-
 router.use('/reports', reportsRoutes);
 router.use('/clinical', clinicalRoutes);
 router.use('/notifications', notificationsRoutes);
+router.use('/home-posters', homePostersRoutes);
 
 export default router;

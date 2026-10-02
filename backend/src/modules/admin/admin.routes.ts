@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate, requireRole } from '../../middleware/auth';
 import { Role } from '@prisma/client';
-import { getStats, getHospitals, getUsers, getAppointments } from './admin.controller';
+import { getStats, getHospitals, getUsers, getAppointments, updateHospitalRevenueShare } from './admin.controller';
 import {
   getAllHospitalRequests,
   updateRequestStatus,
@@ -25,6 +25,7 @@ router.use(requireRole([Role.SUPER_ADMIN]));
 
 router.get('/stats', getStats);
 router.get('/hospitals', getHospitals);
+router.patch('/hospitals/:hospitalId/revenue-share', updateHospitalRevenueShare);
 router.get('/users', getUsers);
 router.get('/appointments', getAppointments);
 router.get('/hospital-requests', getAllHospitalRequests);

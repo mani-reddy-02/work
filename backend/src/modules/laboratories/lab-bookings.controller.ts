@@ -128,6 +128,12 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
         }
       }
 
+      const hospitalConfig = await tx.hospital.findUnique({ where: { id: hospitalId }, select: { hospitalShare: true } });
+      const hospitalSharePct = hospitalConfig?.hospitalShare ?? 80.0;
+      const mediqueeCommissionPct = 100.0 - hospitalSharePct;
+      const hospitalAmt = totalAmount * (hospitalSharePct / 100);
+      const mediqueeAmt = totalAmount * (mediqueeCommissionPct / 100);
+
       // 2. Create the booking
       const newBooking = await tx.labBooking.create({
         data: {
@@ -140,6 +146,10 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
           collectionAddress: bookingType === 'HOME_COLLECTION' ? collectionAddress : null,
           collectionDate: bookingType === 'HOME_COLLECTION' ? new Date(collectionDate) : null,
           collectionTimeSlot: bookingType === 'HOME_COLLECTION' ? collectionTimeSlot : null,
+          hospitalSharePercentage: hospitalSharePct,
+          mediqueeCommissionPercentage: mediqueeCommissionPct,
+          hospitalAmount: hospitalAmt,
+          mediqueeAmount: mediqueeAmt,
           items: {
             create: validItems
           }

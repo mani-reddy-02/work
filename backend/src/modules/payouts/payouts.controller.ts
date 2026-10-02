@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 
-const ADMIN_COMMISSION_RATE = 0.20; // 20% platform cut
-const HOSPITAL_SHARE_RATE = 0.80;   // 80% net to hospital
+
 
 export const getHospitalPayouts = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -13,6 +12,18 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
         error: { code: 'FORBIDDEN', message: 'User does not belong to a hospital' }
       });
     }
+
+    const hospital = await prisma.hospital.findUnique({
+      where: { id: hospitalId },
+      select: { hospitalShare: true }
+    });
+    
+    if (!hospital) {
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
+    }
+
+    const HOSPITAL_SHARE_RATE = (hospital.hospitalShare ?? 80) / 100;
+    const ADMIN_COMMISSION_RATE = 1 - HOSPITAL_SHARE_RATE;
 
     const { startDate, endDate } = req.query;
     const now = new Date();
@@ -71,7 +82,9 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
         opType: true,
         appointmentDate: true,
         patientName: true,
-        status: true
+        status: true,
+        hospitalAmount: true,
+        mediqueeAmount: true
       },
       orderBy: { appointmentDate: 'desc' }
     });
@@ -91,7 +104,9 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
           createdAt: true,
           patientId: true,
           status: true,
-          bookingType: true
+          bookingType: true,
+          hospitalAmount: true,
+          mediqueeAmount: true
         },
         orderBy: { createdAt: 'desc' }
       });
@@ -114,7 +129,9 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
           totalAmount: true,
           serviceDate: true,
           patientName: true,
-          status: true
+          status: true,
+          hospitalAmount: true,
+          mediqueeAmount: true
         },
         orderBy: { serviceDate: 'desc' }
       });
@@ -168,8 +185,8 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
 
     for (const b of rangeOpBookings) {
       const amount = b.fee || 0;
-      const adminCut = Math.round(amount * ADMIN_COMMISSION_RATE);
-      const hospitalNet = amount - adminCut;
+      const adminCut = b.mediqueeAmount ?? Math.round(amount * 0.20);
+      const hospitalNet = b.hospitalAmount ?? Math.round(amount * 0.80);
       const isVideo = (b.opType || '').toLowerCase().includes('video');
       if (isVideo) {
         videoRevenue += amount;
@@ -212,8 +229,8 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
 
     for (const b of rangeLabBookings) {
       const amount = (b as any).totalAmount || (b as any).price || 0;
-      const adminCut = Math.round(amount * ADMIN_COMMISSION_RATE);
-      const hospitalNet = amount - adminCut;
+      const adminCut = (b as any).mediqueeAmount ?? Math.round(amount * 0.20);
+      const hospitalNet = (b as any).hospitalAmount ?? Math.round(amount * 0.80);
       const isSample = b.bookingType === 'HOME_COLLECTION';
       if (isSample) {
         sampleRevenue += amount;
@@ -254,8 +271,8 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
 
     for (const b of rangeNursingBookings) {
       const amount = b.totalAmount || 0;
-      const adminCut = Math.round(amount * ADMIN_COMMISSION_RATE);
-      const hospitalNet = amount - adminCut;
+      const adminCut = b.mediqueeAmount ?? Math.round(amount * 0.20);
+      const hospitalNet = b.hospitalAmount ?? Math.round(amount * 0.80);
       nursingRevenue += amount;
       nursingCount += 1;
       allTransactions.push({
@@ -272,21 +289,21 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
       });
     }
 
-    // Calculate Gross and Net (80% Hospital, 20% Admin) per service
-    const opAdminCommission = Math.round(opRevenue * ADMIN_COMMISSION_RATE);
-    const opHospitalPayout = opRevenue - opAdminCommission;
+    // Calculate Gross and Net (actuals or fallback) per service
+    const opAdminCommission = allTransactions.filter(t => t.type === 'OP').reduce((sum, t) => sum + t.adminCommission, 0);
+    const opHospitalPayout = allTransactions.filter(t => t.type === 'OP').reduce((sum, t) => sum + t.hospitalPayout, 0);
 
-    const videoAdminCommission = Math.round(videoRevenue * ADMIN_COMMISSION_RATE);
-    const videoHospitalPayout = videoRevenue - videoAdminCommission;
+    const videoAdminCommission = allTransactions.filter(t => t.type === 'VIDEO_CONSULTATION').reduce((sum, t) => sum + t.adminCommission, 0);
+    const videoHospitalPayout = allTransactions.filter(t => t.type === 'VIDEO_CONSULTATION').reduce((sum, t) => sum + t.hospitalPayout, 0);
 
-    const nursingAdminCommission = Math.round(nursingRevenue * ADMIN_COMMISSION_RATE);
-    const nursingHospitalPayout = nursingRevenue - nursingAdminCommission;
+    const nursingAdminCommission = allTransactions.filter(t => t.type === 'HOME_NURSING').reduce((sum, t) => sum + t.adminCommission, 0);
+    const nursingHospitalPayout = allTransactions.filter(t => t.type === 'HOME_NURSING').reduce((sum, t) => sum + t.hospitalPayout, 0);
 
-    const labAdminCommission = Math.round(labRevenue * ADMIN_COMMISSION_RATE);
-    const labHospitalPayout = labRevenue - labAdminCommission;
+    const labAdminCommission = allTransactions.filter(t => t.type === 'LAB_TEST').reduce((sum, t) => sum + t.adminCommission, 0);
+    const labHospitalPayout = allTransactions.filter(t => t.type === 'LAB_TEST').reduce((sum, t) => sum + t.hospitalPayout, 0);
 
-    const sampleAdminCommission = Math.round(sampleRevenue * ADMIN_COMMISSION_RATE);
-    const sampleHospitalPayout = sampleRevenue - sampleAdminCommission;
+    const sampleAdminCommission = allTransactions.filter(t => t.type === 'HOME_SAMPLE_COLLECTION').reduce((sum, t) => sum + t.adminCommission, 0);
+    const sampleHospitalPayout = allTransactions.filter(t => t.type === 'HOME_SAMPLE_COLLECTION').reduce((sum, t) => sum + t.hospitalPayout, 0);
 
     // Totals
     const totalGross = opRevenue + videoRevenue + nursingRevenue + labRevenue + sampleRevenue;
@@ -319,10 +336,14 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
       .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
 
     const thisMonthTotal = thisMonthOP + thisMonthLab + thisMonthNursing;
-    const thisMonthHospitalPayout = Math.round(thisMonthTotal * HOSPITAL_SHARE_RATE);
+    const thisMonthHospitalPayout = allOpBookings.filter(b => b.appointmentDate >= thisMonthStart && b.appointmentDate <= thisMonthEnd).reduce((sum, b) => sum + (b.hospitalAmount ?? (b.fee || 0) * 0.8), 0) +
+      allLabBookings.filter(b => b.createdAt >= thisMonthStart && b.createdAt <= thisMonthEnd).reduce((sum, b) => sum + ((b as any).hospitalAmount ?? ((b as any).totalAmount || (b as any).price || 0) * 0.8), 0) +
+      allNursingBookings.filter(b => b.serviceDate >= thisMonthStart && b.serviceDate <= thisMonthEnd).reduce((sum, b) => sum + (b.hospitalAmount ?? (b.totalAmount || 0) * 0.8), 0);
 
     const lastMonthTotal = lastMonthOP + lastMonthLab + lastMonthNursing;
-    const lastMonthHospitalPayout = Math.round(lastMonthTotal * HOSPITAL_SHARE_RATE);
+    const lastMonthHospitalPayout = allOpBookings.filter(b => b.appointmentDate >= lastMonthStart && b.appointmentDate <= lastMonthEnd).reduce((sum, b) => sum + (b.hospitalAmount ?? (b.fee || 0) * 0.8), 0) +
+      allLabBookings.filter(b => b.createdAt >= lastMonthStart && b.createdAt <= thisMonthEnd).reduce((sum, b) => sum + ((b as any).hospitalAmount ?? ((b as any).totalAmount || (b as any).price || 0) * 0.8), 0) +
+      allNursingBookings.filter(b => b.serviceDate >= lastMonthStart && b.serviceDate <= thisMonthEnd).reduce((sum, b) => sum + (b.hospitalAmount ?? (b.totalAmount || 0) * 0.8), 0);
 
     // Sort transactions by date descending
     allTransactions.sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
