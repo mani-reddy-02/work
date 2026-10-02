@@ -479,7 +479,7 @@ const LabTestList = () => {
           </div>
         </div>
         {viewState === 'LIST' && (
-          <div className="relative max-w-md mx-auto">
+          <div className="relative max-w-md md:max-w-xl mx-auto">
             {searchMode ? (
               <button 
                 onClick={() => { setSearchMode(false); setSearchQuery(''); }}
@@ -838,7 +838,7 @@ const LabTestList = () => {
               />
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
               {concernTests.filter(
                 (t) =>
                   t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -904,7 +904,7 @@ const LabTestList = () => {
         )}
 
         {/* BOOKING FLOW CONTAINER */}
-        <div className="px-4 pt-6 max-w-md mx-auto space-y-6">
+        <div className="px-4 pt-6 max-w-md md:max-w-2xl mx-auto space-y-6">
           {/* VIEW: TEST DETAIL */}
           {viewState === 'TEST_DETAIL' && (
             <section className="animate-in fade-in duration-300">

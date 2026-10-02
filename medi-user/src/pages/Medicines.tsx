@@ -37,7 +37,7 @@ export default function Medicines() {
         </div>
 
         <div className="flex-1 p-4 md:p-6 bg-slate-50 md:bg-white md:border-x md:border-b md:rounded-b-2xl">
-          <div className="max-w-md mx-auto">
+          <div className="max-w-md md:max-w-xl mx-auto">
             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm mb-6 flex flex-col items-center text-center">
               <div className="w-16 h-16 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center mb-4">
                 <Pill className="w-8 h-8" />
@@ -100,7 +100,7 @@ export default function Medicines() {
       </div>
 
       <div className="flex-1 p-4 md:p-6 bg-slate-50 md:bg-white md:border-x md:border-b md:rounded-b-2xl">
-        <div className="max-w-md mx-auto mb-6">
+        <div className="max-w-md md:max-w-xl mx-auto mb-6">
           <h2 className="text-slate-600 font-medium mb-4 text-center">Find and manage your medicines</h2>
           
           <div className="relative">
@@ -117,7 +117,7 @@ export default function Medicines() {
           </div>
         </div>
 
-        <div className="space-y-3 max-w-md mx-auto">
+        <div className="max-w-md md:max-w-5xl mx-auto space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
           {q && filteredMedicines.length === 0 ? (
             <div className="text-center py-10">
               <p className="text-[14px] text-slate-500 font-bold">No matching medicines found</p>

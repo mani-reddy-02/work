@@ -41,25 +41,25 @@ export default function FamilyMembers() {
         <h1 className="text-xl font-bold text-slate-900 tracking-tight flex-1">Family Members</h1>
       </div>
 
-      <div className="p-4 md:p-6 max-w-md mx-auto w-full flex-1">
+      <div className="p-4 md:p-6 max-w-md md:max-w-4xl mx-auto w-full flex-1">
         {!isAdding ? (
           <>
-            <div className="space-y-3 mb-6">
+            <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4 mb-6">
               {members.map(member => (
-                <div key={member.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex items-center gap-4 cursor-pointer hover:border-blue-100 transition-colors group">
+                <div key={member.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex items-center gap-4 cursor-pointer hover:border-blue-100 hover:shadow-md transition-all group">
                   <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center shrink-0 text-orange-500">
                     <UserCircle2 className="w-6 h-6" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-slate-900 mb-0.5">{member.name}</h3>
-                    <p className="text-slate-500 text-sm">Relationship: {member.relationship} • Age: {member.age}</p>
+                    <h3 className="font-bold text-slate-900 mb-0.5 truncate">{member.name}</h3>
+                    <p className="text-slate-500 text-sm truncate">{member.relationship} • Age: {member.age}</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" />
                 </div>
               ))}
               
               {members.length === 0 && (
-                <div className="text-center py-10 bg-white rounded-2xl border border-slate-100 border-dashed">
+                <div className="text-center py-10 bg-white rounded-2xl border border-slate-100 border-dashed md:col-span-3">
                   <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
                     <Users className="w-8 h-8" />
                   </div>
@@ -68,15 +68,17 @@ export default function FamilyMembers() {
               )}
             </div>
 
-            <button 
-              onClick={() => setIsAdding(true)}
-              className="w-full py-4 bg-orange-50 text-orange-600 border border-orange-100 font-bold rounded-xl hover:bg-orange-100 transition-colors flex items-center justify-center gap-2"
-            >
-              <Plus className="w-5 h-5" /> Add Family Member
-            </button>
+            <div className="flex justify-center">
+              <button 
+                onClick={() => setIsAdding(true)}
+                className="w-full md:max-w-md py-4 bg-orange-50 text-orange-600 border border-orange-100 font-bold rounded-xl hover:bg-orange-100 transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus className="w-5 h-5" /> Add Family Member
+              </button>
+            </div>
           </>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-100 p-5 md:p-6 shadow-sm space-y-4 max-w-xl mx-auto">
             <h2 className="font-bold text-lg text-slate-900 mb-4">Add Family Member</h2>
             
             <div>

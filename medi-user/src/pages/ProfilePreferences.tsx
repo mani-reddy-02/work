@@ -20,7 +20,7 @@ const ProfilePreferences = () => {
         </div>
       </div>
 
-      <div className="p-4 space-y-6 flex-1 overflow-y-auto">
+      <div className="p-4 md:p-6 space-y-6 flex-1 overflow-y-auto max-w-md md:max-w-2xl mx-auto w-full">
         
         {/* Language Section */}
         <section className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">

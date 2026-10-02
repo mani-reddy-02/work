@@ -538,7 +538,7 @@ const HomeSampleList = () => {
         </div>
 
         {viewState === 'LIST' && (
-          <div className="relative max-w-md mx-auto">
+          <div className="relative max-w-md md:max-w-xl mx-auto">
             {searchMode ? (
               <button 
                 onClick={() => { setSearchMode(false); setSearchQuery(''); }}
@@ -866,7 +866,7 @@ const HomeSampleList = () => {
               </div>
             </div>
 
-            <div className="relative max-w-md mx-auto mb-6">
+            <div className="relative max-w-md md:max-w-xl mx-auto mb-6">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-slate-400" />
               </div>
@@ -881,7 +881,7 @@ const HomeSampleList = () => {
               />
             </div>
 
-            <div className="max-w-md mx-auto space-y-4">
+            <div className="max-w-md md:max-w-5xl mx-auto space-y-4 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
               {filteredTests.map((item) => (
                 <div
                   key={item.id}
@@ -945,7 +945,7 @@ const HomeSampleList = () => {
         )}
 
         {/* BOOKING FLOW STEPS CONTAINER */}
-        <div className="px-4 pt-4 max-w-md mx-auto space-y-4">
+        <div className="px-4 pt-4 max-w-md md:max-w-2xl mx-auto space-y-4">
           {['TEST_DETAIL', 'HOME_COLLECTION', 'PATIENT', 'DATE_TIME', 'REVIEW'].includes(viewState) && (
             <div className="flex items-center justify-between px-2 mb-2 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
               {['Test', 'Lab', 'Patient', 'Date & Time', 'Review', 'Confirm'].map((step, idx) => {

@@ -36,7 +36,7 @@ const ServiceDetails = () => {
           <h1 className="text-xl font-bold">{title}</h1>
         </div>
 
-        <div className="relative max-w-md mx-auto">
+        <div className="relative max-w-md md:max-w-xl mx-auto">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
              <Search className="h-5 w-5 text-slate-400" />
           </div>
@@ -50,7 +50,7 @@ const ServiceDetails = () => {
 
       {/* Main Content */}
       <div className="px-4 -mt-8 flex-1 pb-8 overflow-y-auto">
-        <div className="max-w-md mx-auto space-y-4">
+        <div className="max-w-md md:max-w-2xl mx-auto space-y-4">
           
           <h2 className="font-bold text-slate-800 px-1 mt-4">Top Specialists</h2>
 

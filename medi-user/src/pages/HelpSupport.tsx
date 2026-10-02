@@ -51,7 +51,7 @@ export default function HelpSupport() {
         <h1 className="text-xl font-bold text-slate-900 tracking-tight flex-1">Help & Support</h1>
       </div>
 
-      <div className="p-4 md:p-6 max-w-md mx-auto w-full flex-1">
+      <div className="p-4 md:p-6 max-w-md md:max-w-3xl mx-auto w-full flex-1">
         {showToast && (
           <div className="mb-4 bg-emerald-50 text-emerald-600 p-3 rounded-xl flex items-center justify-center gap-2 border border-emerald-100 animate-in fade-in slide-in-from-top-4">
             <p className="text-sm font-medium">Request submitted successfully!</p>

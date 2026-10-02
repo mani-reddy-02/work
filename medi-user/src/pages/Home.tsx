@@ -39,10 +39,10 @@ const Home = () => {
     opAppointmentApi.fetchDiseases().then((res) => {
       if (mounted) {
         if (res.success && res.data && res.data.categorical) {
-          const categorical = res.data.categorical.slice(0, 3).map((s: any, idx: number) => ({
+          const categorical = res.data.categorical.slice(0, 6).map((s: any, idx: number) => ({
             ...s,
             image: getDiseaseIconUrl(s.name, s.icon),
-            bg: ['bg-red-50', 'bg-yellow-50', 'bg-blue-50'][idx % 3]
+            bg: ['bg-red-50', 'bg-yellow-50', 'bg-blue-50', 'bg-green-50', 'bg-purple-50', 'bg-orange-50'][idx % 6]
           }));
           setTopSpecialists(categorical);
         } else {
@@ -259,7 +259,7 @@ const Home = () => {
   ];
 
   return (
-    <div className={`p-4 space-y-5 overflow-x-hidden relative transition-all ${hasUpcomingBooking ? 'pb-32' : 'pb-8'}`}>
+    <div className={`p-4 md:p-6 lg:p-8 space-y-5 md:space-y-6 overflow-x-hidden relative transition-all max-w-5xl md:mx-auto ${hasUpcomingBooking ? 'pb-32' : 'pb-8'}`}>
 
       {/* Booking Success Popup */}
       {showBookingPopup && (
@@ -395,7 +395,7 @@ const Home = () => {
         <h2 className="text-[15px] md:text-[18px] lg:text-[20px] font-bold mb-3 md:mb-4 text-slate-800">Quick Services</h2>
         
         {/* Primary Large Services */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-3 md:gap-4 md:mb-4">
+        <div className="grid grid-cols-2 gap-3 mb-3 md:gap-4 md:mb-4">
           <Link to="/specialties?type=hospital-op" className="relative overflow-hidden bg-white rounded-2xl border border-slate-100 p-3.5 flex flex-col justify-between h-[115px] md:h-[130px] hover:border-blue-200 transition-colors">
             <div className="relative z-10">
               <h3 className="font-bold text-slate-800 text-[15px] mb-0.5">OP Booking</h3>
@@ -406,7 +406,7 @@ const Home = () => {
             </div>
           </Link>
           
-          <Link to="/specialties?type=doctor" className="relative overflow-hidden bg-white rounded-2xl border border-slate-100 p-3.5 flex flex-col justify-between h-[115px] hover:border-green-200 transition-colors">
+          <Link to="/specialties?type=doctor" className="relative overflow-hidden bg-white rounded-2xl border border-slate-100 p-3.5 flex flex-col justify-between h-[115px] md:h-[130px] hover:border-green-200 transition-colors">
             <div className="relative z-10">
               <h3 className="font-bold text-slate-800 text-[15px] mb-0.5">Video Consultation</h3>
               <p className="text-[11px] text-slate-400">Online doctors</p>
@@ -418,7 +418,7 @@ const Home = () => {
         </div>
 
         {/* Secondary Standard Services */}
-        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 md:gap-3 lg:gap-4">
+        <div className="grid grid-cols-4 gap-2 md:gap-3">
             <Link to="/services/insurance" className="flex flex-col items-center p-3 py-3.5 bg-white rounded-xl border border-slate-100 gap-1.5 hover:border-cyan-200 transition-colors">
               <div className="w-12 h-12 rounded-full bg-cyan-50 flex items-center justify-center mb-1">
                 <Shield className="w-6 h-6 text-cyan-400" />
@@ -450,7 +450,7 @@ const Home = () => {
       <section>
         <div
           onClick={() => navigate('/ambulance')}
-          className={`relative overflow-hidden bg-gradient-to-r from-red-500 via-rose-500 to-red-600 rounded-2xl p-4 md:p-6 lg:w-1/2 text-white shadow-md cursor-pointer transition-all duration-300 hover:shadow-lg hover:brightness-105 active:scale-[0.99] border-2 ${
+          className={`relative overflow-hidden bg-gradient-to-r from-red-500 via-rose-500 to-red-600 rounded-2xl p-4 md:p-5 text-white shadow-md cursor-pointer transition-all duration-300 hover:shadow-lg hover:brightness-105 active:scale-[0.99] border-2 ${
             isEmergencyHighlighted ? 'emergency-highlight border-red-200' : 'border-red-400/40'
           }`}
           role="button"
@@ -507,9 +507,9 @@ const Home = () => {
           </Link>
         </div>
         {isSpecialistsLoading ? (
-          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-xl border border-slate-100 p-3 h-28 md:h-32 animate-pulse flex flex-col items-center justify-center">
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className={`bg-white rounded-xl border border-slate-100 p-3 h-28 md:h-32 animate-pulse flex flex-col items-center justify-center ${i > 3 ? 'hidden md:flex' : ''}`}>
                 <div className="w-10 h-10 bg-slate-200 rounded-full mb-2"></div>
                 <div className="h-2 w-16 bg-slate-200 rounded mb-2"></div>
                 <div className="h-2 w-12 bg-slate-200 rounded"></div>
@@ -521,16 +521,23 @@ const Home = () => {
             No specialists currently available. Check back later!
           </div>
         ) : (
-          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-            {topSpecialists.map((specialist) => (
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
+            {topSpecialists.map((specialist, idx) => (
               <Link 
                 key={specialist.id} 
                 to={`/specialties?type=doctor&category=${encodeURIComponent(specialist.name)}`} 
-                className="bg-white rounded-xl border border-slate-100 p-3 flex flex-col items-center text-center shadow-sm hover:shadow-md hover:border-blue-100 transition-all"
+                className={`bg-white rounded-xl border border-slate-100 p-3 flex flex-col items-center text-center shadow-sm hover:shadow-md hover:border-blue-100 transition-all ${idx >= 3 ? 'hidden md:flex' : ''}`}
               >
                   <div className={`w-10 h-10 rounded-full ${specialist.bg} flex items-center justify-center mb-2 overflow-hidden p-1`}>
                       {specialist.image ? (
-                          <img src={specialist.image} alt={specialist.name} className="w-full h-full object-contain mix-blend-multiply" />
+                          <img 
+                            src={specialist.image} 
+                            alt={specialist.name} 
+                            className="w-full h-full object-contain mix-blend-multiply" 
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                            }}
+                          />
                       ) : (
                           <Stethoscope className="w-5 h-5 text-slate-400" />
                       )}

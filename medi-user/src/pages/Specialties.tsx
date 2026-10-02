@@ -79,7 +79,7 @@ const getDiseasesForCategory = (catId: string, catName: string, rawConditions: a
     name: bm.name,
     desc: bm.description || `Specialized clinical care and diagnosis for ${bm.name}.`,
     icon: Stethoscope,
-    image: getDiseaseIconUrl(bm.name, bm.icon),
+    image: getDiseaseIconUrl(bm.name, bm.icon, catName),
     bg: ['bg-red-50', 'bg-blue-50', 'bg-emerald-50', 'bg-purple-50', 'bg-amber-50'][idx % 5],
     iconName: bm.icon || (departmentIcons[catName] ? departmentIcons[catName][0] : allIcons[0])
   }));
@@ -335,7 +335,8 @@ const Specialties = () => {
       setSelectedDisease({
         id: concern.id,
         name: concern.name,
-        icon: Stethoscope
+        icon: Stethoscope,
+        image: getDiseaseIconUrl(concern.name)
       });
       setView('HOSPITAL_RESULTS');
     }
@@ -582,7 +583,14 @@ const Specialties = () => {
                     <div key={item.id} onClick={() => handleDiseaseSelect(item)} className="flex flex-col items-center bg-white rounded-2xl p-2 cursor-pointer border border-slate-50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-shadow h-[90px] justify-center">
                       <div className={`w-[54px] h-[54px] rounded-full ${item.bg} flex items-center justify-center mb-2 shadow-sm overflow-hidden p-1`}>
                           {item.image ? (
-                              <img src={item.image} alt={item.name} className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" />
+                              <img 
+                                src={item.image} 
+                                alt={item.name} 
+                                className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" 
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                                }}
+                              />
                           ) : (
                               <item.icon className={`w-8 h-8`} />
                           )}
@@ -614,7 +622,14 @@ const Specialties = () => {
                     <div key={item.id} onClick={() => handleDiseaseSelect(item)} className="flex flex-col items-center bg-white rounded-2xl p-2 cursor-pointer border border-slate-50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-shadow h-[90px] justify-center">
                       <div className={`w-[54px] h-[54px] rounded-full ${item.bg} flex items-center justify-center mb-2 shadow-sm overflow-hidden p-1`}>
                           {item.image ? (
-                              <img src={item.image} alt={item.name} className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" />
+                              <img 
+                                src={item.image} 
+                                alt={item.name} 
+                                className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" 
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                                }}
+                              />
                           ) : (
                               <item.icon className={`w-8 h-8`} />
                           )}
@@ -649,7 +664,14 @@ const Specialties = () => {
                  <div className="flex items-center gap-3">
                     <div className={`w-14 h-14 rounded-full ${cat.bg} flex items-center justify-center shrink-0 shadow-sm border border-slate-100/50 p-1.5`}>
                        {cat.image ? (
-                           <img src={cat.image} alt={cat.name} className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" />
+                           <img 
+                             src={cat.image} 
+                             alt={cat.name} 
+                             className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" 
+                             onError={(e) => {
+                               (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                             }}
+                           />
                        ) : (
                            <cat.icon className={`w-8 h-8`} />
                        )}
@@ -730,8 +752,17 @@ const Specialties = () => {
       <div className="px-4 py-4 space-y-4 max-w-4xl mx-auto animate-in fade-in duration-200">
         {/* Category Header Card */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm flex items-start gap-4">
-          <div className={`w-14 h-14 rounded-2xl ${selectedCategory.bg || 'bg-blue-50'} flex items-center justify-center shrink-0 shadow-sm border border-slate-100/60`}>
-            {selectedCategory.icon ? (
+          <div className={`w-14 h-14 rounded-2xl ${selectedCategory.bg || 'bg-blue-50'} flex items-center justify-center shrink-0 shadow-sm border border-slate-100/60 p-1.5 overflow-hidden`}>
+            {selectedCategory.image ? (
+              <img 
+                src={selectedCategory.image} 
+                alt={selectedCategory.name} 
+                className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" 
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                }}
+              />
+            ) : selectedCategory.icon ? (
               <selectedCategory.icon className="w-8 h-8" />
             ) : (
               <Stethoscope className="w-8 h-8 text-primary" />
@@ -779,8 +810,19 @@ const Specialties = () => {
           className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-blue-50/80 to-indigo-50/60 border border-blue-200/70 hover:border-blue-400 hover:shadow-sm transition-all cursor-pointer group"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white text-blue-600 flex items-center justify-center shrink-0 shadow-sm border border-blue-100 group-hover:scale-105 transition-transform">
-              <Stethoscope className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-white text-blue-600 flex items-center justify-center shrink-0 shadow-sm border border-blue-100 group-hover:scale-105 transition-transform overflow-hidden p-1">
+              {selectedCategory.image ? (
+                <img 
+                  src={selectedCategory.image} 
+                  alt={selectedCategory.name} 
+                  className="w-full h-full object-contain mix-blend-multiply" 
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                  }}
+                />
+              ) : (
+                <Stethoscope className="w-5 h-5" />
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -818,9 +860,16 @@ const Specialties = () => {
                     className="flex items-start justify-between bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm cursor-pointer hover:border-blue-200 hover:shadow-md transition-all group"
                   >
                     <div className="flex items-start gap-3 min-w-0 pr-2">
-                      <div className={`w-11 h-11 rounded-xl ${item.bg || 'bg-blue-50'} flex items-center justify-center shrink-0 shadow-sm border border-slate-100 group-hover:scale-105 transition-transform p-1`}>
+                      <div className={`w-11 h-11 rounded-xl ${item.bg || 'bg-blue-50'} flex items-center justify-center shrink-0 shadow-sm border border-slate-100 group-hover:scale-105 transition-transform p-1 overflow-hidden`}>
                         {item.image ? (
-                          <img src={item.image} alt={item.name} className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" />
+                          <img 
+                            src={item.image} 
+                            alt={item.name} 
+                            className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" 
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                            }}
+                          />
                         ) : (
                           <ItemIcon className="w-6 h-6 text-slate-700" />
                         )}
@@ -886,7 +935,7 @@ const Specialties = () => {
 
     return (
       <div className={`px-4 py-6 ${!hasSearch ? 'animate-in fade-in slide-in-from-right-4' : ''}`}>
-        <div className="relative max-w-md mx-auto z-10 mb-6">
+        <div className="relative max-w-md md:max-w-xl mx-auto z-10 mb-6">
           {searchFocused ? (
             <button 
               onClick={() => { setSearchFocused(false); setHospitalSearch(''); }}
@@ -924,7 +973,7 @@ const Specialties = () => {
              <p className="text-[14px] text-slate-500 font-bold">{hasSearch ? "No hospitals found matching your search" : "No hospitals found."}</p>
           </div>
         ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
           {filteredHospitals.map(hosp => (
             <div 
               key={hosp.id} 
@@ -1013,7 +1062,7 @@ const Specialties = () => {
               <p className="text-[11px] text-slate-400 mt-1">No doctors are currently available for {selectedDisease.name} at this hospital.</p>
             </div>
           ) : (
-            <div className="space-y-3 mb-6">
+            <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4 mb-6">
               {doctorsList.map(doc => (
                 <div key={doc.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
                   <div className="flex gap-3">
@@ -1117,7 +1166,7 @@ const Specialties = () => {
             <p className="text-[11px] text-slate-400 mt-1">No doctors are currently available for this selection.</p>
           </div>
         ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
           {docs.map(doc => (
             <div key={doc.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
               <div className="flex gap-3">
@@ -1153,7 +1202,7 @@ const Specialties = () => {
   };
 
   const renderDoctorProfile = () => (
-    <div className="px-4 py-6 animate-in fade-in slide-in-from-right-4">
+    <div className="px-4 py-6 max-w-md md:max-w-2xl mx-auto animate-in fade-in slide-in-from-right-4">
       <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm mb-4 text-center">
         <div className="w-20 h-20 rounded-full bg-slate-100 mx-auto flex items-center justify-center mb-3 overflow-hidden">
           {selectedDoctor.avatar ? (
@@ -1193,7 +1242,7 @@ const Specialties = () => {
 
   const renderSelectSlot = () => {
     return (
-      <div className="px-4 py-6 animate-in fade-in slide-in-from-right-4">
+      <div className="px-4 py-6 max-w-md md:max-w-2xl mx-auto animate-in fade-in slide-in-from-right-4">
         <h2 className="text-[15px] font-bold text-slate-800 mb-4">Select {isVideo ? 'Consultation' : 'Appointment'} Date</h2>
         <div className="flex overflow-x-auto gap-3 pb-2 -mx-4 px-4 hide-scrollbar mb-4">
           {upcomingDates.map((d) => (
@@ -1272,7 +1321,7 @@ const Specialties = () => {
 
 
   const renderReview = () => (
-    <div className="px-4 py-6 animate-in fade-in slide-in-from-right-4">
+    <div className="px-4 py-6 max-w-md md:max-w-2xl mx-auto animate-in fade-in slide-in-from-right-4">
       <h2 className="text-[15px] font-bold text-slate-800 mb-4">Review {isVideo ? 'Video Consultation' : 'Appointment'}</h2>
       
       {bookingError && (
@@ -1348,7 +1397,7 @@ const Specialties = () => {
   );
 
   const renderConfirmation = () => (
-    <div className="px-4 py-8 text-center animate-in zoom-in-95 duration-500">
+    <div className="px-4 py-8 text-center max-w-md md:max-w-xl mx-auto animate-in zoom-in-95 duration-500">
       <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 relative">
         <div className="absolute inset-0 bg-green-400 rounded-full animate-ping opacity-20"></div>
         <CheckCircle2 className="w-10 h-10 text-green-500" />
@@ -1412,7 +1461,7 @@ const Specialties = () => {
   );
 
   const renderAppointmentStatus = () => (
-    <div className="px-4 py-6 animate-in fade-in slide-in-from-right-4">
+    <div className="px-4 py-6 max-w-md md:max-w-2xl mx-auto animate-in fade-in slide-in-from-right-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-[15px] font-bold text-slate-800">Appointment Details</h2>
         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${

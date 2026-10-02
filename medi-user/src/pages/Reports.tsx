@@ -205,7 +205,7 @@ Verified Digital Health Record • MediQuee Healthcare Network
   return (
     <div className="flex flex-col h-full bg-slate-50 overflow-x-hidden">
       {/* Header */}
-      <div className="bg-[#0055ff] pt-6 pb-14 px-4 text-white rounded-b-3xl relative overflow-hidden">
+      <div className="bg-[#0055ff] pt-6 pb-14 px-4 md:px-8 text-white rounded-b-3xl relative overflow-hidden">
         <div className="absolute right-0 top-0 opacity-20 pointer-events-none">
            <FileText className="w-32 h-32 -mr-6 -mt-4" strokeWidth={1} />
         </div>
@@ -221,7 +221,7 @@ Verified Digital Health Record • MediQuee Healthcare Network
         </div>
         <p className="text-[13px] text-white/90 mb-5 relative z-10">All your medical reports in one place</p>
         
-        <div className="relative max-w-md mx-auto z-10">
+        <div className="relative max-w-md md:max-w-lg mx-auto z-10">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
              <Search className="h-5 w-5 text-slate-400" />
           </div>
@@ -244,10 +244,10 @@ Verified Digital Health Record • MediQuee Healthcare Network
         </div>
       </div>
 
-      <div className="flex-1 pb-24 px-4 -mt-6 relative z-20">
+      <div className="flex-1 pb-24 px-4 md:px-8 -mt-6 relative z-20">
         
         {/* Tabs */}
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm flex mb-6 max-w-md mx-auto overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-100 shadow-sm flex mb-6 max-w-md md:max-w-xl mx-auto overflow-hidden">
             <button 
               className={`flex-1 flex items-center justify-center gap-2 py-4 text-[13px] font-bold border-b-[2.5px] transition-colors ${activeTab === 'received' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
               onClick={() => setActiveTab('received')}
@@ -266,7 +266,7 @@ Verified Digital Health Record • MediQuee Healthcare Network
 
         {/* Received Reports Section */}
         {activeTab === 'received' && (
-        <div className="max-w-md mx-auto">
+        <div className="max-w-md md:max-w-3xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <h2 className="text-[15px] font-bold text-slate-900">Received Reports</h2>
@@ -285,7 +285,7 @@ Verified Digital Health Record • MediQuee Healthcare Network
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             {displayedReports.map((report) => {
               const IconComponent = getIconComponent(report.iconName || report.icon);
               return (
@@ -387,7 +387,7 @@ Verified Digital Health Record • MediQuee Healthcare Network
 
         {/* Upload Reports Section */}
         {activeTab === 'upload' && (
-        <div className="max-w-md mx-auto mt-2">
+        <div className="max-w-md md:max-w-xl mx-auto mt-2">
           <h2 className="text-[15px] font-bold text-slate-900 mb-4">Upload Reports</h2>
           
           <div className="border-[1.5px] border-dashed border-blue-300 bg-blue-50/50 rounded-2xl p-5 flex items-center justify-between mb-4">
@@ -425,7 +425,7 @@ Verified Digital Health Record • MediQuee Healthcare Network
         const ModalIcon = getIconComponent(selectedReport.iconName || selectedReport.icon);
         return (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl relative border border-slate-100">
+            <div className="bg-white rounded-3xl max-w-md md:max-w-lg w-full p-5 md:p-6 shadow-2xl relative border border-slate-100">
               {/* Close Button */}
               <button 
                 onClick={() => setSelectedReport(null)}

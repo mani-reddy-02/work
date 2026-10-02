@@ -28,7 +28,7 @@ const Services = () => {
   return (
     <div className="flex flex-col h-full bg-slate-50">
       {/* Header */}
-      <div className="bg-theme-gradient pt-4 pb-6 px-4 text-white rounded-b-3xl">
+      <div className="bg-theme-gradient pt-4 pb-6 px-4 md:px-8 text-white rounded-b-3xl">
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => navigate(-1)} className="p-1 hover:bg-white/20 rounded-full transition-colors">
             <ArrowLeft className="w-6 h-6" />
@@ -36,7 +36,7 @@ const Services = () => {
           <h1 className="text-xl font-bold">All Services</h1>
         </div>
         
-        <div className="relative max-w-md mx-auto">
+        <div className="relative max-w-md md:max-w-lg mx-auto">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
              <Search className="h-5 w-5 text-slate-400" />
           </div>
@@ -51,17 +51,18 @@ const Services = () => {
       </div>
 
       {/* Service List */}
-      <div className="p-4 flex-1 overflow-y-auto pb-24">
-        <div className="max-w-md mx-auto space-y-3 pb-8">
+      <div className="p-4 md:px-8 flex-1 overflow-y-auto pb-24">
+        <div className="max-w-md md:max-w-3xl mx-auto pb-8">
           {filteredServices.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-[14px] text-slate-500 font-bold">No matching services found</p>
             </div>
           ) : (
-            filteredServices.map((service) => (
-              <Link 
-                key={service.id} 
-                to={service.path}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {filteredServices.map((service) => (
+                <Link 
+                  key={service.id} 
+                  to={service.path}
                 className="flex items-center p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group"
               >
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${service.bg} ${service.color} mr-4`}>
@@ -73,7 +74,8 @@ const Services = () => {
                 </div>
                 <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-primary transition-colors shrink-0 ml-2" />
               </Link>
-            ))
+            ))}
+            </div>
           )}
         </div>
       </div>

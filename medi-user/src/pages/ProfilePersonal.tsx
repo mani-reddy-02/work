@@ -71,7 +71,7 @@ export default function ProfilePersonal() {
         )}
       </div>
 
-      <div className="p-4 md:p-6 max-w-md mx-auto w-full">
+      <div className="p-4 md:p-6 max-w-md md:max-w-2xl mx-auto w-full">
         {showSuccess && (
           <div className="mb-4 bg-emerald-50 text-emerald-600 p-3 rounded-xl flex items-center gap-2 border border-emerald-100 animate-in fade-in slide-in-from-top-4">
             <CheckCircle2 className="w-5 h-5 shrink-0" />
@@ -105,8 +105,8 @@ export default function ProfilePersonal() {
           <p className="text-slate-500 text-sm">{profile.email}</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
-          <div>
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 md:p-6 shadow-sm space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
+          <div className="md:col-span-2">
             <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Full Name</label>
             {isEditing ? (
               <input 
@@ -148,36 +148,35 @@ export default function ProfilePersonal() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Date of Birth</label>
-              {isEditing ? (
-                <input 
-                  type="date" 
-                  value={formData.dob ? formData.dob.split('T')[0] : ''}
-                  onChange={(e) => setFormData({...formData, dob: e.target.value})}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-900"
-                />
-              ) : (
-                <p className="text-slate-900 font-medium py-1">{profile.dob ? profile.dob.split('T')[0] : '-'}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Gender</label>
-              {isEditing ? (
-                <select 
-                  value={formData.gender || 'Male'}
-                  onChange={(e) => setFormData({...formData, gender: e.target.value})}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-900"
-                >
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-              ) : (
-                <p className="text-slate-900 font-medium py-1">{profile.gender || '-'}</p>
-              )}
-            </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Date of Birth</label>
+            {isEditing ? (
+              <input 
+                type="date" 
+                value={formData.dob ? formData.dob.split('T')[0] : ''}
+                onChange={(e) => setFormData({...formData, dob: e.target.value})}
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-900"
+              />
+            ) : (
+              <p className="text-slate-900 font-medium py-1">{profile.dob ? profile.dob.split('T')[0] : '-'}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Gender</label>
+            {isEditing ? (
+              <select 
+                value={formData.gender || 'Male'}
+                onChange={(e) => setFormData({...formData, gender: e.target.value})}
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-900"
+              >
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            ) : (
+              <p className="text-slate-900 font-medium py-1">{profile.gender || '-'}</p>
+            )}
           </div>
         </div>
 

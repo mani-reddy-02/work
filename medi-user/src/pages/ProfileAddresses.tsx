@@ -70,12 +70,12 @@ export default function ProfileAddresses() {
         <h1 className="text-xl font-bold text-slate-900 tracking-tight flex-1">My Addresses</h1>
       </div>
 
-      <div className="p-4 md:p-6 max-w-md mx-auto w-full flex-1">
+      <div className="p-4 md:p-6 max-w-md md:max-w-4xl mx-auto w-full flex-1">
         {!isAdding ? (
           <>
-            <div className="space-y-4 mb-6">
+            <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 mb-6">
               {addresses.map(address => (
-                <div key={address.id} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex items-start gap-4">
+                <div key={address.id} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${address.type === 'Home' ? 'bg-blue-50' : address.type === 'Work' ? 'bg-purple-50' : 'bg-emerald-50'}`}>
                     {getIcon(address.type)}
                   </div>
@@ -101,7 +101,7 @@ export default function ProfileAddresses() {
               ))}
               
               {addresses.length === 0 && (
-                <div className="text-center py-10 bg-white rounded-2xl border border-slate-100 border-dashed">
+                <div className="text-center py-10 bg-white rounded-2xl border border-slate-100 border-dashed md:col-span-2">
                   <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
                     <MapPin className="w-8 h-8" />
                   </div>
@@ -110,15 +110,17 @@ export default function ProfileAddresses() {
               )}
             </div>
 
-            <button 
-              onClick={() => setIsAdding(true)}
-              className="w-full py-4 bg-blue-50 text-blue-600 border border-blue-100 font-bold rounded-xl hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
-            >
-              <Plus className="w-5 h-5" /> Add New Address
-            </button>
+            <div className="flex justify-center">
+              <button 
+                onClick={() => setIsAdding(true)}
+                className="w-full md:max-w-md py-4 bg-blue-50 text-blue-600 border border-blue-100 font-bold rounded-xl hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus className="w-5 h-5" /> Add New Address
+              </button>
+            </div>
           </>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-100 p-5 md:p-6 shadow-sm space-y-4 max-w-xl mx-auto">
             <h2 className="font-bold text-lg text-slate-900 mb-2">Add New Address</h2>
             
             <div>

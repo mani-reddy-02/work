@@ -1,8 +1,9 @@
 import { Bell, MapPin, Menu, Search, X } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { useNotifications } from '../lib/notifications';
 import { useUIStore } from '../lib/uiStore';
+import { useProfile } from '../lib/profile';
 import { useState } from 'react';
 import { usePreferences } from '../lib/PreferencesContext';
 
@@ -15,14 +16,24 @@ const LOCATIONS = [
 
 const AppHeader = ({ className }: { className?: string }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isHome = location.pathname === '/';
   
+  const { profile } = useProfile();
   const { language, setLanguage } = usePreferences();
   const { unreadCount } = useNotifications();
   const { location: currentLocation, setLocation, isDesktopSidebarOpen, toggleDesktopSidebar } = useUIStore();
   const [showLocationModal, setShowLocationModal] = useState(false);
 
   const [locationSearch, setLocationSearch] = useState('');
+  const [desktopSearch, setDesktopSearch] = useState('');
+
+  const handleDesktopSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (desktopSearch.trim()) {
+      navigate(`/services?q=${encodeURIComponent(desktopSearch.trim())}`);
+    }
+  };
 
   const filteredLocations = LOCATIONS.filter(loc => 
     loc.toLowerCase().includes(locationSearch.toLowerCase().trim())
@@ -32,24 +43,28 @@ const AppHeader = ({ className }: { className?: string }) => {
     <>
     <header className={cn("bg-white border-b border-slate-100 px-4 py-3 sticky top-0 z-10 w-full", className)}>
       <div className="flex items-center justify-between max-w-7xl mx-auto relative">
-        {/* Left: Desktop Menu Toggle */}
-        <div className="flex items-center w-8">
-          <button
-            type="button"
-            onClick={toggleDesktopSidebar}
-            className="hidden md:flex items-center justify-center w-9 h-9 -ml-1 rounded-xl hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-            title={isDesktopSidebarOpen ? "Close menu" : "Open menu"}
-            aria-label={isDesktopSidebarOpen ? "Close menu" : "Open menu"}
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        </div>
+        {/* Left: Desktop Menu Toggle & Logo (on desktop only shown when sidebar is closed, centered on mobile) */}
+        <div className="flex items-center gap-2">
+          {!isDesktopSidebarOpen && (
+            <button
+              type="button"
+              onClick={toggleDesktopSidebar}
+              className="hidden md:flex items-center justify-center w-9 h-9 -ml-1 rounded-xl hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+              title="Open menu"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
 
-        {/* Center: Logo (Mobile) / Left: Logo (Desktop) */}
-        <div className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex items-center gap-2">
-          <Link to="/" className="flex items-center">
-            <img src="/logo.png" alt="MediQuee" className="h-7 md:h-8 w-auto object-contain" />
-          </Link>
+          <div className={cn(
+            "absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex items-center gap-2",
+            isDesktopSidebarOpen && "md:hidden"
+          )}>
+            <Link to="/" className="flex items-center">
+              <img src="/logo.png" alt="MediQuee" className="h-7 md:h-8 w-auto object-contain" />
+            </Link>
+          </div>
         </div>
 
         {/* Right: Actions */}
@@ -65,12 +80,18 @@ const AppHeader = ({ className }: { className?: string }) => {
             </button>
           )}
 
-          <div className="hidden md:flex relative w-64">
+          <form onSubmit={handleDesktopSearch} className="hidden md:flex relative w-64 lg:w-72">
              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-4 w-4 text-slate-400" />
              </div>
-             <input type="text" className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-full leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-all" placeholder="Search services..." />
-          </div>
+             <input 
+               type="text" 
+               value={desktopSearch}
+               onChange={(e) => setDesktopSearch(e.target.value)}
+               className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-full leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-all" 
+               placeholder="Search services..." 
+             />
+          </form>
 
           {/* Language Toggle: EN | తెలుగు */}
           <div className="flex items-center bg-slate-100 p-0.5 rounded-full border border-slate-200/80 shadow-xs text-xs font-semibold">
@@ -114,8 +135,8 @@ const AppHeader = ({ className }: { className?: string }) => {
             )}
           </Link>
           
-          <Link to="/profile" className="hidden md:flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 border border-slate-200 overflow-hidden">
-             <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80" alt="Profile" className="w-full h-full object-cover" />
+          <Link to="/profile" className="hidden md:flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 border border-slate-200 overflow-hidden hover:ring-2 hover:ring-primary/20 transition-all">
+             <img src={profile?.avatar || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80"} alt="Profile" className="w-full h-full object-cover" />
           </Link>
         </div>
       </div>

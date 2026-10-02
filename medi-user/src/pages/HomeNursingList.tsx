@@ -376,7 +376,7 @@ const HomeNursingList = () => {
         )}
 
         {(viewState === 'HOSPITALS' || viewState === 'SERVICES') && (
-          <div className="relative max-w-md mx-auto">
+          <div className="relative max-w-md md:max-w-xl mx-auto">
             {searchFocused ? (
               <button 
                 onClick={() => { setSearchFocused(false); setSearchQuery(''); }}
@@ -406,7 +406,7 @@ const HomeNursingList = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto pb-24 px-4 pt-6">
-        <div className="max-w-md mx-auto space-y-6">
+        <div className="max-w-md md:max-w-5xl mx-auto space-y-6">
           {/* VIEW: SERVICES */}
           {viewState === 'SERVICES' && (
             <>
@@ -439,7 +439,7 @@ const HomeNursingList = () => {
 
               <section>
                 <h2 className="text-[16px] font-bold text-slate-900 mb-4">Select Nursing Service</h2>
-                <div className="space-y-3">
+                <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
                   {filteredServices.map((service) => {
                     const ServiceIcon = getCategoryIcon(service.category);
                     return (
@@ -506,7 +506,7 @@ const HomeNursingList = () => {
                   <Loader2 className="w-6 h-6 animate-spin text-[#0055ff]" />
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
                   {searchQuery.trim() && filteredHospitals.length === 0 ? (
                     <div className="text-center py-8">
                       <p className="text-[14px] text-slate-500 font-bold">

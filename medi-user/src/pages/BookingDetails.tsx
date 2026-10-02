@@ -82,7 +82,7 @@ const BookingDetails = () => {
     <div className="flex flex-col h-full bg-slate-50 min-h-screen">
       {/* Header */}
       <div className="bg-gradient-to-r from-primary to-secondary pt-4 pb-20 px-4 text-white rounded-b-3xl shadow-sm">
-        <div className="flex items-center gap-3 max-w-md mx-auto">
+        <div className="flex items-center gap-3 max-w-md md:max-w-2xl mx-auto">
           <button
             onClick={() => navigate(-1)}
             className="p-1 hover:bg-white/20 rounded-full transition-colors"
@@ -96,7 +96,7 @@ const BookingDetails = () => {
 
       {/* Main Content */}
       <div className="px-4 -mt-14 flex-1 pb-8">
-        <div className="max-w-md mx-auto space-y-4">
+        <div className="max-w-md md:max-w-2xl mx-auto space-y-4">
           {/* Loading state */}
           {isLoading && (
             <div className="bg-white p-8 rounded-2xl shadow-soft border border-slate-100 text-center space-y-4">

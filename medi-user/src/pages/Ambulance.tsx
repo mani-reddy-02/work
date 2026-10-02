@@ -69,7 +69,7 @@ export default function Ambulance() {
           </a>
         </div>
 
-        <div className="space-y-4 max-w-md mx-auto">
+        <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-6 max-w-md md:max-w-3xl mx-auto">
           {/* Option 1 */}
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col">
             <div className="flex items-start gap-4 mb-4">

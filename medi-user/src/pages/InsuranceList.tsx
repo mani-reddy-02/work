@@ -405,7 +405,7 @@ const InsuranceList = () => {
                </div>
             </div>
 
-            <div className="relative max-w-md mx-auto">
+            <div className="relative max-w-md md:max-w-xl mx-auto">
                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Search className="h-5 w-5 text-slate-400" />
                </div>
