@@ -4,6 +4,7 @@ import type {
   LaboratoryAvailability,
   LabBookingRecord,
 } from './labTestApi';
+import { API_BASE_URL } from './apiConfig';
 
 export type { LabTestRecord, LaboratoryRecord, LaboratoryAvailability, LabBookingRecord };
 
@@ -22,7 +23,6 @@ export interface CreateHomeSampleBookingPayload {
   notes?: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('mediquee_token');

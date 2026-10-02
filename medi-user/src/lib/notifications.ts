@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+import { API_BASE_URL } from './apiConfig';
 
 export interface AppNotification {
   id: string;
@@ -44,7 +44,7 @@ const initSSE = () => {
   const token = localStorage.getItem('mediquee_token');
   if (!token) return;
 
-  const url = new URL(`${API_BASE_URL}/notifications/stream`);
+  const url = new URL(`${API_BASE_URL}/notifications/stream`, window.location.origin);
   url.searchParams.set('token', token);
 
   sseConnection = new EventSource(url.toString());
