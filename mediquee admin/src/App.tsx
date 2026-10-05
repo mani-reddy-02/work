@@ -8,12 +8,17 @@ import { AdminProtectedRoute, AdminAuthRoute } from './components/layout/AdminPr
 // Pages
 import AdminLogin from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Users from './pages/Users';
+import Patients from './pages/Patients';
+import PatientDetails from './pages/PatientDetails';
 import Hospitals from './pages/Hospitals';
+import HospitalDetails from './pages/HospitalDetails';
 import Departments from './pages/Departments';
 import DepartmentDetails from './pages/DepartmentDetails';
 import Doctors from './pages/Doctors';
+import DoctorDetails from './pages/DoctorDetails';
 import Appointments from './pages/Appointments';
+import AppointmentDetails from './pages/AppointmentDetails';
+import OPBookings from './pages/OPBookings';
 import Verification from './pages/Verification';
 import Reports from './pages/Reports';
 import Notifications from './pages/Notifications';
@@ -23,13 +28,17 @@ import HomePosters from './pages/HomePosters';
 
 // Advanced Pages
 import Transactions from './pages/Transactions';
+import TransactionDetails from './pages/TransactionDetails';
+import Revenue from './pages/Revenue';
 import Settlements from './pages/Settlements';
+import SettlementDetails from './pages/SettlementDetails';
 import LabTests from './pages/LabTests';
+import LabBookingDetails from './pages/LabBookingDetails';
+import HomeSample from './pages/HomeSample';
+import HomeNursing from './pages/HomeNursing';
+import HomeNursingDetails from './pages/HomeNursingDetails';
 import {
-  OPBookings,
   VideoConsultations,
-  HomeSample,
-  HomeNursing,
   ActivityLog
 } from './pages/AdvancedPlaceholders';
 
@@ -61,21 +70,30 @@ function App() {
             >
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
-              <Route path="users" element={<Users />} />
+              <Route path="patients" element={<Patients />} />
+              <Route path="patients/:id" element={<PatientDetails />} />
               <Route path="hospitals" element={<Hospitals />} />
+              <Route path="hospitals/:id" element={<HospitalDetails />} />
               <Route path="departments" element={<Departments />} />
               <Route path="departments/:id" element={<DepartmentDetails />} />
               <Route path="doctors" element={<Doctors />} />
+              <Route path="doctors/:id" element={<DoctorDetails />} />
               
               <Route path="appointments" element={<Appointments />} />
+              <Route path="appointments/:id" element={<AppointmentDetails />} />
               <Route path="services/op" element={<OPBookings />} />
               <Route path="services/video-consultation" element={<VideoConsultations />} />
               <Route path="services/lab-tests" element={<LabTests />} />
+              <Route path="lab-bookings/:id" element={<LabBookingDetails />} />
               <Route path="services/home-sample-collection" element={<HomeSample />} />
               <Route path="services/home-nursing" element={<HomeNursing />} />
+              <Route path="home-nursing/:id" element={<HomeNursingDetails />} />
               
               <Route path="transactions" element={<Transactions />} />
+              <Route path="transactions/:id" element={<TransactionDetails />} />
+              <Route path="revenue" element={<Revenue />} />
               <Route path="settlements" element={<Settlements />} />
+              <Route path="settlements/:id" element={<SettlementDetails />} />
               <Route path="verification" element={<Verification />} />
               <Route path="reports" element={<Reports />} />
               <Route path="notifications" element={<Notifications />} />

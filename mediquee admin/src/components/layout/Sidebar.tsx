@@ -43,8 +43,7 @@ const navGroups = [
   {
     title: 'People',
     items: [
-      { name: 'Users', path: '/admin/users', icon: Users },
-      { name: 'Patients', path: '/admin/users?role=patient', icon: UserCircle },
+      { name: 'Patients', path: '/admin/patients', icon: UserCircle },
       { name: 'Doctors', path: '/admin/doctors', icon: Stethoscope }
     ]
   },
@@ -70,7 +69,7 @@ const navGroups = [
     title: 'Finance',
     items: [
       { name: 'Transactions', path: '/admin/transactions', icon: CreditCard },
-      { name: 'Revenue', path: '/admin/transactions?type=revenue', icon: TrendingUp },
+      { name: 'Revenue', path: '/admin/revenue', icon: TrendingUp },
       { name: 'Settlements', path: '/admin/settlements', icon: Landmark }
     ]
   },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit2, Trash2, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2, Search, Stethoscope, Calendar } from 'lucide-react';
 import { useAdminAuth } from '../contexts/AuthContext';
 import { departmentService } from '../services/departmentService';
 import { departmentIcons, allIcons } from '../../../medi-user/src/utils/diseaseIcons';
@@ -12,7 +12,7 @@ const DepartmentDetails: React.FC = () => {
   const navigate = useNavigate();
   const { token } = useAdminAuth();
   const [department, setDepartment] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'DISEASES' | 'HOSPITALS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'DISEASES' | 'HOSPITALS' | 'DOCTORS' | 'APPOINTMENTS'>('OVERVIEW');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editDeptName, setEditDeptName] = useState('');
@@ -184,6 +184,32 @@ const DepartmentDetails: React.FC = () => {
     },
   ];
 
+  const doctorColumns: Column<any>[] = [
+    { header: 'Doctor Name', accessor: 'name' },
+    { header: 'Specialization', accessor: 'specialization' },
+    { header: 'Experience', accessor: (d) => `${d.experienceYears || 0} Years` },
+    { header: 'Status', accessor: (d) => <StatusBadge status={d.active ? 'VERIFIED' : 'PENDING'} /> },
+    { 
+      header: 'Actions', 
+      accessor: (d) => (
+        <button 
+          onClick={() => navigate(`/admin/doctors/${d.id}`)}
+          className="text-blue-600 hover:underline text-sm"
+        >
+          View Doctor
+        </button>
+      )
+    }
+  ];
+
+  const bookingColumns: Column<any>[] = [
+    { header: 'Date', accessor: (b) => new Date(b.appointmentDate).toLocaleDateString() },
+    { header: 'Patient', accessor: (b) => b.patient?.name || b.patientName || 'Unknown' },
+    { header: 'Doctor', accessor: (b) => b.doctor?.name || 'Unknown' },
+    { header: 'Hospital', accessor: (b) => b.hospital?.name || 'Unknown' },
+    { header: 'Status', accessor: (b) => <StatusBadge status={b.status} /> },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -237,6 +263,26 @@ const DepartmentDetails: React.FC = () => {
           onClick={() => setActiveTab('HOSPITALS')}
         >
           Hospitals ({department.hospitalCount})
+        </button>
+        <button
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'DOCTORS'
+              ? 'border-blue-600 text-blue-600  '
+              : 'border-transparent text-slate-500 hover:text-slate-700  :text-slate-300'
+          }`}
+          onClick={() => setActiveTab('DOCTORS')}
+        >
+          Doctors ({department.doctorCount})
+        </button>
+        <button
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'APPOINTMENTS'
+              ? 'border-blue-600 text-blue-600  '
+              : 'border-transparent text-slate-500 hover:text-slate-700  :text-slate-300'
+          }`}
+          onClick={() => setActiveTab('APPOINTMENTS')}
+        >
+          Appointments ({department.appointmentCount || 0})
         </button>
       </div>
 
@@ -306,6 +352,28 @@ const DepartmentDetails: React.FC = () => {
               data={department.hospitals || []} 
               keyExtractor={(h) => h.id} 
               emptyMessage="No hospitals associated with this department."
+            />
+          </div>
+        )}
+
+        {activeTab === 'DOCTORS' && (
+          <div className="space-y-4">
+            <DataTable 
+              columns={doctorColumns} 
+              data={department.doctors || []} 
+              keyExtractor={(d) => d.id} 
+              emptyMessage="No doctors associated with this department."
+            />
+          </div>
+        )}
+
+        {activeTab === 'APPOINTMENTS' && (
+          <div className="space-y-4">
+            <DataTable 
+              columns={bookingColumns} 
+              data={department.appointments || []} 
+              keyExtractor={(b) => b.id} 
+              emptyMessage="No appointments for this department."
             />
           </div>
         )}

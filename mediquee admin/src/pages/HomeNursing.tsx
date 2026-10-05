@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
-import { Activity, Clock, CheckCircle, XCircle, FileText, FlaskConical } from 'lucide-react';
+import { Activity, Clock, CheckCircle, XCircle, HeartPulse } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
 import { useAdminAuth } from '../contexts/AuthContext';
-import { labService } from '../services/labService';
+import { nursingService } from '../services/nursingService';
 
-const LabTests: React.FC = () => {
+const HomeNursing: React.FC = () => {
   const { token } = useAdminAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
@@ -18,23 +18,23 @@ const LabTests: React.FC = () => {
     const fetchOrders = async () => {
       if (!token) return;
       try {
-        const res = await labService.getLabBookings(token);
+        const res = await nursingService.getHomeNursingBookings(token);
         if (res.success && Array.isArray(res.data)) {
           setOrders(res.data);
         }
       } catch (err) {
-        console.error('Failed to fetch lab orders:', err);
+        console.error('Failed to fetch home nursing orders:', err);
       }
     };
     fetchOrders();
   }, [token]);
 
   const kpis = {
-    totalOrders: orders.length,
-    pending: orders.filter(o => ['REQUESTED', 'ASSIGNED'].includes(o.status)).length,
-    inProgress: orders.filter(o => ['SAMPLE_COLLECTED', 'IN_LAB_PROCESSING'].includes(o.status)).length,
-    completed: orders.filter(o => o.status === 'REPORT_READY').length,
-    cancelled: orders.filter(o => o.status === 'CANCELLED').length,
+    totalRequests: orders.length,
+    pending: orders.filter(o => ['CONFIRMED'].includes(o.status)).length,
+    assigned: orders.filter(o => o.status === 'ASSIGNED').length,
+    inProgress: orders.filter(o => o.status === 'IN_PROGRESS').length,
+    completed: orders.filter(o => o.status === 'COMPLETED').length,
   };
 
   const filteredOrders = orders.filter(o => {
@@ -42,8 +42,8 @@ const LabTests: React.FC = () => {
     const matchesSearch = 
       o.id.toLowerCase().includes(searchLower) || 
       o.patientName.toLowerCase().includes(searchLower) ||
-      o.hospitalName.toLowerCase().includes(searchLower) ||
-      (o.testNames && o.testNames.toLowerCase().includes(searchLower));
+      o.serviceName.toLowerCase().includes(searchLower) ||
+      o.nurseName.toLowerCase().includes(searchLower);
       
     const matchesStatus = statusFilter === 'ALL' || o.status === statusFilter;
     
@@ -52,38 +52,34 @@ const LabTests: React.FC = () => {
 
   const columns: Column<any>[] = [
     {
-      header: 'Order ID',
+      header: 'Request ID',
       accessor: (o) => <span className="font-medium text-slate-900">{o.id}</span>,
-    },
-    {
-      header: 'Tests',
-      accessor: (o) => (
-        <div className="flex flex-col max-w-xs">
-          <span className="font-medium text-slate-900 truncate" title={o.testNames}>{o.testNames || 'N/A'}</span>
-          <span className="text-xs text-slate-500">{o.testCount} tests</span>
-        </div>
-      ),
     },
     {
       header: 'Patient',
       accessor: 'patientName',
     },
     {
-      header: 'Lab / Hospital',
+      header: 'Service / Hospital',
       accessor: (o) => (
         <div className="flex flex-col">
-          <span className="font-medium text-slate-900">{o.hospitalName}</span>
-          <span className="text-xs text-slate-500">{o.bookingType.replace('_', ' ')}</span>
+          <span className="font-medium text-slate-900">{o.serviceName}</span>
+          <span className="text-xs text-slate-500">{o.hospitalName}</span>
         </div>
       ),
     },
     {
-      header: 'Price',
-      accessor: (o) => <span className="text-sm font-medium text-slate-900">₹{o.totalAmount}</span>,
+      header: 'Provider',
+      accessor: (o) => <span className="text-sm text-slate-700">{o.nurseName}</span>,
     },
     {
-      header: 'Date',
-      accessor: (o) => <span className="text-sm text-slate-700">{o.date}</span>,
+      header: 'Schedule',
+      accessor: (o) => (
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-slate-900">{o.date}</span>
+          <span className="text-xs text-slate-500">{o.time} • {o.duration}</span>
+        </div>
+      ),
     },
     {
       header: 'Status',
@@ -93,10 +89,10 @@ const LabTests: React.FC = () => {
       header: 'Actions',
       accessor: (o) => (
         <button 
-          onClick={() => navigate(`/admin/lab-bookings/${o.rawId}`)}
+          onClick={() => navigate(`/admin/home-nursing/${o.rawId}`)}
           className="text-blue-600 hover:text-blue-800 text-sm font-medium"
         >
-          View Order
+          Manage Request
         </button>
       ),
     }
@@ -106,17 +102,17 @@ const LabTests: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Lab Tests & Orders</h2>
-          <p className="text-sm text-slate-500">Manage lab test bookings and diagnostics.</p>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Home Nursing</h2>
+          <p className="text-sm text-slate-500">Manage home nursing requests and provider assignments.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <KpiCard title="Total Orders" value={kpis.totalOrders} icon={FlaskConical} />
+        <KpiCard title="Total Requests" value={kpis.totalRequests} icon={HeartPulse} />
         <KpiCard title="Pending" value={kpis.pending} icon={Clock} iconColor="text-amber-600" iconBg="bg-amber-50" />
-        <KpiCard title="In Progress" value={kpis.inProgress} icon={Activity} iconColor="text-blue-600" iconBg="bg-blue-50" />
+        <KpiCard title="Assigned" value={kpis.assigned} icon={Activity} iconColor="text-blue-600" iconBg="bg-blue-50" />
+        <KpiCard title="In Progress" value={kpis.inProgress} icon={Activity} iconColor="text-indigo-600" iconBg="bg-indigo-50" />
         <KpiCard title="Completed" value={kpis.completed} icon={CheckCircle} iconColor="text-emerald-600" iconBg="bg-emerald-50" />
-        <KpiCard title="Cancelled" value={kpis.cancelled} icon={XCircle} iconColor="text-rose-600" iconBg="bg-rose-50" />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-4">
@@ -126,11 +122,10 @@ const LabTests: React.FC = () => {
           onChange={(e) => setStatusFilter(e.target.value)}
         >
           <option value="ALL">All Statuses</option>
-          <option value="REQUESTED">Requested</option>
+          <option value="CONFIRMED">Confirmed / Pending</option>
           <option value="ASSIGNED">Assigned</option>
-          <option value="SAMPLE_COLLECTED">Sample Collected</option>
-          <option value="IN_LAB_PROCESSING">In Lab Processing</option>
-          <option value="REPORT_READY">Report Ready</option>
+          <option value="IN_PROGRESS">In Progress</option>
+          <option value="COMPLETED">Completed</option>
           <option value="CANCELLED">Cancelled</option>
         </select>
       </div>
@@ -139,11 +134,11 @@ const LabTests: React.FC = () => {
         data={filteredOrders}
         columns={columns}
         keyExtractor={(o) => o.id}
-        searchPlaceholder="Search by ID, Test, Patient, or Hospital..."
+        searchPlaceholder="Search by ID, Patient, Service, or Nurse..."
         onSearch={setSearch}
       />
     </div>
   );
 };
 
-export default LabTests;
+export default HomeNursing;

@@ -136,11 +136,8 @@ const Dashboard: React.FC = () => {
       <section>
         <h3 className="text-lg font-semibold text-slate-900  mb-4">Platform Overview</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <Link to="/admin/users" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Total Users" value={kpis.totalUsers} icon={Users} />
-          </Link>
-          <Link to="/admin/users?role=patient" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Patients" value={kpis.totalPatients} icon={UserCircle} />
+          <Link to="/admin/patients" className="block hover:scale-[1.02] transition-transform">
+            <KpiCard title="Total Patients" value={kpis.totalPatients} icon={UserCircle} />
           </Link>
           <Link to="/admin/doctors" className="block hover:scale-[1.02] transition-transform">
             <KpiCard title="Doctors" value={kpis.totalDoctors} icon={Stethoscope} />

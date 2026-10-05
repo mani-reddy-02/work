@@ -1,9 +1,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
-export const appointmentService = {
-  getAppointments: async (token: string) => {
+export const labService = {
+  getLabBookings: async (token: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/appointments`, {
+      const res = await fetch(`${API_BASE_URL}/admin/lab-bookings`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       return await res.json();
@@ -12,20 +12,20 @@ export const appointmentService = {
       return { success: false, data: [] };
     }
   },
-  getAppointmentById: async (id: string, token: string) => {
+  getLabBookingById: async (id: string, token: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/appointments/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/admin/lab-bookings/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       return await res.json();
     } catch (e) {
       console.error(e);
-      return { success: false, message: 'Failed to fetch' };
+      return { success: false, message: 'Failed to fetch lab booking' };
     }
   },
-  updateAppointmentStatus: async (id: string, status: string, token: string) => {
+  updateLabBookingStatus: async (id: string, status: string, token: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/appointments/${id}/status`, {
+      const res = await fetch(`${API_BASE_URL}/admin/lab-bookings/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -36,7 +36,7 @@ export const appointmentService = {
       return await res.json();
     } catch (e) {
       console.error(e);
-      return { success: false, message: 'Failed to update status' };
+      return { success: false, message: 'Failed to update lab booking status' };
     }
   }
 };

@@ -273,3 +273,126 @@ export const updateHospitalRevenueShare = async (req: Request, res: Response, ne
     next(error);
   }
 };
+
+export const getUserById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        hospital: { select: { id: true, name: true, city: true, state: true } },
+        department: { select: { id: true, name: true } },
+        patientBookings: {
+          orderBy: { appointmentDate: 'desc' },
+          include: {
+            doctor: { select: { id: true, name: true } },
+            hospital: { select: { id: true, name: true } },
+            department: { select: { id: true, name: true } },
+          }
+        },
+        doctorBookings: {
+          orderBy: { appointmentDate: 'desc' },
+          include: {
+            patient: { select: { id: true, name: true, email: true, phone: true } },
+            hospital: { select: { id: true, name: true } },
+            department: { select: { id: true, name: true } },
+          }
+        },
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.json({ success: true, data: user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getHospitalById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const hospital = await prisma.hospital.findUnique({
+      where: { id },
+      include: {
+        users: { select: { id: true, name: true, role: true, specialization: true, active: true, experienceYears: true } },
+        departments: { select: { id: true, name: true, description: true } },
+        opBookings: {
+          orderBy: { appointmentDate: 'desc' },
+          include: {
+            patient: { select: { id: true, name: true } },
+            doctor: { select: { id: true, name: true } },
+            department: { select: { id: true, name: true } },
+          }
+        },
+        verifications: true,
+      }
+    });
+
+    if (!hospital) {
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
+    }
+
+    res.json({ success: true, data: hospital });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAppointmentById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const booking = await prisma.oPBooking.findUnique({
+      where: { id },
+      include: {
+        patient: { select: { id: true, name: true, phone: true, email: true, gender: true, dob: true, avatar: true } },
+        doctor: { select: { id: true, name: true, specialization: true, experienceYears: true, avatar: true } },
+        hospital: { select: { id: true, name: true, contactPhone: true, city: true, addressLine1: true } },
+        department: { select: { id: true, name: true } },
+        vitals: true,
+        prescription: true,
+        labOrders: { include: { test: true } }
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Appointment not found' });
+    }
+
+    res.json({ success: true, data: booking });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateAppointmentStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const { status } = req.body;
+    
+    // Validate status transition (simple validation for now)
+    const validStatuses = ['PENDING', 'WAITING', 'IN_CONSULTATION', 'COMPLETED', 'CANCELLED', 'NO_SHOW', 'CONFIRMED'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    const updated = await prisma.oPBooking.update({
+      where: { id },
+      data: { status }
+    });
+
+    res.json({ success: true, data: updated, message: 'Status updated successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getLabBookings = async (req: Request, res: Response, next: NextFunction) => { try { const bookings = await prisma.labBooking.findMany({ orderBy: { createdAt: 'desc' }, include: { patient: { select: { name: true } }, hospital: { select: { name: true } }, items: { include: { labTest: { include: { platformTest: { select: { name: true } } } } } } } }); const formatted = bookings.map((b) => ({ id: b.id.substring(0, 8).toUpperCase(), rawId: b.id, patientName: b.patient?.name || 'Unknown', hospitalName: b.hospital?.name || 'Unknown', bookingType: b.bookingType, status: b.status, testCount: b.items.length, testNames: b.items.map(i => i.labTest.platformTest.name).join(', '), totalAmount: b.totalAmount, date: new Date(b.createdAt).toLocaleDateString(), })); res.json({ success: true, data: formatted }); } catch (error) { next(error); } };
+export const getLabBookingById = async (req: Request, res: Response, next: NextFunction) => { try { const id = req.params.id as string; const booking = await prisma.labBooking.findUnique({ where: { id }, include: { patient: { select: { id: true, name: true, phone: true, email: true, gender: true, dob: true, avatar: true } }, hospital: { select: { id: true, name: true, contactPhone: true, city: true, addressLine1: true } }, items: { include: { labTest: { include: { platformTest: true } } } } } }); if (!booking) { return res.status(404).json({ success: false, message: 'Lab booking not found' }); } res.json({ success: true, data: booking }); } catch (error) { next(error); } };
+export const updateLabBookingStatus = async (req: Request, res: Response, next: NextFunction) => { try { const id = req.params.id as string; const { status } = req.body; const validStatuses = ['REQUESTED', 'ASSIGNED', 'SAMPLE_COLLECTED', 'IN_LAB_PROCESSING', 'REPORT_READY', 'CANCELLED']; if (!validStatuses.includes(status as any)) { return res.status(400).json({ success: false, message: 'Invalid status' }); } const updated = await prisma.labBooking.update({ where: { id }, data: { status: status as any } }); res.json({ success: true, data: updated, message: 'Status updated successfully' }); } catch (error) { next(error); } };
+
+export const getHomeNursingBookings = async (req: Request, res: Response, next: NextFunction) => { try { const bookings = await prisma.homeNursingBooking.findMany({ orderBy: { createdAt: 'desc' }, include: { user: { select: { name: true } }, hospital: { select: { name: true } }, service: { select: { name: true } }, nurse: { select: { name: true } } } }); const formatted = bookings.map((b) => ({ id: b.bookingNumber || b.id.substring(0, 8).toUpperCase(), rawId: b.id, patientName: b.patientName || b.user?.name || 'Unknown', hospitalName: b.hospital?.name || 'Unknown', serviceName: b.service?.name || 'Unknown', nurseName: b.nurse?.name || 'Unassigned', duration: b.duration || 'N/A', status: b.status, totalAmount: b.totalAmount, date: new Date(b.serviceDate).toLocaleDateString(), time: b.timeSlot, })); res.json({ success: true, data: formatted }); } catch (error) { next(error); } };
+export const getHomeNursingBookingById = async (req: Request, res: Response, next: NextFunction) => { try { const id = req.params.id as string; const booking = await prisma.homeNursingBooking.findUnique({ where: { id }, include: { user: { select: { id: true, name: true, phone: true, email: true, gender: true, dob: true, avatar: true } }, hospital: { select: { id: true, name: true, contactPhone: true, city: true, addressLine1: true } }, service: true, nurse: { select: { id: true, name: true, phone: true, specialization: true } } } }); if (!booking) { return res.status(404).json({ success: false, message: 'Home nursing booking not found' }); } res.json({ success: true, data: booking }); } catch (error) { next(error); } };
+export const updateHomeNursingBookingStatus = async (req: Request, res: Response, next: NextFunction) => { try { const id = req.params.id as string; const { status } = req.body; const validStatuses = ['CONFIRMED', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']; if (!validStatuses.includes(status as any)) { return res.status(400).json({ success: false, message: 'Invalid status' }); } const updated = await prisma.homeNursingBooking.update({ where: { id }, data: { status: status as any } }); res.json({ success: true, data: updated, message: 'Status updated successfully' }); } catch (error) { next(error); } };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { User } from '../types';
@@ -9,9 +10,10 @@ import { userService } from '../services/userService';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
-const Users: React.FC = () => {
+const Patients: React.FC = () => {
   const { token } = useAdminAuth();
-  const [users, setUsers] = useState<User[]>([]);
+  const navigate = useNavigate();
+  const [patients, setPatients] = useState<User[]>([]);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -20,7 +22,7 @@ const Users: React.FC = () => {
       try {
         const res = await userService.getUsers(token);
         if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-          setUsers(res.data);
+          setPatients(res.data.filter((u: User) => u.role === 'PATIENT'));
         }
       } catch (err) {
         console.error('Failed to fetch admin users:', err);
@@ -29,9 +31,9 @@ const Users: React.FC = () => {
     fetchUsers();
   }, [token]);
 
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(search.toLowerCase()) || 
-    user.email.toLowerCase().includes(search.toLowerCase())
+  const filteredPatients = patients.filter(patient => 
+    patient.name.toLowerCase().includes(search.toLowerCase()) || 
+    patient.email.toLowerCase().includes(search.toLowerCase())
   );
 
   const columns: Column<User>[] = [
@@ -39,7 +41,7 @@ const Users: React.FC = () => {
       header: 'User',
       accessor: (user) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-slate-200  flex items-center justify-center text-slate-600  font-semibold text-xs shrink-0">
+          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-xs shrink-0">
             {user.name.charAt(0)}
           </div>
           <div className="flex flex-col">
@@ -50,11 +52,11 @@ const Users: React.FC = () => {
       ),
     },
     {
-      header: 'Role',
+      header: 'Contact',
       accessor: (user) => (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100  text-slate-700  border border-slate-200 ">
-          {user.role.replace('_', ' ')}
-        </span>
+        <div className="flex flex-col">
+          <span className="text-sm text-slate-700">{user.phone !== 'N/A' ? user.phone : 'No Phone'}</span>
+        </div>
       ),
     },
     {
@@ -73,7 +75,7 @@ const Users: React.FC = () => {
             className="text-blue-600 hover:text-blue-800  text-sm font-medium"
             onClick={(e) => {
               e.stopPropagation();
-              alert(`Viewing details for ${user.name}`);
+              navigate(`/admin/patients/${user.id}`);
             }}
           >
             View
@@ -87,34 +89,26 @@ const Users: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 ">User Management</h2>
-          <p className="text-sm text-slate-500 ">View and manage all registered system accounts across roles</p>
+          <h2 className="text-2xl font-bold text-slate-900 ">Patient Management</h2>
+          <p className="text-sm text-slate-500 ">View and manage registered patient records</p>
         </div>
-        <button 
-          onClick={() => alert('New user registration can be performed on the MediQuee User or Hospital portal.')}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
-        >
-          <UserPlus size={16} />
-          Add User
-        </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard title="Total Accounts" value={users.length} icon={UserPlus} />
-        <KpiCard title="Active Users" value={users.filter(u => u.status === 'ACTIVE').length} icon={UserCheck} iconColor="text-emerald-600" iconBg="bg-emerald-50" />
-        <KpiCard title="Inactive / Deactivated" value={users.filter(u => u.status === 'INACTIVE').length} icon={UserX} iconColor="text-rose-600" iconBg="bg-rose-50" />
-        <KpiCard title="Doctors & Staff" value={users.filter(u => u.role !== 'PATIENT').length} icon={ShieldAlert} iconColor="text-amber-600" iconBg="bg-amber-50" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <KpiCard title="Total Patients" value={patients.length} icon={UserPlus} />
+        <KpiCard title="Active Patients" value={patients.filter(u => u.status === 'ACTIVE').length} icon={UserCheck} iconColor="text-emerald-600" iconBg="bg-emerald-50" />
+        <KpiCard title="Inactive Patients" value={patients.filter(u => u.status === 'INACTIVE').length} icon={UserX} iconColor="text-rose-600" iconBg="bg-rose-50" />
       </div>
 
       <DataTable 
-        data={filteredUsers}
+        data={filteredPatients}
         columns={columns}
         keyExtractor={(user) => user.id}
-        searchPlaceholder="Search users by name or email..."
+        searchPlaceholder="Search patients by name or email..."
         onSearch={setSearch}
       />
     </div>
   );
 };
 
-export default Users;
+export default Patients;

@@ -1,103 +1,111 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
-import { Settlement } from '../types';
 import { formatCurrency } from '../utils/finance';
-import { CheckCircle, Clock, AlertCircle } from 'lucide-react';
-import KpiCard from '../components/ui/KpiCard';
+import { FileText, Filter } from 'lucide-react';
+import { useAdminAuth } from '../contexts/AuthContext';
+import { financeService } from '../services/financeService';
 
 const Settlements: React.FC = () => {
-  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const { token } = useAdminAuth();
+  const navigate = useNavigate();
+  const [settlements, setSettlements] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!token) return;
+      try {
+        setLoading(true);
+        const res = await financeService.getSettlements(token);
+        if (res.success && Array.isArray(res.data)) {
+          setSettlements(res.data);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [token]);
 
   const filteredSettlements = settlements.filter(s => 
     s.id.toLowerCase().includes(search.toLowerCase()) || 
-    s.providerName.toLowerCase().includes(search.toLowerCase())
+    s.hospitalName.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleSimulatePayment = (id: string) => {
-    setSettlements(prev => prev.map(s => s.id === id ? { ...s, status: 'PAID' } : s));
-  };
-
-  const columns: Column<Settlement>[] = [
+  const columns: Column<any>[] = [
     {
-      header: 'Settlement ID & Period',
+      header: 'Settlement ID',
       accessor: (s) => (
-        <div className="flex flex-col">
-          <span className="font-medium text-slate-900 ">{s.id}</span>
-          <span className="text-xs text-slate-500 ">
-            {new Date(s.periodStart).toLocaleDateString()} - {new Date(s.periodEnd).toLocaleDateString()}
-          </span>
-        </div>
+        <button 
+          onClick={() => navigate(`/admin/settlements/${s.id}`)}
+          className="font-medium text-blue-600 hover:underline text-left"
+        >
+          {s.id}
+        </button>
       ),
     },
     {
-      header: 'Provider',
+      header: 'Hospital',
       accessor: (s) => (
-        <div className="flex flex-col">
-          <span className="text-slate-900  font-medium">{s.providerName}</span>
-          <span className="text-xs text-slate-500 ">{s.providerType}</span>
-        </div>
+        <button 
+          onClick={() => navigate(`/admin/hospitals/${s.hospitalId}`)}
+          className="font-medium text-slate-900 hover:text-blue-600"
+        >
+          {s.hospitalName}
+        </button>
       ),
     },
     {
-      header: 'Gross / Admin',
-      accessor: (s) => (
-        <div className="flex flex-col">
-          <span className="text-slate-900 ">{formatCurrency(s.grossRevenue)}</span>
-          <span className="text-xs text-emerald-600 ">- {formatCurrency(s.adminCommission)}</span>
-        </div>
-      ),
+      header: 'Period',
+      accessor: (s) => <span className="text-slate-900">{s.period}</span>,
     },
     {
-      header: 'Payout Amount',
-      accessor: (s) => <span className="font-bold text-blue-600 ">{formatCurrency(s.providerShare)}</span>,
+      header: 'Transactions',
+      accessor: (s) => <span className="text-slate-600">{s.transactionCount}</span>,
+    },
+    {
+      header: 'Gross Revenue',
+      accessor: (s) => <span className="text-slate-900">{formatCurrency(s.grossRevenue)}</span>,
+    },
+    {
+      header: 'Settlement Amount',
+      accessor: (s) => <span className="font-medium text-emerald-600">{formatCurrency(s.hospitalAmount)}</span>,
     },
     {
       header: 'Status',
-      accessor: (s) => <StatusBadge status={s.status} />,
-    },
-    {
-      header: 'Actions',
-      accessor: (s) => (
-        s.status === 'PENDING' ? (
-          <button 
-            onClick={() => handleSimulatePayment(s.id)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-          >
-            Process Payout
-          </button>
-        ) : (
-          <button className="text-slate-500 hover:text-slate-700  :text-slate-200 px-3 py-1.5 text-sm font-medium transition-colors">
-            View Receipt
-          </button>
-        )
-      ),
+      accessor: (s) => <StatusBadge status={s.status} />
     }
   ];
+
+  if (loading) return <div className="p-6">Loading settlements...</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Provider Settlements</h2>
-          <p className="text-sm text-slate-500 ">Manage and process revenue share payouts to network providers.</p>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Settlements</h2>
+          <p className="text-sm text-slate-500">Manage money payable and paid to hospitals for their services.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KpiCard title="Pending Settlement" value={formatCurrency(settlements.filter(s => s.status !== 'PAID').reduce((acc, curr) => acc + curr.providerShare, 0))} icon={Clock} iconColor="text-amber-600" iconBg="bg-amber-50 " />
-        <KpiCard title="Processed Today" value={formatCurrency(0)} icon={CheckCircle} iconColor="text-emerald-600" iconBg="bg-emerald-50 " />
-        <KpiCard title="Failed Transfers" value={0} icon={AlertCircle} iconColor="text-rose-600" iconBg="bg-rose-50 " />
-      </div>
-
-      <DataTable 
-        data={filteredSettlements}
-        columns={columns}
-        keyExtractor={(s) => s.id}
-        searchPlaceholder="Search by ID or Provider..."
-        onSearch={setSearch}
-      />
+      {settlements.length === 0 ? (
+        <div className="bg-white p-12 text-center rounded-xl border border-slate-200">
+          <p className="text-slate-500">No settlements found.</p>
+        </div>
+      ) : (
+        <DataTable 
+          data={filteredSettlements}
+          columns={columns}
+          keyExtractor={(s) => s.id}
+          searchPlaceholder="Search by ID or Hospital..."
+          onSearch={setSearch}
+        />
+      )}
     </div>
   );
 };

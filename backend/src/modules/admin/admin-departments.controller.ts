@@ -61,6 +61,10 @@ export const getAdminDepartmentById = async (req: Request, res: Response, next: 
             hospital: {
               select: { id: true, name: true, city: true, _count: { select: { users: { where: { role: Role.DOCTOR } } } } }
             },
+            users: {
+              where: { role: Role.DOCTOR },
+              select: { id: true, name: true, specialization: true, experienceYears: true, active: true }
+            },
             _count: {
               select: {
                 users: {
@@ -79,8 +83,10 @@ export const getAdminDepartmentById = async (req: Request, res: Response, next: 
 
     const doctorCount = specialty.departments.reduce((acc, d) => acc + d._count.users, 0);
     
-    // Extract unique hospitals
+    // Extract unique hospitals and doctors
     const hospitalsMap = new Map();
+    const doctorsMap = new Map();
+    
     specialty.departments.forEach(d => {
       if (d.hospital) {
         if (!hospitalsMap.has(d.hospital.id)) {
@@ -91,6 +97,23 @@ export const getAdminDepartmentById = async (req: Request, res: Response, next: 
             totalDoctors: d.hospital._count.users
           });
         }
+      }
+      if (d.users) {
+        d.users.forEach(u => {
+          if (!doctorsMap.has(u.id)) {
+            doctorsMap.set(u.id, u);
+          }
+        });
+      }
+    });
+
+    const appointments = await prisma.oPBooking.findMany({
+      where: { department: { specialtyId: id } },
+      orderBy: { appointmentDate: 'desc' },
+      include: {
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+        hospital: { select: { id: true, name: true } }
       }
     });
 
@@ -104,9 +127,12 @@ export const getAdminDepartmentById = async (req: Request, res: Response, next: 
         createdAt: specialty.createdAt.toISOString(),
         diseases: specialty.conditions,
         hospitals: Array.from(hospitalsMap.values()),
+        doctors: Array.from(doctorsMap.values()),
+        appointments,
         diseaseCount: specialty.conditions.length,
         hospitalCount: hospitalsMap.size,
-        doctorCount
+        doctorCount,
+        appointmentCount: appointments.length
       }
     });
   } catch (error) {

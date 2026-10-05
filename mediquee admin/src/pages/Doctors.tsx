@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { Doctor } from '../types';
@@ -9,6 +10,7 @@ import { userService } from '../services/userService';
 
 const Doctors: React.FC = () => {
   const { token } = useAdminAuth();
+  const navigate = useNavigate();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [search, setSearch] = useState('');
 
@@ -66,7 +68,15 @@ const Doctors: React.FC = () => {
     {
       header: 'Actions',
       accessor: (d) => (
-        <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">View</button>
+        <button 
+          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/admin/doctors/${d.id}`);
+          }}
+        >
+          View
+        </button>
       ),
     }
   ];

@@ -1,9 +1,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
-export const appointmentService = {
-  getAppointments: async (token: string) => {
+export const nursingService = {
+  getHomeNursingBookings: async (token: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/appointments`, {
+      const res = await fetch(`${API_BASE_URL}/admin/home-nursing`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       return await res.json();
@@ -12,20 +12,20 @@ export const appointmentService = {
       return { success: false, data: [] };
     }
   },
-  getAppointmentById: async (id: string, token: string) => {
+  getHomeNursingBookingById: async (id: string, token: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/appointments/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/admin/home-nursing/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       return await res.json();
     } catch (e) {
       console.error(e);
-      return { success: false, message: 'Failed to fetch' };
+      return { success: false, message: 'Failed to fetch home nursing booking' };
     }
   },
-  updateAppointmentStatus: async (id: string, status: string, token: string) => {
+  updateHomeNursingBookingStatus: async (id: string, status: string, token: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/appointments/${id}/status`, {
+      const res = await fetch(`${API_BASE_URL}/admin/home-nursing/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

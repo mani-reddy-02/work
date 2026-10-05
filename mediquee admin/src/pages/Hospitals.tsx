@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { Hospital } from '../types';
@@ -11,6 +12,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/
 
 const Hospitals: React.FC = () => {
   const { token } = useAdminAuth();
+  const navigate = useNavigate();
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('ALL');
@@ -132,7 +134,7 @@ const Hospitals: React.FC = () => {
       accessor: (h) => (
         <div className="flex gap-3">
           <button 
-            onClick={() => alert(`Viewing hospital: ${h.name}`)}
+            onClick={() => navigate(`/admin/hospitals/${h.id}`)}
             className="text-blue-600 hover:text-blue-800 text-sm font-medium"
           >
             View

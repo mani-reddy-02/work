@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { Appointment } from '../types';
@@ -9,6 +10,7 @@ import { appointmentService } from '../services/appointmentService';
 
 const Appointments: React.FC = () => {
   const { token } = useAdminAuth();
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [search, setSearch] = useState('');
 
@@ -67,7 +69,12 @@ const Appointments: React.FC = () => {
     {
       header: 'Actions',
       accessor: (a) => (
-        <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">View Details</button>
+        <button 
+          onClick={() => navigate(`/admin/appointments/${a.id}`)}
+          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+        >
+          View Details
+        </button>
       ),
     }
   ];
