@@ -4,12 +4,37 @@ import { Role } from '@prisma/client';
 
 export const getAdminDepartments = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const { search, hospitalId, diseaseId, doctorId, status } = req.query;
+
+    const whereClause: any = {};
+
+    if (search) {
+      whereClause.name = { contains: search as string, mode: 'insensitive' };
+    }
+    if (hospitalId && hospitalId !== 'all') {
+      whereClause.departments = { some: { hospitalId: hospitalId as string } };
+    }
+    if (diseaseId && diseaseId !== 'all') {
+      whereClause.conditions = { some: { id: diseaseId as string } };
+    }
+    if (doctorId && doctorId !== 'all') {
+      whereClause.departments = { some: { users: { some: { id: doctorId as string } } } };
+    }
+    // Note: status is not in PlatformSpecialty, so we ignore or map if it existed
+
+    const total = await prisma.platformSpecialty.count({ where: whereClause });
+
     const specialties = await prisma.platformSpecialty.findMany({
+      where: whereClause,
+      skip: (page - 1) * limit,
+      take: limit,
       include: {
         _count: {
           select: {
             conditions: true,
-            departments: true, // hospital departments
+            departments: true,
           }
         },
         departments: {
@@ -41,7 +66,11 @@ export const getAdminDepartments = async (req: Request, res: Response, next: Nex
       };
     });
 
-    res.json({ success: true, data: formatted });
+    res.json({ 
+      success: true, 
+      data: formatted,
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
+    });
   } catch (error) {
     next(error);
   }
@@ -273,6 +302,25 @@ export const updateAdminDepartment = async (req: Request, res: Response, next: N
     });
 
     res.json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getDepartmentFilters = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitals = await prisma.hospital.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } });
+    const diseases = await prisma.platformCondition.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } });
+    const doctors = await prisma.user.findMany({ where: { role: 'DOCTOR' }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
+    
+    res.json({
+      success: true,
+      data: {
+        hospitals,
+        diseases,
+        doctors
+      }
+    });
   } catch (error) {
     next(error);
   }

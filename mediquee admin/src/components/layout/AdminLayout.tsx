@@ -11,13 +11,13 @@ const AdminLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50  flex overflow-hidden font-sans transition-colors">
+    <div className="h-screen bg-slate-50  flex overflow-hidden font-sans transition-colors">
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       
-      <div className="flex-1 flex flex-col w-full min-w-0">
+      <div className="flex-1 flex flex-col w-full min-w-0 min-h-0">
         <Header toggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
         
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 min-h-0">
           <div className="mx-auto max-w-7xl">
             <Outlet />
           </div>

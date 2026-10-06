@@ -1,9 +1,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 export const appointmentService = {
-  getAppointments: async (token: string) => {
+  getAppointments: async (token: string, params?: Record<string, any>) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/appointments`, {
+      const res = await fetch(`${API_BASE_URL}/admin/appointments${params ? "?" + new URLSearchParams(params).toString() : ""}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       return await res.json();

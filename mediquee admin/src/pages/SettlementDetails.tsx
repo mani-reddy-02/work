@@ -20,7 +20,7 @@ const SettlementDetails: React.FC = () => {
         setLoading(true);
         const res = await financeService.getSettlements(token);
         if (res.success && Array.isArray(res.data)) {
-          const found = res.data.find(s => s.id === id);
+          const found = res.data.find((s: any) => s.id === id);
           setSettlement(found);
         }
       } catch (e) {

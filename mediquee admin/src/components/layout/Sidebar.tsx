@@ -4,7 +4,7 @@ import {
   LayoutDashboard, 
   Users, 
   UserCircle,
-  Building2, 
+  Building2, FlaskConical, 
   Stethoscope, 
   CalendarCheck, 
   ShieldCheck, 
@@ -51,14 +51,14 @@ const navGroups = [
     title: 'Healthcare Network',
     items: [
       { name: 'Hospitals', path: '/admin/hospitals', icon: Building2 },
-      { name: 'Departments', path: '/admin/departments', icon: Network }
+      { name: 'Departments', path: '/admin/departments', icon: Network },
+        { name: 'Labs', path: '/admin/labs', icon: FlaskConical }
     ]
   },
   {
     title: 'Operations',
     items: [
-      { name: 'Appointments', path: '/admin/appointments', icon: CalendarCheck },
-      { name: 'OP Bookings', path: '/admin/services/op', icon: Activity },
+      { name: 'OP Bookings', path: '/admin/op-bookings', icon: Activity },
       { name: 'Video Consults', path: '/admin/services/video-consultation', icon: Video },
       { name: 'Lab Tests', path: '/admin/services/lab-tests', icon: TestTube },
       { name: 'Home Sample', path: '/admin/services/home-sample-collection', icon: Home },

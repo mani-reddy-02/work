@@ -8,6 +8,576 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Hospital {
+  id                  String                 @id @default(uuid())
+  name                String
+  businessType        BusinessType
+  facilityType        String?
+  registrationNumber  String?
+  establishedYear     String?
+  logoUrl             String?
+  contactPhone        String?
+  contactEmail        String?
+  website             String?
+  emergencyContact    String?
+  addressLine1        String?
+  addressLine2        String?
+  area                String?
+  city                String?
+  state               String?
+  country             String?
+  pincode             String?
+  services            String[]
+  
+  // Verification
+  verificationStatus String @default("PENDING")
+  cancellationReason String?
+  cancelledAt        DateTime?
+  cancelledBy        String?
+
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  hospitalShare       Float                  @default(80.0)
+  departments         Department[]
+  verifications       HospitalVerification[]
+  opBookings          OPBooking[]
+  rolePermissions     RolePermission[]
+  users               User[]
+  doctorSchedules     DoctorSchedule[]
+  nursingBookings     HomeNursingBooking[]
+  labs                Lab[]
+  labBookings         LabBooking[]
+  labTests            LabTest[]
+  marketingRequests   MarketingRequest[]
+  medicalCampRequests MedicalCampRequest[]
+  notifications       Notification[]
+}
+
+model PlatformSpecialty {
+  id          String              @id @default(uuid())
+  name        String              @unique
+  description String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  departments Department[]
+  conditions  PlatformCondition[]
+}
+
+model PlatformCondition {
+  id          String            @id @default(uuid())
+  name        String            @unique
+  description String?
+  specialtyId String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  icon        String?
+  opBookings  OPBooking[]
+  specialty   PlatformSpecialty @relation(fields: [specialtyId], references: [id])
+}
+
+model HospitalVerification {
+  id           String   @id @default(uuid())
+  hospitalId   String
+  documentType String
+  fileUrl      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  hospital     Hospital @relation(fields: [hospitalId], references: [id])
+}
+
+model User {
+  id                      String                @id @default(uuid())
+  email                   String                @unique
+  phone                   String?               @unique
+  passwordHash            String
+  name                    String
+  role                    Role
+  designation             String?
+  active                  Boolean               @default(true)
+  hospitalId              String?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  departmentId            String?
+  avatar                  String?
+  dob                     String?
+  gender                  String?
+  presenceStatus          DoctorPresenceStatus? @default(OFF_DUTY)
+  address                 String?
+  bio                     String?
+  consultationFee         Float?
+  experienceYears         Int?
+  licenseNumber           String?
+  qualification           String?
+  specialization          String?
+  digitalSignature        String?
+  prescriptionSettings    Json?
+  doctorBookings          OPBooking[]           @relation("DoctorBookings")
+  patientBookings         OPBooking[]           @relation("PatientBookings")
+  department              Department?           @relation(fields: [departmentId], references: [id])
+  hospital                Hospital?             @relation(fields: [hospitalId], references: [id])
+  doctorSchedules         DoctorSchedule[]      @relation("DoctorSchedule")
+  assignedNursingBookings HomeNursingBooking[]  @relation("NurseAssignedNursingBookings")
+  patientNursingBookings  HomeNursingBooking[]  @relation("PatientNursingBookings")
+  labBookings             LabBooking[]
+  notifications           Notification[]
+  patientReports          PatientReport[]
+  prescriptions           Prescription[]        @relation("DoctorPrescriptions")
+}
+
+model Department {
+  id                      String                 @id @default(uuid())
+  hospitalId              String
+  name                    String
+  code                    String?
+  description             String?
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  specialtyId             String?
+  labLicenseDocumentUrl   String?
+  labLicenseNumber        String?
+  licenseValidUntil       DateTime?
+  platformLabDepartmentId String?
+  type                    String?                @default("CLINICAL")
+  hospital                Hospital               @relation(fields: [hospitalId], references: [id])
+  platformLabDepartment   PlatformLabDepartment? @relation(fields: [platformLabDepartmentId], references: [id])
+  specialty               PlatformSpecialty?     @relation(fields: [specialtyId], references: [id])
+  opBookings              OPBooking[]
+  users                   User[]
+
+  @@unique([hospitalId, name])
+}
+
+model Permission {
+  id              String           @id @default(uuid())
+  key             String           @unique
+  name            String
+  description     String?
+  module          String
+  createdAt       DateTime         @default(now())
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  hospitalId   String
+  role         Role
+  permissionId String
+  enabled      Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  hospital     Hospital   @relation(fields: [hospitalId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([hospitalId, role, permissionId])
+}
+
+model OPBooking {
+  id                           String             @id @default(uuid())
+  hospitalId                   String
+  departmentId                 String
+  doctorId                     String
+  patientName                  String
+  patientPhone                 String?
+  status                       BookingStatus      @default(WAITING)
+  appointmentDate              DateTime           @default(now())
+  fee                          Float              @default(0)
+  createdAt                    DateTime           @default(now())
+  updatedAt                    DateTime           @updatedAt
+  opType                       String             @default("Normal")
+  patientAge                   Int?
+  patientGender                String?
+  conditionId                  String?
+  patientId                    String?
+  reason                       String?
+  timeSlot                     String?
+  slotTime                     String?
+  hospitalAmount               Float?
+  hospitalSharePercentage      Float?
+  mediqueeAmount               Float?
+  mediqueeCommissionPercentage Float?
+  condition                    PlatformCondition? @relation(fields: [conditionId], references: [id])
+  department                   Department         @relation(fields: [departmentId], references: [id])
+  doctor                       User               @relation("DoctorBookings", fields: [doctorId], references: [id])
+  hospital                     Hospital           @relation(fields: [hospitalId], references: [id])
+  patient                      User?              @relation("PatientBookings", fields: [patientId], references: [id])
+  labOrders                    DoctorLabOrder[]
+  vitals                       PatientVitals?
+  prescription                 Prescription?
+}
+
+model NursingService {
+  id           String                   @id @default(uuid())
+  name         String                   @unique
+  code         String                   @unique
+  category     String
+  description  String?
+  duration     String                   @default("12 / 24 Hours")
+  basePrice    Float
+  requirements String?
+  iconUrl      String?
+  active       Boolean                  @default(true)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  bookings     HomeNursingBooking[]
+  offerings    NursingServiceOffering[]
+
+  @@map("nursing_services")
+}
+
+model NursingServiceOffering {
+  id          String         @id @default(uuid())
+  hospitalId  String
+  serviceId   String
+  price       Float
+  duration    String?
+  available   Boolean        @default(true)
+  serviceArea String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  service     NursingService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([hospitalId, serviceId])
+  @@map("nursing_service_offerings")
+}
+
+model HomeNursingBooking {
+  id                           String         @id @default(uuid())
+  bookingNumber                String         @unique
+  userId                       String
+  hospitalId                   String
+  serviceId                    String
+  nurseId                      String?
+  patientName                  String
+  patientPhone                 String
+  patientEmail                 String?
+  patientAge                   Int?
+  patientGender                String?
+  serviceDate                  DateTime
+  timeSlot                     String
+  duration                     String?
+  address                      String
+  city                         String?
+  pincode                      String?
+  notes                        String?
+  status                       String         @default("CONFIRMED")
+  paymentStatus                String         @default("PAID")
+  paymentMethod                String?
+  totalAmount                  Float
+  createdAt                    DateTime       @default(now())
+  updatedAt                    DateTime       @updatedAt
+  hospitalAmount               Float?
+  hospitalSharePercentage      Float?
+  mediqueeAmount               Float?
+  mediqueeCommissionPercentage Float?
+  hospital                     Hospital       @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  nurse                        User?          @relation("NurseAssignedNursingBookings", fields: [nurseId], references: [id])
+  service                      NursingService @relation(fields: [serviceId], references: [id])
+  user                         User           @relation("PatientNursingBookings", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([hospitalId, serviceDate, timeSlot, nurseId, userId])
+  @@map("home_nursing_bookings")
+}
+
+model PatientReport {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  hospital    String
+  doctor      String?
+  date        String
+  pages       String   @default("1 page")
+  status      String   @default("Normal")
+  statusColor String?  @default("text-emerald-600 bg-emerald-100/60")
+  iconName    String?  @default("FileText")
+  iconColor   String?  @default("text-blue-500")
+  bg          String?  @default("bg-blue-50")
+  summary     String?
+  fileUrl     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("patient_reports")
+}
+
+model DoctorSchedule {
+  id                  String   @id @default(uuid())
+  doctorId            String
+  hospitalId          String
+  dayOfWeek           String
+  startTime           String   @default("09:00")
+  endTime             String   @default("13:00")
+  videoStartTime      String?  @default("14:00")
+  videoEndTime        String?  @default("18:00")
+  slotDurationMinutes Int      @default(15)
+  isAvailable         Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  doctor              User     @relation("DoctorSchedule", fields: [doctorId], references: [id], onDelete: Cascade)
+  hospital            Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, dayOfWeek])
+  @@map("doctor_schedules")
+}
+
+model MarketingRequest {
+  id             String        @id @default(uuid())
+  hospitalId     String
+  campaignType   String
+  budget         Float?
+  targetAudience String?
+  notes          String?
+  status         RequestStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  doctorId       String?
+  doctorName     String?
+  hospital       Hospital      @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@index([hospitalId])
+  @@map("marketing_requests")
+}
+
+model MedicalCampRequest {
+  id               String        @id @default(uuid())
+  hospitalId       String
+  campTitle        String
+  location         String
+  expectedDate     DateTime
+  specialties      String[]
+  expectedPatients Int?
+  notes            String?
+  status           RequestStatus @default(PENDING)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  hospital         Hospital      @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@index([hospitalId])
+  @@map("medical_camp_requests")
+}
+
+model PatientVitals {
+  id              String    @id @default(uuid())
+  bookingId       String    @unique
+  patientId       String?
+  systolicBp      Int?
+  diastolicBp     Int?
+  pulseRate       Int?
+  bodyTemperature Float?
+  respiratoryRate Int?
+  spo2            Int?
+  weightKg        Float?
+  heightCm        Float?
+  recordedAt      DateTime  @default(now())
+  booking         OPBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("patient_vitals")
+}
+
+model Prescription {
+  id            String             @id @default(uuid())
+  bookingId     String             @unique
+  doctorId      String
+  hospitalId    String
+  diagnosis     String
+  clinicalNotes String?
+  generalAdvice String?
+  followUpDate  DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  items         PrescriptionItem[]
+  booking       OPBooking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  doctor        User               @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
+
+  @@map("prescriptions")
+}
+
+model PrescriptionItem {
+  id             String       @id @default(uuid())
+  prescriptionId String
+  medicineName   String
+  dosageForm     String
+  strength       String?
+  frequency      String
+  durationDays   Int
+  timing         DosageTiming @default(AFTER_FOOD)
+  instructions   String?
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  @@map("prescription_items")
+}
+
+model DoctorLabOrder {
+  id        String    @id @default(uuid())
+  bookingId String
+  testId    String
+  doctorId  String
+  notes     String?
+  createdAt DateTime  @default(now())
+  booking   OPBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  test      LabTest   @relation(fields: [testId], references: [id])
+
+  @@map("doctor_lab_orders")
+}
+
+model Notification {
+  id         String    @id @default(uuid())
+  hospitalId String?
+  userId     String?
+  title      String
+  message    String
+  type       String    @default("appointment")
+  read       Boolean   @default(false)
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  hospital   Hospital? @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([hospitalId, createdAt])
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+model PlatformLabDepartment {
+  id          String            @id @default(uuid())
+  code        String            @unique
+  name        String
+  description String?
+  icon        String?
+  createdAt   DateTime          @default(now())
+  departments Department[]
+  labs        Lab[]
+  tests       PlatformLabTest[]
+
+  @@map("platform_lab_departments")
+}
+
+model PlatformLabTest {
+  id                   String                @id @default(uuid())
+  code                 String                @unique
+  name                 String
+  departmentId         String
+  specimenType         SpecimenType          @default(SERUM)
+  fastingRequired      Boolean               @default(false)
+  fastingDurationHours Int?
+  canBeCollectedAtHome Boolean               @default(true)
+  defaultTatHours      Int                   @default(24)
+  description          String?
+  createdAt            DateTime              @default(now())
+  hospitalOfferings    LabTest[]
+  department           PlatformLabDepartment @relation(fields: [departmentId], references: [id])
+
+  @@map("platform_lab_tests")
+}
+
+model LabTest {
+  id                        String           @id @default(uuid())
+  hospitalId                String
+  platformTestId            String
+  price                     Float
+  tatHours                  Int
+  isHomeCollectionAvailable Boolean          @default(false)
+  homeCollectionFee         Float            @default(0.0)
+  isActive                  Boolean          @default(true)
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
+  doctorOrders              DoctorLabOrder[]
+  bookingItems              LabBookingItem[]
+  hospital                  Hospital         @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  platformTest              PlatformLabTest  @relation(fields: [platformTestId], references: [id])
+
+  @@unique([hospitalId, platformTestId])
+  @@map("lab_tests")
+}
+
+model LabBooking {
+  id                           String           @id @default(uuid())
+  hospitalId                   String
+  patientId                    String
+  bookingType                  LabBookingType
+  status                       LabBookingStatus @default(REQUESTED)
+  collectionAddress            String?
+  collectionDate               DateTime?
+  collectionTimeSlot           String?
+  phlebotomistName             String?
+  phlebotomistPhone            String?
+  sampleCollectedAt            DateTime?
+  totalAmount                  Float
+  homeCollectionFee            Float            @default(0.0)
+  createdAt                    DateTime         @default(now())
+  updatedAt                    DateTime         @updatedAt
+  hospitalAmount               Float?
+  hospitalSharePercentage      Float?
+  mediqueeAmount               Float?
+  mediqueeCommissionPercentage Float?
+  items                        LabBookingItem[]
+  hospital                     Hospital         @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  patient                      User             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("lab_bookings")
+}
+
+model LabBookingItem {
+  id        String     @id @default(uuid())
+  bookingId String
+  labTestId String
+  price     Float
+  booking   LabBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  labTest   LabTest    @relation(fields: [labTestId], references: [id], onDelete: Cascade)
+
+  @@map("lab_booking_items")
+}
+
+model Lab {
+  id                    String                 @id @default(uuid())
+  hospitalId            String?
+  platformDepartmentId  String?
+  name                  String
+  labLicenseNumber      String?
+  labLicenseDocumentUrl String?
+  licenseValidUntil     DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  address               String?
+  city                  String?
+  contactPhone          String?
+  description           String?
+  email                 String?
+  pinCode               String?
+  state                 String?
+  status                String                 @default("Active")
+  type                  String                 @default("HOSPITAL_BASED")
+
+  // Verification
+  verificationStatus String @default("PENDING")
+  cancellationReason String?
+  cancelledAt        DateTime?
+  cancelledBy        String?
+  hospital              Hospital?              @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  platformDepartment    PlatformLabDepartment? @relation(fields: [platformDepartmentId], references: [id])
+
+  @@map("hospital_labs")
+}
+
+model HomePagePoster {
+  id           String    @id @default(uuid())
+  title        String?
+  description  String?
+  imageUrl     String?
+  buttonText   String?
+  buttonAction String?
+  displayOrder Int       @default(0)
+  isActive     Boolean   @default(true)
+  startDate    DateTime?
+  endDate      DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  isDefault    Boolean   @default(false)
+
+  @@map("home_page_posters")
+}
+
 enum SpecimenType {
   WHOLE_BLOOD
   SERUM
@@ -79,618 +649,3 @@ enum DoctorPresenceStatus {
   IN_SURGERY
   OFF_DUTY
 }
-
-model Hospital {
-  id                 String       @id @default(uuid())
-  name               String
-  businessType       BusinessType
-  facilityType       String?
-  registrationNumber String?
-  establishedYear    String?
-  logoUrl            String?
-
-  // Contact
-  contactPhone     String?
-  contactEmail     String?
-  website          String?
-  emergencyContact String?
-
-  // Location
-  addressLine1 String?
-  addressLine2 String?
-  area         String?
-  city         String?
-  state        String?
-  country      String?
-  pincode      String?
-
-  // Services as a JSON array of strings
-  services String[]
-
-  // Revenue Sharing
-  hospitalShare Float @default(80.0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  users               User[]
-  departments         Department[]
-  verifications       HospitalVerification[]
-  rolePermissions     RolePermission[]
-  opBookings          OPBooking[]
-  doctorSchedules     DoctorSchedule[]
-  marketingRequests   MarketingRequest[]
-  medicalCampRequests MedicalCampRequest[]
-  notifications       Notification[]
-  labTests            LabTest[]
-  labBookings         LabBooking[]
-  labs                Lab[]
-  nursingBookings     HomeNursingBooking[]
-
-}
-
-model PlatformSpecialty {
-  id          String  @id @default(uuid())
-  name        String  @unique
-  description String?
-
-  conditions  PlatformCondition[]
-  departments Department[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model PlatformCondition {
-  id          String  @id @default(uuid())
-  name        String  @unique
-  description String?
-  icon        String?
-
-  specialtyId String
-  specialty   PlatformSpecialty @relation(fields: [specialtyId], references: [id])
-
-  opBookings OPBooking[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model HospitalVerification {
-  id         String   @id @default(uuid())
-  hospitalId String
-  hospital   Hospital @relation(fields: [hospitalId], references: [id])
-
-  documentType String // e.g., 'REGISTRATION', 'CLINICAL_ESTABLISHMENT', 'NABH'
-  fileUrl      String // Path or URL to the uploaded file
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model User {
-  id                   String                @id @default(uuid())
-  email                String                @unique
-  phone                String?               @unique
-  passwordHash         String
-  name                 String
-  role                 Role
-  designation          String?
-  avatar               String?
-  dob                  String?
-  gender               String?
-  address              String?
-  licenseNumber        String?
-  qualification        String?
-  specialization       String?
-  experienceYears      Int?
-  consultationFee      Float?
-  bio                  String?
-  digitalSignature     String?
-  prescriptionSettings Json?
-  active               Boolean               @default(true)
-  presenceStatus       DoctorPresenceStatus? @default(OFF_DUTY)
-
-  // Nullable because SUPER_ADMIN might not belong to one hospital
-  hospitalId String?
-  hospital   Hospital? @relation(fields: [hospitalId], references: [id])
-
-  departmentId String?
-  department   Department? @relation(fields: [departmentId], references: [id])
-
-  doctorBookings          OPBooking[]          @relation("DoctorBookings")
-  patientBookings         OPBooking[]          @relation("PatientBookings")
-  labBookings             LabBooking[]
-  patientNursingBookings  HomeNursingBooking[] @relation("PatientNursingBookings")
-  assignedNursingBookings HomeNursingBooking[] @relation("NurseAssignedNursingBookings")
-  patientReports          PatientReport[]
-  doctorSchedules         DoctorSchedule[]     @relation("DoctorSchedule")
-  prescriptions           Prescription[]       @relation("DoctorPrescriptions")
-  notifications           Notification[]
-
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-
-}
-
-model Department {
-  id         String   @id @default(uuid())
-  hospitalId String
-  hospital   Hospital @relation(fields: [hospitalId], references: [id])
-
-  name        String
-  code        String?
-  description String?
-  type        String? @default("CLINICAL")
-
-  specialtyId String?
-  specialty   PlatformSpecialty? @relation(fields: [specialtyId], references: [id])
-
-  platformLabDepartmentId String?
-  platformLabDepartment   PlatformLabDepartment? @relation(fields: [platformLabDepartmentId], references: [id])
-
-  labLicenseNumber      String?
-  labLicenseDocumentUrl String?
-  licenseValidUntil     DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  users      User[]
-  opBookings OPBooking[]
-
-  @@unique([hospitalId, name])
-}
-
-model Permission {
-  id          String  @id @default(uuid())
-  key         String  @unique
-  name        String
-  description String?
-  module      String
-
-  createdAt DateTime @default(now())
-
-  rolePermissions RolePermission[]
-}
-
-model RolePermission {
-  id         String   @id @default(uuid())
-  hospitalId String
-  hospital   Hospital @relation(fields: [hospitalId], references: [id])
-  role       Role
-
-  permissionId String
-  permission   Permission @relation(fields: [permissionId], references: [id])
-
-  enabled Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([hospitalId, role, permissionId])
-}
-
-model OPBooking {
-  id           String             @id @default(uuid())
-  hospitalId   String
-  hospital     Hospital           @relation(fields: [hospitalId], references: [id])
-  departmentId String
-  department   Department         @relation(fields: [departmentId], references: [id])
-  doctorId     String
-  doctor       User               @relation("DoctorBookings", fields: [doctorId], references: [id])
-  patientId    String?
-  patient      User?              @relation("PatientBookings", fields: [patientId], references: [id])
-  conditionId  String?
-  condition    PlatformCondition? @relation(fields: [conditionId], references: [id])
-  timeSlot     String?
-  slotTime     String?
-  reason       String?
-
-  patientName   String
-  patientPhone  String?
-  patientAge    Int?
-  patientGender String?
-  opType        String  @default("Normal")
-
-  status          BookingStatus @default(WAITING)
-  appointmentDate DateTime      @default(now())
-  fee             Float         @default(0)
-
-  // Transaction Financials
-  hospitalSharePercentage      Float?
-  mediqueeCommissionPercentage Float?
-  hospitalAmount               Float?
-  mediqueeAmount               Float?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  vitals       PatientVitals?
-  prescription Prescription?
-  labOrders    DoctorLabOrder[]
-}
-
-model NursingService {
-  id           String  @id @default(uuid())
-  name         String  @unique
-  code         String  @unique
-  category     String
-  description  String?
-  duration     String  @default("12 / 24 Hours")
-  basePrice    Float
-  requirements String?
-  iconUrl      String?
-  active       Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  offerings NursingServiceOffering[]
-  bookings  HomeNursingBooking[]
-
-  @@map("nursing_services")
-}
-
-model NursingServiceOffering {
-  id          String         @id @default(uuid())
-  hospitalId  String
-  serviceId   String
-  service     NursingService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  price       Float
-  duration    String?
-  available   Boolean        @default(true)
-  serviceArea String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([hospitalId, serviceId])
-  @@map("nursing_service_offerings")
-}
-
-model HomeNursingBooking {
-  id            String         @id @default(uuid())
-  bookingNumber String         @unique
-  userId        String
-  user          User           @relation("PatientNursingBookings", fields: [userId], references: [id], onDelete: Cascade)
-  hospitalId    String
-  hospital      Hospital       @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
-  serviceId     String
-  service       NursingService @relation(fields: [serviceId], references: [id])
-  nurseId       String?
-  nurse         User?          @relation("NurseAssignedNursingBookings", fields: [nurseId], references: [id])
-
-  patientName   String
-  patientPhone  String
-  patientEmail  String?
-  patientAge    Int?
-  patientGender String?
-
-  serviceDate DateTime
-  timeSlot    String
-  duration    String?
-  address     String
-  city        String?
-  pincode     String?
-  notes       String?
-
-  status        String  @default("CONFIRMED") // 'CONFIRMED', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'
-  paymentStatus String  @default("PAID") // 'PENDING', 'PAID', 'REFUNDED'
-  paymentMethod String? // 'CARD', 'UPI', etc.
-  totalAmount   Float
-
-  // Transaction Financials
-  hospitalSharePercentage      Float?
-  mediqueeCommissionPercentage Float?
-  hospitalAmount               Float?
-  mediqueeAmount               Float?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([hospitalId, serviceDate, timeSlot, nurseId, userId])
-  @@map("home_nursing_bookings")
-}
-
-model PatientReport {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  title       String
-  hospital    String
-  doctor      String?
-  date        String
-  pages       String  @default("1 page")
-  status      String  @default("Normal")
-  statusColor String? @default("text-emerald-600 bg-emerald-100/60")
-  iconName    String? @default("FileText")
-  iconColor   String? @default("text-blue-500")
-  bg          String? @default("bg-blue-50")
-  summary     String?
-
-  fileUrl String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("patient_reports")
-}
-
-model DoctorSchedule {
-  id                  String   @id @default(uuid())
-  doctorId            String
-  doctor              User     @relation("DoctorSchedule", fields: [doctorId], references: [id], onDelete: Cascade)
-  hospitalId          String
-  hospital            Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
-  dayOfWeek           String // e.g. "Monday", "Tuesday", etc.
-  startTime           String   @default("09:00")
-  endTime             String   @default("13:00")
-  videoStartTime      String?  @default("14:00")
-  videoEndTime        String?  @default("18:00")
-  slotDurationMinutes Int      @default(15)
-  isAvailable         Boolean  @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([doctorId, dayOfWeek])
-  @@map("doctor_schedules")
-}
-
-model MarketingRequest {
-  id             String        @id @default(uuid())
-  hospitalId     String
-  hospital       Hospital      @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
-  doctorId       String?
-  doctorName     String?
-  campaignType   String
-  budget         Float?
-  targetAudience String?
-  notes          String?
-  status         RequestStatus @default(PENDING)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-
-  @@index([hospitalId])
-  @@map("marketing_requests")
-}
-
-model MedicalCampRequest {
-  id               String        @id @default(uuid())
-  hospitalId       String
-  hospital         Hospital      @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
-  campTitle        String
-  location         String
-  expectedDate     DateTime
-  specialties      String[]
-  expectedPatients Int?
-  notes            String?
-  status           RequestStatus @default(PENDING)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-
-  @@index([hospitalId])
-  @@map("medical_camp_requests")
-}
-
-model PatientVitals {
-  id              String    @id @default(uuid())
-  bookingId       String    @unique
-  booking         OPBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  patientId       String?
-  systolicBp      Int?
-  diastolicBp     Int?
-  pulseRate       Int?
-  bodyTemperature Float?
-  respiratoryRate Int?
-  spo2            Int?
-  weightKg        Float?
-  heightCm        Float?
-  recordedAt      DateTime  @default(now())
-
-  @@map("patient_vitals")
-}
-
-model Prescription {
-  id            String             @id @default(uuid())
-  bookingId     String             @unique
-  booking       OPBooking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  doctorId      String
-  doctor        User               @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
-  hospitalId    String
-  diagnosis     String
-  clinicalNotes String?
-  generalAdvice String?
-  followUpDate  DateTime?
-  items         PrescriptionItem[]
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-
-  @@map("prescriptions")
-}
-
-model PrescriptionItem {
-  id             String       @id @default(uuid())
-  prescriptionId String
-  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-  medicineName   String
-  dosageForm     String
-  strength       String?
-  frequency      String
-  durationDays   Int
-  timing         DosageTiming @default(AFTER_FOOD)
-  instructions   String?
-
-  @@map("prescription_items")
-}
-
-model DoctorLabOrder {
-  id        String    @id @default(uuid())
-  bookingId String
-  booking   OPBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  testId    String
-  test      LabTest   @relation(fields: [testId], references: [id])
-  doctorId  String
-  notes     String?
-  createdAt DateTime  @default(now())
-
-  @@map("doctor_lab_orders")
-}
-
-model Notification {
-  id         String    @id @default(uuid())
-  hospitalId String?
-  hospital   Hospital? @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
-  userId     String?
-  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title      String
-  message    String
-  type       String    @default("appointment")
-  read       Boolean   @default(false)
-  metadata   Json?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  @@index([hospitalId, createdAt])
-  @@index([userId, read])
-  @@map("notifications")
-}
-
-model PlatformLabDepartment {
-  id          String            @id @default(uuid())
-  code        String            @unique
-  name        String
-  description String?
-  icon        String?
-  tests       PlatformLabTest[]
-  departments Department[]
-  labs        Lab[]
-  createdAt   DateTime          @default(now())
-
-  @@map("platform_lab_departments")
-}
-
-model PlatformLabTest {
-  id                   String                @id @default(uuid())
-  code                 String                @unique
-  name                 String
-  departmentId         String
-  department           PlatformLabDepartment @relation(fields: [departmentId], references: [id])
-  specimenType         SpecimenType          @default(SERUM)
-  fastingRequired      Boolean               @default(false)
-  fastingDurationHours Int?
-  canBeCollectedAtHome Boolean               @default(true)
-  defaultTatHours      Int                   @default(24)
-  description          String?
-  hospitalOfferings    LabTest[]
-  createdAt            DateTime              @default(now())
-
-  @@map("platform_lab_tests")
-}
-
-model LabTest {
-  id                        String          @id @default(uuid())
-  hospitalId                String
-  hospital                  Hospital        @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
-  platformTestId            String
-  platformTest              PlatformLabTest @relation(fields: [platformTestId], references: [id])
-  price                     Float
-  tatHours                  Int
-  isHomeCollectionAvailable Boolean         @default(false)
-  homeCollectionFee         Float           @default(0.0)
-  isActive                  Boolean         @default(true)
-
-  doctorOrders DoctorLabOrder[]
-  bookingItems LabBookingItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([hospitalId, platformTestId])
-  @@map("lab_tests")
-}
-
-model LabBooking {
-  id          String           @id @default(uuid())
-  hospitalId  String
-  hospital    Hospital         @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
-  patientId   String
-  patient     User             @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  bookingType LabBookingType
-  status      LabBookingStatus @default(REQUESTED)
-
-  collectionAddress  String?
-  collectionDate     DateTime?
-  collectionTimeSlot String?
-  phlebotomistName   String?
-  phlebotomistPhone  String?
-  sampleCollectedAt  DateTime?
-
-  totalAmount       Float
-  homeCollectionFee Float @default(0.0)
-
-  // Transaction Financials
-  hospitalSharePercentage      Float?
-  mediqueeCommissionPercentage Float?
-  hospitalAmount               Float?
-  mediqueeAmount               Float?
-
-  items LabBookingItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("lab_bookings")
-}
-
-model LabBookingItem {
-  id        String     @id @default(uuid())
-  bookingId String
-  booking   LabBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  labTestId String
-  labTest   LabTest    @relation(fields: [labTestId], references: [id], onDelete: Cascade)
-  price     Float
-
-  @@map("lab_booking_items")
-}
-
-model Lab {
-  id         String   @id @default(uuid())
-  hospitalId String
-  hospital   Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
-
-  platformDepartmentId String?
-  platformDepartment   PlatformLabDepartment? @relation(fields: [platformDepartmentId], references: [id])
-
-  name                  String
-  labLicenseNumber      String
-  labLicenseDocumentUrl String
-  licenseValidUntil     DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("hospital_labs")
-}
-
-model HomePagePoster {
-  id           String    @id @default(uuid())
-  title        String?
-  description  String?
-  imageUrl     String?
-  buttonText   String?
-  buttonAction String?
-  displayOrder Int       @default(0)
-  isActive     Boolean   @default(true)
-  startDate    DateTime?
-  endDate      DateTime?
-  isDefault    Boolean   @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("home_page_posters")
-}
-

@@ -9,15 +9,24 @@ import { sendNotification } from '../notifications/notifications.service';
 export const getLaboratories = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const type = req.query.type as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
     const hospitalId = typeof req.query.hospitalId === 'string' ? req.query.hospitalId.trim() : '';
     const location = typeof req.query.location === 'string' ? req.query.location.trim() : '';
 
-    const whereClause: any = {
-      OR: [
+    const whereClause: any = {};
+    if (type === 'STANDALONE') {
+      whereClause.businessType = BusinessType.LABORATORY;
+    } else if (type === 'HOSPITAL_BASED') {
+      whereClause.businessType = { not: BusinessType.LABORATORY };
+      whereClause.services = { hasSome: ['lab_tests', 'lab', 'laboratory', 'diagnostics'] };
+    } else {
+      whereClause.OR = [
         { businessType: BusinessType.LABORATORY },
         { services: { hasSome: ['lab_tests', 'lab', 'laboratory', 'diagnostics'] } }
-      ]
-    };
+      ];
+    }
 
     if (hospitalId) {
       whereClause.id = hospitalId;
@@ -50,7 +59,10 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
       ];
     }
 
+    const totalCount = await prisma.hospital.count({ where: whereClause });
     const labs = await prisma.hospital.findMany({
+      skip: (page - 1) * limit,
+      take: limit,
       where: whereClause,
       select: {
         id: true,
@@ -123,7 +135,16 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
       };
     });
 
-    res.json({ success: true, data: formatted });
+    res.json({
+      success: true,
+      data: formatted,
+      pagination: {
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit)
+      }
+    });
   } catch (error) {
     next(error);
   }
