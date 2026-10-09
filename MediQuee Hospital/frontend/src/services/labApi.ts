@@ -32,6 +32,32 @@ export const labApi = {
     return res.json();
   },
 
+  // --- Lab Availability Management ---
+  async getAvailability() {
+    const res = await fetch(`${API_BASE}/laboratories/me/availability`, {
+      headers: getAuthHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to fetch lab availability');
+    }
+    return data.data;
+  },
+
+  async updateAvailability(schedules: any[]) {
+    const res = await fetch(`${API_BASE}/laboratories/me/availability`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ schedules })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to update lab availability');
+    }
+    return data.data;
+  },
+
+
   // --- License & Hospital Lab Management ---
   async uploadLicenseCertificate(file: File): Promise<{ fileUrl: string; fileName: string; size: number }> {
     return new Promise((resolve, reject) => {

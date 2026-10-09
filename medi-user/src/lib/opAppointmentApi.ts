@@ -127,7 +127,7 @@ export const opAppointmentApi = {
     error?: string;
   }> {
     try {
-      const url = new URL(`${API_BASE_URL}/diseases`);
+      const url = new URL(`${API_BASE_URL}/diseases`, window.location.origin);
       if (search) {
         url.searchParams.set('search', search);
       }
@@ -150,7 +150,7 @@ export const opAppointmentApi = {
     error?: string;
   }> {
     try {
-      const url = new URL(`${API_BASE_URL}/hospitals`);
+      const url = new URL(`${API_BASE_URL}/hospitals`, window.location.origin);
       if (search) url.searchParams.set('search', search);
       if (conditionId) url.searchParams.set('conditionId', conditionId);
 
@@ -183,7 +183,7 @@ export const opAppointmentApi = {
     error?: string;
   }> {
     try {
-      const url = new URL(`${API_BASE_URL}/hospitals/${hospitalId}/doctors`);
+      const url = new URL(`${API_BASE_URL}/hospitals/${hospitalId}/doctors`, window.location.origin);
       if (departmentId) url.searchParams.set('departmentId', departmentId);
       if (conditionId) url.searchParams.set('conditionId', conditionId);
 
@@ -234,7 +234,7 @@ export const opAppointmentApi = {
     error?: string;
   }> {
     try {
-      const url = new URL(`${API_BASE_URL}/doctors/${doctorId}/availability`);
+      const url = new URL(`${API_BASE_URL}/doctors/${doctorId}/availability`, window.location.origin);
       if (date) url.searchParams.set('date', date);
       if (type) {
         url.searchParams.set('type', type);

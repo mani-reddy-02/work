@@ -16,6 +16,12 @@ const PendingVerifications: React.FC = () => {
   const [cancellationReason, setCancellationReason] = useState('');
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+
+  const showNotification = (message: string, type: 'success' | 'error') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   const fetchData = async () => {
     if (!token) return;
@@ -40,7 +46,6 @@ const PendingVerifications: React.FC = () => {
 
   const handleApprove = async () => {
     if (!selectedRequest || !token) return;
-    if (!window.confirm(`Are you sure you want to approve this ${selectedRequest.type === 'hospital' ? 'hospital' : 'laboratory'}?`)) return;
     
     setIsProcessing(true);
     try {
@@ -48,13 +53,14 @@ const PendingVerifications: React.FC = () => {
         status: 'APPROVED'
       });
       if (res.success) {
+        showNotification(`${selectedRequest.type === 'hospital' ? 'Hospital' : 'Laboratory'} approved successfully!`, 'success');
         setSelectedRequest(null);
         fetchData();
       } else {
-        alert(res.message || 'Failed to approve');
+        showNotification(res.message || 'Failed to approve', 'error');
       }
     } catch (err) {
-      alert('Error updating status');
+      showNotification('Error updating status', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -63,7 +69,7 @@ const PendingVerifications: React.FC = () => {
   const handleCancel = async () => {
     if (!selectedRequest || !token) return;
     if (!cancellationReason.trim()) {
-      alert('Please provide a reason for cancelling this request.');
+      showNotification('Please provide a reason for cancelling this request.', 'error');
       return;
     }
     
@@ -74,15 +80,16 @@ const PendingVerifications: React.FC = () => {
         cancellationReason
       });
       if (res.success) {
+        showNotification(`${selectedRequest.type === 'hospital' ? 'Hospital' : 'Laboratory'} request cancelled!`, 'success');
         setShowCancelModal(false);
         setCancellationReason('');
         setSelectedRequest(null);
         fetchData();
       } else {
-        alert(res.message || 'Failed to cancel');
+        showNotification(res.message || 'Failed to cancel', 'error');
       }
     } catch (err) {
-      alert('Error cancelling request');
+      showNotification('Error cancelling request', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -126,7 +133,17 @@ const PendingVerifications: React.FC = () => {
   }
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-8">
+    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-8 relative">
+      {notification && (
+        <div className={`fixed top-6 right-6 z-[60] p-4 rounded-xl shadow-xl flex items-center transition-all min-w-[300px] ${notification.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+          {notification.type === 'success' ? <CheckCircle2 className="w-5 h-5 mr-3 text-emerald-600" /> : <XCircle className="w-5 h-5 mr-3 text-red-600" />}
+          <span className="font-semibold text-sm flex-1">{notification.message}</span>
+          <button onClick={() => setNotification(null)} className="ml-4 text-slate-400 hover:text-slate-600">
+            <XCircle className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h3 className="text-lg font-semibold text-slate-900 flex items-center">

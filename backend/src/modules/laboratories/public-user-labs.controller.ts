@@ -10,8 +10,12 @@ export const getPublicLabTests = async (req: Request, res: Response, next: NextF
       hospitalOfferings: {
         some: {
           isActive: true,
+          hospital: {
+            verificationStatus: 'APPROVED'
+          },
           ...(isHomeCollectionRequest ? { isHomeCollectionAvailable: true } : {}),
-          ...(hospitalId ? { hospitalId: String(hospitalId) } : {})
+          ...(hospitalId ? { hospitalId: String(hospitalId) } : {}),
+          ...(laboratoryId ? { hospitalId: String(laboratoryId) } : {})
         }
       }
     };
@@ -33,7 +37,12 @@ export const getPublicLabTests = async (req: Request, res: Response, next: NextF
           hospitalOfferings: {
             where: {
               isActive: true,
-              ...(isHomeCollectionRequest ? { isHomeCollectionAvailable: true } : {})
+              hospital: {
+                verificationStatus: 'APPROVED'
+              },
+              ...(isHomeCollectionRequest ? { isHomeCollectionAvailable: true } : {}),
+              ...(hospitalId ? { hospitalId: String(hospitalId) } : {}),
+              ...(laboratoryId ? { hospitalId: String(laboratoryId) } : {})
             }
           }
         }
@@ -102,6 +111,9 @@ export const getEligibleLaboratories = async (req: Request, res: Response, next:
       where: {
         platformTestId: String(id),
         isActive: true,
+        hospital: {
+          verificationStatus: 'APPROVED'
+        },
         ...(isHomeCollectionRequest ? { isHomeCollectionAvailable: true } : {})
       },
       include: {
@@ -166,11 +178,14 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
     const baseSlots = [
       { slot: '08:00 AM - 09:00 AM', available: true },
       { slot: '09:00 AM - 10:00 AM', available: true },
-      { slot: '10:00 AM - 11:00 AM', available: false },
+      { slot: '10:00 AM - 11:00 AM', available: true },
       { slot: '11:00 AM - 12:00 PM', available: true },
       { slot: '12:00 PM - 01:00 PM', available: true },
       { slot: '01:00 PM - 02:00 PM', available: true },
-      { slot: '02:00 PM - 03:00 PM', available: true }
+      { slot: '02:00 PM - 03:00 PM', available: true },
+      { slot: '03:00 PM - 04:00 PM', available: true },
+      { slot: '04:00 PM - 05:00 PM', available: true },
+      { slot: '05:00 PM - 06:00 PM', available: true }
     ];
 
     const targetDateStr = dateStr || dates[0].date;
@@ -189,8 +204,44 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
       currentKolkataTimeInMinutes = h * 60 + m;
     }
 
-    const slots = baseSlots.filter(s => {
-      if (!s.available) return false;
+    // Fetch existing bookings for this hospital on the target date
+    const targetDateObj = new Date(targetDateStr);
+    const nextDay = new Date(targetDateObj);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    const existingBookings = await prisma.labBooking.findMany({
+      where: {
+        hospitalId: String(laboratoryId),
+        collectionDate: {
+          gte: targetDateObj,
+          lt: nextDay,
+        },
+        status: { notIn: ['CANCELLED'] }
+      },
+      select: {
+        collectionTimeSlot: true,
+        bookingType: true
+      }
+    });
+
+    // Count how many bookings exist for each slot (e.g. limit to 3 total bookings per slot, or 1 for HOME_COLLECTION)
+    const slotCounts: Record<string, { total: number, home: number }> = {};
+    for (const b of existingBookings) {
+      if (b.collectionTimeSlot) {
+        if (!slotCounts[b.collectionTimeSlot]) {
+          slotCounts[b.collectionTimeSlot] = { total: 0, home: 0 };
+        }
+        slotCounts[b.collectionTimeSlot].total++;
+        if (b.bookingType === 'HOME_COLLECTION') {
+          slotCounts[b.collectionTimeSlot].home++;
+        }
+      }
+    }
+
+    const slots = baseSlots.map(s => {
+      let isAvailable = true;
+
+      // Filter by time if it's today
       if (isToday) {
         const match = s.slot.match(/(\d+):(\d+)\s+(AM|PM)/i);
         if (match) {
@@ -200,10 +251,24 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
           if (period === 'PM' && h !== 12) h += 12;
           if (period === 'AM' && h === 12) h = 0;
           const slotMinutes = h * 60 + m;
-          if (slotMinutes <= currentKolkataTimeInMinutes) return false;
+          if (slotMinutes <= currentKolkataTimeInMinutes) {
+            isAvailable = false;
+          }
         }
       }
-      return true;
+
+      // Filter by existing bookings capacity (Assuming max 1 Home collection or max 5 total walk-ins)
+      if (isAvailable && slotCounts[s.slot]) {
+        // You can tweak this capacity. Let's say a slot is full if it has >= 3 bookings
+        if (slotCounts[s.slot].total >= 3) {
+          isAvailable = false;
+        }
+      }
+
+      return {
+        ...s,
+        available: isAvailable
+      };
     });
 
     res.json({
@@ -230,7 +295,7 @@ export const getPublicLabTestById = async (req: Request, res: Response, next: Ne
       include: {
         department: true,
         hospitalOfferings: {
-          where: { isActive: true }
+          where: { isActive: true, hospital: { verificationStatus: 'APPROVED' } }
         }
       }
     });

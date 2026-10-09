@@ -82,7 +82,7 @@ const Hospitals: React.FC = () => {
       if (debouncedSearch) queryParams.append('search', debouncedSearch);
       if (locationFilter !== 'all') queryParams.append('location', locationFilter);
 
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+      const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
       const res = await fetch(`${API_URL}/admin/hospitals?${queryParams.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -152,7 +152,7 @@ const Hospitals: React.FC = () => {
 
     setIsAdding(true);
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+      const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
       const res = await fetch(`${API_URL}/admin/hospitals`, {
         method: 'POST',
         headers: { 
@@ -335,8 +335,7 @@ const Hospitals: React.FC = () => {
                     <label className="block text-xs font-medium text-slate-700 mb-1">Business Type</label>
                     <select value={addForm.businessType} onChange={e => setAddForm({...addForm, businessType: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg text-sm">
                       <option value="HOSPITAL">Hospital</option>
-                      <option value="CLINIC">Clinic</option>
-                      <option value="DIAGNOSTIC">Diagnostic Center</option>
+                      <option value="LABORATORY">Standalone Laboratory</option>
                     </select>
                   </div>
                   <div>

@@ -82,7 +82,7 @@ const LabTests: React.FC = () => {
         }
       }
 
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+      const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
       const res = await fetch(`${API_URL}/admin/lab-bookings?${queryParams.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });

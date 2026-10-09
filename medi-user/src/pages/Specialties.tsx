@@ -130,6 +130,8 @@ const Specialties = () => {
   const [isHospitalsLoading, setIsHospitalsLoading] = useState(false);
   const [isDoctorsLoading, setIsDoctorsLoading] = useState(false);
   const [isSlotsLoading, setIsSlotsLoading] = useState(false);
+  const [isDiseasesLoading, setIsDiseasesLoading] = useState(true);
+  const [diseasesError, setDiseasesError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState('');
 
@@ -168,42 +170,55 @@ const Specialties = () => {
   // Fetch real diseases on mount
   useEffect(() => {
     let mounted = true;
+    setIsDiseasesLoading(true);
+    setDiseasesError(false);
     opAppointmentApi.fetchDiseases().then((res) => {
-      if (mounted && res.success && res.data) {
-        
-        // Map general
-        const general = (res.data.general || []).map((d: any, idx: number) => ({
-          ...d,
-          icon: Activity,
-          image: getDiseaseIconUrl(d.name, d.icon),
-          bg: ['bg-red-50', 'bg-blue-50', 'bg-emerald-50', 'bg-purple-50', 'bg-amber-50'][idx % 5]
-        }));
-        
-        // Map advanced
-        const advanced = (res.data.advanced || []).map((d: any, idx: number) => ({
-          ...d,
-          icon: ShieldCheck,
-          image: getDiseaseIconUrl(d.name, d.icon),
-          bg: ['bg-pink-50', 'bg-blue-50', 'bg-orange-50', 'bg-fuchsia-50', 'bg-rose-50'][idx % 5]
-        }));
-        
-        // Map categorical
-        const categorical = (res.data.categorical || []).map((s: any, idx: number) => ({
-          ...s,
-          desc: s.description || 'Specialized clinical care',
-          icon: Stethoscope,
-          image: getDiseaseIconUrl(s.name, s.icon),
-          bg: ['bg-emerald-50', 'bg-cyan-50', 'bg-rose-50', 'bg-red-50', 'bg-purple-50'][idx % 5]
-        }));
+      if (mounted) {
+        if (res.success && res.data) {
+          
+          // Map general
+          const general = (res.data.general || []).map((d: any, idx: number) => ({
+            ...d,
+            icon: Activity,
+            image: getDiseaseIconUrl(d.name, d.icon),
+            bg: ['bg-red-50', 'bg-blue-50', 'bg-emerald-50', 'bg-purple-50', 'bg-amber-50'][idx % 5]
+          }));
+          
+          // Map advanced
+          const advanced = (res.data.advanced || []).map((d: any, idx: number) => ({
+            ...d,
+            icon: ShieldCheck,
+            image: getDiseaseIconUrl(d.name, d.icon),
+            bg: ['bg-pink-50', 'bg-blue-50', 'bg-orange-50', 'bg-fuchsia-50', 'bg-rose-50'][idx % 5]
+          }));
+          
+          // Map categorical
+          const categorical = (res.data.categorical || []).map((s: any, idx: number) => ({
+            ...s,
+            desc: s.description || 'Specialized clinical care',
+            icon: Stethoscope,
+            image: getDiseaseIconUrl(s.name, s.icon),
+            bg: ['bg-emerald-50', 'bg-cyan-50', 'bg-rose-50', 'bg-red-50', 'bg-purple-50'][idx % 5]
+          }));
 
-        setDiseasesList({
-          general,
-          advanced,
-          categorical,
-          raw: res.data.conditions || []
-        });
+          setDiseasesList({
+            general,
+            advanced,
+            categorical,
+            raw: res.data.conditions || []
+          });
+          setDiseasesError(false);
+        } else {
+          setDiseasesError(true);
+        }
+        setIsDiseasesLoading(false);
       }
-    }).catch(() => {});
+    }).catch(() => {
+      if (mounted) {
+        setDiseasesError(true);
+        setIsDiseasesLoading(false);
+      }
+    });
 
     return () => { mounted = false; };
   }, []);
@@ -551,8 +566,22 @@ const Specialties = () => {
         )}
       </div>
       
-      {!hasResults ? (
-        <div className="text-center py-8">
+      {isDiseasesLoading ? (
+        <div className="text-center py-12">
+           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+           <p className="text-[13px] text-slate-500 font-medium">Loading diseases...</p>
+        </div>
+      ) : diseasesError ? (
+        <div className="text-center py-12">
+           <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
+           <p className="text-[14px] text-slate-700 font-bold mb-1">Failed to load diseases</p>
+           <p className="text-[13px] text-slate-500 mb-4">Please check your connection and try again.</p>
+           <button onClick={() => window.location.reload()} className="px-5 py-2 bg-blue-600 text-white text-[13px] font-bold rounded-xl hover:bg-blue-700 shadow-sm">
+             Retry
+           </button>
+        </div>
+      ) : !hasResults ? (
+        <div className="text-center py-12">
            <p className="text-[14px] text-slate-500 font-bold">No matching diseases found</p>
         </div>
       ) : (

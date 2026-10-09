@@ -94,8 +94,8 @@ export function StepReview({ onEditStep }: StepReviewProps) {
           </div>
         </div>
 
-        {/* Departments Summary (Hospital Only) */}
-        {isHospital && (
+        {/* Departments Summary */}
+        {(values.hospitalDepartments?.departments?.length || values.labDepartments?.departments?.length) ? (
           <div className="bg-surface border border-border rounded-[20px] overflow-hidden">
             <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-border">
               <div className="flex items-center gap-2">
@@ -106,16 +106,39 @@ export function StepReview({ onEditStep }: StepReviewProps) {
             </div>
             <div className="p-4">
               <div className="flex flex-wrap gap-2">
-                {values.hospitalDepartments?.departments?.map(d => (
+                {(isHospital ? values.hospitalDepartments?.departments : values.labDepartments?.departments)?.map(d => (
                   <span key={d} className="px-2.5 py-1 bg-gray-100 text-foreground/80 text-[12px] font-semibold rounded-lg">{d}</span>
                 ))}
-                {values.hospitalDepartments?.customDepartments?.map(cd => (
+                {(isHospital ? values.hospitalDepartments?.customDepartments : values.labDepartments?.customDepartments)?.map(cd => (
                   <span key={cd.name} className="px-2.5 py-1 bg-gray-100 text-foreground/80 text-[12px] font-semibold rounded-lg">{cd.name}</span>
                 ))}
               </div>
             </div>
           </div>
-        )}
+        ) : null}
+
+        {/* Lab Tests Summary (Lab Only) */}
+        {!isHospital && values.labTests?.tests?.length ? (
+          <div className="bg-surface border border-border rounded-[20px] overflow-hidden">
+            <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Microscope className="w-5 h-5 text-[#1769E0]" />
+                <h3 className="font-bold text-[#172033]">Tests Offered</h3>
+              </div>
+              <button type="button" onClick={() => onEditStep("tests")} className="text-[12px] font-bold text-[#1769E0] hover:underline">Edit</button>
+            </div>
+            <div className="p-4">
+              <div className="flex flex-wrap gap-2">
+                {values.labTests?.tests?.map(t => (
+                  <span key={t} className="px-2.5 py-1 bg-gray-100 text-foreground/80 text-[12px] font-semibold rounded-lg">{t}</span>
+                ))}
+                {values.labTests?.customTests?.map(ct => (
+                  <span key={ct.name} className="px-2.5 py-1 bg-gray-100 text-foreground/80 text-[12px] font-semibold rounded-lg">{ct.name}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {/* Verification Summary */}
         <div className="bg-surface border border-border rounded-[20px] overflow-hidden">

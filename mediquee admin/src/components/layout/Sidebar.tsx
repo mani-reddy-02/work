@@ -33,7 +33,7 @@ interface SidebarProps {
 
 import { useAdminAuth } from '../../contexts/AuthContext';
 
-const navGroups = [
+export const navGroups = [
   {
     title: 'Overview',
     items: [

@@ -4,7 +4,7 @@ import { Search, Filter, Building2, FlaskConical } from 'lucide-react';
 import { useAdminAuth } from '../contexts/AuthContext';
 import DataTable from '../components/ui/DataTable';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 const Labs: React.FC = () => {
   const { token } = useAdminAuth();

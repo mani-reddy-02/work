@@ -34,7 +34,7 @@ import {
 } from '../lib/labTestApi';
 import { profileApi } from '../lib/profileApi';
 import HowItWorks from '../components/HowItWorks';
-
+import PosterCarousel from '../components/PosterCarousel';
 // Icon mapping: test name (cleaned) -> optimized medical illustration
 const testIconMap: Record<string, string> = {
   'Complete Blood Count (CBC)': '/optimized/Blood Test.webp',
@@ -516,8 +516,10 @@ const LabTestList = () => {
       <div className="flex-1 overflow-y-auto pb-24">
         {/* VIEW: LIST */}
         {viewState === 'LIST' && (
-          <div className="-mt-2">
-            {/* Loading State when tests not yet loaded */}
+          <>
+            {/* Removed PosterCarousel as per user request */}
+            <div className="-mt-2">
+              {/* Loading State when tests not yet loaded */}
             {isTestsLoading && dbTests.length === 0 && (
               <div className="bg-white p-8 rounded-2xl mx-4 my-6 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
                 <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
@@ -806,6 +808,7 @@ const LabTestList = () => {
               </>
             )}
           </div>
+          </>
         )}
 
         {/* VIEW: CONCERN_RESULTS */}

@@ -1040,15 +1040,32 @@ export const updateVerificationStatus = async (req: Request, res: Response, next
         }
       });
     } else if (type === 'lab') {
-      updatedRecord = await prisma.lab.update({
-        where: { id: String(id) },
-        data: {
-          verificationStatus: String(status),
-          cancellationReason: status === 'CANCELLED' ? String(cancellationReason) : null,
-          cancelledAt: status === 'CANCELLED' ? new Date() : null,
-          cancelledBy: status === 'CANCELLED' ? (req.user?.id || null) : null
+      try {
+        updatedRecord = await prisma.lab.update({
+          where: { id: String(id) },
+          data: {
+            verificationStatus: String(status),
+            cancellationReason: status === 'CANCELLED' ? String(cancellationReason) : null,
+            cancelledAt: status === 'CANCELLED' ? new Date() : null,
+            cancelledBy: status === 'CANCELLED' ? (req.user?.id || null) : null
+          }
+        });
+      } catch (err: any) {
+        if (err.code === 'P2025') {
+          // Might be a standalone lab stored in hospital table
+          updatedRecord = await prisma.hospital.update({
+            where: { id: String(id) },
+            data: {
+              verificationStatus: String(status),
+              cancellationReason: status === 'CANCELLED' ? String(cancellationReason) : null,
+              cancelledAt: status === 'CANCELLED' ? new Date() : null,
+              cancelledBy: status === 'CANCELLED' ? (req.user?.id || null) : null
+            }
+          });
+        } else {
+          throw err;
         }
-      });
+      }
     } else {
       return res.status(400).json({ success: false, message: 'Invalid type' });
     }

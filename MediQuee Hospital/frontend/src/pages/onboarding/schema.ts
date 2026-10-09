@@ -103,6 +103,24 @@ export const labVerificationSchema = z.object({
   otherCertifications: z.any().optional()
 });
 
+export const labDepartmentsSchema = z.object({
+  departments: z.array(z.string()).min(1, "Select at least one department"),
+  customDepartments: z.array(z.object({
+    name: z.string(),
+    code: z.string().optional(),
+    description: z.string().optional()
+  })).optional()
+});
+
+export const labTestsSchema = z.object({
+  tests: z.array(z.string()).min(1, "Select at least one required test"),
+  customTests: z.array(z.object({
+    name: z.string(),
+    code: z.string().optional(),
+    description: z.string().optional()
+  })).optional()
+});
+
 // Main Combined Schema
 export const onboardingSchema = z.object({
   account: accountSchema,
@@ -120,6 +138,8 @@ export const onboardingSchema = z.object({
   labInfo: labInfoSchema.optional(),
   labLocation: locationSchema.optional(),
   labServices: labServicesSchema.optional(),
+  labDepartments: labDepartmentsSchema.optional(),
+  labTests: labTestsSchema.optional(),
   labVerification: labVerificationSchema.optional(),
   labAdmin: adminSchema.optional(),
 });

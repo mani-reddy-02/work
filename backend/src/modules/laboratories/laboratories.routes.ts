@@ -4,7 +4,11 @@ import {
   getLaboratoryById, 
   getLaboratoryTests, 
   createHospitalLab, 
-  uploadLicenseCertificate 
+  uploadLicenseCertificate,
+  getLaboratoryAvailability,
+  updateLaboratoryAvailability,
+  getMyLaboratoryAvailability,
+  updateMyLaboratoryAvailability
 } from './laboratories.controller';
 import { authenticate, optionalAuthenticate } from '../../middleware/auth';
 import { validateRequest } from '../../middleware/validate';
@@ -16,9 +20,13 @@ const router = Router();
 router.get('/', getLaboratories);
 router.get('/:id', getLaboratoryById);
 router.get('/:id/tests', getLaboratoryTests);
+router.get('/:id/availability', getLaboratoryAvailability);
 
 // Protected hospital lab routes
 router.post('/upload-license', optionalAuthenticate, uploadLicenseCertificate);
 router.post('/', authenticate, validateRequest(createHospitalLabSchema), createHospitalLab);
+router.get('/me/availability', authenticate, getMyLaboratoryAvailability);
+router.put('/me/availability', authenticate, updateMyLaboratoryAvailability);
+router.put('/:id/availability', authenticate, updateLaboratoryAvailability);
 
 export default router;

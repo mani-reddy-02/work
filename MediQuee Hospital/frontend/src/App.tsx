@@ -76,6 +76,7 @@ import { LabProfile } from "./pages/lab/LabProfile"
 import { LabInfo } from "./pages/lab/LabInfo"
 import { TestCatalog } from "./pages/lab/TestCatalog"
 import { LabNotifications } from "./pages/lab/LabNotifications"
+import { LabAvailability } from "./pages/lab/LabAvailability"
 
 // Auth pages
 import { Login } from "./pages/Login"
@@ -207,6 +208,7 @@ function AnimatedRoutes() {
           <Route path="/lab/orders" element={<LabOrders />} />
           <Route path="/lab/order/:id" element={<LabOrderDetail />} />
           <Route path="/lab/reports" element={<LabReports />} />
+          <Route path="/lab/manage-slots" element={<LabAvailability />} />
           <Route path="/lab/upload-report" element={<UploadReport />} />
           <Route path="/lab/report/:id" element={<ReportView />} />
           <Route path="/lab/add-test" element={<AddTest />} />

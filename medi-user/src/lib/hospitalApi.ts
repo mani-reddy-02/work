@@ -104,7 +104,7 @@ export const hospitalApi = {
     city?: string;
   }): Promise<{ success: boolean; data?: HospitalRecord[]; error?: string }> {
     try {
-      const url = new URL(`${API_BASE_URL}/hospitals`);
+      const url = new URL(`${API_BASE_URL}/hospitals`, window.location.origin);
       if (params?.search) url.searchParams.set('search', params.search);
       if (params?.conditionId) url.searchParams.set('conditionId', params.conditionId);
       if (params?.specialtyId) url.searchParams.set('specialtyId', params.specialtyId);
@@ -169,7 +169,7 @@ export const hospitalApi = {
 
   async getHospitalDoctors(hospitalId: string, departmentId?: string, conditionId?: string): Promise<{ success: boolean; data?: DoctorRecord[]; error?: string }> {
     try {
-      const url = new URL(`${API_BASE_URL}/hospitals/${hospitalId}/doctors`);
+      const url = new URL(`${API_BASE_URL}/hospitals/${hospitalId}/doctors`, window.location.origin);
       if (departmentId) url.searchParams.set('departmentId', departmentId);
       if (conditionId) url.searchParams.set('conditionId', conditionId);
 
@@ -194,7 +194,7 @@ export const doctorApi = {
     conditionId?: string;
   }): Promise<{ success: boolean; data?: DoctorRecord[]; error?: string }> {
     try {
-      const url = new URL(`${API_BASE_URL}/doctors`);
+      const url = new URL(`${API_BASE_URL}/doctors`, window.location.origin);
       if (params?.search) url.searchParams.set('search', params.search);
       if (params?.departmentId) url.searchParams.set('departmentId', params.departmentId);
       if (params?.hospitalId) url.searchParams.set('hospitalId', params.hospitalId);
@@ -238,7 +238,7 @@ export const doctorApi = {
     error?: string;
   }> {
     try {
-      const url = new URL(`${API_BASE_URL}/doctors/${id}/availability`);
+      const url = new URL(`${API_BASE_URL}/doctors/${id}/availability`, window.location.origin);
       if (date) url.searchParams.set('date', date);
 
       const res = await fetch(url.toString(), { headers: getAuthHeaders() });
@@ -260,7 +260,7 @@ export const departmentApi = {
     specialtyId?: string;
   }): Promise<{ success: boolean; data?: DepartmentRecord[]; error?: string }> {
     try {
-      const url = new URL(`${API_BASE_URL}/departments`);
+      const url = new URL(`${API_BASE_URL}/departments`, window.location.origin);
       if (params?.hospitalId) url.searchParams.set('hospitalId', params.hospitalId);
       if (params?.search) url.searchParams.set('search', params.search);
       if (params?.specialtyId) url.searchParams.set('specialtyId', params.specialtyId);
@@ -310,7 +310,7 @@ export const laboratoryApi = {
     location?: string;
   }): Promise<{ success: boolean; data?: LaboratoryRecord[]; error?: string }> {
     try {
-      const url = new URL(`${API_BASE_URL}/laboratories`);
+      const url = new URL(`${API_BASE_URL}/laboratories`, window.location.origin);
       if (params?.search) url.searchParams.set('search', params.search);
       if (params?.hospitalId) url.searchParams.set('hospitalId', params.hospitalId);
       if (params?.location) url.searchParams.set('location', params.location);

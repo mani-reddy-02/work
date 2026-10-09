@@ -1,280 +1,238 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
-import { Filter, X, Search } from 'lucide-react';
 import { useAdminAuth } from '../contexts/AuthContext';
+import { Plus, Edit, X } from 'lucide-react';
+import DepartmentModal from '../components/DepartmentModal';
 
 const Departments: React.FC = () => {
-  const { token } = useAdminAuth();
+  const { token, user } = useAdminAuth();
   const navigate = useNavigate();
-
   const [departments, setDepartments] = useState<any[]>([]);
-  const [totalResults, setTotalResults] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingDept, setEditingDept] = useState<any>(null);
 
-  // Pagination
-  const [page, setPage] = useState(1);
+  // Pagination & Filtering State
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
   const limit = 20;
 
-  // Search
   const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  // Filters
-  const [showFilters, setShowFilters] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+
   const [filters, setFilters] = useState({
-    hospitalId: 'all',
-    diseaseId: 'all',
-    doctorId: 'all'
-  });
-  
-  // Filter Options from Backend
-  const [filterOptions, setFilterOptions] = useState({
-    hospitals: [],
-    diseases: [],
-    doctors: []
+    status: 'ALL'
   });
 
-  // Fetch filters
-  useEffect(() => {
-    const fetchFilters = async () => {
-      if (!token) return;
-      try {
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
-        const res = await fetch(`${API_URL}/admin/departments/filters`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.success) {
-          setFilterOptions(data.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch filters:', err);
-      }
-    };
-    fetchFilters();
-  }, [token]);
-
-  // Debounce search
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1);
-    }, 500);
-    return () => clearTimeout(handler);
-  }, [search]);
-
-  // Handle outside click for filters
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
-        setShowFilters(false);
+        setIsFilterOpen(false);
       }
     }
-    if (showFilters) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showFilters]);
+    if (isFilterOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isFilterOpen]);
 
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString()
+      const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: limit.toString(),
+        ...(search && { search }),
+        ...(filters.status !== 'ALL' && { status: filters.status })
       });
-      if (debouncedSearch) queryParams.append('search', debouncedSearch);
-      if (filters.hospitalId !== 'all') queryParams.append('hospitalId', filters.hospitalId);
-      if (filters.diseaseId !== 'all') queryParams.append('diseaseId', filters.diseaseId);
-      if (filters.doctorId !== 'all') queryParams.append('doctorId', filters.doctorId);
 
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
-      const res = await fetch(`${API_URL}/admin/departments?${queryParams.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await fetch(`${API_URL}/admin/departments?${params.toString()}`, { 
+        headers: { Authorization: `Bearer ${token}` } 
       });
-      
       const data = await res.json();
-
-      if (data.success && Array.isArray(data.data)) {
+      
+      if (data.success) {
         setDepartments(data.data);
         if (data.pagination) {
           setTotalPages(data.pagination.totalPages);
           setTotalResults(data.pagination.total);
         } else {
           setTotalResults(data.data.length);
-          setTotalPages(1);
+          setTotalPages(Math.ceil(data.data.length / limit));
         }
       } else {
-        setError('Failed to load departments.');
+        setError('Unable to load departments.');
       }
     } catch (err) {
-      console.error('Failed to fetch departments:', err);
-      setError('An error occurred while fetching departments.');
-    } finally {
-      setLoading(false);
+      setError('Unable to load departments.');
+    } finally { 
+      setLoading(false); 
     }
-  };
+  }, [token, currentPage, search, filters]);
 
+  useEffect(() => { fetchDepartments(); }, [fetchDepartments]);
+
+  // Reset to page 1 on search or filter change
   useEffect(() => {
-    fetchDepartments();
-  }, [token, debouncedSearch, page, filters]);
+    setCurrentPage(1);
+  }, [search, filters]);
 
-  const applyFilters = () => {
-    setPage(1);
-    setShowFilters(false);
+  const handleClearFilters = () => {
+    setFilters({ status: 'ALL' });
+    setCurrentPage(1);
+    setIsFilterOpen(false);
   };
 
-  const clearFilters = () => {
-    setFilters({ hospitalId: 'all', diseaseId: 'all', doctorId: 'all' });
-    setPage(1);
-    setShowFilters(false);
+  const handleApplyFilters = () => {
+    setIsFilterOpen(false);
   };
 
   const columns: Column<any>[] = [
     {
       header: 'S.No',
-      accessor: (_: any, idx: number) => <span className="text-slate-500">{((page - 1) * limit) + idx + 1}</span>,
-      className: 'w-16'
-    },
-    {
-      header: 'Department',
-      accessor: (d) => (
-        <span className="font-medium text-slate-900">{d.name}</span>
+      accessor: (_, index) => (
+        <span className="text-sm text-slate-500">
+          {((currentPage - 1) * limit) + index + 1}
+        </span>
       ),
     },
-    {
-      header: 'Diseases',
-      accessor: (d) => <span className="text-sm font-medium text-slate-700">{d.diseaseCount || 0}</span>,
+    { 
+      header: 'Department', 
+      accessor: (item) => (
+        <div className="flex items-center space-x-3">
+          {item.icon ? <img src={item.icon} className="w-8 h-8 rounded-full" /> : <div className="w-8 h-8 rounded-full bg-slate-200" />}
+          <span className="font-medium text-slate-900">{item.name}</span>
+        </div>
+      )
     },
-    {
-      header: 'Doctors',
-      accessor: (d) => <span className="text-sm font-medium text-slate-700">{d.doctorCount || 0}</span>,
+    { header: 'Diseases', accessor: 'diseaseCount' },
+    { header: 'Doctors', accessor: 'doctorCount' },
+    { header: 'Hospitals', accessor: 'hospitalCount' },
+    { 
+      header: 'Status', 
+      accessor: (item) => item.isActive ? 
+        <span className="text-green-600 bg-green-100 px-2 py-1 rounded">Active</span> : 
+        <span className="text-red-600 bg-red-100 px-2 py-1 rounded">Inactive</span> 
     },
-    {
-      header: 'Hospitals',
-      accessor: (d) => <span className="text-sm font-medium text-slate-700">{d.hospitalCount || 0}</span>,
+    { 
+      header: 'Created Date', 
+      accessor: (item) => <span className="text-slate-500">{new Date(item.createdAt).toLocaleDateString()}</span>
+    },
+    { 
+      header: 'Actions', 
+      accessor: (item) => (
+        <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+          <button onClick={() => { setEditingDept(item); setModalOpen(true); }} className="text-indigo-600 hover:text-indigo-900 p-1">
+            <Edit size={16}/>
+          </button>
+        </div>
+      )
     }
   ];
 
-  const FilterPopover = (
-    <div ref={filterRef} className="absolute right-0 top-12 w-80 bg-white border border-slate-200 rounded-xl shadow-lg z-50 p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold text-slate-900">Filters</h3>
-        <button onClick={() => setShowFilters(false)} className="text-slate-400 hover:text-slate-600">
-          <X size={16} />
-        </button>
-      </div>
-      
-      <div className="space-y-4">
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Hospital</label>
-          <select 
-            className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-2"
-            value={filters.hospitalId}
-            onChange={(e) => setFilters({...filters, hospitalId: e.target.value})}
-          >
-            <option value="all">All Hospitals</option>
-            {filterOptions.hospitals.map((h: any) => (
-              <option key={h.id} value={h.id}>{h.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Disease</label>
-          <select 
-            className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-2"
-            value={filters.diseaseId}
-            onChange={(e) => setFilters({...filters, diseaseId: e.target.value})}
-          >
-            <option value="all">All Diseases</option>
-            {filterOptions.diseases.map((d: any) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Doctor</label>
-          <select 
-            className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-2"
-            value={filters.doctorId}
-            onChange={(e) => setFilters({...filters, doctorId: e.target.value})}
-          >
-            <option value="all">All Doctors</option>
-            {filterOptions.doctors.map((d: any) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex gap-2 pt-2 border-t border-slate-100">
-          <button 
-            onClick={clearFilters}
-            className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50"
-          >
-            Clear
-          </button>
-          <button 
-            onClick={applyFilters}
-            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-          >
-            Apply
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Departments</h2>
-          <p className="text-sm text-slate-500">Manage clinical departments and specializations.</p>
-        </div>
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Departments</h1>
+        {(user?.role === 'SUPER_ADMIN' || user?.role === 'HOSPITAL_ADMIN') && (
+          <button onClick={() => { setEditingDept(null); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-2 rounded flex items-center shadow-sm">
+            <Plus size={16} className="mr-2"/> Add New Department
+          </button>
+        )}
       </div>
+
+      {error ? (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-center mb-6">
+          <p className="mb-2">{error}</p>
+          <button onClick={() => fetchDepartments()} className="px-4 py-2 bg-red-100 hover:bg-red-200 rounded font-medium transition-colors">
+            Retry
+          </button>
+        </div>
+      ) : null}
 
       <div className="relative">
-        {showFilters && FilterPopover}
-        {loading && (
-          <div className="absolute inset-0 z-10 bg-white/60 flex items-center justify-center backdrop-blur-[1px] rounded-xl">
-             <div className="text-blue-600 animate-pulse font-medium">Loading departments...</div>
-          </div>
-        )}
         <DataTable 
-          data={departments}
-          columns={columns}
-          keyExtractor={(d) => d.id}
-          onRowClick={(d) => navigate(`/admin/departments/${d.id}`)}
+          columns={columns} 
+          data={departments} 
+          keyExtractor={(item) => item.id} 
           searchPlaceholder="Search departments..."
-          onSearch={setSearch}
-          onFilterClick={(e) => {
-            e.stopPropagation();
-            setShowFilters(!showFilters);
-          }}
-          emptyMessage="No departments found. Try adjusting your search or filters."
+          onSearch={(value) => setSearch(value)}
+          onRowClick={(item) => navigate(`/admin/departments/${item.id}`)}
+          emptyMessage={loading ? "Loading departments..." : departments.length === 0 && !error ? (
+            <div className="flex flex-col items-center">
+              <span className="mb-4">No departments found.</span>
+              {(user?.role === 'SUPER_ADMIN' || user?.role === 'HOSPITAL_ADMIN') && (
+                <button onClick={() => { setEditingDept(null); setModalOpen(true); }} className="text-blue-600 hover:underline">
+                  + Add New Department
+                </button>
+              )}
+            </div>
+          ) : ""}
+          onFilterClick={() => setIsFilterOpen(!isFilterOpen)}
           pagination={{
-            currentPage: page,
+            currentPage,
             totalPages,
             totalResults,
             pageSize: limit,
-            onPageChange: (newPage) => setPage(newPage)
+            onPageChange: setCurrentPage
           }}
         />
-        
-        {!loading && departments.length > 0 && (
-          <div className="mt-4 text-sm text-slate-500">
-            Showing {((page - 1) * limit) + 1}–{Math.min(page * limit, totalResults)} of {totalResults} departments
+
+        {isFilterOpen && (
+          <div 
+            ref={filterRef}
+            className="absolute right-0 top-16 mt-2 w-72 bg-white rounded-xl shadow-lg border border-slate-200 z-10"
+          >
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-semibold text-slate-800">Filters</h3>
+              <button onClick={() => setIsFilterOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                <select 
+                  value={filters.status}
+                  onChange={(e) => setFilters({...filters, status: e.target.value})}
+                  className="w-full border border-slate-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 p-2"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-100 flex gap-3">
+              <button 
+                onClick={handleClearFilters}
+                className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Clear Filters
+              </button>
+              <button 
+                onClick={handleApplyFilters}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Apply Filters
+              </button>
+            </div>
           </div>
         )}
       </div>
+      
+      {modalOpen && <DepartmentModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onSuccess={fetchDepartments} existing={editingDept} />}
     </div>
   );
 };
-
 export default Departments;

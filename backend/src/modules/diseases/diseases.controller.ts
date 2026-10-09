@@ -1,152 +1,132 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
+import path from 'path';
+import fs from 'fs';
 
-// Primary/General care specialty names to categorize General diseases
-const GENERAL_SPECIALTIES = [
-  'General Medicine',
-  'Family Medicine',
-  'Primary Care',
-  'Internal Medicine'
-];
+const UPLOADS_DIR = path.join(__dirname, '../../../../uploads/icons');
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
 
-// Advanced/Critical care specialty names
-const ADVANCED_SPECIALTIES = [
-  'Cardiology',
-  'Cardiothoracic Surgery',
-  'Neurology',
-  'Neurosurgery',
-  'Oncology (Medical)',
-  'Surgical Oncology',
-  'Nephrology',
-  'Pulmonology',
-  'Hepatology',
-  'Gastrointestinal Surgery',
-  'Vascular Surgery'
-];
+function processIcon(iconData: string | undefined): string | undefined {
+  if (!iconData) return undefined;
+  if (iconData.startsWith('/icons/')) return iconData;
+  if (iconData.startsWith('data:image')) {
+    const matches = iconData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) return undefined;
+    const fileBuffer = Buffer.from(matches[2], 'base64');
+    const safeFileName = `${Date.now()}-icon.png`;
+    const filePath = path.join(UPLOADS_DIR, safeFileName);
+    fs.writeFileSync(filePath, fileBuffer);
+    return `/uploads/icons/${safeFileName}`;
+  }
+  return iconData;
+}
 
 export const getDiseases = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
-
-    const conditions = await prisma.platformCondition.findMany({
-      where: search ? {
-        OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { specialty: { name: { contains: search, mode: 'insensitive' } } }
-        ]
-      } : undefined,
-      include: {
-        specialty: {
-          select: {
-            id: true,
-            name: true,
-            description: true
-          }
-        }
-      },
-      orderBy: { name: 'asc' }
+    const { search } = req.query;
+    const where: any = {};
+    if (search) {
+      where.name = { contains: search as string, mode: 'insensitive' };
+    }
+    
+    const conditionsData = await prisma.platformCondition.findMany({ 
+      where, 
+      orderBy: { name: 'asc' },
+      include: { specialty: true } 
     });
+    const conditions = conditionsData.map(d => ({
+      id: d.id,
+      name: d.name,
+      description: d.description,
+      specialtyId: d.specialtyId,
+      specialtyName: d.specialty?.name,
+      icon: d.icon,
+      classification: d.classification,
+    }));
 
-    const specialties = await prisma.platformSpecialty.findMany({
-      where: search ? {
-        OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { conditions: { some: { name: { contains: search, mode: 'insensitive' } } } }
-        ]
-      } : undefined,
-      include: {
-        conditions: {
-          where: search ? {
-            name: { contains: search, mode: 'insensitive' }
-          } : undefined,
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            specialtyId: true
-          },
-          orderBy: { name: 'asc' }
-        }
-      },
-      orderBy: { name: 'asc' }
-    });
+    const categoricalMap = new Map();
+    for (const d of conditionsData) {
+      if (!categoricalMap.has(d.specialtyId)) {
+        categoricalMap.set(d.specialtyId, {
+          id: d.specialtyId,
+          name: d.specialty?.name,
+          description: d.specialty?.description,
+          conditions: []
+        });
+      }
+      categoricalMap.get(d.specialtyId).conditions.push({
+         id: d.id,
+         name: d.name,
+         description: d.description,
+         specialtyId: d.specialtyId,
+         specialtyName: d.specialty?.name,
+         icon: d.icon,
+         classification: d.classification
+      });
+    }
+    const general = conditions.filter(c => c.classification === 'GENERAL');
+    const advanced = conditions.filter(c => c.classification === 'ADVANCED');
 
-    const general = conditions.filter(c => 
-      GENERAL_SPECIALTIES.some(s => s.toLowerCase() === c.specialty.name.toLowerCase())
-    );
-
-    const advanced = conditions.filter(c =>
-      ADVANCED_SPECIALTIES.some(s => s.toLowerCase() === c.specialty.name.toLowerCase())
-    );
-
-    res.json({
-      success: true,
+    res.json({ 
+      success: true, 
       data: {
-        total: conditions.length,
-        conditions: conditions.map(c => ({
-          id: c.id,
-          name: c.name,
-          description: c.description,
-          specialtyId: c.specialty.id,
-          specialtyName: c.specialty.name
-        })),
-        general: (general.length > 0 ? general : conditions.slice(0, 20)).map(c => ({
-          id: c.id,
-          name: c.name,
-          description: c.description,
-          specialtyId: c.specialty.id,
-          specialtyName: c.specialty.name
-        })),
-        advanced: (advanced.length > 0 ? advanced : conditions.slice(20, 40)).map(c => ({
-          id: c.id,
-          name: c.name,
-          description: c.description,
-          specialtyId: c.specialty.id,
-          specialtyName: c.specialty.name
-        })),
-        categorical: specialties.map(s => ({
-          id: s.id,
-          name: s.name,
-          description: s.description,
-          conditions: s.conditions
-        }))
+        total: conditionsData.length,
+        conditions,
+        general,
+        advanced,
+        categorical: Array.from(categoricalMap.values())
+      } 
+    });
+  } catch (error) { next(error); }
+};
+
+export const createDisease = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { departmentId, name, description, icon, isActive } = req.body;
+    if (!departmentId || !name) return res.status(400).json({ success: false, error: { message: 'Missing required fields' } });
+
+    const existing = await prisma.disease.findFirst({ where: { departmentId, name: { equals: name, mode: 'insensitive' } } });
+    if (existing) return res.status(409).json({ success: false, error: { message: 'Disease already exists' } });
+
+    const iconUrl = processIcon(icon);
+    const disease = await prisma.disease.create({
+      data: { departmentId, name, description, icon: iconUrl, isActive: isActive !== undefined ? isActive : true }
+    });
+    res.status(201).json({ success: true, data: disease });
+  } catch (error) { next(error); }
+};
+
+export const updateDisease = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { name, description, icon, isActive } = req.body;
+    
+    const iconUrl = processIcon(icon);
+    const disease = await prisma.disease.update({
+      where: { id: id as string },
+      data: {
+        name: name || undefined,
+        description: description !== undefined ? description : undefined,
+        icon: iconUrl || undefined,
+        isActive: isActive !== undefined ? isActive : undefined
       }
     });
-  } catch (error) {
-    next(error);
-  }
+    res.json({ success: true, data: disease });
+  } catch (error) { next(error); }
+};
+
+export const deleteDisease = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await prisma.disease.delete({ where: { id: req.params.id as string } });
+    res.json({ success: true, message: 'Deleted' });
+  } catch (error) { next(error); }
 };
 
 export const getDiseaseById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const id = req.params.id as string;
-    const condition = await prisma.platformCondition.findUnique({
-      where: { id },
-      include: {
-        specialty: true
-      }
-    });
-
-    if (!condition) {
-      return res.status(404).json({
-        success: false,
-        error: { code: 'NOT_FOUND', message: 'Disease/Condition not found' }
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        id: condition.id,
-        name: condition.name,
-        description: condition.description,
-        specialtyId: condition.specialty.id,
-        specialtyName: condition.specialty.name
-      }
-    });
-  } catch (error) {
-    next(error);
-  }
+    const disease = await prisma.disease.findUnique({ where: { id: req.params.id as string } });
+    res.json({ success: true, data: disease });
+  } catch (error) { next(error); }
 };

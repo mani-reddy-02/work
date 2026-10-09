@@ -56,6 +56,7 @@ export function SideNav({
           { to: '/lab', icon: LayoutGrid, label: t('dashboard') },
           { to: '/lab/orders', icon: Calendar, label: 'Orders' },
           { to: '/lab/reports', icon: Activity, label: 'Reports' },
+          { to: '/lab/manage-slots', icon: CalendarClock, label: 'Manage Slots' },
           { to: '/lab/profile', icon: User, label: t('profile') },
         ];
       case 'admin':

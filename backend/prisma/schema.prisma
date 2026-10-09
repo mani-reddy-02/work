@@ -9,28 +9,28 @@ datasource db {
 }
 
 model Hospital {
-  id                  String                 @id @default(uuid())
-  name                String
-  businessType        BusinessType
-  facilityType        String?
-  registrationNumber  String?
-  establishedYear     String?
-  logoUrl             String?
-  contactPhone        String?
-  contactEmail        String?
-  website             String?
-  emergencyContact    String?
-  addressLine1        String?
-  addressLine2        String?
-  area                String?
-  city                String?
-  state               String?
-  country             String?
-  pincode             String?
-  services            String[]
-  
+  id                 String       @id @default(uuid())
+  name               String
+  businessType       BusinessType
+  facilityType       String?
+  registrationNumber String?
+  establishedYear    String?
+  logoUrl            String?
+  contactPhone       String?
+  contactEmail       String?
+  website            String?
+  emergencyContact   String?
+  addressLine1       String?
+  addressLine2       String?
+  area               String?
+  city               String?
+  state              String?
+  country            String?
+  pincode            String?
+  services           String[]
+
   // Verification
-  verificationStatus String @default("PENDING")
+  verificationStatus String    @default("PENDING")
   cancellationReason String?
   cancelledAt        DateTime?
   cancelledBy        String?
@@ -59,6 +59,8 @@ model PlatformSpecialty {
   description String?
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
+  icon        String?
+  isActive    Boolean?            @default(true)
   departments Department[]
   conditions  PlatformCondition[]
 }
@@ -71,18 +73,21 @@ model PlatformCondition {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   icon        String?
+  isActive    Boolean?          @default(true)
+  classification String         @default("GENERAL") // GENERAL, ADVANCED
   opBookings  OPBooking[]
   specialty   PlatformSpecialty @relation(fields: [specialtyId], references: [id])
 }
 
 model HospitalVerification {
-  id           String   @id @default(uuid())
+  id           String                      @id @default(uuid())
   hospitalId   String
   documentType String
   fileUrl      String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  hospital     Hospital @relation(fields: [hospitalId], references: [id])
+  createdAt    DateTime                    @default(now())
+  updatedAt    DateTime                    @updatedAt
+  histories    MedicalCampRequestHistory[]
+  hospital     Hospital                    @relation(fields: [hospitalId], references: [id])
 }
 
 model User {
@@ -138,13 +143,32 @@ model Department {
   licenseValidUntil       DateTime?
   platformLabDepartmentId String?
   type                    String?                @default("CLINICAL")
+  icon                    String?
+  isActive                Boolean                @default(true)
   hospital                Hospital               @relation(fields: [hospitalId], references: [id])
   platformLabDepartment   PlatformLabDepartment? @relation(fields: [platformLabDepartmentId], references: [id])
   specialty               PlatformSpecialty?     @relation(fields: [specialtyId], references: [id])
   opBookings              OPBooking[]
   users                   User[]
+  diseases                Disease[]
 
   @@unique([hospitalId, name])
+}
+
+model Disease {
+  id           String     @id @default(uuid())
+  departmentId String
+  name         String
+  description  String?
+  icon         String?
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([departmentId, name])
+  @@map("diseases")
 }
 
 model Permission {
@@ -158,15 +182,16 @@ model Permission {
 }
 
 model RolePermission {
-  id           String     @id @default(uuid())
+  id           String                      @id @default(uuid())
   hospitalId   String
   role         Role
   permissionId String
-  enabled      Boolean    @default(false)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  hospital     Hospital   @relation(fields: [hospitalId], references: [id])
-  permission   Permission @relation(fields: [permissionId], references: [id])
+  enabled      Boolean                     @default(false)
+  createdAt    DateTime                    @default(now())
+  updatedAt    DateTime                    @updatedAt
+  histories    MedicalCampRequestHistory[]
+  hospital     Hospital                    @relation(fields: [hospitalId], references: [id])
+  permission   Permission                  @relation(fields: [permissionId], references: [id])
 
   @@unique([hospitalId, role, permissionId])
 }
@@ -339,7 +364,7 @@ model MarketingRequest {
 }
 
 model MedicalCampRequest {
-  id               String        @id @default(uuid())
+  id               String                      @id @default(uuid())
   hospitalId       String
   campTitle        String
   location         String
@@ -347,13 +372,39 @@ model MedicalCampRequest {
   specialties      String[]
   expectedPatients Int?
   notes            String?
-  status           RequestStatus @default(PENDING)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  hospital         Hospital      @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  status           RequestStatus               @default(PENDING)
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  histories        MedicalCampRequestHistory[]
+  hospital         Hospital                    @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
 
   @@index([hospitalId])
   @@map("medical_camp_requests")
+}
+
+model MedicalCampRequestHistory {
+  id                 String         @id @default(uuid())
+  requestId          String
+  requestType        String         @default("CAMP")
+  status             RequestStatus
+  previousStatus     RequestStatus?
+  actionBy           String?
+  actionAt           DateTime       @default(now())
+  cancellationReason String?
+  notes              String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  request                MedicalCampRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  hospitalVerification   HospitalVerification? @relation(fields: [hospitalVerificationId], references: [id])
+  hospitalVerificationId String?
+  rolePermission         RolePermission?       @relation(fields: [rolePermissionId], references: [id])
+  rolePermissionId       String?
+  notification           Notification?         @relation(fields: [notificationId], references: [id])
+  notificationId         String?
+
+  @@index([requestId])
+  @@map("medical_camp_request_history")
 }
 
 model PatientVitals {
@@ -421,18 +472,19 @@ model DoctorLabOrder {
 }
 
 model Notification {
-  id         String    @id @default(uuid())
+  id         String                      @id @default(uuid())
   hospitalId String?
   userId     String?
   title      String
   message    String
-  type       String    @default("appointment")
-  read       Boolean   @default(false)
+  type       String                      @default("appointment")
+  read       Boolean                     @default(false)
   metadata   Json?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  hospital   Hospital? @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
-  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime                    @default(now())
+  updatedAt  DateTime                    @updatedAt
+  histories  MedicalCampRequestHistory[]
+  hospital   Hospital?                   @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  user       User?                       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([hospitalId, createdAt])
   @@index([userId, read])
@@ -530,15 +582,15 @@ model LabBookingItem {
 }
 
 model Lab {
-  id                    String                 @id @default(uuid())
+  id                    String    @id @default(uuid())
   hospitalId            String?
   platformDepartmentId  String?
   name                  String
   labLicenseNumber      String?
   labLicenseDocumentUrl String?
   licenseValidUntil     DateTime?
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
   address               String?
   city                  String?
   contactPhone          String?
@@ -546,18 +598,36 @@ model Lab {
   email                 String?
   pinCode               String?
   state                 String?
-  status                String                 @default("Active")
-  type                  String                 @default("HOSPITAL_BASED")
+  status                String    @default("Active")
+  type                  String    @default("HOSPITAL_BASED")
 
   // Verification
-  verificationStatus String @default("PENDING")
+  verificationStatus String                 @default("PENDING")
   cancellationReason String?
   cancelledAt        DateTime?
   cancelledBy        String?
-  hospital              Hospital?              @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
-  platformDepartment    PlatformLabDepartment? @relation(fields: [platformDepartmentId], references: [id])
+  hospital           Hospital?              @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  platformDepartment PlatformLabDepartment? @relation(fields: [platformDepartmentId], references: [id])
+  schedules          LabSchedule[]
 
   @@map("hospital_labs")
+}
+
+model LabSchedule {
+  id                  String   @id @default(uuid())
+  labId               String
+  dayOfWeek           String
+  startTime           String   @default("09:00")
+  endTime             String   @default("17:00")
+  homeSampleStartTime String?  @default("10:00")
+  homeSampleEndTime   String?  @default("16:00")
+  slotDurationMinutes Int      @default(30)
+  isAvailable         Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  lab                 Lab      @relation(fields: [labId], references: [id], onDelete: Cascade)
+
+  @@unique([labId, dayOfWeek])
 }
 
 model HomePagePoster {
@@ -569,6 +639,8 @@ model HomePagePoster {
   buttonAction String?
   displayOrder Int       @default(0)
   isActive     Boolean   @default(true)
+  module       String    @default("HOME")
+  position     String    @default("HERO_BANNER")
   startDate    DateTime?
   endDate      DateTime?
   createdAt    DateTime  @default(now())

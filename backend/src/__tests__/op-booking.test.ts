@@ -218,7 +218,7 @@ async function runTests() {
 
     // 5. BOOKING WORKFLOW & PERSISTENCE TESTS
     console.log('\n[TEST GROUP: BOOKING CREATION & RELATIONS]');
-    const testCondition = diseasesRes.body.data.conditions[0];
+    const testCondition = diseasesRes.body.data.conditions.find((c: any) => c.name.toLowerCase().includes('unexplained fever')) || diseasesRes.body.data.conditions[0];
     const testSlot = '11:00 AM';
     const testDate = '2026-10-20';
 

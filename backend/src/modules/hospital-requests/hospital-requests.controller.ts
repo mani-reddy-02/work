@@ -466,3 +466,75 @@ export const updateRequestStatus = async (req: Request, res: Response, next: Nex
     next(error);
   }
 };
+
+export const getActiveCampRequests = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const camps = await prisma.medicalCampRequest.findMany({
+      where: {
+        status: { in: ['PENDING', 'REVIEWING', 'APPROVED'] }
+      },
+      include: {
+        hospital: {
+          select: { id: true, name: true, contactPhone: true, contactEmail: true, city: true, state: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ success: true, data: camps });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getCampRequestsHistory = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
+
+    const [histories, total] = await Promise.all([
+      prisma.medicalCampRequestHistory.findMany({
+        where: {
+          status: { in: ['COMPLETED', 'REJECTED'] }
+        },
+        include: {
+          request: {
+            include: {
+              hospital: {
+                select: { id: true, name: true, contactPhone: true, contactEmail: true, city: true, state: true },
+              }
+            }
+          }
+        },
+        orderBy: { actionAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.medicalCampRequestHistory.count({
+        where: {
+          status: { in: ['COMPLETED', 'REJECTED'] }
+        }
+      })
+    ]);
+
+    const camps = histories.map(h => ({
+      ...h.request,
+      status: h.status,
+      updatedAt: h.actionAt,
+      notes: h.cancellationReason || h.notes || h.request.notes
+    }));
+
+    res.json({
+      success: true,
+      data: camps,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};

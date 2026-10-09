@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { HeartPulse, Megaphone, Clock, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { adminApi, MarketingRequestRecord, MedicalCampRecord } from '@/services/adminApi';
+import { adminApi } from '@/services/adminApi';
+import type { MarketingRequestRecord, MedicalCampRecord } from '@/services/adminApi';
 import { useToast } from '@/context/ToastContext';
 
 export function Requests() {

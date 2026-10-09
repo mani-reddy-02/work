@@ -1,6 +1,29 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Role } from '@prisma/client';
+import path from 'path';
+import fs from 'fs';
+
+const UPLOADS_DIR = path.join(__dirname, '../../../../uploads/icons');
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+function processIcon(iconData: string | undefined): string | undefined {
+  if (!iconData) return undefined;
+  if (iconData.startsWith('/icons/')) return iconData;
+  if (iconData.startsWith('data:image')) {
+    const matches = iconData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) return undefined;
+    const fileBuffer = Buffer.from(matches[2], 'base64');
+    const safeFileName = `${Date.now()}-icon.png`;
+    const filePath = path.join(UPLOADS_DIR, safeFileName);
+    fs.writeFileSync(filePath, fileBuffer);
+    return `/uploads/icons/${safeFileName}`;
+  }
+  return iconData;
+}
+
 
 export const getAdminDepartments = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -22,7 +45,10 @@ export const getAdminDepartments = async (req: Request, res: Response, next: Nex
     if (doctorId && doctorId !== 'all') {
       whereClause.departments = { some: { users: { some: { id: doctorId as string } } } };
     }
-    // Note: status is not in PlatformSpecialty, so we ignore or map if it existed
+    
+    if (status && status !== 'ALL') {
+      whereClause.isActive = status === 'ACTIVE';
+    }
 
     const total = await prisma.platformSpecialty.count({ where: whereClause });
 
@@ -60,6 +86,8 @@ export const getAdminDepartments = async (req: Request, res: Response, next: Nex
         description: s.description,
         diseaseCount: s._count.conditions,
         hospitalCount: s._count.departments,
+        icon: s.icon,
+        isActive: s.isActive,
         doctorCount,
         status: 'ACTIVE',
         createdAt: s.createdAt.toISOString(),
@@ -158,6 +186,8 @@ export const getAdminDepartmentById = async (req: Request, res: Response, next: 
         hospitals: Array.from(hospitalsMap.values()),
         doctors: Array.from(doctorsMap.values()),
         appointments,
+        icon: specialty.icon,
+        isActive: specialty.isActive,
         diseaseCount: specialty.conditions.length,
         hospitalCount: hospitalsMap.size,
         doctorCount,
@@ -172,7 +202,7 @@ export const getAdminDepartmentById = async (req: Request, res: Response, next: 
 export const createAdminDisease = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const specialtyId = req.params.id as string;
-    const { name, description, icon } = req.body;
+    const { name, description, icon, isActive } = req.body;
 
     if (!name || name.trim() === '') {
       return res.status(400).json({ success: false, error: { message: 'Disease name is required' } });
@@ -186,11 +216,14 @@ export const createAdminDisease = async (req: Request, res: Response, next: Next
       return res.status(409).json({ success: false, error: { message: 'Disease already exists in this department' } });
     }
 
+    const iconUrl = processIcon(icon);
     const condition = await prisma.platformCondition.create({
       data: {
+        isActive: isActive !== undefined ? isActive : true,
+        icon: iconUrl,
         name: name.trim(),
         description: description ? description.trim() : null,
-        icon: icon ? icon.trim() : null,
+        
         specialtyId
       }
     });
@@ -204,7 +237,7 @@ export const createAdminDisease = async (req: Request, res: Response, next: Next
 export const updateAdminDisease = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const diseaseId = req.params.diseaseId as string;
-    const { name, description, isActive, icon } = req.body; // isActive might not exist on schema yet
+    const { name, description, isActive, icon } = req.body;
 
     const condition = await prisma.platformCondition.findUnique({ where: { id: diseaseId } });
     if (!condition) {
@@ -216,7 +249,10 @@ export const updateAdminDisease = async (req: Request, res: Response, next: Next
       data: {
         ...(name ? { name: name.trim() } : {}),
         ...(description !== undefined ? { description: description ? description.trim() : null } : {}),
-        ...(icon !== undefined ? { icon: icon ? icon.trim() : null } : {})
+        ...(icon !== undefined ? { icon: processIcon(icon) } : {}),
+        ...(isActive !== undefined ? { isActive } : {}),
+        ...(icon !== undefined ? { icon: processIcon(icon) } : {}),
+        ...(isActive !== undefined ? { isActive } : {})
       }
     });
 
@@ -247,7 +283,7 @@ export const deleteAdminDisease = async (req: Request, res: Response, next: Next
 
 export const createAdminDepartment = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, icon, isActive } = req.body;
 
     if (!name || name.trim() === '') {
       return res.status(400).json({ success: false, error: { message: 'Department name is required' } });
@@ -261,8 +297,11 @@ export const createAdminDepartment = async (req: Request, res: Response, next: N
       return res.status(409).json({ success: false, error: { message: 'Department already exists' } });
     }
 
+    const iconUrl = processIcon(icon);
     const specialty = await prisma.platformSpecialty.create({
       data: {
+        icon: iconUrl,
+        isActive: isActive !== undefined ? isActive : true,
         name: name.trim(),
         description: description ? description.trim() : null,
       }
@@ -277,7 +316,7 @@ export const createAdminDepartment = async (req: Request, res: Response, next: N
 export const updateAdminDepartment = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const { name, description } = req.body;
+    const { name, description, icon, isActive } = req.body;
 
     const specialty = await prisma.platformSpecialty.findUnique({ where: { id } });
     if (!specialty) {
@@ -297,7 +336,9 @@ export const updateAdminDepartment = async (req: Request, res: Response, next: N
       where: { id },
       data: {
         ...(name ? { name: name.trim() } : {}),
-        ...(description !== undefined ? { description: description ? description.trim() : null } : {})
+        ...(description !== undefined ? { description: description ? description.trim() : null } : {}),
+        ...(icon !== undefined ? { icon: processIcon(icon) } : {}),
+        ...(isActive !== undefined ? { isActive } : {})
       }
     });
 

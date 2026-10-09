@@ -5,6 +5,8 @@ import { getStats, getHospitals, createHospital, updateHospital, getUsers, getAp
 import {
   getAllHospitalRequests,
   updateRequestStatus,
+  getActiveCampRequests,
+  getCampRequestsHistory
 } from '../hospital-requests/hospital-requests.controller';
 
 import {
@@ -49,6 +51,8 @@ router.get('/labs', getLabs);
 router.get('/labs/:id', getLabById);
 router.post('/labs', createLab);
 router.get('/hospital-requests', getAllHospitalRequests);
+router.get('/camp-requests/active', getActiveCampRequests);
+router.get('/camp-requests/history', getCampRequestsHistory);
 router.patch('/hospital-requests/:type/:id/status', updateRequestStatus);
 
 // Department & Disease Management Routes

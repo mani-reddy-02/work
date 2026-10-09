@@ -22,7 +22,7 @@ const AddDiseaseModal: React.FC<AddDiseaseModalProps> = ({ departmentId, onClose
     setLoading(true);
     setError('');
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+      const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
       const res = await fetch(`${API_URL}/admin/departments/${departmentId}/diseases`, {
         method: 'POST',
         headers: {

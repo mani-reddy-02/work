@@ -3,7 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, HeartPulse, Megaphone, Info, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const slides = [
+import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../services/apiConfig';
+
+const DEFAULT_SLIDES = [
   {
     id: 1,
     badge: 'Community Outreach',
@@ -42,6 +45,38 @@ const slides = [
   }
 ];
 
+const mapBackendToSlide = (backendPoster: any) => {
+  if (backendPoster.isCustom || !backendPoster.isDefault) {
+    return {
+      id: backendPoster.id,
+      isCustom: true,
+      imageUrl: backendPoster.imageUrl,
+      path: backendPoster.buttonAction || '',
+      title: backendPoster.title,
+    };
+  }
+  
+  const match = DEFAULT_SLIDES.find(s => s.title === backendPoster.title);
+  if (match) {
+    return {
+      ...match,
+      id: backendPoster.id,
+      path: backendPoster.buttonAction || match.path,
+      title: backendPoster.title || match.title,
+      description: backendPoster.description || match.description,
+      buttonText: backendPoster.buttonText || match.buttonText,
+    };
+  }
+  
+  return {
+      id: backendPoster.id,
+      isCustom: true,
+      imageUrl: backendPoster.imageUrl,
+      path: backendPoster.buttonAction || '',
+      title: backendPoster.title,
+  };
+};
+
 import { type Variants } from 'framer-motion';
 
 const slideVariants: Variants = {
@@ -76,13 +111,33 @@ const slideVariants: Variants = {
 
 export function PromoCarousel() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [[page, direction], setPage] = useState<[number, number]>([0, 0]);
   const [isPaused, setIsPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
   const isDragging = useRef(false);
+  const [slides, setSlides] = useState<any[]>(DEFAULT_SLIDES);
 
-  const activeIndex = (page % slides.length + slides.length) % slides.length;
+  useEffect(() => {
+    let moduleName = 'HOSPITAL';
+    if (user?.role === 'doctor') moduleName = 'DOCTOR';
+    else if (user?.role === 'lab') moduleName = 'LABS';
+
+    fetch(`${API_BASE_URL}/home-posters?module=${moduleName}`)
+      .then(res => res.json())
+      .then(res => {
+        if (res.success && res.data && res.data.length > 0) {
+          const mapped = res.data.map(mapBackendToSlide);
+          setSlides(mapped);
+        } else {
+          setSlides(DEFAULT_SLIDES);
+        }
+      })
+      .catch(console.error);
+  }, [user?.role]);
+
+  const activeIndex = slides.length > 0 ? (page % slides.length + slides.length) % slides.length : 0;
 
   const paginate = useCallback((newDirection: number) => {
     setPage(([prevPage]) => [prevPage + newDirection, newDirection]);
@@ -136,16 +191,17 @@ export function PromoCarousel() {
   };
 
   const currentSlideData = slides[activeIndex];
+  if (!currentSlideData) return null;
   const IconComponent = currentSlideData.icon;
 
   const handleActionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(currentSlideData.path);
+    if (currentSlideData.path) navigate(currentSlideData.path);
   };
 
   const handleCardClick = () => {
     if (isDragging.current) return;
-    navigate(currentSlideData.path);
+    if (currentSlideData.path) navigate(currentSlideData.path);
   };
 
   return (
@@ -186,59 +242,71 @@ export function PromoCarousel() {
               }, 150);
             }}
             onClick={handleCardClick}
-            className={`w-full h-full bg-gradient-to-r ${currentSlideData.accentBg} p-3.5 sm:p-4.5 flex items-center justify-between gap-3 sm:gap-5 cursor-pointer text-white relative`}
+            className={`w-full h-full bg-gradient-to-r ${currentSlideData.accentBg || 'from-slate-100 to-slate-200'} p-0 sm:p-0 flex items-center justify-between cursor-pointer text-white relative`}
           >
-            {/* Background Pattern Accent */}
-            <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-surface/5 skew-x-[-15deg] pointer-events-none" />
-
-            {/* Left Content Column */}
-            <div className="flex flex-col justify-center flex-1 z-10 pr-1">
-              {/* Category Tag */}
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <span className={`text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm flex items-center gap-1 ${currentSlideData.tagBg}`}>
-                  <Sparkles className="w-3 h-3" />
-                  {currentSlideData.badge}
-                </span>
-                <span className="text-[10px] text-white/60 font-medium hidden xs:inline">
-                  • Swipe on mobile
-                </span>
+            {currentSlideData.isCustom ? (
+              <div className="w-full h-full relative">
+                {currentSlideData.imageUrl ? (
+                  <img src={currentSlideData.imageUrl} alt={currentSlideData.title} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-500 font-medium">No Image</div>
+                )}
               </div>
+            ) : (
+              <div className={`w-full h-full bg-gradient-to-r ${currentSlideData.accentBg} p-3.5 sm:p-4.5 flex items-center justify-between gap-3 sm:gap-5 cursor-pointer text-white relative`}>
+                {/* Background Pattern Accent */}
+                <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-surface/5 skew-x-[-15deg] pointer-events-none" />
 
-              {/* Title */}
-              <h3 className="text-[16px] sm:text-[18px] font-bold tracking-tight leading-snug drop-shadow-sm">
-                {currentSlideData.title}
-              </h3>
+                {/* Left Content Column */}
+                <div className="flex flex-col justify-center flex-1 z-10 pr-1">
+                  {/* Category Tag */}
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className={`text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm flex items-center gap-1 ${currentSlideData.tagBg}`}>
+                      <Sparkles className="w-3 h-3" />
+                      {currentSlideData.badge}
+                    </span>
+                    <span className="text-[10px] text-white/60 font-medium hidden xs:inline">
+                      • Swipe on mobile
+                    </span>
+                  </div>
 
-              {/* Description */}
-              <p className="text-[12px] sm:text-[13px] text-blue-100/90 line-clamp-2 mt-1 leading-relaxed max-w-sm">
-                {currentSlideData.description}
-              </p>
+                  {/* Title */}
+                  <h3 className="text-[16px] sm:text-[18px] font-bold tracking-tight leading-snug drop-shadow-sm">
+                    {currentSlideData.title}
+                  </h3>
 
-              {/* Action Button */}
-              <div className="mt-2.5 flex items-center gap-2">
-                <button 
-                  onClick={handleActionClick}
-                  className="bg-surface hover:bg-blue-50 text-indigo-900 text-[12px] font-bold px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
-                >
-                  <span>{currentSlideData.buttonText}</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
+                  {/* Description */}
+                  <p className="text-[12px] sm:text-[13px] text-blue-100/90 line-clamp-2 mt-1 leading-relaxed max-w-sm">
+                    {currentSlideData.description}
+                  </p>
+
+                  {/* Action Button */}
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <button 
+                      onClick={handleActionClick}
+                      className="bg-surface hover:bg-blue-50 text-indigo-900 text-[12px] font-bold px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                    >
+                      <span>{currentSlideData.buttonText}</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right Thumbnail & Icon Badge */}
+                <div className="shrink-0 relative w-[95px] h-[95px] sm:w-[110px] sm:h-[110px] rounded-2xl overflow-hidden shadow-md border-2 border-white/20">
+                  <img 
+                    src={currentSlideData.image} 
+                    alt={currentSlideData.title}
+                    className="w-full h-full object-cover pointer-events-none"
+                    loading="eager"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                  <div className="absolute bottom-1.5 right-1.5 w-7 h-7 rounded-lg bg-surface/90 backdrop-blur-sm flex items-center justify-center text-indigo-700 shadow-sm">
+                    {IconComponent && <IconComponent className="w-4 h-4" />}
+                  </div>
+                </div>
               </div>
-            </div>
-
-            {/* Right Thumbnail & Icon Badge */}
-            <div className="shrink-0 relative w-[95px] h-[95px] sm:w-[110px] sm:h-[110px] rounded-2xl overflow-hidden shadow-md border-2 border-white/20">
-              <img 
-                src={currentSlideData.image} 
-                alt={currentSlideData.title}
-                className="w-full h-full object-cover pointer-events-none"
-                loading="eager"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-              <div className="absolute bottom-1.5 right-1.5 w-7 h-7 rounded-lg bg-surface/90 backdrop-blur-sm flex items-center justify-center text-indigo-700 shadow-sm">
-                <IconComponent className="w-4 h-4" />
-              </div>
-            </div>
+            )}
           </motion.div>
         </AnimatePresence>
 

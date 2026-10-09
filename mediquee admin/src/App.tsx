@@ -23,6 +23,7 @@ import AppointmentDetails from './pages/AppointmentDetails';
 import OPBookings from './pages/OPBookings';
 import Verification from './pages/Verification';
 import Reports from './pages/Reports';
+import RequestsHistory from './pages/RequestsHistory';
 import Notifications from './pages/Notifications';
 import Requests from './pages/Requests';
 import Settings from './pages/Settings';
@@ -101,6 +102,7 @@ function App() {
               <Route path="settlements/:id" element={<SettlementDetails />} />
               <Route path="verification" element={<Verification />} />
               <Route path="reports" element={<Reports />} />
+                <Route path="reports/requests-history" element={<RequestsHistory />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="requests" element={<Requests />} />
               <Route path="activity" element={<ActivityLog />} />

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Building2, MapPin, Phone, Mail, FileText, Settings as SettingsIcon } from 'lucide-react';
 import { useAdminAuth } from '../contexts/AuthContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 const LabDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();

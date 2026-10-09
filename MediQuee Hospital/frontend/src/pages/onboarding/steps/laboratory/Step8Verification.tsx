@@ -2,7 +2,7 @@ import { useFormContext } from "react-hook-form";
 import { DocumentUploadCard } from "../../../../components/ui/DocumentUploadCard";
 import type { OnboardingFormValues } from "../../schema";
 
-export function Step6Verification() {
+export function Step8Verification() {
   const { watch, setValue, formState: { errors } } = useFormContext<OnboardingFormValues>();
   const files = watch("labVerification");
   const entityErrors = errors.labVerification;

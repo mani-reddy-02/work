@@ -2,11 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { useAdminAuth } from '../contexts/AuthContext';
 import { Plus, GripVertical, Image as ImageIcon, Link as LinkIcon, Edit2, Trash2, ShieldAlert } from 'lucide-react';
 import StatusBadge from '../components/ui/StatusBadge';
+import SinglePosterPreview from '../components/SinglePosterPreview';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+
+const MODULES = ['HOME', 'HOSPITAL', 'DOCTOR', 'LABS'];
+
+const POSITIONS_BY_MODULE: Record<string, {id: string, label: string}[]> = {
+  HOME: [{id: 'HERO_BANNER', label: 'Home Hero Banner'}],
+  HOSPITAL: [{id: 'HERO_BANNER', label: 'Hospital Promotional Banner'}],
+  DOCTOR: [{id: 'HERO_BANNER', label: 'Doctor Hero Banner'}],
+  LABS: [{id: 'HERO_BANNER', label: 'Labs Hero Banner'}]
+};
 
 const HomePosters: React.FC = () => {
   const { token } = useAdminAuth();
+  const [module, setModule] = useState('HOME');
   const [posters, setPosters] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
@@ -14,13 +25,19 @@ const HomePosters: React.FC = () => {
 
   const [formData, setFormData] = useState({
     imageUrl: '',
+    title: '',
+    description: '',
+    buttonText: '',
     buttonAction: '',
-    isActive: true
+    isActive: true,
+    module: 'HOME',
+    position: 'HERO_BANNER',
+    displayOrder: 1
   });
 
   const fetchPosters = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/home-posters/admin`, {
+      const res = await fetch(`${API_BASE_URL}/home-posters/admin?module=${module}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -34,7 +51,7 @@ const HomePosters: React.FC = () => {
 
   useEffect(() => {
     if (token) fetchPosters();
-  }, [token]);
+  }, [token, module]);
 
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
     try {
@@ -90,7 +107,17 @@ const HomePosters: React.FC = () => {
 
   const openAddModal = () => {
     setIsEdit(false);
-    setFormData({ imageUrl: '', buttonAction: '', isActive: true });
+    setFormData({ 
+      imageUrl: '', 
+      title: '',
+      description: '',
+      buttonText: '',
+      buttonAction: '', 
+      isActive: true,
+      module,
+      position: POSITIONS_BY_MODULE[module]?.[0]?.id || 'HERO_BANNER',
+      displayOrder: posters.length + 1
+    });
     setIsModalOpen(true);
   };
 
@@ -99,8 +126,14 @@ const HomePosters: React.FC = () => {
     setCurrentPoster(poster);
     setFormData({ 
       imageUrl: poster.imageUrl || '', 
+      title: poster.title || '',
+      description: poster.description || '',
+      buttonText: poster.buttonText || '',
       buttonAction: poster.buttonAction || '', 
-      isActive: poster.isActive 
+      isActive: poster.isActive,
+      module: poster.module || module,
+      position: poster.position || 'HERO_BANNER',
+      displayOrder: poster.displayOrder || 1
     });
     setIsModalOpen(true);
   };
@@ -148,8 +181,8 @@ const HomePosters: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Home Page Posters</h2>
-          <p className="text-sm text-slate-500">Manage promotional banners and navigation cards on the User Home Page.</p>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Posters</h2>
+          <p className="text-sm text-slate-500">Manage posters across different user modules.</p>
         </div>
         <button 
           onClick={openAddModal}
@@ -157,6 +190,19 @@ const HomePosters: React.FC = () => {
         >
           <Plus size={16} /> Add New Poster
         </button>
+      </div>
+
+      <div className="flex items-center gap-4 mb-4">
+        <label className="text-sm font-medium text-slate-700">Module:</label>
+        <select 
+          value={module}
+          onChange={(e) => setModule(e.target.value)}
+          className="border-slate-300 rounded-lg text-sm py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        >
+          {MODULES.map(m => (
+            <option key={m} value={m}>{m === 'HOME' ? 'Home' : m === 'HOSPITAL' ? 'Hospital' : m === 'DOCTOR' ? 'Doctor' : 'Labs'}</option>
+          ))}
+        </select>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -167,93 +213,118 @@ const HomePosters: React.FC = () => {
           </p>
         </div>
 
-        <div className="divide-y divide-slate-100">
-          {posters.map((poster, idx) => (
-            <div 
-              key={poster.id}
-              draggable
-              onDragStart={(e) => handleDragStart(e, idx)}
-              onDragOver={(e) => handleDragOver(e, idx)}
-              onDragEnd={handleDragEnd}
-              className={`p-4 flex items-center gap-6 hover:bg-slate-50 transition-colors ${draggedIdx === idx ? 'opacity-50 bg-slate-100' : ''}`}
-            >
-              <div className="cursor-grab active:cursor-grabbing text-slate-400">
-                <GripVertical size={20} />
-              </div>
-              
-              <div className="w-32 h-16 bg-slate-100 rounded-lg overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center relative">
-                {poster.isDefault ? (
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-400 flex flex-col items-center justify-center text-white">
-                    <span className="text-xs font-bold text-center px-1">{poster.title}</span>
-                  </div>
-                ) : poster.imageUrl ? (
-                  <img src={poster.imageUrl} alt="Poster" className="w-full h-full object-cover" />
-                ) : (
-                  <ImageIcon className="w-6 h-6 text-slate-400" />
-                )}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-1">
-                  <h3 className="font-bold text-slate-800 text-sm">
-                    {poster.isDefault ? `Default: ${poster.title}` : 'Custom Poster'}
-                  </h3>
-                  {poster.isDefault && (
-                    <span className="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                      System
-                    </span>
-                  )}
+        <div className="divide-y divide-slate-300">
+          {(POSITIONS_BY_MODULE[module] || []).map((pos, posIndex) => {
+            const posPosters = posters.filter(p => p.position === pos.id || (!p.position && pos.id === 'HERO_BANNER'));
+            
+            return (
+              <div key={pos.id} className="pb-8">
+                <div className="bg-slate-100 px-4 py-3 border-b border-slate-200">
+                  <h3 className="font-bold text-slate-800 text-sm">POSITION {posIndex + 1}</h3>
+                  <p className="text-xs text-slate-500">{pos.label}</p>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-slate-500">
-                  <span className="flex items-center gap-1">
-                    <LinkIcon size={12} /> {poster.buttonAction || 'No link'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="shrink-0 w-32">
-                 <StatusBadge status={poster.isActive ? 'ACTIVE' : 'INACTIVE'} />
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button 
-                  onClick={() => handleToggleStatus(poster.id, poster.isActive)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold border transition-colors ${
-                    poster.isActive ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-slate-800 border-slate-800 text-white hover:bg-slate-700'
-                  }`}
-                >
-                  {poster.isActive ? 'Deactivate' : 'Activate'}
-                </button>
                 
-                {!poster.isDefault && (
-                  <>
-                    <button onClick={() => openEditModal(poster)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors">
-                      <Edit2 size={16} />
-                    </button>
-                    <button onClick={() => handleDelete(poster.id)} className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-md transition-colors">
-                      <Trash2 size={16} />
-                    </button>
-                  </>
+                {posPosters.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500">No posters found in this position.</div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {posPosters.map((poster, idx) => (
+                      <div 
+                        key={poster.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, posters.findIndex(p => p.id === poster.id))}
+                        onDragOver={(e) => handleDragOver(e, posters.findIndex(p => p.id === poster.id))}
+                        onDragEnd={handleDragEnd}
+                        className={`p-6 flex flex-col gap-4 hover:bg-slate-50 transition-colors ${draggedIdx === posters.findIndex(p => p.id === poster.id) ? 'opacity-50 bg-slate-100' : ''}`}
+                      >
+                        {/* Status and Actions Row */}
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-3">
+                            <div className="cursor-grab active:cursor-grabbing text-slate-400">
+                              <GripVertical size={20} />
+                            </div>
+                            <div>
+                              <StatusBadge status={poster.isActive ? 'ACTIVE' : 'INACTIVE'} />
+                            </div>
+                            <span className="text-sm font-medium text-slate-500">Order: {poster.displayOrder}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => handleToggleStatus(poster.id, poster.isActive)}
+                              className={`px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${
+                                poster.isActive ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-slate-800 border-slate-800 text-white hover:bg-slate-700'
+                              }`}
+                            >
+                              {poster.isActive ? 'Deactivate' : 'Activate'}
+                            </button>
+                            
+                            {!poster.isDefault && (
+                              <>
+                                <button onClick={() => openEditModal(poster)} className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold rounded-lg transition-colors flex items-center gap-2 text-sm">
+                                  <Edit2 size={16} /> Edit
+                                </button>
+                                <button onClick={() => handleDelete(poster.id)} className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold rounded-lg transition-colors flex items-center gap-2 text-sm">
+                                  <Trash2 size={16} /> Remove
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Visual Preview */}
+                        <div className="w-full mt-2 pointer-events-none shadow-sm rounded-2xl overflow-hidden border border-slate-200">
+                          <SinglePosterPreview poster={poster} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
-          {posters.length === 0 && (
-            <div className="p-8 text-center text-slate-500">No posters found.</div>
-          )}
+            );
+          })}
         </div>
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4 overflow-y-auto py-10">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden my-auto">
             <div className="p-4 md:p-6 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-900">{isEdit ? 'Edit Poster' : 'Add New Poster'}</h3>
             </div>
             
             <form onSubmit={handleSave} className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Module</label>
+                  <select 
+                    value={formData.module} 
+                    onChange={e => setFormData({...formData, module: e.target.value})}
+                    className="w-full border border-slate-200 rounded-lg text-sm px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white"
+                    required
+                  >
+                    {MODULES.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Position</label>
+                  <select 
+                    value={formData.position} 
+                    onChange={e => setFormData({...formData, position: e.target.value})}
+                    className="w-full border border-slate-200 rounded-lg text-sm px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white"
+                    required
+                  >
+                    {(POSITIONS_BY_MODULE[formData.module] || []).map(p => (
+                      <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Image File</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Poster Image *</label>
                 <input 
                   type="file" 
                   accept="image/*"
@@ -271,34 +342,79 @@ const HomePosters: React.FC = () => {
                   required={!isEdit && !formData.imageUrl}
                 />
                 {formData.imageUrl && (
-                  <div className="mt-2 text-xs text-blue-600 font-medium">Image ready for upload</div>
+                  <div className="mt-4">
+                    <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase">Image Preview (Aspect Ratio Maintained)</label>
+                    <img src={formData.imageUrl} alt="Preview" className="w-full h-auto object-cover rounded-lg border shadow-sm aspect-video" />
+                  </div>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Redirect Link</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
                 <input 
                   type="text" 
-                  value={formData.buttonAction} 
-                  onChange={e => setFormData({...formData, buttonAction: e.target.value})}
-                  className="w-full border-slate-200 rounded-lg text-sm px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white"
-                  placeholder="/hospitals"
-                  required
+                  value={formData.title} 
+                  onChange={e => setFormData({...formData, title: e.target.value})}
+                  className="w-full border border-slate-200 rounded-lg text-sm px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white"
                 />
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
-                <input 
-                  type="checkbox" 
-                  id="isActive" 
-                  checked={formData.isActive}
-                  onChange={e => setFormData({...formData, isActive: e.target.checked})}
-                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                <textarea 
+                  value={formData.description} 
+                  onChange={e => setFormData({...formData, description: e.target.value})}
+                  className="w-full border border-slate-200 rounded-lg text-sm px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white"
+                  rows={3}
                 />
-                <label htmlFor="isActive" className="text-sm font-medium text-slate-700">Active</label>
               </div>
 
-              <div className="flex justify-end gap-3 pt-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Button Text</label>
+                  <input 
+                    type="text" 
+                    value={formData.buttonText} 
+                    onChange={e => setFormData({...formData, buttonText: e.target.value})}
+                    className="w-full border border-slate-200 rounded-lg text-sm px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Button Link / Action</label>
+                  <input 
+                    type="text" 
+                    value={formData.buttonAction} 
+                    onChange={e => setFormData({...formData, buttonAction: e.target.value})}
+                    className="w-full border border-slate-200 rounded-lg text-sm px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                  <select 
+                    value={formData.isActive ? 'true' : 'false'} 
+                    onChange={e => setFormData({...formData, isActive: e.target.value === 'true'})}
+                    className="w-full border border-slate-200 rounded-lg text-sm px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white"
+                  >
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Display Order</label>
+                  <input 
+                    type="number" 
+                    value={formData.displayOrder} 
+                    onChange={e => setFormData({...formData, displayOrder: parseInt(e.target.value) || 1})}
+                    className="w-full border border-slate-200 rounded-lg text-sm px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white"
+                    min={1}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
                 <button 
                   type="button" 
                   onClick={() => setIsModalOpen(false)}
@@ -310,7 +426,7 @@ const HomePosters: React.FC = () => {
                   type="submit" 
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
                 >
-                  {isEdit ? 'Save Changes' : 'Add Poster'}
+                  {isEdit ? 'Save Poster' : 'Save Poster'}
                 </button>
               </div>
             </form>

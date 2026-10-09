@@ -3,7 +3,9 @@ import { prisma } from '../../config/prisma';
 
 export const getAdminPosters = async (req: Request, res: Response) => {
   try {
+    const { module = 'HOME' } = req.query;
     const posters = await prisma.homePagePoster.findMany({
+      where: { module: String(module) },
       orderBy: { displayOrder: 'asc' }
     });
     res.json({ success: true, data: posters });
@@ -15,8 +17,9 @@ export const getAdminPosters = async (req: Request, res: Response) => {
 
 export const getPublicPosters = async (req: Request, res: Response) => {
   try {
+    const { module = 'HOME' } = req.query;
     const posters = await prisma.homePagePoster.findMany({
-      where: { isActive: true },
+      where: { isActive: true, module: String(module) },
       orderBy: { displayOrder: 'asc' }
     });
     res.json({ success: true, data: posters });
@@ -28,17 +31,22 @@ export const getPublicPosters = async (req: Request, res: Response) => {
 
 export const createPoster = async (req: Request, res: Response) => {
   try {
-    const { imageUrl, buttonAction, isActive } = req.body;
+    const { imageUrl, buttonAction, isActive, module = 'HOME', position = 'HERO_BANNER', title, description, buttonText, displayOrder } = req.body;
     
-    const count = await prisma.homePagePoster.count();
+    const count = await prisma.homePagePoster.count({ where: { module, position } });
     
     const newPoster = await prisma.homePagePoster.create({
       data: {
         imageUrl: imageUrl || '',
         buttonAction: buttonAction || '',
+        title: title || null,
+        description: description || null,
+        buttonText: buttonText || null,
         isActive: isActive !== undefined ? isActive : true,
         isDefault: false,
-        displayOrder: count + 1
+        module,
+        position,
+        displayOrder: displayOrder !== undefined ? displayOrder : count + 1
       }
     });
     
@@ -52,16 +60,22 @@ export const createPoster = async (req: Request, res: Response) => {
 export const updatePoster = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { imageUrl, buttonAction, isActive } = req.body;
+    const { imageUrl, buttonAction, isActive, position, title, description, buttonText, displayOrder } = req.body;
     
     const existing = await prisma.homePagePoster.findUnique({ where: { id: id as string } });
     if (!existing) return res.status(404).json({ success: false, message: 'Not found' });
     
-    let updateData: any = { isActive };
+    let updateData: any = {};
+    if (isActive !== undefined) updateData.isActive = isActive;
+    if (displayOrder !== undefined) updateData.displayOrder = displayOrder;
     
     if (!existing.isDefault) {
       if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
       if (buttonAction !== undefined) updateData.buttonAction = buttonAction;
+      if (title !== undefined) updateData.title = title;
+      if (description !== undefined) updateData.description = description;
+      if (buttonText !== undefined) updateData.buttonText = buttonText;
+      if (position !== undefined) updateData.position = position;
     }
     
     const updated = await prisma.homePagePoster.update({

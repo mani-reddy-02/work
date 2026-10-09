@@ -42,7 +42,7 @@ const Doctors: React.FC = () => {
     const fetchDeps = async () => {
       if (!token) return;
       try {
-        const res = await fetch('http://localhost:5000/api/admin/dashboard/metrics', { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch('/api/admin/dashboard/metrics', { headers: { Authorization: `Bearer ${token}` } });
         // Actually the best way is to fetch departments list if there's an API, let's just fetch hospitals/departments if possible.
         // I will just use the standard ones for now or leave it empty initially since no explicit filter API for doctors is created.
         // Wait, I can just fetch departments from /api/admin/departments if it exists. But to be safe:

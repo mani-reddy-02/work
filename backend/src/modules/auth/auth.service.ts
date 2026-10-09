@@ -137,9 +137,10 @@ export class AuthService {
     const info = payload.hospitalInfo || payload.labInfo || {};
     const loc = payload.hospitalLocation || payload.labLocation || {};
     const services = payload.hospitalServices?.services || payload.labServices?.services || [];
-    const depts = payload.hospitalDepartments?.departments || [];
-    const customDepts = payload.hospitalDepartments?.customDepartments || [];
+    const depts = payload.hospitalDepartments?.departments || payload.labDepartments?.departments || [];
+    const customDepts = payload.hospitalDepartments?.customDepartments || payload.labDepartments?.customDepartments || [];
     const admin = payload.hospitalAdmin || payload.labAdmin || payload.account;
+    const verification = payload.hospitalVerification || payload.labVerification || {};
     const bType = payload.businessType.businessType === 'hospital' ? BusinessType.HOSPITAL : BusinessType.LABORATORY;
 
     const result = await prisma.$transaction(async (tx) => {
@@ -189,7 +190,7 @@ export class AuthService {
           email: payload.account.email,
           phone: payload.account.phone,
           passwordHash,
-          role: Role.HOSPITAL_ADMIN,
+          role: bType === BusinessType.LABORATORY ? Role.LAB_ADMIN : Role.HOSPITAL_ADMIN,
           designation: admin.adminRole,
           hospitalId: hospital.id,
         },

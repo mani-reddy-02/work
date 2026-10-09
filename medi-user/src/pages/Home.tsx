@@ -10,19 +10,13 @@ import { useNotifications } from '../lib/notifications';
 import { opAppointmentApi } from '../lib/opAppointmentApi';
 import { getDiseaseIconUrl } from '../utils/diseaseIcons';
 import { useUIStore } from '../lib/uiStore';
+import PosterCarousel from '../components/PosterCarousel';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 const Home = () => {
   const navigate = useNavigate();
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
-  const [activeSlide, setActiveSlide] = useState(0);
-  const sliderRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-  const startX = useRef(0);
-  const scrollLeft = useRef(0);
-  const dragDistance = useRef(0);
-  const [isPaused, setIsPaused] = useState(false);
   const [isEmergencyHighlighted, setIsEmergencyHighlighted] = useState(true);
   const { notifications, markAsRead } = useNotifications();
   const location = useLocation();
@@ -30,32 +24,61 @@ const Home = () => {
   const [showBookingPopup, setShowBookingPopup] = useState(false);
   const [bookingData, setBookingData] = useState<any>(null);
   const [hasUpcomingBooking, setHasUpcomingBooking] = useState(false);
-  const [posters, setPosters] = useState<any[]>([]);
 
   const [topSpecialists, setTopSpecialists] = useState<any[]>([]);
+  const [commonDiseases, setCommonDiseases] = useState<any[]>([]);
   const [isSpecialistsLoading, setIsSpecialistsLoading] = useState(true);
   const [specialistsError, setSpecialistsError] = useState(false);
 
   useEffect(() => {
     let mounted = true;
     setIsSpecialistsLoading(true);
+
+    const fallbackSpecialists = [
+      { id: '1', name: 'General Physician', icon: 'Stethoscope', image: '/optimized/Fever.webp' },
+      { id: '2', name: 'Pediatrics', icon: 'Smile', image: '/optimized/Pediatrics.webp' },
+      { id: '3', name: 'Cardiology', icon: 'Heart', image: '/optimized/Cardiology.webp' },
+      { id: '4', name: 'Dermatology', icon: 'Sparkles', image: '/optimized/Dermatology.webp' },
+      { id: '5', name: 'Neurology', icon: 'Activity', image: '/optimized/Neurology.webp' },
+      { id: '6', name: 'Orthopedics', icon: 'Shield', image: '/optimized/Orthopedics.webp' }
+    ].map((s, idx) => ({
+      ...s,
+      bg: ['bg-red-50', 'bg-yellow-50', 'bg-blue-50', 'bg-green-50', 'bg-purple-50', 'bg-orange-50'][idx % 6]
+    }));
+
     opAppointmentApi.fetchDiseases().then((res) => {
       if (mounted) {
-        if (res.success && res.data && res.data.categorical) {
-          const categorical = res.data.categorical.slice(0, 6).map((s: any, idx: number) => ({
-            ...s,
-            image: getDiseaseIconUrl(s.name, s.icon),
-            bg: ['bg-red-50', 'bg-yellow-50', 'bg-blue-50', 'bg-green-50', 'bg-purple-50', 'bg-orange-50'][idx % 6]
-          }));
-          setTopSpecialists(categorical);
+        if (res.success && res.data) {
+          if (res.data.categorical && res.data.categorical.length > 0) {
+            const categorical = res.data.categorical.slice(0, 6).map((s: any, idx: number) => ({
+              ...s,
+              image: getDiseaseIconUrl(s.name, s.icon),
+              bg: ['bg-red-50', 'bg-yellow-50', 'bg-blue-50', 'bg-green-50', 'bg-purple-50', 'bg-orange-50'][idx % 6]
+            }));
+            setTopSpecialists(categorical);
+          } else {
+            setTopSpecialists(fallbackSpecialists);
+          }
+          
+          if (res.data.general && res.data.general.length > 0) {
+            const general = res.data.general.slice(0, 8).map((d: any, idx: number) => ({
+              ...d,
+              image: getDiseaseIconUrl(d.name, d.icon),
+              bg: ['bg-pink-50', 'bg-cyan-50', 'bg-indigo-50', 'bg-teal-50', 'bg-rose-50', 'bg-sky-50', 'bg-emerald-50', 'bg-amber-50'][idx % 8]
+            }));
+            setCommonDiseases(general);
+          }
+          setSpecialistsError(false);
         } else {
-          setSpecialistsError(true);
+          setTopSpecialists(fallbackSpecialists);
+          setSpecialistsError(false);
         }
         setIsSpecialistsLoading(false);
       }
     }).catch(() => {
       if (mounted) {
-        setSpecialistsError(true);
+        setTopSpecialists(fallbackSpecialists);
+        setSpecialistsError(false);
         setIsSpecialistsLoading(false);
       }
     });
@@ -145,137 +168,8 @@ const Home = () => {
     setExpandedFaq(expandedFaq === index ? null : index);
   };
 
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/home-posters`)
-      .then(res => res.json())
-      .then(res => {
-        if (res.success && res.data) {
-           const DEFAULT_TEMPLATES: any = {
-             'Book Now': {
-                title: 'Book Now',
-                subtitle: 'Doctor Appointments & Hospital Visits',
-                description: 'Find verified doctors, book clinic visits & hospital appointments',
-                cta: 'Book Now',
-                color: 'bg-gradient-to-r from-[#0062e6] via-[#0070f3] to-[#70a6ff]', 
-                icon: Hospital, 
-                icon2: Stethoscope,
-                hasDoctorImage: true,
-             },
-             'Video Consult': { 
-                title: 'Book Video Consultation',
-                subtitle: 'Instant Online Care with Top Doctors',
-                description: 'Connect with certified specialists within 15 mins from home',
-                cta: 'Consult Now',
-                color: 'bg-gradient-to-r from-[#0055d4] via-[#0284c7] to-[#0ea5e9]', 
-                icon: Video, 
-                icon2: Sparkles,
-                hasDoctorImage: false,
-             },
-             'Lab Tests': { 
-                title: 'Book Lab Test',
-                subtitle: 'Flat 20% OFF on Diagnostic Tests',
-                description: 'Certified diagnostic packages with fast digital test reports',
-                cta: 'Explore Tests',
-                color: 'bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#38bdf8]', 
-                icon: TestTube, 
-                icon2: ShieldCheck,
-                hasDoctorImage: false,
-             },
-             'Home Services': { 
-                title: 'Book Home Sample Collection',
-                subtitle: 'Hassle-free Sample Pickup at Home',
-                description: 'Safe & hygienic diagnostic sample collection at your doorstep',
-                cta: 'Book Collection',
-                color: 'bg-gradient-to-r from-[#0369a1] via-[#0284c7] to-[#14b8a6]', 
-                icon: Activity, 
-                icon2: HomeIcon,
-                hasDoctorImage: false,
-             },
-           };
+  // Poster logic moved to PosterCarousel
 
-           const mappedPosters = res.data.map((p: any) => {
-             if (p.isDefault && DEFAULT_TEMPLATES[p.title]) {
-               return {
-                 ...p,
-                 ...DEFAULT_TEMPLATES[p.title],
-                 path: p.buttonAction,
-                 isCustom: false
-               };
-             }
-             return {
-               ...p,
-               path: p.buttonAction,
-               isCustom: true
-             };
-           });
-           setPosters(mappedPosters);
-        }
-      })
-      .catch(console.error);
-  }, []);
-
-  // Auto-scroll logic for Booking Carousel
-  useEffect(() => {
-    if (isPaused || isDragging.current) return;
-    
-    const interval = setInterval(() => {
-      if (sliderRef.current) {
-        const nextSlide = (activeSlide + 1) % (posters.length || 1);
-        sliderRef.current.scrollTo({
-          left: nextSlide * sliderRef.current.offsetWidth,
-          behavior: 'smooth'
-        });
-        setActiveSlide(nextSlide);
-      }
-    }, 3500);
-    
-    return () => clearInterval(interval);
-  }, [activeSlide, isPaused, posters.length]);
-
-  // Handle native scroll updates (e.g. from swiping on mobile)
-  const handleScroll = () => {
-    if (sliderRef.current) {
-      const slideWidth = sliderRef.current.offsetWidth;
-      const newActive = Math.round(sliderRef.current.scrollLeft / slideWidth);
-      if (newActive !== activeSlide && newActive >= 0 && newActive < posters.length) {
-        setActiveSlide(newActive);
-      }
-    }
-  };
-
-  const goToSlide = (idx: number) => {
-    if (sliderRef.current) {
-      sliderRef.current.scrollTo({
-        left: idx * sliderRef.current.offsetWidth,
-        behavior: 'smooth'
-      });
-      setActiveSlide(idx);
-    }
-  };
-
-  // Mouse drag functionality for Desktop
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!sliderRef.current) return;
-    isDragging.current = true;
-    dragDistance.current = 0;
-    setIsPaused(true);
-    startX.current = e.pageX - sliderRef.current.offsetLeft;
-    scrollLeft.current = sliderRef.current.scrollLeft;
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging.current || !sliderRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - sliderRef.current.offsetLeft;
-    const walk = (x - startX.current) * 1.5;
-    dragDistance.current = Math.abs(x - startX.current);
-    sliderRef.current.scrollLeft = scrollLeft.current - walk;
-  };
-
-  const handleMouseUpOrLeave = () => {
-    isDragging.current = false;
-    setIsPaused(false);
-  };
 
   const FAQ_ITEMS = [
     { q: 'How do I book a video consultation?', a: 'Choose Video Consultation, select a doctor, choose an available slot and confirm your consultation.' },
@@ -315,123 +209,7 @@ const Home = () => {
         </div>
       )}
       {/* 1. FIRST LARGE BOOKING CAROUSEL */}
-      <section 
-        className="relative overflow-hidden rounded-2xl shadow-sm min-h-[170px] md:min-h-[220px]"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => { setIsPaused(false); isDragging.current = false; }}
-        onTouchStart={() => setIsPaused(true)}
-        onTouchEnd={() => setIsPaused(false)}
-        aria-label="Booking Carousel"
-      >
-        <div 
-          ref={sliderRef}
-          onScroll={handleScroll}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUpOrLeave}
-          onMouseLeave={handleMouseUpOrLeave}
-          className="flex overflow-x-auto hide-scrollbar snap-x snap-mandatory cursor-grab active:cursor-grabbing w-full select-none"
-        >
-          {posters.map((slide, idx) => {
-            if (slide.isCustom) {
-              return (
-                <div 
-                  key={slide.id || idx} 
-                  onClick={() => {
-                    if (dragDistance.current < 10) navigate(slide.path);
-                  }}
-                  className={`w-full flex-shrink-0 snap-center min-h-[170px] md:min-h-[220px] relative cursor-pointer overflow-hidden bg-slate-100 flex items-center justify-center`}
-                >
-                  {slide.imageUrl ? (
-                    <img src={slide.imageUrl} alt="Poster" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-slate-400 font-medium text-sm">No Image Provided</span>
-                  )}
-                </div>
-              );
-            }
-
-            const Icon1 = slide.icon;
-            const Icon2 = slide.icon2;
-            return (
-              <div 
-                key={slide.id || idx} 
-                onClick={() => {
-                  if (dragDistance.current < 10) navigate(slide.path);
-                }}
-                className={`w-full flex-shrink-0 snap-center ${slide.color} min-h-[170px] md:min-h-[220px] p-5 md:p-6 text-white flex items-center justify-between relative cursor-pointer overflow-hidden`}
-              >
-                {/* Text Content */}
-                <div className="relative z-20 w-[62%] md:w-[54%] flex flex-col justify-center py-1">
-                  <span className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-xs text-white text-[9px] md:text-[11px] font-bold px-2 py-0.5 rounded-full w-fit mb-1.5 border border-white/25 uppercase tracking-wider">
-                    <Icon1 className="w-3 h-3" /> MediQuee
-                  </span>
-                  <h2 className="text-[19px] md:text-[26px] font-bold mb-1 leading-[1.2] tracking-tight text-white">
-                    {slide.title}
-                  </h2>
-                  <p className="text-[10.5px] md:text-[13px] text-white/90 mb-3.5 md:mb-4 max-w-[190px] md:max-w-[320px] leading-snug">
-                    {slide.description}
-                  </p>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(slide.path);
-                    }}
-                    className="bg-white text-slate-900 px-4 py-1.5 md:px-5 md:py-2 rounded-full text-[11px] md:text-[13px] font-bold flex items-center gap-1.5 w-fit hover:bg-slate-50 transition-colors shadow-sm active:scale-95 pointer-events-auto"
-                  >
-                    <span>{slide.cta}</span>
-                    <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                  </button>
-                </div>
-
-                {/* Right Visual / Graphic */}
-                {slide.hasDoctorImage ? (
-                  <div 
-                    className="absolute right-0 bottom-0 top-0 w-[50%] md:w-[45%] md:max-w-[380px] z-10 pointer-events-none"
-                    style={{ WebkitMaskImage: 'linear-gradient(to right, transparent, black 18%)', maskImage: 'linear-gradient(to right, transparent, black 18%)' }}
-                  >
-                    <img 
-                      src="/images/doctor.jpg" 
-                      alt="Doctor" 
-                      className="w-full h-full object-cover object-top md:object-[center_top]"
-                    />
-                  </div>
-                ) : (
-                  <div className="absolute right-3 md:right-8 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
-                    <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg">
-                      <div className="w-16 h-16 md:w-22 md:h-22 rounded-full bg-white/20 flex items-center justify-center">
-                        <Icon1 className="w-8 h-8 md:w-11 md:h-11 text-white" />
-                      </div>
-                      <div className="absolute -bottom-1 -right-1 bg-white/90 text-slate-900 text-[9px] md:text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
-                        <Icon2 className="w-3 h-3 text-blue-600" />
-                        <span>Active</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        
-        {/* Pagination Dots */}
-        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-          {posters.map((_, idx) => (
-            <button 
-              key={idx} 
-              type="button"
-              aria-label={`Go to slide ${idx + 1}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                goToSlide(idx);
-              }}
-              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                activeSlide === idx ? 'bg-white w-4' : 'bg-white/50 w-1.5 hover:bg-white/80'
-              }`} 
-            />
-          ))}
-        </div>
-      </section>
+      <PosterCarousel module="HOME" />
 
       {/* Quick Services - Reverted to Original */}
       <section>
@@ -543,7 +321,7 @@ const Home = () => {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[15px] md:text-[18px] lg:text-[20px] font-bold text-slate-800">Consult Top Specialists</h2>
           <Link 
-            to="/specialties?type=doctor" 
+            to="/specialties?type=video" 
             className="text-[11px] text-blue-600 font-semibold cursor-pointer hover:underline flex items-center gap-0.5"
           >
             View All <ChevronRight className="w-3.5 h-3.5" />
@@ -568,7 +346,7 @@ const Home = () => {
             {topSpecialists.map((specialist, idx) => (
               <Link 
                 key={specialist.id} 
-                to={`/specialties?type=doctor&category=${encodeURIComponent(specialist.name)}`} 
+                to={`/specialties?type=video&category=${encodeURIComponent(specialist.name)}`} 
                 className={`bg-white rounded-xl border border-slate-100 p-3 flex flex-col items-center text-center shadow-sm hover:shadow-md hover:border-blue-100 transition-all ${idx >= 3 ? 'hidden md:flex' : ''}`}
               >
                   <div className={`w-10 h-10 rounded-full ${specialist.bg} flex items-center justify-center mb-2 overflow-hidden p-1`}>
@@ -592,6 +370,50 @@ const Home = () => {
           </div>
         )}
       </section>
+
+      {/* Common Diseases for Video Consultation */}
+      {!isSpecialistsLoading && commonDiseases.length > 0 && (
+        <section className="mt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[15px] md:text-[18px] lg:text-[20px] font-bold text-slate-800">Common Health Issues</h2>
+            <Link 
+              to="/specialties?type=video" 
+              className="text-[11px] text-blue-600 font-semibold cursor-pointer hover:underline flex items-center gap-0.5"
+            >
+              View All <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-4 md:grid-cols-8 gap-2 md:gap-3">
+            {commonDiseases.map((disease, idx) => (
+              <Link 
+                key={disease.id || idx} 
+                to={`/specialties?type=video&disease=${encodeURIComponent(disease.name)}`} 
+                className={`bg-white rounded-xl border border-slate-100 p-2 flex flex-col items-center text-center shadow-sm hover:shadow-md hover:border-blue-100 transition-all ${idx >= 4 ? 'hidden md:flex' : ''}`}
+              >
+                  <div className={`w-12 h-12 rounded-full ${disease.bg} flex items-center justify-center mb-1 overflow-hidden p-2`}>
+                      {disease.image ? (
+                          <img 
+                            src={disease.image} 
+                            alt={disease.name} 
+                            className="w-full h-full object-contain mix-blend-multiply" 
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/optimized/Fever.webp';
+                            }}
+                          />
+                      ) : (
+                          <Activity className="w-5 h-5 text-slate-400" />
+                      )}
+                  </div>
+                  <h4 className="text-[9px] md:text-[10px] font-bold text-slate-700 leading-tight line-clamp-2">{disease.name}</h4>
+                  <div className="flex items-center gap-0.5 mt-0.5 text-blue-500">
+                    <Video className="w-2 h-2" />
+                    <span className="text-[8px] font-bold">Consult</span>
+                  </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* MediAI Assistant */}
       <section className="mt-4 mb-2 cursor-pointer transition-transform active:scale-95" onClick={() => navigate('/ai')}>
