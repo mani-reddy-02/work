@@ -149,7 +149,48 @@ export const useAuth = () => {
     return { success: true };
   };
 
-  const register = async (data: { name: string; email: string; phone: string; password: string }) => {
+  const sendWhatsAppOtp = async (phone: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/whatsapp/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        return { success: false, error: json.error?.message || 'Failed to send WhatsApp OTP' };
+      }
+      return { success: true, message: json.data?.message || 'OTP sent successfully', debugOtp: json.data?.debugOtp };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error while sending OTP' };
+    }
+  };
+
+  const verifyWhatsAppOtp = async (phone: string, code: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/whatsapp/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, code }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        return { success: false, error: json.error?.message || 'Invalid or expired OTP' };
+      }
+      return { success: true, verified: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error while verifying OTP' };
+    }
+  };
+
+  const register = async (data: {
+    name: string;
+    phone: string;
+    password: string;
+    email?: string;
+    otp?: string;
+    whatsappConsent?: boolean;
+  }) => {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
@@ -161,7 +202,7 @@ export const useAuth = () => {
       if (!res.ok || !json.success) {
         const errorMsg =
           res.status === 409
-            ? 'An account already exists with this email or mobile number.'
+            ? 'An account already exists with this mobile number.'
             : json.error?.message || 'Registration failed. Please check your details.';
         return { success: false, error: errorMsg };
       }
@@ -177,7 +218,7 @@ export const useAuth = () => {
       if (json.data.user) {
         updateGlobalProfile({
           name: json.data.user.name,
-          email: json.data.user.email,
+          email: json.data.user.email || '',
           phone: json.data.user.phone || '',
           dob: '1990-01-01',
           gender: 'Not specified',
@@ -211,6 +252,8 @@ export const useAuth = () => {
     user: state.user,
     login,
     register,
+    sendWhatsAppOtp,
+    verifyWhatsAppOtp,
     logout,
   };
 };

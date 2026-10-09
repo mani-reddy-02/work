@@ -7,7 +7,7 @@ import { LabBookingType, LabBookingStatus } from '@prisma/client';
 
 export const createLabBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const hospitalId = req.body.hospitalId || (req as any).user?.hospitalId;
+    const hospitalId = req.body.hospitalId || req.body.laboratoryId || (req as any).user?.hospitalId;
     let patientId = req.body.patientId;
 
     if (!patientId && (req.body.mobile || req.body.phone)) {
@@ -27,17 +27,16 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
         });
       }
       patientId = patient.id;
-    } else if (!patientId && (req as any).user?.role === 'PATIENT') {
+    } else if (!patientId && (req as any).user?.id) {
       patientId = (req as any).user.id;
     }
 
-    const bookingType = req.body.bookingType || 'WALK_IN';
-    const items = req.body.items || req.body.tests;
-    const { 
-      collectionAddress, 
-      collectionDate, 
-      collectionTimeSlot 
-    } = req.body;
+    const isHomePath = req.originalUrl.includes('home-sample-collection');
+    const bookingType = req.body.bookingType || (req.body.collectionType === 'LAB_VISIT' ? 'WALK_IN' : req.body.collectionType) || (isHomePath ? 'HOME_COLLECTION' : 'WALK_IN');
+    const items = req.body.items || req.body.tests || (req.body.testId ? [req.body.testId] : undefined);
+    const collectionAddress = req.body.collectionAddress;
+    const collectionDate = req.body.collectionDate || req.body.bookingDate;
+    const collectionTimeSlot = req.body.collectionTimeSlot || req.body.timeSlot;
 
     if (!hospitalId || !patientId || !items || !items.length) {
       return res.status(400).json({ success: false, error: { code: 'INVALID_REQUEST', message: 'Missing required fields: hospital, patient, or tests' } });
@@ -54,10 +53,17 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
       const validItems = [];
 
       for (const testId of items) {
-        const labTest = await tx.labTest.findUnique({
+        let labTest = await tx.labTest.findUnique({
           where: { id: testId },
           include: { platformTest: true }
         });
+
+        if (!labTest && hospitalId) {
+          labTest = await tx.labTest.findFirst({
+            where: { platformTestId: testId, hospitalId },
+            include: { platformTest: true }
+          });
+        }
 
         if (!labTest || labTest.hospitalId !== hospitalId || !labTest.isActive) {
           throw new Error(`Test ${testId} is not available at this hospital`);
@@ -105,6 +111,9 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
            }
         }
 
+      }
+
+      if (collectionDate && collectionTimeSlot) {
         // Check for double booking conflict
         const dateObj = new Date(collectionDate);
         const nextDay = new Date(dateObj);
@@ -113,7 +122,6 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
         const conflict = await tx.labBooking.findFirst({
           where: {
             hospitalId,
-            bookingType: 'HOME_COLLECTION',
             collectionDate: {
               gte: dateObj,
               lt: nextDay,
@@ -143,9 +151,9 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
           status: 'REQUESTED' as LabBookingStatus,
           totalAmount,
           homeCollectionFee: bookingType === 'HOME_COLLECTION' ? totalHomeCollectionFee : 0,
-          collectionAddress: bookingType === 'HOME_COLLECTION' ? collectionAddress : null,
-          collectionDate: bookingType === 'HOME_COLLECTION' ? new Date(collectionDate) : null,
-          collectionTimeSlot: bookingType === 'HOME_COLLECTION' ? collectionTimeSlot : null,
+          collectionAddress: collectionAddress || null,
+          collectionDate: collectionDate ? new Date(collectionDate) : null,
+          collectionTimeSlot: collectionTimeSlot || null,
           hospitalSharePercentage: hospitalSharePct,
           mediqueeCommissionPercentage: mediqueeCommissionPct,
           hospitalAmount: hospitalAmt,
@@ -190,7 +198,17 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
       metadata: { bookingId: booking.id, type: isHome ? 'HOME_SAMPLE' : 'LAB' }
     });
 
-    res.status(201).json({ success: true, data: booking });
+    const responseData = {
+      ...booking,
+      collectionType: booking.bookingType,
+      amount: booking.totalAmount,
+      testPrice: (booking.totalAmount || 0) - (booking.homeCollectionFee || 0),
+      collectionFee: booking.homeCollectionFee || 0,
+      bookingNumber: (booking as any).bookingNumber || booking.id,
+      paymentStatus: (booking as any).paymentStatus || 'PENDING'
+    };
+
+    res.status(201).json({ success: true, data: responseData });
   } catch (error: any) {
     if (error.message && error.message.includes('not available') || error.message && error.message.includes('cannot be collected')) {
       return res.status(400).json({ success: false, error: { code: 'INVALID_REQUEST', message: error.message } });
@@ -508,12 +526,8 @@ export const getLabBookingById = async (req: Request, res: Response, next: NextF
     const userId = (req as any).user?.id;
     const hospitalId = (req as any).user?.hospitalId;
 
-    const where: any = { id: id as string };
-    if (hospitalId) where.hospitalId = hospitalId;
-    else if (userId) where.patientId = userId;
-
-    const booking = await prisma.labBooking.findFirst({
-      where,
+    const booking = await prisma.labBooking.findUnique({
+      where: { id: id as string },
       include: {
         items: { include: { labTest: { include: { platformTest: true } } } },
         patient: { select: { id: true, name: true, phone: true } },
@@ -525,7 +539,25 @@ export const getLabBookingById = async (req: Request, res: Response, next: NextF
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } });
     }
 
-    res.json({ success: true, data: booking });
+    if (hospitalId && booking.hospitalId !== hospitalId) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized access to this booking' } });
+    }
+
+    if (userId && (req as any).user?.role === 'PATIENT' && booking.patientId !== userId) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized access to this booking' } });
+    }
+
+    const responseData = {
+      ...booking,
+      collectionType: booking.bookingType,
+      amount: booking.totalAmount,
+      testPrice: (booking.totalAmount || 0) - (booking.homeCollectionFee || 0),
+      collectionFee: booking.homeCollectionFee || 0,
+      bookingNumber: (booking as any).bookingNumber || booking.id,
+      paymentStatus: (booking as any).paymentStatus || 'PENDING'
+    };
+
+    res.json({ success: true, data: responseData });
   } catch (error) {
     next(error);
   }
@@ -544,6 +576,10 @@ export const cancelLabBooking = async (req: Request, res: Response, next: NextFu
     const booking = await prisma.labBooking.findFirst({ where });
     if (!booking) {
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } });
+    }
+
+    if (booking.status === 'CANCELLED') {
+      return res.status(400).json({ success: false, error: { code: 'ALREADY_CANCELLED', message: 'Booking is already cancelled' } });
     }
 
     const updated = await prisma.labBooking.update({

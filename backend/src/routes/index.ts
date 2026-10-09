@@ -27,6 +27,8 @@ import clinicalRoutes from '../modules/clinical/clinical.routes';
 import notificationsRoutes from '../modules/notifications/notifications.routes';
 import userBookingsRoutes from '../modules/bookings/user-bookings.routes';
 import homePostersRoutes from '../modules/home-posters/home-posters.routes';
+import whatsappRoutes from '../modules/whatsapp/whatsapp.routes';
+import healthAiRoutes from '../modules/health-ai/health-ai.routes';
 import { prisma } from '../config/prisma';
 import { authenticate, requireRole } from '../middleware/auth';
 
@@ -73,13 +75,16 @@ router.use('/laboratories', laboratoriesRoutes);
 router.use('/lab-tests', require('./../modules/laboratories/public-user-labs.routes').default);
 router.use('/lab-bookings', labBookingsRoutes);
 router.use('/home-nursing', homeNursingRoutes);
-router.use('/home-sample-collection', homeSampleRoutes); // Requests endpoints (matches /requests, etc)
 router.use('/home-sample-collection/tests', require('./../modules/laboratories/public-user-labs.routes').default); 
 router.use('/home-sample-collection/categories', require('./../modules/laboratories/public-user-labs.routes').default); 
+router.use('/home-sample-collection/bookings', labBookingsRoutes);
 router.use('/home-sample-collection', require('./../modules/laboratories/public-user-labs.routes').default); // Fallback for /laboratories/:id/availability
+router.use('/home-sample-collection', homeSampleRoutes); // Requests endpoints (matches /requests, etc)
 router.use('/reports', reportsRoutes);
 router.use('/clinical', clinicalRoutes);
 router.use('/notifications', notificationsRoutes);
 router.use('/home-posters', homePostersRoutes);
+router.use('/whatsapp', whatsappRoutes);
+router.use('/health-ai', healthAiRoutes);
 
 export default router;

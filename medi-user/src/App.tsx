@@ -28,6 +28,9 @@ import HelpSupport from './pages/HelpSupport';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
+import TermsAndConditions from './pages/TermsAndConditions';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import MediQueeAI from './pages/MediQueeAI';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isLoggedIn, isLoading } = useAuth();
@@ -73,9 +76,12 @@ function App() {
           <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
           <Route path="/register" element={<AuthRoute><Register /></AuthRoute>} />
           <Route path="/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
+          <Route path="/terms" element={<TermsAndConditions />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
 
           <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<Home />} />
+            <Route path="ai" element={<MediQueeAI />} />
             <Route path="services" element={<Services />} />
             <Route path="specialties" element={<Specialties />} />
             <Route path="services/insurance" element={<InsuranceList />} />

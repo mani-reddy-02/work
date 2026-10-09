@@ -105,20 +105,16 @@ async function runTests() {
     );
 
     // 2. Fetch sample test and offering
-    const labTest = await prisma.labTest.findFirst({
-      where: { active: true },
-      include: { offerings: true },
+    const offering = await prisma.labTest.findFirst({
+      where: { isActive: true },
+      include: { hospital: true, platformTest: true },
     });
-    if (!labTest || labTest.offerings.length === 0) {
+    if (!offering || !offering.platformTest || !offering.hospital) {
       throw new Error('No active lab tests with offerings found in database');
     }
 
-    const laboratory = await prisma.hospital.findUnique({
-      where: { id: labTest.offerings[0].laboratoryId },
-    });
-    if (!laboratory) {
-      throw new Error('Offering laboratory not found in database');
-    }
+    const labTest = offering.platformTest;
+    const laboratory = offering.hospital;
 
     // ----------------------------------------------------
     // TEST GROUP 1: LAB TESTS & CATEGORIES
@@ -130,12 +126,13 @@ async function runTests() {
     }
     console.log(`✔ GET /lab-tests returned ${allTestsRes.body.data.length} tests from database`);
 
-    // Case-insensitive search
-    const searchRes = await makeRequest('/api/v1/lab-tests?search=BLOOD');
+    // Case-insensitive search using an active test name
+    const searchTerm = (labTest.name.split(' ')[0] || labTest.name).toUpperCase();
+    const searchRes = await makeRequest(`/api/v1/lab-tests?search=${encodeURIComponent(searchTerm)}`);
     if (searchRes.status !== 200 || searchRes.body.data.length === 0) {
-      throw new Error('Case-insensitive search for "BLOOD" returned no tests');
+      throw new Error(`Case-insensitive search for "${searchTerm}" returned no tests`);
     }
-    console.log(`✔ GET /lab-tests?search=BLOOD returned ${searchRes.body.data.length} matches`);
+    console.log(`✔ GET /lab-tests?search=${searchTerm} returned ${searchRes.body.data.length} matches`);
 
     // Categories
     const catRes = await makeRequest('/api/v1/lab-tests/categories');
@@ -149,7 +146,7 @@ async function runTests() {
     if (testDetailRes.status !== 200 || testDetailRes.body.data.id !== labTest.id) {
       throw new Error(`GET /lab-tests/${labTest.id} failed`);
     }
-    console.log(`✔ GET /lab-tests/:id returned test "${testDetailRes.body.data.name}" with ${testDetailRes.body.data.laboratories.length} offering laboratories`);
+    console.log(`✔ GET /lab-tests/:id returned test "${testDetailRes.body.data.name}" with ${testDetailRes.body.data.availableLabCount ?? 0} offering laboratories`);
 
     // Laboratories offering this test
     const labsForTestRes = await makeRequest(`/api/v1/lab-tests/${labTest.id}/laboratories`);
@@ -221,7 +218,7 @@ async function runTests() {
       throw new Error(`POST /lab-bookings failed: status ${bookRes.status}, error: ${JSON.stringify(bookRes.body)}`);
     }
     createdBookingId = bookRes.body.data.id;
-    console.log(`✔ Lab booking created in PostgreSQL (ID: ${createdBookingId}, Number: ${bookRes.body.data.bookingNumber}, Amount: ${bookRes.body.data.amount})`);
+    console.log(`✔ Lab booking created in PostgreSQL (ID: ${createdBookingId}, Number: ${bookRes.body.data.bookingNumber || bookRes.body.data.id}, Amount: ${bookRes.body.data.amount || bookRes.body.data.totalAmount})`);
 
     // 3. Double-booking conflict detection
     const conflictRes = await makeRequest('/api/v1/lab-bookings', {

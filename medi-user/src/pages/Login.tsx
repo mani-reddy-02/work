@@ -54,16 +54,11 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md px-4">
-        <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-slate-200/50 p-2 border border-slate-100">
-            <img src="/logo-icon.png" alt="MediQuee" className="w-full h-full object-contain rounded-xl" />
-          </div>
-        </div>
-        <div className="flex justify-center mb-2">
-          <img src="/logo.png" alt="MediQuee" className="h-8 w-auto object-contain" />
-        </div>
-        <p className="mt-2 text-center text-sm text-slate-600 font-medium">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md px-4 text-center">
+        <Link to="/" className="inline-block mb-3 focus:outline-none">
+          <img src="/logo.png" alt="MediQuee Healthcare" className="h-10 sm:h-12 w-auto mx-auto object-contain hover:opacity-95 transition-opacity" />
+        </Link>
+        <p className="text-center text-sm text-slate-600 font-medium">
           Your Healthcare, Just a Tap Away
         </p>
       </div>
@@ -108,7 +103,7 @@ export default function Login() {
                     if (apiError) setApiError('');
                   }}
                   className={`appearance-none block w-full px-4 py-3.5 border rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:text-sm font-medium transition-all ${
-                    errors.identifier ? 'border-red-300 focus:border-red-500 bg-red-50/50' : 'border-slate-200 focus:border-blue-500 bg-slate-50'
+                    errors.identifier ? 'border-red-300 focus:border-red-500 bg-red-50/50' : 'border-slate-300 focus:border-blue-500 bg-white'
                   }`}
                 />
                 {errors.identifier && (
@@ -135,7 +130,7 @@ export default function Login() {
                     if (apiError) setApiError('');
                   }}
                   className={`appearance-none block w-full px-4 py-3.5 border rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:text-sm font-medium pr-12 transition-all ${
-                    errors.password ? 'border-red-300 focus:border-red-500 bg-red-50/50' : 'border-slate-200 focus:border-blue-500 bg-slate-50'
+                    errors.password ? 'border-red-300 focus:border-red-500 bg-red-50/50' : 'border-slate-300 focus:border-blue-500 bg-white'
                   }`}
                 />
                 <button

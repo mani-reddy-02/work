@@ -1,9 +1,11 @@
-import { Home, Calendar, Grid, User, Bot } from 'lucide-react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { Home, Calendar, Grid, User, Sparkles } from 'lucide-react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '../lib/utils';
 
 const MobileBottomNav = ({ className }: { className?: string }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isAiActive = location.pathname === '/ai';
 
   return (
     <>
@@ -23,12 +25,17 @@ const MobileBottomNav = ({ className }: { className?: string }) => {
           <div className="relative -top-6 flex flex-col items-center">
             <button 
               onClick={() => navigate('/ai')}
+              aria-label="MediQuee AI Health Education Assistant"
               className={cn(
-                "w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300",
-                "bg-primary text-white shadow-primary/30 hover:bg-blue-700"
+                "w-14 h-14 rounded-full flex flex-col items-center justify-center shadow-lg transition-all duration-300 relative group cursor-pointer",
+                isAiActive 
+                  ? "bg-blue-600 text-white ring-4 ring-blue-300 shadow-blue-500/40 scale-105" 
+                  : "bg-primary text-white shadow-primary/30 hover:bg-blue-700 active:scale-95"
               )}
             >
-               <span className="text-[9px] font-bold tracking-tight">MediQuee</span>
+              <Sparkles className="w-3.5 h-3.5 text-blue-200 mb-0.5 animate-pulse" />
+              <span className="text-[9px] font-bold tracking-tight">MediQuee</span>
+              <span className="text-[7.5px] font-extrabold uppercase text-blue-200 tracking-wider">AI</span>
             </button>
           </div>
 

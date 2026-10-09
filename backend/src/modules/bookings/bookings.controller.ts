@@ -96,6 +96,11 @@ export const createWalkInBooking = async (req: Request, res: Response, next: Nex
       metadata: { bookingId: booking.id, patientName: booking.patientName }
     }).catch(console.error);
 
+    // Trigger Meta WhatsApp appointment confirmation
+    import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
+      WhatsAppNotificationService.sendAppointmentConfirmation(booking.id).catch(console.error);
+    }).catch(console.error);
+
     res.status(201).json({ success: true, data: booking });
   } catch (error) {
     next(error);
@@ -235,6 +240,13 @@ export const updateBookingStatus = async (req: Request, res: Response, next: Nex
       type: 'activity',
       metadata: { bookingId: updated.id, status: updated.status, patientName: updated.patientName }
     }).catch(console.error);
+
+    // If cancelled, trigger Meta WhatsApp cancellation notification
+    if (updated.status === 'CANCELLED') {
+      import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
+        WhatsAppNotificationService.sendAppointmentCancellation(updated.id, reason || notes).catch(console.error);
+      }).catch(console.error);
+    }
 
     res.json({ success: true, data: updated });
   } catch (error) {

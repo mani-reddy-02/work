@@ -9,6 +9,15 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   JWT_SECRET: z.string(),
   JWT_EXPIRES_IN: z.string().default('7d'),
+  WHATSAPP_ACCESS_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  WHATSAPP_BUSINESS_ACCOUNT_ID: z.string().optional(),
+  WHATSAPP_API_VERSION: z.string().default('v21.0'),
+  WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().default('mediquee_wa_verify_token_secure'),
+  META_WA_PHONE_NUMBER_ID: z.string().optional(),
+  META_WA_ACCESS_TOKEN: z.string().optional(),
+  META_WA_TEMPLATE_NAME: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
 });
 
 const _env = envSchema.safeParse(process.env);

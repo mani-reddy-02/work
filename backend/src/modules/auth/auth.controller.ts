@@ -55,8 +55,71 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
         success: false,
         error: { code: 'CONFLICT_ERROR', message: error.message },
       });
+    } else if (error.message?.includes('WhatsApp OTP')) {
+      res.status(400).json({
+        success: false,
+        error: { code: 'OTP_ERROR', message: error.message },
+      });
     } else {
       next(error);
     }
   }
 };
+
+export const sendWhatsAppOtp = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { phone } = req.body;
+    const { WhatsAppOtpService } = await import('../whatsapp/whatsapp-otp.service');
+    const result = await WhatsAppOtpService.requestOtp(phone);
+
+    if (!result.success) {
+      return res.status(result.configured ? 502 : 503).json({
+        success: false,
+        error: {
+          code: result.configured ? 'WHATSAPP_DELIVERY_FAILED' : 'WHATSAPP_NOT_CONFIGURED',
+          message: result.message,
+          details: result.error,
+        },
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        message: result.message,
+        cooldownSeconds: result.cooldownSeconds,
+      },
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'OTP_DISPATCH_FAILED', message: error.message || 'Failed to dispatch OTP' },
+    });
+  }
+};
+
+export const verifyWhatsAppOtp = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { phone, code } = req.body;
+    const { WhatsAppOtpService } = await import('../whatsapp/whatsapp-otp.service');
+    const result = await WhatsAppOtpService.verifyOtp(phone, code);
+
+    if (!result.valid) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_OTP', message: result.message },
+      });
+    }
+
+    res.json({
+      success: true,
+      data: { verified: true, message: result.message },
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'OTP_VERIFICATION_FAILED', message: error.message || 'Verification failed' },
+    });
+  }
+};
+

@@ -113,6 +113,11 @@ async function processOpReminders() {
           type: NotificationType.APPOINTMENT_STARTING,
           metadata: { bookingId: booking.id, reminderKey, serviceType: isVideo ? 'VIDEO' : 'OP' },
         });
+
+        // Trigger Meta WhatsApp appointment starting reminder
+        import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
+          WhatsAppNotificationService.sendAppointmentReminder(booking.id, 'starting now').catch(console.error);
+        }).catch(console.error);
       }
     }
 
@@ -129,6 +134,11 @@ async function processOpReminders() {
             type: NotificationType.APPOINTMENT_REMINDER,
             metadata: { bookingId: booking.id, reminderKey, interval: interval.minutes },
           });
+
+          // Trigger Meta WhatsApp appointment reminder
+          import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
+            WhatsAppNotificationService.sendAppointmentReminder(booking.id, interval.label).catch(console.error);
+          }).catch(console.error);
         }
       }
     }

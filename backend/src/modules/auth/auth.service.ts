@@ -71,18 +71,39 @@ export class AuthService {
     };
   }
 
-  static async registerPatient(payload: { name: string; email: string; phone: string; password: string }) {
+  static async registerPatient(payload: {
+    name: string;
+    phone: string;
+    password: string;
+    email?: string;
+    whatsappConsent?: boolean;
+    otp?: string;
+  }) {
+    // If OTP is provided, verify it
+    if (payload.otp) {
+      const { WhatsAppOtpService } = await import('../whatsapp/whatsapp-otp.service');
+      const verifyResult = await WhatsAppOtpService.verifyOtp(payload.phone, payload.otp);
+      if (!verifyResult.valid) {
+        throw new Error(verifyResult.message || 'Invalid or expired WhatsApp OTP');
+      }
+    }
+
+    const searchConditions: any[] = [{ phone: payload.phone }];
+    if (payload.email) {
+      searchConditions.push({ email: payload.email });
+    }
+
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [
-          { email: payload.email },
-          { phone: payload.phone },
-        ],
+        OR: searchConditions,
       },
     });
 
     if (existingUser) {
-      throw new Error('User with this email or phone already exists');
+      if (existingUser.phone === payload.phone) {
+        throw new Error('User with this mobile number already exists');
+      }
+      throw new Error('User with this email already exists');
     }
 
     const passwordHash = await bcrypt.hash(payload.password, 10);
@@ -90,10 +111,11 @@ export class AuthService {
     const user = await prisma.user.create({
       data: {
         name: payload.name,
-        email: payload.email,
+        email: payload.email || null,
         phone: payload.phone,
         passwordHash,
         role: Role.PATIENT,
+        whatsappConsent: payload.whatsappConsent ?? true,
       },
     });
 
@@ -114,7 +136,7 @@ export class AuthService {
 
   static async register(payload: any) {
     // If patient registration payload
-    if (payload.name && payload.email && !payload.businessType) {
+    if (payload.name && payload.phone && !payload.businessType) {
       return this.registerPatient(payload);
     }
 

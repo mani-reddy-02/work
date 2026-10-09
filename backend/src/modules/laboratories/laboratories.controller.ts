@@ -492,17 +492,31 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
     const id = req.params.id as string;
     const dateQuery = typeof req.query.date === 'string' ? req.query.date.trim() : '';
 
-    const lab = await prisma.lab.findUnique({
+    let lab = await prisma.lab.findUnique({
       where: { id }
     });
 
-    if (!lab) {
-      return res.status(404).json({ success: false, error: 'Lab not found' });
+    let schedules: any[] = [];
+    if (lab) {
+      schedules = await prisma.labSchedule.findMany({
+        where: { labId: id }
+      });
+    } else {
+      const hospital = await prisma.hospital.findUnique({
+        where: { id }
+      });
+      if (!hospital) {
+        return res.status(404).json({ success: false, error: 'Lab not found' });
+      }
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      schedules = days.map(d => ({
+        dayOfWeek: d,
+        isAvailable: true,
+        startTime: '08:00',
+        endTime: '18:00',
+        slotDurationMinutes: 60
+      }));
     }
-
-    const schedules = await prisma.labSchedule.findMany({
-      where: { labId: id }
-    });
 
     // Helper to generate dates for next 14 days
     const availableDates = [];

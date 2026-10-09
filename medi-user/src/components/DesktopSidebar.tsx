@@ -1,6 +1,6 @@
 import { cn } from '../lib/utils';
 import { NavLink } from 'react-router-dom';
-import { Home, Calendar, Grid, FileText, Users, User, HelpCircle, LogOut, ChevronLeft } from 'lucide-react';
+import { Home, Calendar, Grid, FileText, Users, User, HelpCircle, LogOut, ChevronLeft, Bot } from 'lucide-react';
 import { useUIStore } from '../lib/uiStore';
 import { useAuth } from '../lib/auth';
 
@@ -9,6 +9,7 @@ const DesktopSidebar = ({ className }: { className?: string }) => {
   const { logout } = useAuth();
   const navItems = [
     { name: 'Home', icon: Home, path: '/' },
+    { name: 'MediQuee AI', icon: Bot, path: '/ai' },
     { name: 'Bookings', icon: Calendar, path: '/bookings' },
     { name: 'Services', icon: Grid, path: '/services' },
     { name: 'Health Records', icon: FileText, path: '/health-records' },

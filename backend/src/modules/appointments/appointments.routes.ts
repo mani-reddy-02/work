@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../../middleware/auth';
-import { createAppointment, getAppointmentById, getMyAppointments } from './appointments.controller';
+import { createAppointment, getAppointmentById, getMyAppointments, cancelAppointment, rescheduleAppointment } from './appointments.controller';
 
 const router = Router();
 
@@ -10,5 +10,7 @@ router.use(authenticate);
 router.post('/', createAppointment);
 router.get('/my', getMyAppointments);
 router.get('/:id', getAppointmentById);
+router.patch('/:id/cancel', cancelAppointment);
+router.patch('/:id/reschedule', rescheduleAppointment);
 
 export default router;

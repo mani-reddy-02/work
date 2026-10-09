@@ -331,6 +331,10 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       metadata: { bookingId: result.id, type: isVideo ? 'VIDEO' : 'OP' }
     }).catch(console.error);
 
+    // Trigger Meta WhatsApp appointment confirmation (Patient & Staff)
+    const { WhatsAppNotificationService } = await import('../whatsapp/whatsapp-notifications.service');
+    WhatsAppNotificationService.sendAppointmentConfirmation(result.id).catch(console.error);
+
     res.status(201).json({
       success: true,
       data: {
@@ -587,3 +591,146 @@ export const getMyAppointments = async (req: Request, res: Response, next: NextF
     next(error);
   }
 };
+
+export const cancelAppointment = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const userId = req.user!.id;
+    const userRole = req.user!.role;
+    const userHospitalId = req.user!.hospitalId;
+    const { reason } = req.body;
+
+    const booking = await prisma.oPBooking.findUnique({
+      where: { id },
+      include: {
+        doctor: { select: { name: true } },
+      },
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Appointment not found' } });
+    }
+
+    const isPatient = booking.patientId === userId;
+    const isDoctor = booking.doctorId === userId;
+    const isHospitalStaff = userHospitalId && booking.hospitalId === userHospitalId;
+    const isSuperAdmin = userRole === Role.SUPER_ADMIN;
+
+    if (!isPatient && !isDoctor && !isHospitalStaff && !isSuperAdmin) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Not authorized to cancel this appointment' } });
+    }
+
+    const updated = await prisma.oPBooking.update({
+      where: { id },
+      data: {
+        status: 'CANCELLED',
+        reason: reason || booking.reason || 'Cancelled by user',
+      },
+      include: {
+        hospital: { select: { name: true } },
+        doctor: { select: { name: true } },
+      },
+    });
+
+    sendNotification({
+      hospitalId: updated.hospitalId,
+      userId: isPatient ? updated.doctorId : updated.patientId,
+      title: 'Appointment Cancelled',
+      message: `Appointment for ${updated.patientName} with Dr. ${updated.doctor.name} has been cancelled.`,
+      type: 'BOOKING_CANCELLED',
+      metadata: { bookingId: updated.id },
+    }).catch(console.error);
+
+    // Trigger Meta WhatsApp cancellation notification
+    const { WhatsAppNotificationService } = await import('../whatsapp/whatsapp-notifications.service');
+    WhatsAppNotificationService.sendAppointmentCancellation(updated.id, reason).catch(console.error);
+
+    res.json({ success: true, data: updated, message: 'Appointment cancelled successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const rescheduleAppointment = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const userId = req.user!.id;
+    const userRole = req.user!.role;
+    const userHospitalId = req.user!.hospitalId;
+    const { date, timeSlot } = req.body;
+
+    if (!date || !timeSlot) {
+      return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'New date and timeSlot are required' } });
+    }
+
+    const booking = await prisma.oPBooking.findUnique({ where: { id } });
+    if (!booking) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Appointment not found' } });
+    }
+
+    const isPatient = booking.patientId === userId;
+    const isDoctor = booking.doctorId === userId;
+    const isHospitalStaff = userHospitalId && booking.hospitalId === userHospitalId;
+    const isSuperAdmin = userRole === Role.SUPER_ADMIN;
+
+    if (!isPatient && !isDoctor && !isHospitalStaff && !isSuperAdmin) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Not authorized to reschedule this appointment' } });
+    }
+
+    const oldDateStr = booking.appointmentDate.toISOString().split('T')[0];
+    const oldTimeStr = booking.timeSlot || booking.slotTime || '';
+
+    const newAppointmentDate = new Date(date);
+
+    const startOfDay = new Date(newAppointmentDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(newAppointmentDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const existingConflict = await prisma.oPBooking.findFirst({
+      where: {
+        id: { not: id },
+        doctorId: booking.doctorId,
+        OR: [{ timeSlot: timeSlot }, { slotTime: timeSlot }],
+        appointmentDate: { gte: startOfDay, lte: endOfDay },
+        status: { notIn: ['CANCELLED'] },
+      },
+    });
+
+    if (existingConflict) {
+      return res.status(409).json({ success: false, error: { code: 'SLOT_ALREADY_BOOKED', message: 'The selected slot is already booked. Please choose another.' } });
+    }
+
+    const updated = await prisma.oPBooking.update({
+      where: { id },
+      data: {
+        appointmentDate: newAppointmentDate,
+        timeSlot: timeSlot.trim(),
+        slotTime: timeSlot.trim(),
+        status: 'WAITING',
+      },
+      include: {
+        hospital: { select: { name: true } },
+        doctor: { select: { name: true } },
+      },
+    });
+
+    sendNotification({
+      hospitalId: updated.hospitalId,
+      userId: isPatient ? updated.doctorId : updated.patientId,
+      title: 'Appointment Rescheduled',
+      message: `Appointment for ${updated.patientName} with Dr. ${updated.doctor.name} rescheduled to ${date} at ${timeSlot}.`,
+      type: 'BOOKING_RESCHEDULED',
+      metadata: { bookingId: updated.id },
+    }).catch(console.error);
+
+    // Trigger Meta WhatsApp rescheduled notification
+    const { WhatsAppNotificationService } = await import('../whatsapp/whatsapp-notifications.service');
+    WhatsAppNotificationService.sendAppointmentRescheduled(updated.id, oldDateStr, oldTimeStr).catch(console.error);
+
+    res.json({ success: true, data: updated, message: 'Appointment rescheduled successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+

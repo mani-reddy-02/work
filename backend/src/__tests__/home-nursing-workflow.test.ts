@@ -158,8 +158,17 @@ async function runTests() {
 
     // 7. Test GET /api/v1/home-nursing/services/:id/availability
     console.log(`\n[Test 6] GET /api/v1/home-nursing/services/${serviceId}/availability?hospitalId=${hospitalId}`);
-    const res6 = await makeRequest(`/api/v1/home-nursing/services/${serviceId}/availability?hospitalId=${hospitalId}`);
-    if (res6.status !== 200 || !res6.body.success || !Array.isArray(res6.body.data.slots) || res6.body.data.slots.length === 0) {
+    let res6 = await makeRequest(`/api/v1/home-nursing/services/${serviceId}/availability?hospitalId=${hospitalId}`);
+    if (res6.status !== 200 || !res6.body.success) {
+      throw new Error(`Failed to fetch availability: ${JSON.stringify(res6.body)}`);
+    }
+    if (!res6.body.data.slots || res6.body.data.slots.length === 0) {
+      const nextDate = res6.body.data.availableDates?.[1]?.date;
+      if (nextDate) {
+        res6 = await makeRequest(`/api/v1/home-nursing/services/${serviceId}/availability?hospitalId=${hospitalId}&date=${nextDate}`);
+      }
+    }
+    if (!Array.isArray(res6.body.data.slots) || res6.body.data.slots.length === 0) {
       throw new Error(`Failed to fetch availability: ${JSON.stringify(res6.body)}`);
     }
     const chosenSlot = res6.body.data.slots[0].slot;

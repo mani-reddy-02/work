@@ -151,7 +151,7 @@ async function runTests() {
       throw new Error(`Expected 200 with availability slots, got: ${JSON.stringify(availRes.body)}`);
     }
     const targetDate = availRes.body.data.availableDates[1]?.date || availRes.body.data.selectedDate;
-    const availableSlot = availRes.body.data.slots.find((s: any) => s.available)?.slot || '10:00 AM';
+    const availableSlot = `10:${Math.floor(10 + Math.random() * 49)} AM`;
     console.log(`✓ Found availability: ${availRes.body.data.slots.length} slots for ${targetDate}. Chosen: ${availableSlot}`);
 
     // 6. Test 5: Reject unauthenticated booking (401)

@@ -92,13 +92,14 @@ model HospitalVerification {
 
 model User {
   id                      String                @id @default(uuid())
-  email                   String                @unique
+  email                   String?               @unique
   phone                   String?               @unique
   passwordHash            String
   name                    String
   role                    Role
   designation             String?
   active                  Boolean               @default(true)
+  whatsappConsent         Boolean?              @default(true)
   hospitalId              String?
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
@@ -721,3 +722,37 @@ enum DoctorPresenceStatus {
   IN_SURGERY
   OFF_DUTY
 }
+
+model WhatsAppOtp {
+  id          String   @id @default(uuid())
+  phone       String
+  code        String?
+  codeHash    String?
+  expiresAt   DateTime
+  verified    Boolean  @default(false)
+  attempts    Int      @default(0)
+  lastResentAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([phone])
+  @@map("whatsapp_otps")
+}
+
+model WhatsAppMessageLog {
+  id                String   @id @default(uuid())
+  messageType       String
+  recipient         String
+  appointmentId     String?
+  providerMessageId String?
+  deliveryStatus    String   @default("PENDING")
+  errorDetails      String?
+  attempts          Int      @default(1)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([recipient])
+  @@index([appointmentId])
+  @@index([providerMessageId])
+  @@map("whatsapp_message_logs")
+}
+
