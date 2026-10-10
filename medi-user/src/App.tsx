@@ -15,6 +15,7 @@ import Reports from './pages/Reports';
 import CheckMyBMI from './pages/CheckMyBMI';
 import ServiceDetails from './pages/ServiceDetails';
 import BookingDetails from './pages/BookingDetails';
+import VideoConsultationPage from './pages/VideoConsultationPage';
 import MyBookings from './pages/MyBookings';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
@@ -95,6 +96,7 @@ function App() {
             <Route path="services/:id" element={<ServiceDetails />} />
             <Route path="bookings" element={<MyBookings />} />
             <Route path="booking/:id" element={<BookingDetails />} />
+            <Route path="video-consultation/:bookingId" element={<VideoConsultationPage />} />
             <Route path="profile" element={<Profile />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="ambulance" element={<Ambulance />} />

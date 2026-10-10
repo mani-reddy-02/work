@@ -225,6 +225,26 @@ model OPBooking {
   labOrders                    DoctorLabOrder[]
   vitals                       PatientVitals?
   prescription                 Prescription?
+  videoConsultation            VideoConsultation?
+}
+
+model VideoConsultation {
+  id              String         @id @default(uuid())
+  bookingId       String         @unique
+  roomName        String         @unique
+  status          String         @default("SCHEDULED") // SCHEDULED, WAITING, IN_PROGRESS, COMPLETED, CANCELLED, FAILED
+  scheduledDate   DateTime?
+  startedAt       DateTime?
+  endedAt         DateTime?
+  durationSeconds Int            @default(0)
+  patientJoinedAt DateTime?
+  doctorJoinedAt  DateTime?
+  metadata        Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  booking         OPBooking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("video_consultations")
 }
 
 model NursingService {

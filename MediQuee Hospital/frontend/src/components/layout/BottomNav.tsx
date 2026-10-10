@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom"
-import { LayoutGrid, Calendar, IndianRupee, User, Plus, Home, Users, Stethoscope, Video, CalendarClock } from "lucide-react"
+import { LayoutGrid, Calendar, IndianRupee, User, Plus, Home, Users, Stethoscope, Video, CalendarClock, UserPlus } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
@@ -35,8 +35,9 @@ export function BottomNav({ onQuickAdd }: { onQuickAdd: () => void }) {
       case 'receptionist':
         return [
           { to: '/receptionist', icon: LayoutGrid, label: t('dashboard') },
-          { to: '/receptionist/queue', icon: Users, label: 'Queue' },
           { to: '/receptionist/appointments', icon: Calendar, label: t('appointments') },
+          { to: '/receptionist/queue', icon: Users, label: 'Queue' },
+          { to: '/receptionist/check-in', icon: UserPlus, label: 'Check-In' },
           { to: '/profile', icon: User, label: t('profile') },
         ];
       case 'admin':

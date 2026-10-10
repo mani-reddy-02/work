@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueueStateMachine } from '../../services/useQueueStateMachine';
 import { receptionistApi } from '../../services/receptionistApi';
 import { cn } from "@/lib/utils"
+import { ReceptionistNavHeader } from "@/components/layout/ReceptionistNavHeader"
 
 export function QueueScreen() {
   const navigate = useNavigate();
@@ -32,18 +33,15 @@ export function QueueScreen() {
 
   return (
     <div className="flex flex-col bg-gray-50/30 min-h-screen pb-[100px]">
-      
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-30 bg-surface/95 backdrop-blur-xl border-b border-border shadow-[0_4px_24px_rgba(0,0,0,0.02)] pt-6 pb-2 px-4 flex flex-col gap-5">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/receptionist')} className="p-2 -ml-2 rounded-xl hover:bg-gray-50 transition-colors">
-            <ArrowLeft className="w-5 h-5 text-foreground" />
-          </button>
-          <div className="flex flex-col">
-            <h1 className="text-[20px] font-black text-[#0A1A3D] tracking-tight">{selectedDeptId === 'all' ? 'All Depts' : departments.find(d => d.id === selectedDeptId)?.name || 'All Depts'} Queue</h1>
-            <span className="text-[12px] font-bold text-muted">OP Department</span>
-          </div>
-        </div>
+      {/* Top Header with Back Button, Menu Toggle, and Navigation Tabs */}
+      <ReceptionistNavHeader 
+        title={`${selectedDeptId === 'all' ? 'All Depts' : departments.find(d => d.id === selectedDeptId)?.name || 'All Depts'} Queue`}
+        subtitle="OP Department Live Calling Screen"
+        backTo="/receptionist"
+      />
+
+      {/* Sticky Department Filter and Tabs */}
+      <div className="sticky top-[102px] z-20 bg-surface/95 backdrop-blur-xl border-b border-border shadow-[0_4px_24px_rgba(0,0,0,0.02)] pt-3 pb-2 px-4 flex flex-col gap-4">
         {/* Department Tiles */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4">
           <button

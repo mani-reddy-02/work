@@ -17,7 +17,12 @@ app.use(cors({
   origin: true,
   credentials: true,
 }));
-app.use(express.json({ limit: '20mb' }));
+app.use(express.json({ 
+  limit: '20mb',
+  verify: (req: any, _res, buf) => {
+    req.rawBody = buf.toString('utf8');
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(morgan('dev'));
 

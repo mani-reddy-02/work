@@ -18,6 +18,17 @@ const envSchema = z.object({
   META_WA_ACCESS_TOKEN: z.string().optional(),
   META_WA_TEMPLATE_NAME: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_MODEL: z.string().default('llama-3.3-70b-versatile'),
+  OPENROUTER_API_KEY: z.string().optional(),
+  OPENROUTER_MODEL: z.string().default('meta-llama/llama-3.3-70b-instruct:free'),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_BASE_URL: z.string().optional(),
+  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  LIVEKIT_URL: z.string().optional(),
+  LIVEKIT_API_KEY: z.string().optional(),
+  LIVEKIT_API_SECRET: z.string().optional(),
 });
 
 const _env = envSchema.safeParse(process.env);

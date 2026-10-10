@@ -162,19 +162,23 @@ export const getSupportedDepartments = async (req: Request, res: Response) => {
  * Provider configuration status and compliance statement
  */
 export const getHealthAiStatus = async (req: Request, res: Response) => {
-  const configured = HealthEducationService.isConfigured();
+  const statusInfo = HealthEducationService.getProviderStatus();
   return res.json({
     success: true,
     data: {
-      provider: 'Google Gemini',
-      model: 'gemini-3.8-flash',
-      configured,
+      provider: statusInfo.provider,
+      model: statusInfo.model,
+      configured: statusInfo.configured,
+      activeProvider: statusInfo.activeProvider,
+      availableProviders: statusInfo.availableProviders,
+      diagnostics: statusInfo.lastError,
       features: {
         healthEducationChat: true,
         teluguLanguageSupport: true,
         clinicianTriageEngine: true,
         opBookingNavigation: true,
-        emergencyRedFlagInterception: true
+        emergencyRedFlagInterception: true,
+        multiProviderWaterfall: true
       },
       compliance: {
         educationalUseOnly: true,

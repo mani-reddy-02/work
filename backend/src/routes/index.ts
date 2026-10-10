@@ -29,6 +29,7 @@ import userBookingsRoutes from '../modules/bookings/user-bookings.routes';
 import homePostersRoutes from '../modules/home-posters/home-posters.routes';
 import whatsappRoutes from '../modules/whatsapp/whatsapp.routes';
 import healthAiRoutes from '../modules/health-ai/health-ai.routes';
+import videoRoutes from '../modules/video/video.routes';
 import { prisma } from '../config/prisma';
 import { authenticate, requireRole } from '../middleware/auth';
 
@@ -85,5 +86,6 @@ router.use('/notifications', notificationsRoutes);
 router.use('/home-posters', homePostersRoutes);
 router.use('/whatsapp', whatsappRoutes);
 router.use('/health-ai', healthAiRoutes);
+router.use('/video', videoRoutes);
 
 export default router;

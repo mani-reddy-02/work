@@ -1,4 +1,4 @@
-import { Search, Filter, Calendar } from "lucide-react"
+import { Search, Filter, Calendar, UserPlus } from "lucide-react"
 import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Skeleton } from "@/components/ui/Skeleton"
@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/EmptyState"
 import { cn } from "@/lib/utils"
 import { useNavigate } from "react-router-dom"
 import { receptionistApi } from "@/services/receptionistApi"
+import { ReceptionistNavHeader } from "@/components/layout/ReceptionistNavHeader"
 
 export function ReceptionistAppointments() {
   const [selectedDept, setSelectedDept] = useState('All');
@@ -101,10 +102,24 @@ export function ReceptionistAppointments() {
 
   return (
     <div className="flex flex-col bg-gray-50/30 min-h-screen pb-[120px]">
-      <div className="sticky top-0 z-30 bg-surface/95 backdrop-blur-xl pt-6 pb-4 px-4 flex flex-col gap-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border-b border-border">
+      {/* Top Header with Back Button, Menu Toggle, and Main Navigation Tabs */}
+      <ReceptionistNavHeader 
+        title="Appointments" 
+        subtitle="OP Outpatient Records & Scheduling"
+        rightActions={
+          <button
+            onClick={() => navigate('/receptionist/check-in')}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1B5DF1] hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer active:scale-95"
+            title="Check-In Patient"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Check-In</span>
+          </button>
+        }
+      />
+
+      <div className="sticky top-[102px] z-20 bg-surface/95 backdrop-blur-xl pt-4 pb-4 px-4 flex flex-col gap-5 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border-b border-border">
         <div className="flex flex-col gap-4">
-          <h2 className="text-[22px] font-black text-[#0A1A3D] tracking-tight">Appointments</h2>
-          
           <div className="relative group">
             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-muted/70 group-focus-within:text-[#1B5DF1] transition-colors">
               <Search className="w-4 h-4" />

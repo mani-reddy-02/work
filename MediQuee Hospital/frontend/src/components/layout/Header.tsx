@@ -57,7 +57,9 @@ export function Header({
           <div className="flex items-center gap-2">
             <button 
               onClick={onToggleSidebar}
-              className="hidden md:flex p-1 -ml-1 text-muted hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 mr-1"
+              className="flex p-1 -ml-1 text-muted hover:text-foreground transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 mr-1 cursor-pointer"
+              title="Open Navigation Menu"
+              aria-label="Open Navigation Menu"
             >
               <Menu className="w-6 h-6" />
             </button>

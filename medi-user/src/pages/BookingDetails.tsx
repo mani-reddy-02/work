@@ -16,6 +16,7 @@ import {
   Mail,
   Home,
   FileText,
+  Video,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { opAppointmentApi, type OpBookingRecord } from '../lib/opAppointmentApi';
@@ -547,6 +548,15 @@ const BookingDetails = () => {
                     </span>
                   </div>
 
+                  {((appointment.opType || '').toLowerCase().includes('video')) && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        <Video className="w-3.5 h-3.5 text-indigo-600" />
+                        Video Consultation
+                      </span>
+                    </div>
+                  )}
+
                   {appointment.diseaseName && (
                     <div className="mt-2 flex items-center gap-2">
                       <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-100">
@@ -629,7 +639,110 @@ const BookingDetails = () => {
                 </div>
               </div>
 
-              <div className="pt-2 pb-4">
+              {/* Official E-Prescription Card if prescribed */}
+              {appointment.prescription && (
+                <div className="bg-white p-5 rounded-2xl shadow-soft border border-blue-100 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 text-primary flex items-center justify-center font-serif text-lg font-black italic">
+                        ℞
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-800 text-sm">Doctor's E-Prescription</h3>
+                        <p className="text-[11px] text-slate-400">Digitally authorized by Dr. {appointment.doctorName}</p>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      Digitally Signed ✓
+                    </span>
+                  </div>
+
+                  {/* Diagnosis */}
+                  {appointment.prescription.diagnosis && (
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Clinical Diagnosis</span>
+                      <p className="text-xs font-bold text-slate-800 mt-0.5">{appointment.prescription.diagnosis}</p>
+                    </div>
+                  )}
+
+                  {/* Prescribed Medications */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700">Prescribed Medications</span>
+                      <span className="text-[11px] text-slate-400">
+                        {appointment.prescription.items?.length || 0} items
+                      </span>
+                    </div>
+
+                    {appointment.prescription.items && appointment.prescription.items.length > 0 ? (
+                      <div className="space-y-2">
+                        {appointment.prescription.items.map((med, idx) => (
+                          <div key={idx} className="p-3 bg-blue-50/40 rounded-xl border border-blue-100/60 flex items-start justify-between gap-2">
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-xs text-slate-900">{med.medicineName}</span>
+                                {med.strength && (
+                                  <span className="text-[10px] bg-white px-1.5 py-0.5 rounded border border-blue-100 text-primary font-medium">
+                                    {med.strength}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[11px] text-slate-500 mt-0.5">
+                                {med.dosageForm} • {med.durationDays} Days • {med.timing?.replace('_', ' ') || 'After Food'}
+                              </span>
+                              {med.instructions && (
+                                <span className="text-[11px] text-slate-600 italic mt-0.5">
+                                  Note: {med.instructions}
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-mono font-bold text-xs text-primary bg-white px-2 py-1 rounded-lg border border-blue-100">
+                              {med.frequency}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic p-3 bg-slate-50 rounded-xl">
+                        No oral medications prescribed during this visit. Advice provided below.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* General Advice */}
+                  {appointment.prescription.generalAdvice && (
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Doctor's Advice</span>
+                      <p className="text-xs text-slate-700 bg-amber-50/60 p-3 rounded-xl border border-amber-100 leading-relaxed font-medium">
+                        {appointment.prescription.generalAdvice}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Follow up date */}
+                  {appointment.prescription.followUpDate && (
+                    <div className="flex items-center gap-2 text-xs text-slate-600 pt-1">
+                      <Calendar className="w-3.5 h-3.5 text-primary" />
+                      <span>Follow-up: <strong>{new Date(appointment.prescription.followUpDate).toLocaleDateString()}</strong></span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="pt-2 pb-4 space-y-3">
+                {((appointment.opType || '').toLowerCase().includes('video')) &&
+                  appointment.status !== 'CANCELLED' && (
+                    <button
+                      onClick={() => navigate(`/video-consultation/${appointment.id || appointment.appointmentId}`)}
+                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-4 rounded-2xl shadow-xl shadow-blue-500/25 active:scale-[0.98] transition-all text-sm flex items-center justify-center gap-2"
+                    >
+                      <Video className="w-5 h-5 text-white" />
+                      {appointment.status === 'IN_CONSULTATION'
+                        ? 'Rejoin Video Consultation'
+                        : 'Join Video Consultation'}
+                    </button>
+                  )}
+
                 <button
                   onClick={() => navigate('/my-bookings')}
                   className="w-full bg-primary text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-primary/30 hover:bg-blue-700 transition-colors text-sm"

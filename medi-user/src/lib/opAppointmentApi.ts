@@ -77,6 +77,27 @@ export interface CreateAppointmentPayload {
   opType?: string;
 }
 
+export interface PrescriptionItem {
+  id?: string;
+  medicineName: string;
+  dosageForm: string;
+  strength?: string | null;
+  frequency: string;
+  durationDays: number;
+  timing?: string;
+  instructions?: string | null;
+}
+
+export interface PrescriptionRecord {
+  id?: string;
+  diagnosis: string;
+  clinicalNotes?: string | null;
+  generalAdvice?: string | null;
+  followUpDate?: string | null;
+  createdAt?: string;
+  items?: PrescriptionItem[];
+}
+
 export interface OpBookingRecord {
   id: string;
   appointmentId: string;
@@ -101,6 +122,8 @@ export interface OpBookingRecord {
   patientId?: string;
   patientName?: string;
   patientPhone?: string;
+  prescription?: PrescriptionRecord | null;
+  vitals?: any | null;
 }
 
 function getAuthHeaders(): Record<string, string> {

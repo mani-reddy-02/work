@@ -97,35 +97,110 @@ export function DoctorConsultationWorkspace({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Load available lab tests & reset state when appointment changes
+  // Load available lab tests & reset/preload state when appointment changes
   useEffect(() => {
     if (isOpen && appointment) {
       setCurrentStatus(appointment.status || 'WAITING');
-      setDiagnosis('');
-      setClinicalNotes('');
-      setGeneralAdvice('');
-      setFollowUpDate('');
-      setSystolicBp('');
-      setDiastolicBp('');
-      setPulseRate('');
-      setBodyTemperature('');
-      setSpo2('');
-      setRespiratoryRate('');
-      setWeightKg('');
-      setHeightCm('');
-      setPrescriptions([
-        {
-          medicineName: '',
-          dosageForm: 'Tablet',
-          strength: '',
-          frequency: '1-0-1',
-          durationDays: 5,
-          timing: 'AFTER_FOOD',
-          instructions: '',
-        },
-      ]);
+
+      // 1. Initial preload from appointment props
+      const initialDiag = (appointment as any).diagnosis || (appointment as any).diseaseName || appointment.reason || '';
+      setDiagnosis(initialDiag);
+      setClinicalNotes((appointment as any).clinicalNotes || '');
+      setGeneralAdvice((appointment as any).generalAdvice || '');
+      setFollowUpDate((appointment as any).followUpDate ? (appointment as any).followUpDate.split('T')[0] : '');
+
+      const existingItems = (appointment as any).prescription?.items;
+      if (Array.isArray(existingItems) && existingItems.length > 0) {
+        setPrescriptions(existingItems.map((item: any) => ({
+          medicineName: item.medicineName || '',
+          dosageForm: item.dosageForm || 'Tablet',
+          strength: item.strength || '',
+          frequency: item.frequency || '1-0-1',
+          durationDays: item.durationDays || 5,
+          timing: (item.timing as DosageTiming) || 'AFTER_FOOD',
+          instructions: item.instructions || '',
+        })));
+      } else {
+        setPrescriptions([
+          {
+            medicineName: '',
+            dosageForm: 'Tablet',
+            strength: '',
+            frequency: '1-0-1',
+            durationDays: 5,
+            timing: 'AFTER_FOOD',
+            instructions: '',
+          },
+        ]);
+      }
+
+      // Initial Vitals from props if present
+      const vit = (appointment as any).vitals;
+      if (vit) {
+        setSystolicBp(vit.systolicBp != null ? String(vit.systolicBp) : '');
+        setDiastolicBp(vit.diastolicBp != null ? String(vit.diastolicBp) : '');
+        setPulseRate(vit.pulseRate != null ? String(vit.pulseRate) : '');
+        setBodyTemperature(vit.bodyTemperature != null ? String(vit.bodyTemperature) : '');
+        setSpo2(vit.spo2 != null ? String(vit.spo2) : '');
+        setRespiratoryRate(vit.respiratoryRate != null ? String(vit.respiratoryRate) : '');
+        setWeightKg(vit.weightKg != null ? String(vit.weightKg) : '');
+        setHeightCm(vit.heightCm != null ? String(vit.heightCm) : '');
+      } else {
+        setSystolicBp('');
+        setDiastolicBp('');
+        setPulseRate('');
+        setBodyTemperature('');
+        setSpo2('');
+        setRespiratoryRate('');
+        setWeightKg('');
+        setHeightCm('');
+      }
+
       setSelectedLabTestIds([]);
       setValidationError(null);
+
+      // 2. Fetch full appointment details asynchronously to ensure fresh database values
+      if (appointment.id) {
+        doctorApi.getAppointmentById(appointment.id).then((fullData: any) => {
+          if (!fullData) return;
+          if (fullData.status) setCurrentStatus(fullData.status);
+
+          if (fullData.prescription) {
+            if (fullData.prescription.diagnosis) setDiagnosis(fullData.prescription.diagnosis);
+            if (fullData.prescription.clinicalNotes) setClinicalNotes(fullData.prescription.clinicalNotes);
+            if (fullData.prescription.generalAdvice) setGeneralAdvice(fullData.prescription.generalAdvice);
+            if (fullData.prescription.followUpDate) {
+              setFollowUpDate(fullData.prescription.followUpDate.split('T')[0]);
+            }
+            if (Array.isArray(fullData.prescription.items) && fullData.prescription.items.length > 0) {
+              setPrescriptions(fullData.prescription.items.map((item: any) => ({
+                medicineName: item.medicineName || '',
+                dosageForm: item.dosageForm || 'Tablet',
+                strength: item.strength || '',
+                frequency: item.frequency || '1-0-1',
+                durationDays: item.durationDays || 5,
+                timing: (item.timing as DosageTiming) || 'AFTER_FOOD',
+                instructions: item.instructions || '',
+              })));
+            }
+          } else if (fullData.diseaseName || fullData.reason) {
+            setDiagnosis(prev => prev || fullData.diseaseName || fullData.reason || '');
+          }
+
+          if (fullData.vitals) {
+            if (fullData.vitals.systolicBp != null) setSystolicBp(String(fullData.vitals.systolicBp));
+            if (fullData.vitals.diastolicBp != null) setDiastolicBp(String(fullData.vitals.diastolicBp));
+            if (fullData.vitals.pulseRate != null) setPulseRate(String(fullData.vitals.pulseRate));
+            if (fullData.vitals.bodyTemperature != null) setBodyTemperature(String(fullData.vitals.bodyTemperature));
+            if (fullData.vitals.spo2 != null) setSpo2(String(fullData.vitals.spo2));
+            if (fullData.vitals.respiratoryRate != null) setRespiratoryRate(String(fullData.vitals.respiratoryRate));
+            if (fullData.vitals.weightKg != null) setWeightKg(String(fullData.vitals.weightKg));
+            if (fullData.vitals.heightCm != null) setHeightCm(String(fullData.vitals.heightCm));
+          }
+        }).catch((err: any) => {
+          console.error("Failed to load appointment details for consultation workspace:", err);
+        });
+      }
 
       // Fetch lab tests catalog
       doctorApi.getAvailableLabTests()
@@ -520,6 +595,47 @@ export function DoctorConsultationWorkspace({
                 >
                   <Plus className="w-3.5 h-3.5" /> Add Medicine
                 </button>
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div className="flex flex-col gap-1.5 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                <span className="text-[11px] font-bold text-blue-900 flex items-center gap-1">
+                  ⚡ Quick Add Common Medicines:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { name: 'Paracetamol 650mg', form: 'Tablet', strength: '650mg', freq: '1-0-1', days: 3, timing: 'AFTER_FOOD', inst: 'Take after meals for fever/pain' },
+                    { name: 'Pantoprazole 40mg', form: 'Tablet', strength: '40mg', freq: '1-0-0', days: 5, timing: 'EMPTY_STOMACH', inst: 'Take before breakfast' },
+                    { name: 'Cetirizine 10mg', form: 'Tablet', strength: '10mg', freq: '0-0-1', days: 5, timing: 'AFTER_FOOD', inst: 'Take at night for cold/allergy' },
+                    { name: 'Amoxicillin 500mg', form: 'Capsule', strength: '500mg', freq: '1-0-1', days: 5, timing: 'AFTER_FOOD', inst: 'Complete full 5-day course' },
+                    { name: 'Azithromycin 500mg', form: 'Tablet', strength: '500mg', freq: '1-0-0', days: 3, timing: 'AFTER_FOOD', inst: 'Once daily after food' },
+                    { name: 'Cough Syrup 100ml', form: 'Syrup', strength: '100ml', freq: '1-1-1', days: 5, timing: 'AFTER_FOOD', inst: '5ml thrice daily' },
+                    { name: 'ORS Sachet', form: 'Powder', strength: '1 Sachet', freq: 'SOS', days: 3, timing: 'WITH_FOOD', inst: 'Dissolve in 1L clean water' },
+                  ].map((med, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        setPrescriptions(prev => {
+                          const hasEmpty = prev.length === 1 && !prev[0].medicineName.trim();
+                          const newMed: PrescriptionItemPayload = {
+                            medicineName: med.name,
+                            dosageForm: med.form,
+                            strength: med.strength,
+                            frequency: med.freq,
+                            durationDays: med.days,
+                            timing: med.timing as DosageTiming,
+                            instructions: med.inst,
+                          };
+                          return hasEmpty ? [newMed] : [...prev, newMed];
+                        });
+                      }}
+                      className="px-2.5 py-1 bg-white hover:bg-blue-100 text-[#1B5DF1] border border-blue-200 rounded-lg text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
+                    >
+                      + {med.name}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {prescriptions.map((rx, idx) => (

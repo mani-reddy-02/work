@@ -9,13 +9,13 @@ export function ClinicSchedule() {
   const { toast } = useToast();
 
   const [schedule, setSchedule] = useState<DayAvailability[]>([
-    { day: "Monday", active: false, opStartTime: "09:00", opEndTime: "13:00" },
-    { day: "Tuesday", active: false, opStartTime: "09:00", opEndTime: "13:00" },
-    { day: "Wednesday", active: false, opStartTime: "09:00", opEndTime: "13:00" },
-    { day: "Thursday", active: false, opStartTime: "09:00", opEndTime: "13:00" },
-    { day: "Friday", active: false, opStartTime: "09:00", opEndTime: "13:00" },
-    { day: "Saturday", active: false, opStartTime: "09:00", opEndTime: "13:00" },
-    { day: "Sunday", active: false, opStartTime: "09:00", opEndTime: "13:00" },
+    { day: "Monday", active: false, opStartTime: "09:00", opEndTime: "13:00", videoStartTime: "14:00", videoEndTime: "18:00" },
+    { day: "Tuesday", active: false, opStartTime: "09:00", opEndTime: "13:00", videoStartTime: "14:00", videoEndTime: "18:00" },
+    { day: "Wednesday", active: false, opStartTime: "09:00", opEndTime: "13:00", videoStartTime: "14:00", videoEndTime: "18:00" },
+    { day: "Thursday", active: false, opStartTime: "09:00", opEndTime: "13:00", videoStartTime: "14:00", videoEndTime: "18:00" },
+    { day: "Friday", active: false, opStartTime: "09:00", opEndTime: "13:00", videoStartTime: "14:00", videoEndTime: "18:00" },
+    { day: "Saturday", active: false, opStartTime: "09:00", opEndTime: "13:00", videoStartTime: "14:00", videoEndTime: "18:00" },
+    { day: "Sunday", active: false, opStartTime: "09:00", opEndTime: "13:00", videoStartTime: "14:00", videoEndTime: "18:00" },
   ]);
 
   const [isLoading, setIsLoading] = useState(true);

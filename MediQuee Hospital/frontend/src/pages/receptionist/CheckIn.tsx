@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, AlertCircle, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { receptionistApi, type Patient } from '../../services/receptionistApi';
+import { ReceptionistNavHeader } from '@/components/layout/ReceptionistNavHeader';
 
 export function CheckIn() {
   const navigate = useNavigate();
@@ -71,13 +72,12 @@ export function CheckIn() {
   return (
     <div className="flex flex-col bg-surface min-h-[calc(100vh-80px)] pb-24">
       
-      {/* Header */}
-      <div className="sticky top-0 z-30 bg-surface border-b border-border shadow-sm px-4 py-3 flex items-center gap-3">
-        <button onClick={() => step > 1 ? setStep(step - 1) : navigate('/receptionist')} className="p-2 -ml-2 rounded-full hover:bg-gray-50 transition-colors">
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
-        </button>
-        <h1 className="text-[18px] font-bold text-foreground">Check-In Patient</h1>
-      </div>
+      {/* Header with Back Button, Menu Toggle, and Navigation Tabs */}
+      <ReceptionistNavHeader 
+        title="Check-In Patient" 
+        subtitle={`Step ${step} of 3: ${step === 1 ? 'Patient Search' : step === 2 ? 'Select Department & Doctor' : 'Confirm OP Token'}`}
+        backTo={step > 1 ? undefined : '/receptionist'}
+      />
 
       <div className="p-4 flex flex-col flex-1">
         

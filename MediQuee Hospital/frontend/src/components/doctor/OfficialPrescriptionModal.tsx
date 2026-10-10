@@ -1,6 +1,6 @@
 import { useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Printer, Download, CheckCircle2, FileSignature, Stethoscope, Building2, User, Calendar, Phone, Send, RefreshCw } from "lucide-react"
+import { X, Printer, Download, CheckCircle2, FileSignature, Stethoscope, Building2, User, Calendar, Phone, Send, RefreshCw, Plus, Edit } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { doctorApi } from "@/services/doctorApi"
 
@@ -27,6 +27,7 @@ type OfficialPrescriptionModalProps = {
     vitals?: any;
   } | null;
   onPrescriptionSent?: () => void;
+  onEditPrescription?: (appointment: any) => void;
 };
 
 export function OfficialPrescriptionModal({
@@ -34,7 +35,8 @@ export function OfficialPrescriptionModal({
   onClose,
   appointment,
   prescription,
-  onPrescriptionSent
+  onPrescriptionSent,
+  onEditPrescription
 }: OfficialPrescriptionModalProps) {
   const { user } = useAuth();
   const printRef = useRef<HTMLDivElement>(null);
@@ -118,6 +120,18 @@ export function OfficialPrescriptionModal({
             </div>
 
             <div className="flex items-center gap-2">
+              {onEditPrescription && (
+                <button
+                  type="button"
+                  onClick={() => onEditPrescription(appointment)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-[#1B5DF1] hover:bg-blue-100 border border-blue-200 font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
+                  title="Add or update medications and advice"
+                >
+                  <FileSignature className="w-3.5 h-3.5" />
+                  <span>{items.length === 0 ? "Add Medications" : "Edit Prescription"}</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 disabled={isSending || isSent}
@@ -261,14 +275,43 @@ export function OfficialPrescriptionModal({
                   <span className="font-serif text-2xl font-black text-[#1B5DF1] italic leading-none">℞</span>
                   <span className="text-xs font-bold text-[#0A1A3D] uppercase tracking-wider">Prescribed Medications</span>
                 </div>
-                <span className="text-[11px] text-gray-500 font-medium">
-                  {items.length} {items.length === 1 ? 'Medication' : 'Medications'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-gray-500 font-medium">
+                    {items.length} {items.length === 1 ? 'Medication' : 'Medications'}
+                  </span>
+                  {onEditPrescription && items.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => onEditPrescription(appointment)}
+                      className="no-print text-[11px] font-bold text-[#1B5DF1] hover:underline cursor-pointer flex items-center gap-0.5 ml-1"
+                    >
+                      <Edit className="w-3 h-3" />
+                      <span>Edit Meds</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {items.length === 0 ? (
-                <div className="p-4 bg-gray-50 rounded-xl text-center text-xs text-gray-500 italic">
-                  No oral medications prescribed during this consultation. Advice provided below.
+                <div className="p-4 bg-blue-50/70 rounded-2xl border border-blue-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-slate-800">
+                      No oral medications prescribed during this consultation. Advice provided below.
+                    </span>
+                    <span className="text-[11px] text-slate-500 mt-0.5">
+                      Need to prescribe medications? You can add oral medications and advice now.
+                    </span>
+                  </div>
+                  {onEditPrescription && (
+                    <button
+                      type="button"
+                      onClick={() => onEditPrescription(appointment)}
+                      className="no-print shrink-0 flex items-center gap-1.5 px-4 py-2 bg-[#1B5DF1] hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all active:scale-95 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Add Medications Now</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-gray-200">
@@ -377,6 +420,17 @@ export function OfficialPrescriptionModal({
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              {onEditPrescription && (
+                <button
+                  type="button"
+                  onClick={() => onEditPrescription(appointment)}
+                  className="px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50 text-[#1B5DF1] hover:bg-blue-100 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{items.length === 0 ? "Add Medications" : "Edit Medications"}</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={onClose}

@@ -141,15 +141,45 @@ export default function MediQueeAI() {
       
       {/* Top Header Bar */}
       <div className="bg-white sticky top-0 z-20 px-4 py-3.5 border-b border-slate-200/80 shadow-xs">
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
-          <button 
-            onClick={() => navigate(-1)} 
-            className="p-1.5 -ml-1 text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-            aria-label="Back"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Mediquee AI</h1>
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button 
+              onClick={() => navigate(-1)} 
+              className="p-1.5 -ml-1 text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              aria-label="Back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">MediQuee AI</h1>
+                <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  Live
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 hidden sm:block">24/7 Verified Health & Wellness Education</p>
+            </div>
+          </div>
+
+          {/* Language Switcher */}
+          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-semibold">
+            <button
+              onClick={() => setLanguage('en')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                language === 'en' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              English
+            </button>
+            <button
+              onClick={() => setLanguage('te')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                language === 'te' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              తెలుగు
+            </button>
+          </div>
         </div>
       </div>
 
@@ -278,7 +308,7 @@ export default function MediQueeAI() {
             </form>
             <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-400 px-1">
               <span>Personal details are automatically redacted</span>
-              <span>Powered by MediQuee & Google Gemini</span>
+              <span>Powered by MediQuee Health Intelligence</span>
             </div>
           </div>
 

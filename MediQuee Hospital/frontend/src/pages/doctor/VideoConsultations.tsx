@@ -639,12 +639,12 @@ export function VideoConsultations() {
                               {/* Clinical Workspace Consultation Button */}
                               {apt.status === 'COMPLETED' ? (
                                 <button 
-                                  onClick={() => handleOpenPrescription(apt)}
-                                  className="flex items-center gap-1 text-[#1B5DF1] font-bold text-[12px] px-2.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50/50 hover:bg-blue-100 transition-colors active:scale-95 cursor-pointer"
-                                  title="View official digitally-signed prescription"
+                                  onClick={() => setSelectedWorkspaceApt(apt)}
+                                  className="flex items-center gap-1 text-gray-700 hover:text-[#1B5DF1] font-bold text-[12px] px-2.5 py-1.5 rounded-lg border border-border hover:bg-blue-50 transition-colors active:scale-95 cursor-pointer"
+                                  title="Add or edit medications and clinical notes after call"
                                 >
-                                  <FileSignature className="w-3.5 h-3.5" />
-                                  Rx
+                                  <FileText className="w-3.5 h-3.5 text-[#1B5DF1]" />
+                                  <span>Edit Rx</span>
                                 </button>
                               ) : (
                                 <button 
@@ -653,7 +653,7 @@ export function VideoConsultations() {
                                   title="Open clinical diagnosis & prescription workspace"
                                 >
                                   <FileText className="w-3.5 h-3.5" />
-                                  Rx
+                                  <span>Rx</span>
                                 </button>
                               )}
 
@@ -678,6 +678,7 @@ export function VideoConsultations() {
                                 <button 
                                   onClick={() => handleOpenPrescription(apt)}
                                   className="flex items-center gap-1.5 text-emerald-700 font-bold text-[12px] px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer"
+                                  title="View official digitally-signed prescription"
                                 >
                                   <FileSignature className="w-3.5 h-3.5" />
                                   Prescription
@@ -911,6 +912,10 @@ export function VideoConsultations() {
         isOpen={!!selectedConsult}
         onClose={() => setSelectedConsult(null)}
         appointment={selectedConsult}
+        onOpenWorkspace={(apt) => {
+          setSelectedConsult(null);
+          setSelectedWorkspaceApt(apt);
+        }}
       />
 
       {/* Doctor Consultation Workspace Modal */}
@@ -927,6 +932,10 @@ export function VideoConsultations() {
         onClose={() => setViewPrescriptionApt(null)}
         appointment={viewPrescriptionApt}
         prescription={viewPrescriptionApt?.prescription}
+        onEditPrescription={(apt) => {
+          setViewPrescriptionApt(null);
+          setSelectedWorkspaceApt(apt);
+        }}
       />
     </div>
   )

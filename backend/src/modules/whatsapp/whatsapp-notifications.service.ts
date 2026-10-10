@@ -44,10 +44,15 @@ export class WhatsAppNotificationService {
       const patientName = booking.patientName || booking.patient?.name || 'Valued Patient';
       const appointmentRef = this.formatRef(booking.id);
       const hospitalName = booking.hospital?.name || 'MediQuee Hospital';
-      const doctorOrDept = booking.doctor?.name ? `Dr. ${booking.doctor.name}` : (booking.department?.name || 'OP Consultation');
+      const isVideo = (booking.opType || '').toLowerCase().includes('video');
+      const doctorOrDept = booking.doctor?.name 
+        ? `Dr. ${booking.doctor.name}${isVideo ? ' (Video Consultation)' : ''}` 
+        : (booking.department?.name || (isVideo ? 'Video Consultation' : 'OP Consultation'));
       const dateStr = this.formatDate(booking.appointmentDate);
       const timeStr = booking.timeSlot || booking.slotTime || 'Scheduled Time';
-      const statusStr = booking.status === 'WAITING' ? 'Confirmed (Token Waiting)' : booking.status;
+      const statusStr = booking.status === 'WAITING' 
+        ? (isVideo ? 'Confirmed (Video Consultation Ready)' : 'Confirmed (Token Waiting)') 
+        : booking.status;
 
       // 1a. Send to Patient if consent given and phone present
       if (recipientPhone && patientConsent) {
@@ -255,4 +260,51 @@ export class WhatsAppNotificationService {
       console.error('[WhatsAppNotificationService] Error in sendAppointmentReminder:', err.message);
     }
   }
+
+  /**
+   * 5. Send Video Consultation Ready Notification
+   * Reuses appointment workflow. Never sends credentials, API keys, or raw tokens.
+   */
+  static async sendVideoConsultationReadyNotification(bookingId: string) {
+    try {
+      const booking = await prisma.oPBooking.findUnique({
+        where: { id: bookingId },
+        include: {
+          hospital: { select: { name: true } },
+          doctor: { select: { name: true } },
+          patient: { select: { whatsappConsent: true } },
+        },
+      });
+
+      if (!booking) return;
+
+      const recipientPhone = booking.patientPhone;
+      if (!recipientPhone || booking.patient?.whatsappConsent === false) return;
+
+      const patientName = booking.patientName || 'Valued Patient';
+      const doctorName = booking.doctor?.name ? `Dr. ${booking.doctor.name}` : 'Your Doctor';
+      const appointmentRef = this.formatRef(booking.id);
+
+      await WhatsAppClient.sendTemplateMessage({
+        recipientPhone,
+        templateName: 'video_consultation_ready',
+        messageType: 'APPOINTMENT_REMINDER',
+        appointmentId: booking.id,
+        components: [
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: patientName },
+              { type: 'text', text: doctorName },
+              { type: 'text', text: appointmentRef },
+              { type: 'text', text: 'Please open MediQuee and select Join Video Consultation' },
+            ],
+          },
+        ],
+      });
+    } catch (err: any) {
+      console.error('[WhatsAppNotificationService] Error in sendVideoConsultationReadyNotification:', err.message);
+    }
+  }
 }
+

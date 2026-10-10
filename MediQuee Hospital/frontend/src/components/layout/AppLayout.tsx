@@ -37,7 +37,7 @@ export function AppLayout() {
               transition={{ duration: 0.25, ease: "easeOut" }}
               className="h-full"
             >
-              <Outlet />
+              <Outlet context={{ onToggleSidebar: () => setIsSidebarOpen(prev => !prev), isSidebarOpen }} />
             </motion.div>
           </AnimatePresence>
         </main>

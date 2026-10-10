@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom"
-import { LayoutGrid, Calendar, IndianRupee, User, Plus, Video, Home, Users, Activity, X, Stethoscope, CalendarClock, Megaphone } from "lucide-react"
+import { LayoutGrid, Calendar, IndianRupee, User, Plus, Video, Home, Users, Activity, X, Stethoscope, CalendarClock, Megaphone, UserPlus } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
@@ -47,8 +47,10 @@ export function SideNav({
       case 'receptionist':
         return [
           { to: '/receptionist', icon: LayoutGrid, label: t('dashboard') },
-          { to: '/receptionist/queue', icon: Users, label: 'Queue Management' },
           { to: '/receptionist/appointments', icon: Calendar, label: t('appointments') },
+          { to: '/receptionist/queue', icon: Users, label: 'Queue Management' },
+          { to: '/receptionist/check-in', icon: UserPlus, label: 'Check-In Patient' },
+          { to: '/receptionist/book-appointment', icon: CalendarClock, label: 'Book Appointment' },
           { to: '/profile', icon: User, label: t('profile') },
         ];
       case 'lab':
@@ -77,12 +79,12 @@ export function SideNav({
     <>
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 hidden md:block backdrop-blur-sm transition-opacity" 
+          className="fixed inset-0 bg-black/50 z-40 block backdrop-blur-sm transition-opacity" 
           onClick={onClose}
         />
       )}
       <div className={cn(
-        "hidden md:flex flex-col w-[280px] bg-surface border-r border-border h-screen fixed top-0 left-0 p-4 shadow-2xl z-50 transition-transform duration-300 ease-[0.22,1,0.36,1]",
+        "flex flex-col w-[280px] bg-surface border-r border-border h-screen fixed top-0 left-0 p-4 shadow-2xl z-50 transition-transform duration-300 ease-[0.22,1,0.36,1]",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         
