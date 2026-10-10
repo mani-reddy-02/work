@@ -107,6 +107,7 @@ export interface LabBookingRecord {
   preparation?: string;
   turnaroundTime?: string;
   createdAt: string;
+  reportUrl?: string;
 }
 
 
@@ -226,7 +227,7 @@ export const labTestApi = {
   ): Promise<{ success: boolean; data?: LaboratoryAvailability; error?: string }> {
     try {
       const qs = date ? `?date=${encodeURIComponent(date)}` : '';
-      const res = await fetch(`${API_BASE_URL}/laboratories/${laboratoryId}/availability${qs}`, {
+      const res = await fetch(`${API_BASE_URL}/lab-tests/laboratories/${laboratoryId}/availability${qs}`, {
         headers: getAuthHeaders(),
       });
       const json = await res.json();

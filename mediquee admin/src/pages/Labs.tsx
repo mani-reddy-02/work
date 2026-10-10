@@ -48,6 +48,7 @@ const Labs: React.FC = () => {
     fetchKPIs();
   }, [token]);
 
+
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState({ place: 'ALL', hospitalId: 'ALL' });
   const [pendingFilters, setPendingFilters] = useState({ place: 'ALL', hospitalId: 'ALL' });
@@ -229,6 +230,53 @@ const Labs: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Labs</h1>
           <p className="text-slate-500">Manage standalone and hospital-based laboratories.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+              <FlaskConical size={20} />
+            </div>
+            <h2 className="text-slate-600 font-medium">Total No. of Labs</h2>
+          </div>
+          <div className="flex items-end justify-between mt-2">
+            <span className="text-3xl font-bold text-slate-900">
+              {totalLabs === null ? '—' : totalLabs}
+            </span>
+          </div>
+          <p className="text-sm text-slate-500 mt-2">All laboratories</p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <Building2 size={20} />
+            </div>
+            <h2 className="text-slate-600 font-medium">Hospital Labs</h2>
+          </div>
+          <div className="flex items-end justify-between mt-2">
+            <span className="text-3xl font-bold text-slate-900">
+              {totalHospitalLabs === null ? '—' : totalHospitalLabs}
+            </span>
+          </div>
+          <p className="text-sm text-slate-500 mt-2">Hospital-based laboratories</p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <FlaskConical size={20} />
+            </div>
+            <h2 className="text-slate-600 font-medium">Standalone Labs</h2>
+          </div>
+          <div className="flex items-end justify-between mt-2">
+            <span className="text-3xl font-bold text-slate-900">
+              {totalStandaloneLabs === null ? '—' : totalStandaloneLabs}
+            </span>
+          </div>
+          <p className="text-sm text-slate-500 mt-2">Independent laboratories</p>
         </div>
       </div>
 

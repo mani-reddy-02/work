@@ -1,193 +1,130 @@
+import { Save, Calendar, Video, Stethoscope, ArrowLeft, RefreshCw } from "lucide-react"
 import { useState, useEffect } from "react"
-import { ArrowLeft, Clock, Calendar as CalendarIcon, Save, RefreshCw, CheckCircle2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { motion } from "framer-motion"
-import { doctorApi, type DayAvailability } from "@/services/doctorApi"
 import { useToast } from "@/context/ToastContext"
-import { Skeleton } from "@/components/ui/Skeleton"
-
-const DEFAULT_DAYS = [
-  { day: "Monday", active: true, opStartTime: "09:00", opEndTime: "17:00", videoStartTime: "17:00", videoEndTime: "19:00" },
-  { day: "Tuesday", active: true, opStartTime: "09:00", opEndTime: "17:00", videoStartTime: "17:00", videoEndTime: "19:00" },
-  { day: "Wednesday", active: true, opStartTime: "09:00", opEndTime: "17:00", videoStartTime: "17:00", videoEndTime: "19:00" },
-  { day: "Thursday", active: true, opStartTime: "09:00", opEndTime: "17:00", videoStartTime: "17:00", videoEndTime: "19:00" },
-  { day: "Friday", active: true, opStartTime: "09:00", opEndTime: "17:00", videoStartTime: "17:00", videoEndTime: "19:00" },
-  { day: "Saturday", active: true, opStartTime: "09:00", opEndTime: "13:00", videoStartTime: "14:00", videoEndTime: "16:00" },
-  { day: "Sunday", active: false, opStartTime: "09:00", opEndTime: "13:00", videoStartTime: "14:00", videoEndTime: "16:00" },
-];
+import { doctorApi, type DayAvailability } from "@/services/doctorApi"
 
 export function ClinicSchedule() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [schedule, setSchedule] = useState<DayAvailability[]>(DEFAULT_DAYS);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [schedule, setSchedule] = useState<DayAvailability[]>([
+    { day: "Monday", active: false, opStartTime: "09:00", opEndTime: "13:00" },
+    { day: "Tuesday", active: false, opStartTime: "09:00", opEndTime: "13:00" },
+    { day: "Wednesday", active: false, opStartTime: "09:00", opEndTime: "13:00" },
+    { day: "Thursday", active: false, opStartTime: "09:00", opEndTime: "13:00" },
+    { day: "Friday", active: false, opStartTime: "09:00", opEndTime: "13:00" },
+    { day: "Saturday", active: false, opStartTime: "09:00", opEndTime: "13:00" },
+    { day: "Sunday", active: false, opStartTime: "09:00", opEndTime: "13:00" },
+  ]);
 
-  const fetchSchedule = async () => {
-    setIsLoading(true);
-    try {
-      const data = await doctorApi.getAvailability();
-      if (data && data.length > 0) {
-        // Merge with full 7-day array to ensure all days present
-        const merged = DEFAULT_DAYS.map((def) => {
-          const found = data.find((d: DayAvailability) => d.day.toLowerCase() === def.day.toLowerCase());
-          return found || def;
-        });
-        setSchedule(merged);
-      }
-    } catch (err) {
-      console.error("Failed to load doctor schedule:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    fetchSchedule();
+    doctorApi.getAvailability()
+      .then(data => {
+        if (data && data.length > 0) {
+          setSchedule(data);
+        }
+      })
+      .catch(err => {
+        console.error("Failed to load doctor availability:", err);
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const toggleDay = (dayName: string) => {
-    setSchedule((prev) =>
-      prev.map((d) => (d.day === dayName ? { ...d, active: !d.active } : d))
-    );
-  };
-
-  const handleTimeChange = (dayName: string, field: 'opStartTime' | 'opEndTime', val: string) => {
-    setSchedule((prev) =>
-      prev.map((d) => (d.day === dayName ? { ...d, [field]: val } : d))
-    );
+  const updateDay = (index: number, field: keyof DayAvailability, value: any) => {
+    const newSchedule = [...schedule];
+    newSchedule[index] = { ...newSchedule[index], [field]: value };
+    setSchedule(newSchedule);
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
       await doctorApi.updateAvailability(schedule);
-      toast("Clinic schedule updated successfully", "success");
-    } catch (err: any) {
-      console.error("Failed to save schedule:", err);
-      toast(err?.message || "Failed to save schedule.", "error");
+      toast("Working schedule saved successfully!", "success");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Unable to save availability', "error");
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background pb-16">
-      <div className="sticky top-0 z-30 pt-4 pb-3 px-4 flex items-center justify-between bg-surface/90 backdrop-blur-xl border-b border-border shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer">
-            <ArrowLeft className="w-5 h-5 text-foreground" />
+    <div className="flex flex-col bg-[#F7F8FA] min-h-full pb-20 max-w-7xl mx-auto w-full">
+      
+      {/* Header Section */}
+      <div className="sticky top-0 z-30 bg-surface/95 backdrop-blur-xl pt-4 md:pt-5 pb-4 px-4 md:px-6 flex flex-col gap-4 border-b border-border shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
+        <div className="flex items-center justify-between">
+          <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-[#0A1A3D] hover:bg-gray-100 rounded-xl transition-colors">
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <h1 className="text-[20px] font-black text-foreground tracking-tight">Clinic Schedule</h1>
-            <p className="text-xs text-muted">Weekly consultation hours</p>
-          </div>
+          <h1 className="text-[17px] font-bold text-[#0A1A3D] tracking-tight">Availability</h1>
+          <div className="w-9 h-9" /> {/* Spacer */}
         </div>
-
-        <button 
-          onClick={fetchSchedule}
-          className="p-2 text-muted hover:text-foreground rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-          title="Refresh"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-        </button>
+        <p className="text-[13px] font-medium text-muted">Set your working hours for physical consultations.</p>
       </div>
 
-      <div className="p-4 flex flex-col gap-4 max-w-2xl mx-auto w-full">
-        <div className="bg-surface rounded-2xl p-5 border border-border shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-[#1B5DF1] flex items-center justify-center shrink-0">
-              <CalendarIcon className="w-6 h-6" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 md:p-6">
+        {schedule.map((slot, index) => (
+          <div key={slot.day} className={`bg-surface rounded-[24px] border ${slot.active ? 'border-[#1B5DF1]/20 shadow-[0_4px_20px_rgba(27,93,241,0.05)]' : 'border-border shadow-sm'} p-5 transition-all`}>
+            
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-[16px] flex items-center justify-center font-bold ${slot.active ? 'bg-[#EBF5FF] text-[#1B5DF1]' : 'bg-gray-100 text-muted/70'}`}>
+                  <Calendar className="w-6 h-6" />
+                </div>
+                <span className={`font-black text-[18px] ${slot.active ? 'text-[#0A1A3D]' : 'text-muted/70'}`}>{slot.day}</span>
+              </div>
+              
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer" 
+                  checked={slot.active}
+                  onChange={(e) => updateDay(index, 'active', e.target.checked)}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1B5DF1]"></div>
+              </label>
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-foreground">Weekly OPD Hours</h2>
-              <p className="text-xs text-muted font-medium">Configure operating hours for appointments</p>
-            </div>
-          </div>
-          
-          {isLoading ? (
-            <div className="flex flex-col gap-3">
-              <Skeleton className="w-full h-14 rounded-xl" />
-              <Skeleton className="w-full h-14 rounded-xl" />
-              <Skeleton className="w-full h-14 rounded-xl" />
-              <Skeleton className="w-full h-14 rounded-xl" />
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {schedule.map((day, i) => (
-                <motion.div 
-                  initial={{ opacity: 0, x: -10 }} 
-                  animate={{ opacity: 1, x: 0 }} 
-                  transition={{ delay: i * 0.03 }}
-                  key={day.day} 
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border transition-all ${
-                    day.active 
-                      ? 'border-blue-100 dark:border-blue-900/40 bg-blue-50/20 dark:bg-blue-900/10' 
-                      : 'border-border bg-muted/5 opacity-60'
-                  }`}
-                >
+
+            {slot.active && (
+              <div className="flex flex-col gap-4 pt-4 border-t border-border">
+                
+                {/* OP Hours */}
+                <div className="flex flex-col gap-2">
+                  <h4 className="flex items-center gap-1.5 text-[12px] font-bold text-[#1B5DF1] uppercase tracking-wider">
+                    <Stethoscope className="w-3.5 h-3.5" /> Physical OP Hours
+                  </h4>
                   <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => toggleDay(day.day)}
-                      className={`w-11 h-6 rounded-full relative shadow-inner transition-colors cursor-pointer ${
-                        day.active ? 'bg-[#1B5DF1]' : 'bg-gray-300 dark:bg-gray-700'
-                      }`}
-                    >
-                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${
-                        day.active ? 'right-1' : 'left-1'
-                      }`} />
-                    </button>
-                    <span className={`font-semibold text-sm ${day.active ? 'text-foreground font-bold' : 'text-muted'}`}>
-                      {day.day}
-                    </span>
+                    <input 
+                      type="time" 
+                      value={slot.opStartTime}
+                      onChange={(e) => updateDay(index, 'opStartTime', e.target.value)}
+                      className="flex-1 bg-gray-50 border border-border rounded-[12px] px-3 py-2.5 text-[14px] font-bold text-[#0A1A3D] focus:outline-none focus:border-[#1B5DF1] focus:ring-2 focus:ring-[#1B5DF1]/10" 
+                    />
+                    <span className="text-muted/70 font-bold text-[12px]">TO</span>
+                    <input 
+                      type="time" 
+                      value={slot.opEndTime}
+                      onChange={(e) => updateDay(index, 'opEndTime', e.target.value)}
+                      className="flex-1 bg-gray-50 border border-border rounded-[12px] px-3 py-2.5 text-[14px] font-bold text-[#0A1A3D] focus:outline-none focus:border-[#1B5DF1] focus:ring-2 focus:ring-[#1B5DF1]/10" 
+                    />
                   </div>
-
-                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                    {day.active ? (
-                      <div className="flex items-center gap-1.5 text-xs font-medium">
-                        <Clock className="w-3.5 h-3.5 text-[#1B5DF1]" />
-                        <input
-                          type="time"
-                          value={day.opStartTime || "09:00"}
-                          onChange={(e) => handleTimeChange(day.day, 'opStartTime', e.target.value)}
-                          className="bg-surface border border-border rounded-lg px-2 py-1 text-xs text-foreground focus:outline-none focus:border-[#1B5DF1]"
-                        />
-                        <span className="text-muted">to</span>
-                        <input
-                          type="time"
-                          value={day.opEndTime || "17:00"}
-                          onChange={(e) => handleTimeChange(day.day, 'opEndTime', e.target.value)}
-                          className="bg-surface border border-border rounded-lg px-2 py-1 text-xs text-foreground focus:outline-none focus:border-[#1B5DF1]"
-                        />
-                      </div>
-                    ) : (
-                      <span className="text-xs font-semibold text-muted uppercase tracking-wider">Closed</span>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <button 
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+        
+        <button
           onClick={handleSave}
           disabled={isSaving}
-          className="w-full bg-[#1B5DF1] text-white py-4 rounded-xl font-bold hover:bg-[#1B5DF1]/90 shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          className="mt-2 flex items-center justify-center gap-2 py-4 rounded-[16px] font-bold text-[15px] text-white shadow-[0_8px_20px_rgba(27,93,241,0.25)] transition-all active:scale-[0.98] bg-[#1B5DF1] hover:bg-[#1B5DF1]/90 disabled:opacity-60"
         >
-          {isSaving ? (
-            <>
-              <RefreshCw className="w-5 h-5 animate-spin" />
-              <span>Saving Schedule...</span>
-            </>
-          ) : (
-            <>
-              <Save className="w-5 h-5" />
-              <span>Save Schedule</span>
-            </>
-          )}
+          <Save className="w-5 h-5" /> {isSaving ? "Saving..." : "Save Availability"}
         </button>
       </div>
     </div>

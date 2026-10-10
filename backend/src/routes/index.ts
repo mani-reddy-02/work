@@ -76,7 +76,6 @@ router.use('/lab-tests', require('./../modules/laboratories/public-user-labs.rou
 router.use('/lab-bookings', labBookingsRoutes);
 router.use('/home-nursing', homeNursingRoutes);
 router.use('/home-sample-collection/tests', require('./../modules/laboratories/public-user-labs.routes').default); 
-router.use('/home-sample-collection/categories', require('./../modules/laboratories/public-user-labs.routes').default); 
 router.use('/home-sample-collection/bookings', labBookingsRoutes);
 router.use('/home-sample-collection', require('./../modules/laboratories/public-user-labs.routes').default); // Fallback for /laboratories/:id/availability
 router.use('/home-sample-collection', homeSampleRoutes); // Requests endpoints (matches /requests, etc)

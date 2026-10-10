@@ -205,26 +205,22 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
     const limit = parseInt(req.query.limit as string) || 20;
     const { search, location } = req.query;
 
-    const whereClause: any = { AND: [] };
+    const whereClause: any = {};
     if (search) {
-      whereClause.AND.push({
-        OR: [
-          { name: { contains: search as string, mode: 'insensitive' } },
-          { id: { contains: search as string, mode: 'insensitive' } },
-          { city: { contains: search as string, mode: 'insensitive' } },
-          { state: { contains: search as string, mode: 'insensitive' } },
-        ]
-      });
+      whereClause.OR = [
+        { name: { contains: search as string, mode: 'insensitive' } },
+        { id: { contains: search as string, mode: 'insensitive' } },
+        { city: { contains: search as string, mode: 'insensitive' } },
+        { state: { contains: search as string, mode: 'insensitive' } },
+      ];
     }
     if (location && location !== 'all') {
-      whereClause.AND.push({
-        OR: [
-          { city: { equals: location as string, mode: 'insensitive' } },
-          { state: { equals: location as string, mode: 'insensitive' } }
-        ]
-      });
+      whereClause.OR = [
+        ...(whereClause.OR || []),
+        { city: { equals: location as string, mode: 'insensitive' } },
+        { state: { equals: location as string, mode: 'insensitive' } }
+      ];
     }
-    if (whereClause.AND.length === 0) delete whereClause.AND;
 
     const total = await prisma.hospital.count({ where: whereClause });
 
@@ -275,16 +271,16 @@ export const createHospital = async (req: Request, res: Response, next: NextFunc
     const data = req.body;
     const newHospital = await prisma.hospital.create({
       data: {
-        name: data.name as string,
-        businessType: data.businessType as any || 'HOSPITAL',
-        facilityType: data.facilityType as any || 'GENERAL',
-        registrationNumber: data.registrationNumber as string || '',
-        contactEmail: data.email as string,
-        contactPhone: data.phone as string,
-        addressLine1: data.address as string,
-        city: data.city as string,
-        state: data.state as string,
-        services: (data.services || []) as any,
+        name: data.name,
+        businessType: data.businessType || 'HOSPITAL',
+        facilityType: data.facilityType || 'GENERAL',
+        registrationNumber: data.registrationNumber || '',
+        contactEmail: data.email,
+        contactPhone: data.phone,
+        addressLine1: data.address,
+        city: data.city,
+        state: data.state,
+        services: data.services || [],
         hospitalShare: 80
       }
     });
@@ -296,21 +292,21 @@ export const createHospital = async (req: Request, res: Response, next: NextFunc
 
 export const updateHospital = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const id = req.params.id as string;
+    const { id } = req.params;
     const data = req.body;
     const updatedHospital = await prisma.hospital.update({
-      where: { id },
+      where: { id: id as string },
       data: {
-        name: data.name as string,
-        businessType: data.businessType as any,
-        facilityType: data.facilityType as any,
-        registrationNumber: data.registrationNumber as string,
-        contactEmail: data.email as string,
-        contactPhone: data.phone as string,
-        addressLine1: data.address as string,
-        city: data.city as string,
-        state: data.state as string,
-        services: data.services as any
+        name: data.name,
+        businessType: data.businessType,
+        facilityType: data.facilityType,
+        registrationNumber: data.registrationNumber,
+        contactEmail: data.email,
+        contactPhone: data.phone,
+        addressLine1: data.address,
+        city: data.city,
+        state: data.state,
+        services: data.services
       }
     });
     res.json({ success: true, data: updatedHospital });

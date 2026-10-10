@@ -16,17 +16,18 @@ import { createHospitalLabSchema } from './laboratories.schema';
 
 const router = Router();
 
+// Protected hospital lab routes
+router.post('/upload-license', optionalAuthenticate, uploadLicenseCertificate);
+router.post('/', authenticate, validateRequest(createHospitalLabSchema), createHospitalLab);
+router.get('/me/availability', authenticate, getMyLaboratoryAvailability);
+router.put('/me/availability', authenticate, updateMyLaboratoryAvailability);
+
 // Public discovery routes
 router.get('/', getLaboratories);
 router.get('/:id', getLaboratoryById);
 router.get('/:id/tests', getLaboratoryTests);
 router.get('/:id/availability', getLaboratoryAvailability);
 
-// Protected hospital lab routes
-router.post('/upload-license', optionalAuthenticate, uploadLicenseCertificate);
-router.post('/', authenticate, validateRequest(createHospitalLabSchema), createHospitalLab);
-router.get('/me/availability', authenticate, getMyLaboratoryAvailability);
-router.put('/me/availability', authenticate, updateMyLaboratoryAvailability);
 router.put('/:id/availability', authenticate, updateLaboratoryAvailability);
 
 export default router;

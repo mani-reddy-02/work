@@ -163,32 +163,78 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
       return res.status(404).json({ success: false, error: { message: 'Laboratory not found' } });
     }
 
-    // Mock slots for now
+    const lab = await prisma.lab.findFirst({
+      where: { hospitalId: String(laboratoryId) },
+      include: { schedules: true }
+    });
+
+    const activeDays = new Set(
+      lab?.schedules?.filter(s => s.isAvailable).map(s => s.dayOfWeek.toLowerCase()) || []
+    );
+
     const dates = [];
     const today = new Date();
-    for (let i = 0; i < 7; i++) {
+    let daysAdded = 0;
+    let dayOffset = 0;
+
+    // Look ahead up to 30 days to find 7 available dates
+    while (daysAdded < 7 && dayOffset < 30) {
       const d = new Date(today);
-      d.setDate(d.getDate() + i);
-      dates.push({
-        label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-        date: d.toISOString().split('T')[0]
-      });
+      d.setDate(d.getDate() + dayOffset);
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      
+      if (activeDays.has(dayName) || (lab?.schedules?.length === 0)) {
+        // If there are no schedules configured at all, we fallback to showing dates but slots will be empty.
+        // It's better to show no dates, but let's be safe. Wait, if we want to show no dates, then activeDays.has(dayName) is false.
+        // But if we want no dates, we just don't add them.
+        let label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        if (dayOffset === 0) label = 'Today';
+        else if (dayOffset === 1) label = 'Tomorrow';
+
+        dates.push({
+          label,
+          date: d.toISOString().split('T')[0]
+        });
+        daysAdded++;
+      }
+      dayOffset++;
     }
 
-    const baseSlots = [
-      { slot: '08:00 AM - 09:00 AM', available: true },
-      { slot: '09:00 AM - 10:00 AM', available: true },
-      { slot: '10:00 AM - 11:00 AM', available: true },
-      { slot: '11:00 AM - 12:00 PM', available: true },
-      { slot: '12:00 PM - 01:00 PM', available: true },
-      { slot: '01:00 PM - 02:00 PM', available: true },
-      { slot: '02:00 PM - 03:00 PM', available: true },
-      { slot: '03:00 PM - 04:00 PM', available: true },
-      { slot: '04:00 PM - 05:00 PM', available: true },
-      { slot: '05:00 PM - 06:00 PM', available: true }
-    ];
+    const targetDateStr = dateStr || (dates.length > 0 ? dates[0].date : today.toISOString().split('T')[0]);
+    const targetDateObj = new Date(targetDateStr);
+    const dayName = targetDateObj.toLocaleDateString('en-US', { weekday: 'long' });
 
-    const targetDateStr = dateStr || dates[0].date;
+    let baseSlots: { slot: string, available: boolean }[] = [];
+
+    const schedule = lab?.schedules?.find(s => s.dayOfWeek.toLowerCase() === dayName.toLowerCase());
+
+    if (schedule && schedule.isAvailable) {
+      let currentMinutes = 0;
+      const [startH, startM] = (schedule.startTime || '09:00').split(':').map(Number);
+      const [endH, endM] = (schedule.endTime || '17:00').split(':').map(Number);
+      
+      currentMinutes = startH * 60 + startM;
+      const endMinutes = endH * 60 + endM;
+      const duration = schedule.slotDurationMinutes || 60;
+      
+      while (currentMinutes + duration <= endMinutes) {
+        const startHour = Math.floor(currentMinutes / 60);
+        const startMin = currentMinutes % 60;
+        const startAmpm = startHour >= 12 ? 'PM' : 'AM';
+        const displayStartH = startHour % 12 === 0 ? 12 : startHour % 12;
+
+        const nextMinutes = currentMinutes + duration;
+        const endHour = Math.floor(nextMinutes / 60);
+        const endMin = nextMinutes % 60;
+        const endAmpm = endHour >= 12 ? 'PM' : 'AM';
+        const displayEndH = endHour % 12 === 0 ? 12 : endHour % 12;
+
+        const timeStr = `${displayStartH.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')} ${startAmpm} - ${displayEndH.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')} ${endAmpm}`;
+        baseSlots.push({ slot: timeStr, available: true });
+        
+        currentMinutes += duration;
+      }
+    }
     const now = new Date();
     const isToday = targetDateStr === now.toISOString().split('T')[0];
     let currentKolkataTimeInMinutes = 0;
@@ -205,7 +251,6 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
     }
 
     // Fetch existing bookings for this hospital on the target date
-    const targetDateObj = new Date(targetDateStr);
     const nextDay = new Date(targetDateObj);
     nextDay.setDate(nextDay.getDate() + 1);
 

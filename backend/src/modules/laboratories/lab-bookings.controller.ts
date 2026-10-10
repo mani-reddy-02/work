@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Prisma } from '@prisma/client';
@@ -484,10 +486,42 @@ export const updateLabBookingStatus = async (req: Request, res: Response, next: 
     const updated = await prisma.labBooking.update({
       where: { id: id as string },
       data,
-      include: { patient: true }
+      include: { patient: true, hospital: true }
     });
 
     if (status === 'REPORT_READY') {
+      if (req.body.reportData) {
+        const matches = req.body.reportData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          const fileBuffer = Buffer.from(matches[2], 'base64');
+          const UPLOADS_DIR = path.join(process.cwd(), 'uploads/reports');
+          if (!fs.existsSync(UPLOADS_DIR)) {
+            fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+          }
+          const originalName = req.body.reportName || 'report.pdf';
+          const safeFileName = `${Date.now()}-${originalName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+          const fileUrl = `/uploads/reports/${safeFileName}`;
+          const filePath = path.join(UPLOADS_DIR, safeFileName);
+          fs.writeFileSync(filePath, fileBuffer);
+          
+          await prisma.labBooking.update({
+            where: { id: updated.id },
+            data: { reportUrl: fileUrl }
+          });
+
+          await prisma.patientReport.create({
+            data: {
+              userId: updated.patientId,
+              title: 'Lab Report - ' + updated.id.substring(0, 8).toUpperCase(),
+              hospital: updated.bookingType === 'HOME_COLLECTION' ? (updated.collectionAddress || 'Home Collection') : updated.hospital.name, 
+              date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+              status: 'Normal',
+              fileUrl: fileUrl,
+            }
+          });
+        }
+      }
+
       await sendNotification({
         userId: updated.patientId,
         title: 'Lab Report Ready',

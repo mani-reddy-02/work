@@ -198,7 +198,10 @@ export async function markAllAsRead(params: { hospitalId?: string | null; userId
     where.hospitalId = hospitalId;
   }
   if (userId) {
-    where.userId = userId;
+    where.OR = [
+      { userId },
+      ...(hospitalId ? [{ hospitalId, userId: null }] : [])
+    ];
   }
 
   return await prisma.notification.updateMany({

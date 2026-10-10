@@ -1,120 +1,170 @@
 import { useState, useEffect } from 'react';
 import {
   ArrowLeft,
-  TestTube,
-  Search,
-  Clock,
   Activity,
-  Droplet,
-  Heart,
+  Search,
   ChevronRight,
-  Calendar,
-  Hospital,
-  FileText,
-  CheckCircle,
+  Clock,
   MapPin,
+  TestTube,
   Home,
-  FileCheck,
-  ShieldCheck,
+  FileText,
+  Droplet,
+  Apple,
   ShieldAlert,
+  Heart,
+  CheckCircle,
+  FileCheck,
+  User,
+  Calendar,
+  Pipette,
   X,
-  RefreshCw,
+  Building2,
   AlertCircle,
-  Check,
+  RefreshCw,
   CreditCard,
+  ShieldCheck,
+  Check,
+  Plus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useProfile } from '../lib/profile';
 import {
   labTestApi,
-  labBookingApi,
   type LabTestRecord,
   type LaboratoryRecord,
   type LabBookingRecord,
-  type LabSlot,
+  labBookingApi
 } from '../lib/labTestApi';
 import { profileApi } from '../lib/profileApi';
 import HowItWorks from '../components/HowItWorks';
-import PosterCarousel from '../components/PosterCarousel';
-// Icon mapping: test name (cleaned) -> optimized medical illustration
+
+// Icon mapping: test name -> optimized medical illustration
 const testIconMap: Record<string, string> = {
   'Complete Blood Count (CBC)': '/optimized/Blood Test.webp',
-  'Complete Blood\nCount (CBC)': '/optimized/Blood Test.webp',
-  'Liver Function Test (LFT)': '/optimized/Liver Function Test.webp',
-  'Liver Function\nTest (LFT)': '/optimized/Liver Function Test.webp',
-  'Thyroid Profile (T3, T4, TSH)': '/optimized/Thyroid Disorder.webp',
-  'Thyroid Profile\n(T3, T4, TSH)': '/optimized/Thyroid Disorder.webp',
-  'Lipid Profile': '/optimized/Cholesterol Test.webp',
   'Blood Sugar Test (Fasting)': '/optimized/Blood Sugar Test.webp',
-  'Blood Sugar Test': '/optimized/Blood Sugar Test.webp',
-  'HbA1c Blood Test': '/optimized/Blood Sugar Test.webp',
-  'HbA1c': '/optimized/Blood Sugar Test.webp',
-  'Kidney Function Test (KFT)': '/optimized/Kidney Function Test.webp',
+  'Lipid Profile': '/optimized/Cholesterol Test.webp',
+  'Liver Function Test': '/optimized/Liver Function Test.webp',
   'Kidney Function Test': '/optimized/Kidney Function Test.webp',
-  'Vitamin D Test': '/optimized/Vitamin D Test.webp',
-  'Vitamin D': '/optimized/Vitamin D Test.webp',
-  'Vitamin B12 Test': '/optimized/Vitamin B12 Test.webp',
+  'Thyroid Profile': '/optimized/Thyroid Disorder.webp',
   'Vitamin B12': '/optimized/Vitamin B12 Test.webp',
-  'Urine Routine & Microscopy': '/optimized/Urine Test.webp',
-  'Urine Routine Examination': '/optimized/Urine Test.webp',
-  'Urine Routine': '/optimized/Urine Test.webp',
-  'Iron Profile Test': '/optimized/Blood Test.webp',
+  'Vitamin D': '/optimized/Vitamin D Test.webp',
+  'HbA1c': '/optimized/Blood Sugar Test.webp',
   'Iron Profile': '/optimized/Blood Test.webp',
+  'Post Meal Blood Sugar': '/optimized/Blood Sugar Test.webp',
+  'Glucose Tolerance Test': '/optimized/Blood Sugar Test.webp',
   'Cardiac Risk Profile': '/optimized/Heart Disease.webp',
-  'Cholesterol Test': '/optimized/Cholesterol Test.webp',
-  'X-Ray Chest PA View': '/optimized/Blood Test.webp',
+  'Troponin Test': '/optimized/Heart Disease.webp',
+  'T3, T4, TSH': '/optimized/Thyroid Disorder.webp',
+  'Bilirubin': '/optimized/Liver Function Test.webp',
+  'SGOT & SGPT': '/optimized/Liver Function Test.webp',
+  'Creatinine': '/optimized/Kidney Function Test.webp',
+  'Urea': '/optimized/Kidney Function Test.webp',
+  'Folate': '/optimized/Vitamin Deficiency.webp',
+  'Master Health Checkup': '/optimized/Blood Test.webp',
+  'Comprehensive Full Body': '/optimized/Blood Test.webp',
+  'Thyroid Stimulating Hormone (TSH)': '/optimized/Thyroid Disorder.webp',
+  'Testosterone Total': '/optimized/Blood Test.webp',
+  'Widal Test': '/optimized/Typhoid Test.webp',
+  'Dengue NS1 Antigen': '/optimized/Dengue Test.webp',
+  'Urine Routine & Microscopy': '/optimized/Urine Test.webp',
+  'Urine Culture': '/optimized/Urine Test.webp',
+  'PSA (Prostate Specific Antigen)': '/optimized/Blood Test.webp',
+  'CA 125': '/optimized/Blood Test.webp',
 };
 
 const healthConcernIconMap: Record<string, string> = {
-  fever: '/optimized/Fever.webp',
   diabetes: '/optimized/Diabetes.webp',
   heart: '/optimized/Heart Disease.webp',
   thyroid: '/optimized/Thyroid Disorder.webp',
   liver: '/optimized/Fatty Liver Disease.webp',
   kidney: '/optimized/Kidney Disease.webp',
+  fever: '/optimized/Fever.webp',
   vitamins: '/optimized/Vitamin Deficiency.webp',
-  infection: '/optimized/Viral Infection.webp',
 };
 
 const getTestIcon = (name: string): string | null => {
-  const cleanName = name.replace(/\n/g, ' ').trim();
-  return testIconMap[name] || testIconMap[cleanName] || null;
+  return testIconMap[name] || null;
 };
 
-const howItWorks = [
-  { id: '01', title: 'Choose Test', desc: 'Select the health\ntest you need.', icon: TestTube },
-  { id: '02', title: 'Select Lab', desc: 'Choose a suitable\nlaboratory for\nyour test.', icon: Hospital },
-  { id: '03', title: 'Select Date & Time', desc: 'Choose a convenient\navailable slot.', icon: Calendar },
-  { id: '04', title: 'Sample Collection', desc: 'Provide your sample\nat the selected\nlocation.', icon: MapPin },
-  { id: '05', title: 'Lab Processing', desc: 'The laboratory\nprocesses and\nanalyzes sample.', icon: Search },
-  { id: '06', title: 'Report Ready', desc: 'View your test report\nwhen it becomes\navailable.', icon: FileText },
+const homeSampleStepsData = [
+  { id: '01', title: 'Select Test', desc: 'Choose the test you want to book.', icon: TestTube },
+  { id: '02', title: 'Choose Laboratory', desc: 'Select laboratory visit where available.', icon: Home },
+  { id: '03', title: 'Enter Patient Details', desc: 'Provide the required patient information.', icon: User },
+  { id: '04', title: 'Choose Date & Time', desc: 'Select a convenient collection slot.', icon: Calendar },
+  { id: '05', title: 'Sample Collection', desc: 'A sample is collected according to the selected service.', icon: Pipette },
+  { id: '06', title: 'Report Ready', desc: 'Access the report when processing is complete.', icon: FileText },
 ];
 
 const healthConcerns = [
-  { id: 'fever', name: 'Fever', icon: Activity, color: 'text-red-500', bg: 'bg-red-50' },
-  { id: 'diabetes', name: 'Diabetes', icon: Droplet, color: 'text-blue-500', bg: 'bg-blue-50' },
-  { id: 'heart', name: 'Heart', icon: Heart, color: 'text-rose-500', bg: 'bg-rose-50' },
-  { id: 'thyroid', name: 'Thyroid', icon: Activity, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { id: 'liver', name: 'Liver', icon: Activity, color: 'text-yellow-500', bg: 'bg-yellow-50' },
-  { id: 'kidney', name: 'Kidney', icon: Activity, color: 'text-purple-500', bg: 'bg-purple-50' },
-  { id: 'vitamins', name: 'Vitamins', icon: TestTube, color: 'text-orange-500', bg: 'bg-orange-50' },
-  { id: 'infection', name: 'Infection', icon: ShieldAlert, color: 'text-red-500', bg: 'bg-red-50' },
+  { id: 'diabetes', name: 'Diabetes', icon: Droplet, color: 'text-indigo-500', bg: 'bg-indigo-100' },
+  { id: 'heart', name: 'Heart', icon: Heart, color: 'text-rose-500', bg: 'bg-rose-100' },
+  { id: 'thyroid', name: 'Thyroid', icon: Activity, color: 'text-emerald-500', bg: 'bg-emerald-100' },
+  { id: 'liver', name: 'Liver', icon: Activity, color: 'text-yellow-500', bg: 'bg-yellow-100' },
+  { id: 'kidney', name: 'Kidney', icon: Activity, color: 'text-purple-500', bg: 'bg-purple-100' },
+  { id: 'fever', name: 'Fever', icon: ShieldAlert, color: 'text-red-500', bg: 'bg-red-100' },
+  { id: 'vitamins', name: 'Vitamins', icon: Apple, color: 'text-orange-500', bg: 'bg-orange-100' },
 ];
+
+// Initial fallback tests to ensure instant synchronous test rendering
+const initialTests: any[] = [];
 
 const diagnosticPackages: any[] = [];
 
-const DEFAULT_LAB_TESTS: LabTestRecord[] = [];
+type ViewState =
+  | 'LIST'
+  | 'CONCERN_RESULTS'
+  | 'TEST_DETAIL'
+  | 'LAB_SELECT'
+  | 'HOME_COLLECTION'
+  | 'PATIENT'
+  | 'DATE_TIME'
+  | 'REVIEW'
+  | 'CONFIRMED'
+  | 'STATUS';
 
 const LabTestList = () => {
   const navigate = useNavigate();
+  const { profile } = useProfile();
+  
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [isOtherAddress, setIsOtherAddress] = useState(false);
 
-  const [viewState, setViewState] = useState<
-    'LIST' | 'CONCERN_RESULTS' | 'TEST_DETAIL' | 'LAB_SELECT' | 'DATE_TIME' | 'COLLECTION' | 'PATIENT' | 'REVIEW' | 'CONFIRMED' | 'STATUS'
-  >('LIST');
+  const handleAddressSelected = (addr: any) => {
+    setPatientDetails(prev => ({ ...prev, address: `${addr.street}, ${addr.city}, ${addr.state ? addr.state + ' ' : ''}${addr.pincode}` }));
+  };
 
-  // Search & Categories
+  useEffect(() => {
+    if (profile?.address) {
+      try {
+        const parsed = JSON.parse(profile.address);
+        if (Array.isArray(parsed)) {
+          setSavedAddresses(parsed);
+          if (parsed.length > 0 && !selectedAddressId && !isOtherAddress) {
+            setSelectedAddressId(parsed[0].id);
+            handleAddressSelected(parsed[0]);
+          }
+        }
+      } catch (e) {}
+    } else {
+      setSavedAddresses([]);
+    }
+  }, [profile.address]);
+
+  const [viewState, setViewState] = useState<ViewState>('LIST');
+  const [showAll, setShowAll] = useState(false);
+  const [showAllPackages, setShowAllPackages] = useState(false);
+  const [tests, setTests] = useState<any[]>(initialTests);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMode, setSearchMode] = useState(false);
+  
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedTab, setSelectedTab] = useState('All Tests');
+  const [selectedConcern, setSelectedConcern] = useState<string | null>(null);
   const [categoryTabs, setCategoryTabs] = useState<string[]>([
     'All Tests',
     'Blood Tests',
@@ -124,81 +174,65 @@ const LabTestList = () => {
     'Liver',
     'Kidney',
     'Vitamins',
-    'Urine Tests',
-    'Imaging',
   ]);
-  const [showAllTests, setShowAllTests] = useState(false);
-  const [showAllPackages, setShowAllPackages] = useState(false);
-  const [selectedConcern, setSelectedConcern] = useState<string | null>(null);
   const [dynamicHealthConcerns, setDynamicHealthConcerns] = useState<string[]>([]);
 
-  // Real Database Lab Tests state (defaults to catalog, enhanced with live data)
-  const [dbTests, setDbTests] = useState<LabTestRecord[]>(DEFAULT_LAB_TESTS);
-  const [isTestsLoading, setIsTestsLoading] = useState(false);
-  const [testsError, setTestsError] = useState<string | null>(null);
-
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<LabTestRecord[]>([]);
-
-  // Workflow Selection State
-  const [selectedItem, setSelectedItem] = useState<LabTestRecord | any>(null);
-  const [selectedLab, setSelectedLab] = useState<LaboratoryRecord | any>(null);
-  const [labsList, setLabsList] = useState<LaboratoryRecord[]>([]);
-  const [isLabsLoading, setIsLabsLoading] = useState(false);
+  // Laboratories for selected test
+  const [laboratories, setLaboratories] = useState<LaboratoryRecord[]>([]);
+  const [selectedLab, setSelectedLab] = useState<LaboratoryRecord | null>(null);
   const [labSearchQuery, setLabSearchQuery] = useState('');
+  const [isLoadingLabs, setIsLoadingLabs] = useState(false);
+  const [labError, setLabError] = useState<string | null>(null);
 
-  // Date & Availability State
-  const [availableDates, setAvailableDates] = useState<{ label: string; date: string }[]>([]);
-  const [availableSlots, setAvailableSlots] = useState<LabSlot[]>([]);
-  const [isSlotsLoading, setIsSlotsLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedTime, setSelectedTime] = useState<string>('');
-
-  // Collection & Patient Details
-  const [collectionMethod, setCollectionMethod] = useState<'HOME' | 'LAB' | null>('LAB');
+  // Patient details state
   const [patientDetails, setPatientDetails] = useState({
-    name: '',
-    age: '28',
+    name: 'Mani Kanta',
+    age: '30',
     gender: 'Male',
-    phone: '',
+    phone: '9876543210',
     email: '',
-    address: 'Madhapur, Hyderabad, Telangana',
+    address: 'Madhapur, Hyderabad, 500081',
   });
 
-  // Booking Execution & State
-  const [isBookingSubmitting, setIsBookingSubmitting] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null);
-  const [confirmedBooking, setConfirmedBooking] = useState<LabBookingRecord | null>(null);
+  // Date & Time availability
+  const [availableDates, setAvailableDates] = useState<{ label: string; date: string }[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<{ slot: string; available: boolean }[]>([]);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedTime, setSelectedTime] = useState('');
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
-  // Load Real Tests & Categories on Mount
+  // Booking & payment state
+  const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'COD'>('ONLINE');
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [createdBooking, setCreatedBooking] = useState<LabBookingRecord | null>(null);
+
+  // Load real tests from backend on mount
   const loadInitialData = async () => {
-    setIsTestsLoading(true);
-    setTestsError(null);
     try {
       const [testsRes, catsRes, concernsRes] = await Promise.all([
         labTestApi.getLabTests(),
         labTestApi.getCategories(),
-        labTestApi.getHealthConcerns(),
+        labTestApi.getHealthConcerns()
       ]);
 
       if (testsRes.success && testsRes.data && testsRes.data.length > 0) {
-        setDbTests(testsRes.data);
-      } else if (!testsRes.success) {
-        setTestsError(testsRes.error || 'Failed to load tests');
+        // Merge database tests with styling metadata
+        const mapped = testsRes.data.map((t) => ({
+          ...t,
+          collection: t.homeCollectionAvailable ? 'Free laboratory visit' : 'Lab Visit Only',
+          fasting: t.preparation?.toLowerCase().includes('fasting') ? 'Fasting Required' : 'No Fasting',
+        }));
+        setTests(mapped);
       }
-
       if (catsRes.success && catsRes.data && catsRes.data.length > 0) {
         setCategoryTabs(catsRes.data);
       }
-
       if (concernsRes.success && concernsRes.data && concernsRes.data.length > 0) {
         setDynamicHealthConcerns(concernsRes.data);
       }
-    } catch (err: any) {
-      setTestsError(err.message || 'Unable to connect to the server');
-    } finally {
-      setIsTestsLoading(false);
+    } catch {
+      // Fallback to initial tests on network error
     }
   };
 
@@ -226,7 +260,12 @@ const LabTestList = () => {
       try {
         const res = await labTestApi.getLabTests({ search: debouncedSearchQuery.trim() });
         if (active && res.success && res.data) {
-          setSearchResults(res.data);
+          const mapped = res.data.map((t) => ({
+            ...t,
+            collection: t.homeCollectionAvailable ? 'Free laboratory visit' : 'Lab Visit Only',
+            fasting: t.preparation?.toLowerCase().includes('fasting') ? 'Fasting Required' : 'No Fasting',
+          }));
+          setSearchResults(mapped);
         }
       } catch (err) {
         console.error('Search failed', err);
@@ -240,80 +279,69 @@ const LabTestList = () => {
     };
   }, [debouncedSearchQuery]);
 
-  // Pre-fill Authenticated User Profile
+  // Pre-load user profile if authenticated
   useEffect(() => {
-    profileApi.getProfile().then((res) => {
-      if (res.success && res.data) {
-        setPatientDetails((prev) => ({
-          ...prev,
-          name: res.data?.name || prev.name,
-          phone: res.data?.phone || prev.phone,
-          email: res.data?.email || prev.email,
-          gender: res.data?.gender || prev.gender,
-        }));
+    const loadProfile = async () => {
+      try {
+        const profileRes = await profileApi.getProfile();
+        if (profileRes.success && profileRes.data) {
+          setPatientDetails((prev) => ({
+            ...prev,
+            name: profileRes.data?.name || prev.name,
+            phone: profileRes.data?.phone || prev.phone,
+            email: profileRes.data?.email || prev.email,
+            gender: profileRes.data?.gender || prev.gender,
+          }));
+        }
+      } catch {
+        // Non-critical, preserve defaults
       }
-    });
+    };
+    loadProfile();
   }, []);
 
-  // Fetch Laboratories when in LAB_SELECT
-  useEffect(() => {
-    if (viewState === 'LAB_SELECT' && selectedItem?.id) {
-      let active = true;
-      setIsLabsLoading(true);
-
-      labTestApi
-        .getLaboratoriesForTest(selectedItem.id, { search: labSearchQuery })
-        .then((res) => {
-          if (active) {
-            setIsLabsLoading(false);
-            if (res.success && res.data) {
-              setLabsList(res.data);
-            }
-          }
-        })
-        .catch(() => {
-          if (active) setIsLabsLoading(false);
-        });
-
-      return () => {
-        active = false;
-      };
+  // Load eligible laboratories when moving to HOME_COLLECTION
+  const loadEligibleLaboratories = async (testId: string) => {
+    setIsLoadingLabs(true);
+    setLabError(null);
+    try {
+      const res = await labTestApi.getLaboratoriesForTest(testId);
+      if (res.success && res.data && res.data.length > 0) {
+        setLaboratories(res.data);
+        setSelectedLab(res.data[0]);
+      } else {
+        setLaboratories([]);
+        setSelectedLab(null);
+        setLabError(res.error || 'No laboratories currently offer laboratory visit for this test.');
+      }
+    } catch {
+      setLabError('Unable to load laboratories. Please try again.');
+    } finally {
+      setIsLoadingLabs(false);
     }
-  }, [viewState, selectedItem, labSearchQuery]);
+  };
 
-  // Fetch Availability when selectedLab or selectedDate changes
-  useEffect(() => {
-    if (viewState === 'DATE_TIME' && selectedLab?.id) {
-      let active = true;
-      setIsSlotsLoading(true);
-
-      labTestApi
-        .getLaboratoryAvailability(selectedLab.id, selectedDate)
-        .then((res) => {
-          if (active) {
-            setIsSlotsLoading(false);
-            if (res.success && res.data) {
-              setAvailableDates(res.data.availableDates || []);
-              setAvailableSlots(res.data.slots || []);
-              if (!selectedDate && res.data.availableDates?.length > 0) {
-                setSelectedDate(res.data.availableDates[0].date);
-              }
-            }
-          }
-        })
-        .catch(() => {
-          if (active) setIsSlotsLoading(false);
-        });
-
-      return () => {
-        active = false;
-      };
+  // Load slots when lab or date changes
+  const loadSlots = async (labId: string, dateStr?: string) => {
+    setIsLoadingSlots(true);
+    try {
+      const res = await labTestApi.getLaboratoryAvailability(labId, dateStr);
+      if (res.success && res.data) {
+        setAvailableDates(res.data.availableDates || []);
+        setAvailableSlots(res.data.slots || []);
+        if (!selectedDate && res.data.availableDates && res.data.availableDates.length > 0) {
+          setSelectedDate(res.data.availableDates[0].date);
+        }
+      }
+    } catch {
+      // Fallback
+    } finally {
+      setIsLoadingSlots(false);
     }
-  }, [viewState, selectedLab, selectedDate]);
+  };
 
-  // Filtering
   const q = debouncedSearchQuery.toLowerCase().trim();
-  const sourceTests = q ? searchResults : dbTests;
+  const sourceTests = q ? searchResults : tests;
 
   const filteredByCategory =
     selectedTab === 'All Tests'
@@ -321,103 +349,121 @@ const LabTestList = () => {
       : sourceTests.filter(
           (t) =>
             (t?.category || '').toLowerCase() === selectedTab.toLowerCase() ||
-            (t as any)?.categories?.includes(selectedTab)
+            ((t as any)?.categories && (t as any)?.categories.includes(selectedTab))
         );
 
-  const filteredLabTests = filteredByCategory;
+  const filteredByConcern =
+    !selectedConcern || selectedConcern === 'all'
+      ? filteredByCategory
+      : filteredByCategory.filter(
+          (t) =>
+            (t?.concern || '').toLowerCase() === selectedConcern.toLowerCase() ||
+            (t?.category || '').toLowerCase() === selectedConcern.toLowerCase() ||
+            (t?.healthConcern || '').toLowerCase() === selectedConcern.toLowerCase()
+        );
 
-  const displayLabTests = showAllTests || q ? filteredLabTests : filteredLabTests.slice(0, 8);
-  
-  // Extract packages (Category contains "Package")
+  const filteredTests = filteredByConcern;
+
   const allPackages = sourceTests.filter((t) => (t?.category || '').toLowerCase().includes('package'));
-  const allNonPackages = sourceTests.filter((t) => !(t?.category || '').toLowerCase().includes('package'));
-  
+  const allNonPackages = filteredTests.filter((t) => !(t?.category || '').toLowerCase().includes('package'));
+
   const filteredPackages = allPackages;
 
-  const concernTests = selectedConcern
-    ? allNonPackages.filter(
-        (t) =>
-          (t?.concern || '').toLowerCase() === selectedConcern.toLowerCase() ||
-          (t?.healthConcern || '').toLowerCase() === selectedConcern.toLowerCase()
-      )
-    : [];
+  const displayedTests = showAll || q ? allNonPackages : allNonPackages.slice(0, 8);
+  const hasResults = displayedTests.length > 0 || filteredPackages.length > 0;
 
-  const activeConcern = selectedConcern
-    ? healthConcerns.find(
-        (c) =>
-          c.name.toLowerCase() === selectedConcern.toLowerCase() ||
-          c.id.toLowerCase() === selectedConcern.toLowerCase()
-      ) || {
-        id: selectedConcern.toLowerCase(),
-        name: selectedConcern,
-        icon: Activity,
-        color: 'text-blue-500',
-        bg: 'bg-blue-50',
-      }
-    : null;
-
-  const hasResults =
-    filteredLabTests.length > 0 || filteredPackages.length > 0 || concernTests.length > 0;
-
-  const handleBookNow = (item: any) => {
+  const handleSelectTest = (item: any) => {
     setSelectedItem(item);
     setViewState('TEST_DETAIL');
   };
 
-  const handlePatientChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    setPatientDetails((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleProceedToLabSelect = () => {
+    if (selectedItem?.id) {
+      loadEligibleLaboratories(selectedItem.id);
+    }
+    setViewState('LAB_SELECT');
   };
 
-  // Execute Real Database Booking
-  const handleConfirmBooking = async () => {
-    if (!selectedItem?.id || !selectedLab?.id || !selectedDate || !selectedTime) {
-      setBookingError('Please complete all booking steps.');
+  const handleProceedToDateTime = () => {
+    if (!selectedLab) {
+      alert('Please select a laboratory.');
       return;
     }
+    if (selectedLab) {
+      loadSlots(selectedLab.id, selectedDate);
+    }
+    setViewState('DATE_TIME');
+  };
 
-    setIsBookingSubmitting(true);
+  const handleProceedToPatient = () => {
+    if (!selectedDate || !selectedTime) {
+      alert('Please select collection date and time slot.');
+      return;
+    }
+    setViewState('PATIENT');
+  };
+
+  const handleProceedToReview = () => {
+    if (!patientDetails.name.trim() || !patientDetails.phone.trim()) {
+      alert('Please provide patient name and phone number.');
+      return;
+    }
+    setViewState('REVIEW');
+  };
+
+  // Submit real booking
+  const handleConfirmAndPay = async () => {
+    if (!selectedItem || !selectedLab) return;
+    setIsSubmittingBooking(true);
     setBookingError(null);
+
+    const token = localStorage.getItem('mediquee_token');
+    if (!token) {
+      setIsSubmittingBooking(false);
+      setBookingError('Please log in to complete your laboratory visit booking.');
+      return;
+    }
 
     try {
       const res = await labBookingApi.createLabBooking({
         testId: selectedItem.id,
         laboratoryId: selectedLab.id,
-        hospitalId: selectedLab.hospitalId,
         bookingDate: selectedDate,
         timeSlot: selectedTime,
-        collectionType: collectionMethod === 'HOME' ? 'HOME_COLLECTION' : 'LAB_VISIT',
-        patientName: patientDetails.name || 'Patient',
-        patientPhone: patientDetails.phone || '9876543210',
-        patientAge: patientDetails.age ? parseInt(patientDetails.age, 10) : 30,
-        patientGender: patientDetails.gender || 'Male',
-        patientEmail: patientDetails.email || undefined,
-        collectionAddress: collectionMethod === 'HOME' ? patientDetails.address : undefined,
+        collectionType: 'LAB_VISIT',
+        patientName: patientDetails.name.trim(),
+        patientAge: patientDetails.age ? parseInt(patientDetails.age, 10) : undefined,
+        patientGender: patientDetails.gender,
+        patientPhone: patientDetails.phone.trim(),
+        patientEmail: patientDetails.email?.trim() || undefined,
+        
       });
 
       if (!res.success || !res.data) {
-        setBookingError(res.error || 'Failed to confirm lab booking. Please try again.');
-        setIsBookingSubmitting(false);
-      } else {
-        setConfirmedBooking(res.data);
-        setIsBookingSubmitting(false);
-        setViewState('CONFIRMED');
+        if (res.error?.includes('conflict') || res.error?.includes('already booked')) {
+          setBookingError('The selected time slot is no longer available. Please choose another slot.');
+          setViewState('DATE_TIME');
+          loadSlots(selectedLab.id, selectedDate);
+        } else {
+          setBookingError(res.error || 'Failed to confirm booking. Please try again.');
+        }
+        setIsSubmittingBooking(false);
+        return;
       }
+
+      setCreatedBooking(res.data);
+      setViewState('CONFIRMED');
     } catch (err: any) {
-      setBookingError(err.message || 'An error occurred while confirming booking.');
-      setIsBookingSubmitting(false);
+      setBookingError(err.message || 'An unexpected error occurred. Please try again.');
+    } finally {
+      setIsSubmittingBooking(false);
     }
   };
 
   const handleBack = () => {
     switch (viewState) {
       case 'LIST':
-        if (window.history.state && window.history.state.idx > 0) {
-          navigate(-1);
-        } else {
-          navigate('/');
-        }
+        navigate(-1);
         break;
       case 'CONCERN_RESULTS':
         setViewState('LIST');
@@ -431,46 +477,61 @@ const LabTestList = () => {
           setViewState('LIST');
         }
         break;
-      case 'LAB_SELECT':
+      case 'HOME_COLLECTION':
         setViewState('TEST_DETAIL');
         break;
-      case 'DATE_TIME':
+      case 'PATIENT':
         setViewState('LAB_SELECT');
         break;
-      case 'COLLECTION':
-        setViewState('DATE_TIME');
-        break;
-      case 'PATIENT':
-        setViewState('COLLECTION');
+      case 'DATE_TIME':
+        setViewState('PATIENT');
         break;
       case 'REVIEW':
-        setViewState('PATIENT');
+        setViewState('DATE_TIME');
         break;
       case 'CONFIRMED':
         setViewState('LIST');
         break;
       case 'STATUS':
-        setViewState('LIST');
+        setViewState('CONFIRMED');
         break;
       default:
-        navigate('/');
+        navigate(-1);
     }
   };
 
+  const handlePatientChange = (e: any) => {
+    setPatientDetails((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  // Price calculations
+  const effectiveTestPrice = selectedLab ? selectedLab.numericPrice : selectedItem?.numericPrice || 499;
+  const effectiveCollectionFee = selectedLab ? selectedLab.homeCollectionFee || 0 : 0;
+  const effectiveTotal = effectiveTestPrice + effectiveCollectionFee;
+
   return (
-    <div className="flex flex-col h-full bg-slate-50 overflow-x-hidden relative min-h-screen">
+    <div className="flex flex-col h-full bg-slate-50 relative overflow-x-hidden">
+      <style>{`
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-100%); }
+        }
+        .animate-marquee {
+          animation: marquee 20s linear infinite;
+        }
+        .animate-marquee:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
+
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#0055ff] to-[#06b6d4] pt-4 pb-5 px-4 text-white shrink-0 shadow-md">
+      <div className="bg-gradient-to-r from-[#0055ff] to-[#06b6d4] pt-4 pb-5 px-4 text-white shrink-0">
         <div className="flex items-center gap-3 mb-4">
-          <button
-            onClick={handleBack}
-            className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-            aria-label="Go back"
-          >
+          <button onClick={handleBack} className="p-1.5 hover:bg-white/20 rounded-full transition-colors" aria-label="Go back">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex-1">
-            <h1 className="text-[17px] font-bold">Lab Tests</h1>
+            <h1 className="text-[17px] font-bold">laboratory visit</h1>
             {viewState !== 'LIST' && (
               <p className="text-[11px] text-blue-100 mt-0.5 capitalize">
                 {viewState.replace('_', ' ').toLowerCase()}
@@ -478,6 +539,7 @@ const LabTestList = () => {
             )}
           </div>
         </div>
+
         {viewState === 'LIST' && (
           <div className="relative max-w-md md:max-w-xl mx-auto">
             {searchMode ? (
@@ -504,7 +566,6 @@ const LabTestList = () => {
               <button
                 onClick={() => setSearchQuery('')}
                 className="absolute inset-y-0 right-0 pr-3.5 flex items-center"
-                aria-label="Clear search"
               >
                 <X className="h-4 w-4 text-slate-400 hover:text-slate-600" />
               </button>
@@ -516,64 +577,24 @@ const LabTestList = () => {
       <div className="flex-1 overflow-y-auto pb-24">
         {/* VIEW: LIST */}
         {viewState === 'LIST' && (
-          <>
-            {/* Removed PosterCarousel as per user request */}
-            <div className="-mt-2">
-              {/* Loading State when tests not yet loaded */}
-            {isTestsLoading && dbTests.length === 0 && (
+          <div>
+            {q && isSearching ? (
               <div className="bg-white p-8 rounded-2xl mx-4 my-6 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
                 <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
-                <p className="text-sm font-bold text-slate-800">Loading Real Lab Tests...</p>
-                <p className="text-xs text-slate-400 mt-1">Connecting to shared MediQuee database</p>
+                <p className="text-sm font-bold text-slate-800">Searching Tests...</p>
+                <p className="text-xs text-slate-400 mt-1">Fetching from MediQuee...</p>
               </div>
-            )}
-
-            {/* Error State */}
-            {testsError && dbTests.length === 0 && (
-              <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-2xl mx-4 my-6 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-                  <div>
-                    <p className="font-bold">Unable to load lab tests</p>
-                    <p className="text-[11px] text-red-600">{testsError}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={loadInitialData}
-                  className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 rounded-xl font-bold transition-colors shrink-0"
-                >
-                  Retry
-                </button>
+            ) : q && !hasResults ? (
+              <div className="text-center py-8">
+                <p className="text-[14px] text-slate-500 font-bold">No matching tests found</p>
               </div>
-            )}
-
-            {(!isTestsLoading || dbTests.length > 0) && (
+            ) : (
               <>
-                {q && isSearching ? (
-                  <div className="bg-white p-8 rounded-2xl mx-4 my-6 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
-                    <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
-                    <p className="text-sm font-bold text-slate-800">Searching Lab Tests...</p>
-                    <p className="text-xs text-slate-400 mt-1">Fetching results from MediQuee...</p>
-                  </div>
-                ) : q && !hasResults ? (
-                  <div className="text-center py-12 px-4 bg-white rounded-2xl mx-4 my-6 border border-slate-100 shadow-sm">
-                    <TestTube className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-                    <p className="text-[15px] text-slate-700 font-bold">No matching tests found</p>
-                    <p className="text-xs text-slate-400 mt-1">Try searching by test name, category, or health concern.</p>
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="mt-4 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors"
-                    >
-                      Clear Search
-                    </button>
-                  </div>
-                ) : (
-                  <>
                     {/* EXTRAS - ONLY WHEN NOT SEARCHING */}
                     {!q && (
                       <>
-                        {/* How it works? */}
-                        <HowItWorks title="How Lab Testing Works" steps={howItWorks} className="pt-6 pb-2 mb-2 shadow-sm" />
+                        {/* How it works Marquee */}
+                        <HowItWorks title="How laboratory visit Works" steps={homeSampleStepsData} className="pt-6 pb-2 mb-2 shadow-sm" />
 
                         {/* Category Tabs */}
                         <div className="bg-white pt-5 shadow-sm border-b border-slate-100">
@@ -597,39 +618,39 @@ const LabTestList = () => {
                     )}
 
                     {/* SINGLE TESTS SECTION */}
-                    {displayLabTests.length > 0 ? (
+                    {displayedTests.length > 0 ? (
                       <div className="bg-white pt-5 pb-6 mb-2 shadow-sm">
-                        <div className="px-4 mb-4 flex items-center justify-between">
+                        <div className="px-4 flex items-center justify-between mb-4">
                           <div>
                             <h2 className="text-[16px] font-bold text-slate-800 uppercase tracking-tight">Single Tests</h2>
-                            {!q && <p className="text-[11px] text-slate-400 font-medium">Real tests from MediQuee Diagnostic Network</p>}
                           </div>
                           {filteredByCategory.length > 8 && (
-                            <button
-                              onClick={() => setShowAllTests(!showAllTests)}
-                              className="flex items-center text-blue-600 cursor-pointer hover:text-blue-700 transition-colors"
+                            <div
+                              onClick={() => setShowAll(!showAll)}
+                              className="flex items-center text-blue-600 cursor-pointer"
                             >
                               <span className="text-[11px] font-bold">
-                                {showAllTests ? 'Show Less' : `View All (${filteredByCategory.length})`}
+                                {showAll ? 'Show Less' : 'View All'}
                               </span>
-                              <ChevronRight className="w-4 h-4 ml-0.5" />
-                            </button>
+                              <ChevronRight className="w-4 h-4" />
+                            </div>
                           )}
                         </div>
 
-                        {/* 4x2 Circular Grid */}
                         <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-y-5 gap-x-2 px-4 relative">
-                          {displayLabTests.map((item) => {
+                          {displayedTests.map((item) => {
                             const displayName = item?.name || (item as any)?.testName || (item as any)?.title || 'Test';
                             const iconSrc = getTestIcon(displayName);
                             return (
                               <div
                                 key={item.id}
-                                onClick={() => handleBookNow(item)}
+                                onClick={() => handleSelectTest(item)}
                                 className="flex flex-col items-center gap-2 cursor-pointer group"
                               >
                                 <div
-                                  className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-blue-50 flex items-center justify-center border border-slate-100 group-hover:shadow-lg group-hover:scale-110 transition-all duration-200 overflow-hidden"
+                                  className={`w-14 h-14 md:w-16 md:h-16 rounded-full ${
+                                    (item as any).bg || 'bg-orange-50'
+                                  } flex items-center justify-center border border-slate-100 group-hover:shadow-lg group-hover:scale-110 transition-all duration-200 overflow-hidden`}
                                 >
                                   {iconSrc ? (
                                     <img
@@ -637,15 +658,22 @@ const LabTestList = () => {
                                       alt={displayName.replace(/\n/g, ' ')}
                                       className="w-10 h-10 md:w-12 md:h-12 object-contain"
                                     />
+                                  ) : item.icon ? (
+                                    <item.icon
+                                      className={`w-6 h-6 md:w-7 md:h-7 ${
+                                        (item as any).color || 'text-orange-500'
+                                      }`}
+                                      strokeWidth={1.5}
+                                    />
                                   ) : (
-                                    <TestTube className="w-6 h-6 text-blue-600" strokeWidth={1.5} />
+                                    <TestTube
+                                      className="w-6 h-6 md:w-7 md:h-7 text-orange-500"
+                                      strokeWidth={1.5}
+                                    />
                                   )}
                                 </div>
                                 <span className="text-[10px] md:text-[11px] font-bold text-slate-800 text-center leading-tight">
                                   {displayName.replace(/\n/g, ' ')}
-                                </span>
-                                <span className="text-[10px] font-bold text-slate-500 -mt-1">
-                                  Select for details
                                 </span>
                               </div>
                             );
@@ -660,11 +688,11 @@ const LabTestList = () => {
 
                     {/* HEALTH CONCERNS - ONLY WHEN NOT SEARCHING */}
                     {!q && dynamicHealthConcerns.length > 0 && (
-                      <div className="bg-white pt-5 pb-6 mb-2 shadow-sm">
-                        <div className="px-4 mb-4">
-                          <h2 className="text-[16px] font-bold text-slate-800">Find Tests by Health Concern</h2>
-                        </div>
-                        <div className="flex gap-3 overflow-x-auto hide-scrollbar px-4 mb-5 pb-1">
+                      <div className="bg-white p-4 py-5 mb-2 shadow-sm">
+                        <h2 className="text-[16px] font-bold text-slate-800 mb-4">
+                          Find Tests by Health Concern
+                        </h2>
+                        <div className="flex overflow-x-auto hide-scrollbar gap-4 pb-2 mb-2 px-1">
                           {dynamicHealthConcerns.map((concernStr) => {
                             const staticMatch = healthConcerns.find(
                               (c) => c.id.toLowerCase() === concernStr.toLowerCase() || c.name.toLowerCase() === concernStr.toLowerCase()
@@ -673,7 +701,7 @@ const LabTestList = () => {
                             const Icon = staticMatch?.icon || Activity;
                             const color = staticMatch?.color || 'text-blue-500';
                             const iconUrl = healthConcernIconMap[concernStr.toLowerCase()] || (staticMatch ? healthConcernIconMap[staticMatch.id] : null);
-
+                            
                             return (
                               <div
                                 key={concernStr}
@@ -690,13 +718,13 @@ const LabTestList = () => {
                                     <img
                                       src={iconUrl}
                                       alt={concernStr}
-                                      className="w-10 h-10 object-contain"
+                                      className="w-9 h-9 object-contain"
                                     />
                                   ) : (
                                     <Icon className={`w-6 h-6 ${color}`} />
                                   )}
                                 </div>
-                                <span className="text-[11px] font-bold text-slate-700 text-center">
+                                <span className="text-[11px] font-bold text-center text-slate-700">
                                   {concernStr}
                                 </span>
                               </div>
@@ -708,7 +736,7 @@ const LabTestList = () => {
 
                     {/* PACKAGES SECTION */}
                     {filteredPackages.length > 0 ? (
-                      <div className="pt-5 pb-6 bg-white shadow-sm">
+                      <div className="pt-5 pb-6 bg-white shadow-sm mb-2">
                         <div className="flex items-center justify-between mb-4 px-4">
                           <h2 className="text-[16px] font-bold text-slate-800 uppercase tracking-tight">
                             Packages
@@ -722,7 +750,9 @@ const LabTestList = () => {
                                 {showAllPackages ? 'Show Less' : 'View All'}
                               </span>
                               <ChevronRight
-                                className={`w-4 h-4 transition-transform ${showAllPackages ? '-rotate-90' : ''}`}
+                                className={`w-4 h-4 transition-transform ${
+                                  showAllPackages ? '-rotate-90' : ''
+                                }`}
                               />
                             </button>
                           )}
@@ -734,68 +764,71 @@ const LabTestList = () => {
                               : 'flex overflow-x-auto hide-scrollbar gap-3 pb-2 px-4'
                           }
                         >
-                          {filteredPackages.map((item) => {
-                            const PackageIcon = (item as any).icon || Activity;
-                            return (
+                          {filteredPackages.map((item) => (
+                            <div
+                              key={item.id}
+                              className="bg-white rounded-2xl border border-slate-100 shadow-sm min-w-[210px] max-w-[240px] shrink-0 flex flex-col justify-between overflow-hidden hover:shadow-md transition-shadow"
+                            >
                               <div
-                                key={item.id}
-                                className="bg-white rounded-2xl border border-slate-100 shadow-sm min-w-[210px] max-w-[240px] shrink-0 flex flex-col justify-between overflow-hidden hover:shadow-md transition-shadow"
-                              >
-                                <div
-                                  className={`h-1.5 w-full bg-gradient-to-r ${
-                                    (item as any).color === 'text-blue-600'
-                                      ? 'from-blue-500 to-blue-400'
-                                      : (item as any).color === 'text-rose-600'
-                                      ? 'from-rose-500 to-rose-400'
-                                      : (item as any).color === 'text-indigo-600'
-                                      ? 'from-indigo-500 to-indigo-400'
-                                      : 'from-blue-500 to-cyan-400'
-                                  }`}
-                                ></div>
-                                <div className="p-3.5">
-                                  <div className="mb-3">
-                                    <div className="flex items-start gap-2.5 mb-2">
-                                      <div
-                                        className={`w-10 h-10 rounded-xl ${(item as any).bg || 'bg-blue-50'} ${(item as any).color || 'text-blue-600'} flex items-center justify-center shrink-0`}
-                                      >
-                                        <PackageIcon className="w-5 h-5" strokeWidth={2} />
-                                      </div>
-                                      <div>
-                                        <h3 className="font-bold text-slate-900 text-[12px] leading-tight mb-0.5 whitespace-pre-line">
-                                          {item.name}
-                                        </h3>
-                                        <p className="text-[9px] text-slate-500 font-medium">
-                                          ({(item as any).tests})
-                                        </p>
-                                      </div>
+                                className={`h-1.5 w-full bg-gradient-to-r ${
+                                  (item as any).color === 'text-blue-600'
+                                    ? 'from-blue-500 to-blue-400'
+                                    : (item as any).color === 'text-rose-600'
+                                    ? 'from-rose-500 to-rose-400'
+                                    : (item as any).color === 'text-indigo-600'
+                                    ? 'from-indigo-500 to-indigo-400'
+                                    : 'from-blue-500 to-cyan-400'
+                                }`}
+                              ></div>
+                              <div className="p-3.5">
+                                <div className="mb-3">
+                                  <div className="flex items-start gap-2.5 mb-2">
+                                    <div
+                                      className={`w-10 h-10 rounded-xl ${
+                                        (item as any).bg || 'bg-blue-50'
+                                      } ${
+                                        (item as any).color || 'text-blue-500'
+                                      } flex items-center justify-center shrink-0`}
+                                    >
+                                      {item.icon ? (
+                                        <item.icon className="w-5 h-5" strokeWidth={2} />
+                                      ) : (
+                                        <Activity className="w-5 h-5" strokeWidth={2} />
+                                      )}
+                                    </div>
+                                    <div>
+                                      <h3 className="font-bold text-slate-900 text-[12px] leading-tight mb-0.5 whitespace-pre-line">
+                                        {item.name}
+                                      </h3>
+                                      <p className="text-[9px] text-slate-500 font-medium">
+                                        ({(item as any).tests || 'Comprehensive Tests'})
+                                      </p>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-1.5 text-[10px] text-slate-600 font-medium mb-3">
-                                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                    <span>Results in {item.time}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between mt-auto">
-                                  </div>
-                                  <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-                                    <button
-                                      onClick={() => handleBookNow(item)}
-                                      className="flex-1 bg-slate-50 text-slate-700 border border-slate-200 py-1.5 rounded-lg text-[10px] font-bold hover:bg-slate-100 transition-colors"
-                                    >
-                                      View
-                                    </button>
-                                    <button
-                                      onClick={() => handleBookNow(item)}
-                                      className={`flex-1 text-white py-1.5 rounded-lg text-[10px] font-bold ${
-                                        (item as any).btnBg || 'bg-[#0055ff]'
-                                      } hover:opacity-90 transition-opacity shadow-sm`}
-                                    >
-                                      Book
-                                    </button>
-                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-[10px] text-slate-600 font-medium mb-3">
+                                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>Results in {(item as any).time || '24 hrs'}</span>
+                                </div>
+                                <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                                  <button
+                                    onClick={() => handleSelectTest(item)}
+                                    className="flex-1 bg-slate-50 text-slate-700 border border-slate-200 py-1.5 rounded-lg text-[10px] font-bold hover:bg-slate-100 transition-colors"
+                                  >
+                                    View Package
+                                  </button>
+                                  <button
+                                    onClick={() => handleSelectTest(item)}
+                                    className={`flex-1 text-white py-1.5 rounded-lg text-[10px] font-bold ${
+                                      (item as any).btnBg || 'bg-[#0055ff]'
+                                    } hover:opacity-90 transition-opacity shadow-sm`}
+                                  >
+                                    Book Package
+                                  </button>
                                 </div>
                               </div>
-                            );
-                          })}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ) : (
@@ -803,32 +836,40 @@ const LabTestList = () => {
                         <p className="text-[14px] text-slate-500 font-bold">No packages available.</p>
                       </div>
                     )}
-                  </>
-                )}
               </>
             )}
           </div>
-          </>
         )}
 
         {/* VIEW: CONCERN_RESULTS */}
-        {viewState === 'CONCERN_RESULTS' && activeConcern && (
-          <div className="animate-in fade-in duration-300 px-4 pt-4 pb-6">
+        {viewState === 'CONCERN_RESULTS' && (
+          <div className="bg-white p-4 py-5 shadow-sm min-h-screen">
             <div className="flex items-center gap-3 mb-6">
               <div
-                className={`w-12 h-12 rounded-full ${activeConcern.bg} flex items-center justify-center shrink-0 shadow-sm border border-slate-100`}
+                className={`w-12 h-12 rounded-full ${
+                  healthConcerns.find((c) => c.id === selectedConcern)?.bg || 'bg-blue-100'
+                } flex items-center justify-center shrink-0`}
               >
-                <activeConcern.icon className={`w-6 h-6 ${activeConcern.color}`} />
+                {(() => {
+                  const Icon = healthConcerns.find((c) => c.id === selectedConcern)?.icon || TestTube;
+                  return (
+                    <Icon
+                      className={`w-6 h-6 ${
+                        healthConcerns.find((c) => c.id === selectedConcern)?.color || 'text-blue-500'
+                      }`}
+                    />
+                  );
+                })()}
               </div>
               <div>
-                <h2 className="text-[18px] font-bold text-slate-800 leading-tight">
-                  {activeConcern.name} Tests
+                <h2 className="text-[18px] font-black text-slate-900">
+                  {healthConcerns.find((c) => c.id === selectedConcern)?.name || 'Tests'}
                 </h2>
-                <p className="text-[12px] text-slate-500">Real database tests for this condition</p>
+                <p className="text-[12px] text-slate-500 font-medium">Available tests and packages</p>
               </div>
             </div>
 
-            <div className="relative mb-6">
+            <div className="relative max-w-md md:max-w-xl mx-auto mb-6">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-slate-400" />
               </div>
@@ -836,380 +877,282 @@ const LabTestList = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-2xl bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm text-[13px] font-medium"
-                placeholder={`Search ${activeConcern.name} tests...`}
+                placeholder={`Search ${
+                  selectedConcern ? healthConcerns.find((c) => c.id === selectedConcern)?.name || 'tests' : 'tests'
+                } tests...`}
+                className="block w-full pl-12 pr-4 py-3 rounded-2xl bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 shadow-sm text-[13px] border border-slate-200"
               />
             </div>
 
-            <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
-              {concernTests.filter(
-                (t) =>
-                  t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  t.desc.toLowerCase().includes(searchQuery.toLowerCase())
-              ).length === 0 ? (
-                <div className="text-center py-8 bg-white rounded-2xl p-6 border border-slate-100">
-                  <p className="text-[14px] text-slate-500 font-bold">No tests found matching your search</p>
-                </div>
-              ) : (
-                concernTests
-                  .filter(
-                    (t) =>
-                      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      t.desc.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
-                  .map((item) => (
+            <div className="max-w-md md:max-w-5xl mx-auto space-y-4 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
+              {filteredTests.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start gap-3 mb-3">
                     <div
-                      key={item.id}
-                      className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+                      className={`w-12 h-12 rounded-xl ${
+                        (item as any).bg || 'bg-orange-50'
+                      } flex items-center justify-center shrink-0 overflow-hidden`}
                     >
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 overflow-hidden">
-                          {getTestIcon(item.name) ? (
-                            <img
-                              src={getTestIcon(item.name)!}
-                              alt={item.name.replace('\n', ' ')}
-                              className="w-9 h-9 object-contain"
-                            />
-                          ) : (
-                            <TestTube className="w-6 h-6" strokeWidth={2} />
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-slate-900 text-[14px] leading-tight mb-1 whitespace-pre-line">
-                            {item.name}
-                          </h3>
-                          <p className="text-[11px] text-slate-500 font-medium">
-                            {item.category} · {item.sampleType || 'Blood'}
-                          </p>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex flex-col gap-1.5 mb-3 border-t border-b border-slate-100 py-2 mt-1">
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-600 font-medium">
-                            <Clock className="w-4 h-4 text-slate-400" />
-                            <span>Report within {item.time}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-end">
-                          <button
-                            onClick={() => handleBookNow(item)}
-                            className="bg-[#0055ff] text-white px-5 py-2 rounded-xl text-[12px] font-bold shadow-md shadow-blue-500/20 hover:bg-blue-600 transition-colors shrink-0"
-                          >
-                            Book Now
-                          </button>
-                        </div>
-                      </div>
+                      {getTestIcon(item.name) ? (
+                        <img
+                          src={getTestIcon(item.name)!}
+                          alt={item.name}
+                          className="w-9 h-9 object-contain"
+                        />
+                      ) : item.icon ? (
+                        <item.icon className={`w-6 h-6 ${(item as any).color || 'text-orange-500'}`} />
+                      ) : (
+                        <TestTube className="w-6 h-6 text-orange-500" />
+                      )}
                     </div>
-                  ))
+                    <div className="flex-1">
+                      <h3 className="font-bold text-slate-800 leading-tight mb-1">{item.name}</h3>
+                      <p className="text-sm text-slate-500 font-medium">
+                        {item.provider || item.category}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2 py-3 border-t border-b border-slate-50 mb-3">
+                    <div className="flex items-center gap-2 text-xs text-slate-600">
+                      <Clock className="w-4 h-4 text-slate-400" />
+                      <span>{item.fasting || 'No Fasting'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600">
+                      <MapPin className="w-4 h-4 text-emerald-500" />
+                      <span>{item.collection || 'Free laboratory visit'}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end">
+                    <button
+                      onClick={() => handleSelectTest(item)}
+                      className="bg-[#0055ff] hover:bg-blue-600 text-white px-5 py-2 rounded-xl text-xs font-bold transition-colors shadow-md shadow-blue-500/20 shrink-0"
+                    >
+                      Book
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {filteredTests.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-[14px] text-slate-500 font-bold">No tests found for this category</p>
+                </div>
               )}
             </div>
           </div>
         )}
 
-        {/* BOOKING FLOW CONTAINER */}
-        <div className="px-4 pt-6 max-w-md md:max-w-2xl mx-auto space-y-6">
-          {/* VIEW: TEST DETAIL */}
-          {viewState === 'TEST_DETAIL' && (
-            <section className="animate-in fade-in duration-300">
-              <h2 className="text-[18px] font-black text-slate-900 mb-4">Test Details</h2>
+        {/* BOOKING FLOW STEPS CONTAINER */}
+        <div className="px-4 pt-4 max-w-md md:max-w-2xl mx-auto space-y-4">
+          {['TEST_DETAIL', 'HOME_COLLECTION', 'PATIENT', 'DATE_TIME', 'REVIEW'].includes(viewState) && (
+            <div className="flex items-center justify-between px-2 mb-2 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
+              {['Test', 'Lab', 'Patient', 'Date & Time', 'Review', 'Confirm'].map((step, idx) => {
+                const isActive =
+                  (viewState === 'TEST_DETAIL' && idx === 0) ||
+                  (viewState === 'LAB_SELECT' && idx === 1) ||
+                  (viewState === 'PATIENT' && idx === 2) ||
+                  (viewState === 'DATE_TIME' && idx === 3) ||
+                  (viewState === 'REVIEW' && idx === 4) ||
+                  (viewState === 'CONFIRMED' && idx === 5);
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-3 bg-blue-50 rounded-bl-3xl text-blue-600">
-                  <TestTube className="w-6 h-6" />
+                return (
+                  <div key={step} className="flex flex-col items-center flex-1">
+                    <div
+                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mb-1 ${
+                        isActive
+                          ? 'bg-[#0055ff] text-white shadow-md'
+                          : 'bg-slate-100 text-slate-400'
+                      }`}
+                    >
+                      {idx + 1}
+                    </div>
+                    <span
+                      className={`text-[9px] font-bold text-center ${
+                        isActive ? 'text-[#0055ff]' : 'text-slate-400'
+                      }`}
+                    >
+                      {step.split(' ')[0]}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* VIEW: TEST_DETAIL */}
+          {viewState === 'TEST_DETAIL' && selectedItem && (
+            <section className="animate-in fade-in zoom-in-95 duration-300">
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm mb-6">
+                <div className="flex items-start gap-4 mb-4">
+                  <div
+                    className={`w-14 h-14 rounded-xl ${
+                      (selectedItem as any)?.bg || 'bg-blue-50'
+                    } flex items-center justify-center shrink-0 overflow-hidden`}
+                  >
+                    {getTestIcon(selectedItem.name) ? (
+                      <img
+                        src={getTestIcon(selectedItem.name)!}
+                        alt={selectedItem.name}
+                        className="w-10 h-10 object-contain"
+                      />
+                    ) : selectedItem.icon ? (
+                      <selectedItem.icon className="w-7 h-7 text-blue-500" />
+                    ) : (
+                      <TestTube className="w-7 h-7 text-blue-500" />
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-[18px] font-black text-slate-900 leading-tight mb-1">
+                      {selectedItem.name}
+                    </h2>
+                    <p className="text-[12px] text-slate-500 font-medium">
+                      {selectedItem.category} • {selectedItem.sampleType || 'Blood Sample'}
+                    </p>
+                  </div>
                 </div>
 
-                <h3 className="font-bold text-slate-900 text-[17px] mb-2 pr-10 whitespace-pre-line">
-                  {selectedItem?.name}
-                </h3>
-                <p className="text-[12px] text-slate-600 mb-4 font-medium leading-relaxed">
-                  {selectedItem?.desc || selectedItem?.description}
+                <p className="text-[12px] text-slate-600 font-medium mb-4 leading-relaxed">
+                  {selectedItem.desc || selectedItem.description || 'Standard diagnostic laboratory investigation.'}
                 </p>
 
-                <div className="space-y-3 pt-4 border-t border-slate-100">
-                  <div className="flex items-start gap-3">
-                    <Clock className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-[11px] font-bold text-slate-700">Estimated Report Time</p>
-                      <p className="text-[11px] text-slate-500">
-                        Results typically ready in {selectedItem?.time || selectedItem?.tat || '12 Hours'}
-                      </p>
-                    </div>
+                <div className="flex flex-col gap-2 py-3 border-t border-b border-slate-100 mb-4 text-[12px]">
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Clock className="w-4 h-4 text-slate-400" />
+                    <span>Report Time: {selectedItem.time || selectedItem.tat || '12-24 Hours'}</span>
                   </div>
-
-                  <div className="flex items-start gap-3">
-                    <TestTube className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-[11px] font-bold text-slate-700">Sample Type</p>
-                      <p className="text-[11px] text-slate-500">{selectedItem?.sampleType || selectedItem?.sample || 'Blood'}</p>
-                    </div>
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <ShieldCheck className="w-4 h-4 text-slate-400" />
+                    <span>
+                      Preparation: {selectedItem.prep || selectedItem.preparation || 'No special fasting required.'}
+                    </span>
                   </div>
-
-                  <div className="flex items-start gap-3">
-                    <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-[11px] font-bold text-slate-700">Preparation Instructions</p>
-                      <p className="text-[11px] text-slate-500">
-                        {selectedItem?.prep || selectedItem?.preparation || 'No special preparation required.'}
-                      </p>
-                    </div>
+                  <div className="flex items-center gap-2 font-bold text-emerald-600">
+                    <Home className="w-4 h-4 text-emerald-500" />
+                    <span>Laboratory Visit Available</span>
                   </div>
                 </div>
 
-                <div className="mt-6 flex items-center justify-end">
-                  <button
-                    onClick={() => setViewState('LAB_SELECT')}
-                    className="bg-[#0055ff] text-white px-6 py-2.5 rounded-xl text-[13px] font-bold shadow-md shadow-blue-500/20 hover:bg-blue-600 transition-colors"
-                  >
-                    Select Laboratory
-                  </button>
-                </div>
               </div>
+
+              <button
+                onClick={handleProceedToLabSelect}
+                className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
+              >
+                Select Laboratory & Continue
+              </button>
             </section>
           )}
 
-          {/* VIEW: LAB SELECT */}
+          {/* VIEW: HOME_COLLECTION (Select Laboratory Offering laboratory visit) */}
           {viewState === 'LAB_SELECT' && (
             <section className="animate-in fade-in zoom-in-95 duration-300">
-              <h2 className="text-[18px] font-black text-slate-900 mb-1">Select Laboratory</h2>
-              <p className="text-[12px] text-slate-500 mb-4 font-medium">
-                Verified labs offering <span className="font-bold text-slate-700">{selectedItem?.name}</span>
+              <h2 className="text-[18px] font-black text-slate-900 mb-2">Select Diagnostic Laboratory</h2>
+              <p className="text-[12px] text-slate-500 font-medium mb-4">
+                Choose a certified laboratory providing laboratory visit for this test.
               </p>
 
-              {/* Lab Search */}
+              {/* Lab search filter */}
               <div className="relative mb-4">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-slate-400" />
-                </div>
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="text"
                   value={labSearchQuery}
                   onChange={(e) => setLabSearchQuery(e.target.value)}
-                  placeholder="Search lab by name, location..."
-                  className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-sm"
+                  placeholder="Filter laboratories..."
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none"
                 />
-                {labSearchQuery && (
+              </div>
+
+              {isLoadingLabs ? (
+                <div className="bg-white p-8 rounded-2xl border border-slate-100 text-center space-y-3">
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-xs text-slate-500 font-medium">Checking eligible laboratories...</p>
+                </div>
+              ) : labError ? (
+                <div className="bg-white p-6 rounded-2xl border border-amber-200 text-center space-y-3">
+                  <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
+                  <p className="text-xs text-slate-700 font-bold">{labError}</p>
                   <button
-                    onClick={() => setLabSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    aria-label="Clear lab search"
+                    onClick={() => selectedItem?.id && loadEligibleLaboratories(selectedItem.id)}
+                    className="text-xs text-blue-600 font-bold hover:underline"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    Retry
                   </button>
-                )}
-              </div>
-
-              {isLabsLoading && (
-                <div className="flex items-center justify-center py-8 text-blue-600 gap-2">
-                  <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-xs font-semibold">Loading available laboratories...</span>
-                </div>
-              )}
-
-              {!isLabsLoading && labsList.length === 0 ? (
-                <div className="text-center py-8 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-                  <p className="text-[14px] text-slate-500 font-bold">No laboratories available for this test</p>
-                  <p className="text-[11px] text-slate-400 mt-1">Try clearing your search query to see all labs.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {labsList.map((lab) => (
-                    <div
-                      key={lab.id}
-                      className={`bg-white p-4 rounded-2xl border transition-all shadow-sm ${
-                        selectedLab?.id === lab.id ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-slate-200'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 overflow-hidden">
-                            {lab.logoUrl ? (
-                              <img src={lab.logoUrl} alt={lab.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <Hospital className="w-5 h-5" />
-                            )}
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-slate-900 text-[14px] leading-tight mb-1">{lab.name}</h3>
-                            <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
-                              <MapPin className="w-3 h-3 shrink-0" /> {lab.address || lab.location || 'Location available'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md text-[11px] font-bold shrink-0">
-                          <span>★</span> <span>{lab.rating || 4.8}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between text-[11px] text-slate-600 font-medium mt-3 pb-3 border-b border-slate-100">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" /> {lab.time || 'Within 24 Hours'}
-                        </span>
-                        {lab.homeCollectionAvailable && (
-                          <span className="text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full text-[10px]">
-                            Home Collection Available
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="mt-3 flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] text-slate-400 block font-semibold">Test Fee</span>
-                          <span className="text-[17px] font-black text-blue-600">{lab.price}</span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setSelectedLab(lab);
-                            setViewState('DATE_TIME');
-                          }}
-                          className="bg-[#0055ff] text-white px-5 py-2 rounded-xl text-[12px] font-bold hover:bg-blue-600 shadow-md shadow-blue-500/20 transition-colors"
+                <div className="space-y-3 mb-6">
+                  {laboratories
+                    .filter((l) =>
+                      labSearchQuery
+                        ? l.name.toLowerCase().includes(labSearchQuery.toLowerCase()) ||
+                          l.location?.toLowerCase().includes(labSearchQuery.toLowerCase())
+                        : true
+                    )
+                    .map((lab) => {
+                      const isSelected = selectedLab?.id === lab.id;
+                      return (
+                        <div
+                          key={lab.id}
+                          onClick={() => setSelectedLab(lab)}
+                          className={`bg-white p-4 rounded-2xl border-2 transition-all cursor-pointer relative ${
+                            isSelected
+                              ? 'border-[#0055ff] shadow-md shadow-blue-500/10'
+                              : 'border-slate-200 hover:border-slate-300'
+                          }`}
                         >
-                          Select Lab
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* VIEW: DATE_TIME */}
-          {viewState === 'DATE_TIME' && (
-            <section className="animate-in fade-in zoom-in-95 duration-300">
-              <h2 className="text-[18px] font-black text-slate-900 mb-1">Choose Date & Time</h2>
-              <p className="text-[12px] text-slate-500 mb-4 font-medium">
-                Live availability at <span className="font-bold text-slate-700">{selectedLab?.name}</span>
-              </p>
-
-              <div className="mb-6">
-                <h3 className="text-[13px] font-bold text-slate-800 mb-3">Available Dates</h3>
-                <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
-                  {availableDates.map((d) => (
-                    <button
-                      key={d.date}
-                      onClick={() => setSelectedDate(d.date)}
-                      className={`shrink-0 px-5 py-2.5 rounded-xl text-[12px] font-bold border transition-colors ${
-                        selectedDate === d.date
-                          ? 'bg-[#0055ff] border-[#0055ff] text-white shadow-md shadow-blue-500/20'
-                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                      }`}
-                    >
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {isSlotsLoading ? (
-                <div className="flex items-center justify-center py-6 text-blue-600 gap-2">
-                  <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-xs font-semibold">Checking slot availability...</span>
-                </div>
-              ) : (
-                <div className="mb-6 animate-in slide-in-from-top-2 duration-200">
-                  <h3 className="text-[13px] font-bold text-slate-800 mb-3">Available Collection Slots</h3>
-                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    {availableSlots.map((s) => (
-                      <button
-                        key={s.slot}
-                        disabled={!s.available}
-                        onClick={() => setSelectedTime(s.slot)}
-                        className={`px-2 py-2.5 rounded-xl text-[11px] font-bold border transition-colors ${
-                          !s.available
-                            ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed line-through'
-                            : selectedTime === s.slot
-                            ? 'bg-[#0055ff] border-[#0055ff] text-white shadow-md shadow-blue-500/20'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        {s.slot}
-                      </button>
-                    ))}
-                  </div>
+                          {isSelected && (
+                            <div className="absolute top-0 right-0 bg-[#0055ff] text-white text-[9px] font-bold px-2 py-0.5 rounded-bl-lg">
+                              Selected
+                            </div>
+                          )}
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                              <Building2 className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="text-[13px] font-bold text-slate-900 leading-tight">
+                                {lab.name}
+                              </h3>
+                              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                                {lab.location || lab.address || 'NABL Certified Lab'}
+                              </p>
+                              <div className="flex items-center gap-3 mt-2 text-[11px]">
+                                <span className="font-black text-blue-600">{lab.price}</span>
+                                <span className="text-slate-400">•</span>
+                                <span className="font-semibold text-emerald-600">
+                                  {lab.homeCollectionFee && lab.homeCollectionFee > 0
+                                    ? `₹${lab.homeCollectionFee} Home Fee`
+                                    : 'Free laboratory visit'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               )}
 
-              <button
-                disabled={!selectedDate || !selectedTime}
-                onClick={() => setViewState('COLLECTION')}
-                className="w-full mt-4 flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold disabled:opacity-50 hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
-              >
-                Continue
-              </button>
-            </section>
-          )}
-
-          {/* VIEW: COLLECTION */}
-          {viewState === 'COLLECTION' && (
-            <section className="animate-in fade-in zoom-in-95 duration-300">
-              <h2 className="text-[18px] font-black text-slate-900 mb-1">Sample Collection</h2>
-              <p className="text-[12px] text-slate-500 mb-6 font-medium">How would you like to provide the sample?</p>
-
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <button
-                  onClick={() => setCollectionMethod('LAB')}
-                  className={`w-full flex items-start gap-4 p-4 rounded-2xl border text-left transition-all ${
-                    collectionMethod === 'LAB'
-                      ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-500/20'
-                      : 'bg-white border-slate-200 hover:border-blue-300'
-                  }`}
+                  disabled={!selectedLab || isLoadingLabs}
+                  onClick={handleProceedToDateTime}
+                  className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold disabled:opacity-50 hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
                 >
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                      collectionMethod === 'LAB' ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-400'
-                    }`}
-                  >
-                    <Hospital className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-[14px] text-slate-900 mb-1">Visit Laboratory</h3>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      Visit {selectedLab?.name} directly at your chosen time.
-                    </p>
-                  </div>
+                  Continue to Date & Time
                 </button>
-
                 <button
-                  disabled={selectedLab?.homeCollectionAvailable === false}
-                  onClick={() => setCollectionMethod('HOME')}
-                  className={`w-full flex items-start gap-4 p-4 rounded-2xl border text-left transition-all ${
-                    selectedLab?.homeCollectionAvailable === false
-                      ? 'opacity-50 cursor-not-allowed bg-slate-50 border-slate-200'
-                      : collectionMethod === 'HOME'
-                      ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-500/20'
-                      : 'bg-white border-slate-200 hover:border-blue-300'
-                  }`}
+                  onClick={() => setViewState('TEST_DETAIL')}
+                  className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
                 >
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                      collectionMethod === 'HOME' ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-400'
-                    }`}
-                  >
-                    <Home className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-[14px] text-slate-900 mb-0.5">Home Sample Collection</h3>
-                      {selectedLab?.homeCollectionFee === 0 && (
-                        <span className="text-[10px] font-bold bg-green-50 text-green-700 px-2 py-0.2 rounded-full">
-                          FREE
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      A certified phlebotomist will collect the sample from your doorstep.
-                    </p>
-                  </div>
+                  Back
                 </button>
               </div>
-
-              <button
-                disabled={!collectionMethod}
-                onClick={() => setViewState('PATIENT')}
-                className="w-full mt-8 flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold disabled:opacity-50 hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
-              >
-                Continue to Patient Details
-              </button>
             </section>
           )}
 
@@ -1217,104 +1160,218 @@ const LabTestList = () => {
           {viewState === 'PATIENT' && (
             <section className="animate-in fade-in zoom-in-95 duration-300">
               <h2 className="text-[18px] font-black text-slate-900 mb-1">Patient Details</h2>
-              <p className="text-[12px] text-slate-500 mb-4 font-medium">Confirm details for the diagnostic report</p>
+              <p className="text-[12px] text-slate-500 font-medium mb-6">
+                Sample will be collected at this location by a certified technician.
+              </p>
 
               <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setViewState('REVIEW');
-                }}
-                className="space-y-4"
+                onSubmit={(e) => { e.preventDefault(); handleProceedToReview(); }}
+                className="space-y-6"
               >
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Patient Full Name *</label>
-                  <input
-                    name="name"
-                    value={patientDetails.name}
-                    onChange={handlePatientChange}
-                    required
-                    type="text"
-                    placeholder="Enter patient name"
-                    className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-2">
+                    <User className="w-4 h-4 text-blue-600" />
+                    <h3 className="text-[13px] font-bold text-slate-800">Personal Information</h3>
+                  </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Age *</label>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                      Patient Name *
+                    </label>
                     <input
-                      name="age"
-                      value={patientDetails.age}
+                      name="name"
+                      value={patientDetails.name}
                       onChange={handlePatientChange}
                       required
-                      type="number"
-                      placeholder="Age"
-                      className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      type="text"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="Enter full name"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Age *</label>
+                      <input
+                        name="age"
+                        value={patientDetails.age}
+                        onChange={handlePatientChange}
+                        type="number"
+                        required
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        placeholder="e.g. 30"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Gender *</label>
+                      <select
+                        name="gender"
+                        value={patientDetails.gender}
+                        onChange={handlePatientChange as any}
+                        required
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      >
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-2">
+                    <MapPin className="w-4 h-4 text-blue-600" />
+                    <h3 className="text-[13px] font-bold text-slate-800">Contact & Location</h3>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                      Contact Phone Number *
+                    </label>
+                    <input
+                      name="phone"
+                      value={patientDetails.phone}
+                      onChange={handlePatientChange}
+                      required
+                      type="tel"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="10-digit mobile number"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Gender *</label>
-                    <select
-                      name="gender"
-                      value={patientDetails.gender}
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Email</label>
+                    <input
+                      name="email"
+                      value={patientDetails.email}
                       onChange={handlePatientChange}
-                      required
-                      className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                    >
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
+                      type="email"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="name@example.com"
+                    />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Phone Number *</label>
-                  <input
-                    name="phone"
-                    value={patientDetails.phone}
-                    onChange={handlePatientChange}
-                    required
-                    type="tel"
-                    placeholder="10-digit mobile number"
-                    className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  />
+                <div className="space-y-3 mt-4 pt-2">
+                  <button
+                    type="submit"
+                    className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/30"
+                  >
+                    Continue to Date & Time
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewState('DATE_TIME')} className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-all"
+                  >
+                    Back
+                  </button>
                 </div>
+              </form>
+            </section>
+          )}
 
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Email Address</label>
-                  <input
-                    name="email"
-                    value={patientDetails.email}
-                    onChange={handlePatientChange}
-                    type="email"
-                    placeholder="For digital report delivery"
-                    className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  />
+          {/* VIEW: DATE_TIME */}
+          {viewState === 'DATE_TIME' && (
+            <section className="animate-in fade-in zoom-in-95 duration-300">
+              <h2 className="text-[18px] font-black text-slate-900 mb-1">Choose Collection Date & Slot</h2>
+              <p className="text-[12px] text-slate-500 font-medium mb-6">
+                Select when our technician should arrive at your chosen laboratory.
+              </p>
+
+              {/* Date selection */}
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <h3 className="text-[13px] font-bold text-slate-800">Available Dates</h3>
                 </div>
+                <div className="flex gap-3 overflow-x-auto pb-4 hide-scrollbar snap-x">
+                  {availableDates.map((d) => {
+                    const isSelected = selectedDate === d.date;
+                    const parts = d.label.split(', ');
+                    const topLabel = parts.length > 1 ? parts[0] : '';
+                    const bottomLabel = parts.length > 1 ? parts[1] : d.label;
+                    
+                    return (
+                      <button
+                        key={d.date}
+                        onClick={() => {
+                          setSelectedDate(d.date);
+                          if (selectedLab) loadSlots(selectedLab.id, d.date);
+                        }}
+                        className={`shrink-0 w-[72px] h-[84px] rounded-2xl flex flex-col items-center justify-center border transition-all duration-200 snap-center ${
+                          isSelected
+                            ? 'bg-[#0055ff] border-[#0055ff] text-white shadow-lg shadow-blue-500/30 scale-105'
+                            : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:shadow-md'
+                        }`}
+                      >
+                        <span className={`text-[10px] font-bold uppercase mb-1 ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>{topLabel}</span>
+                        <span className={`text-[16px] font-black leading-none ${isSelected ? 'text-white' : 'text-slate-800'}`}>{bottomLabel.split(' ')[0]}</span>
+                        <span className={`text-[11px] font-bold mt-1 ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>{bottomLabel.split(' ')[1]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-                {collectionMethod === 'HOME' && (
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Sample Collection Address *</label>
-                    <textarea
-                      name="address"
-                      value={patientDetails.address}
-                      onChange={handlePatientChange}
-                      required
-                      rows={3}
-                      placeholder="Enter full home address with landmark"
-                      className="w-full border border-slate-200 rounded-xl p-3 text-[13px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-                    ></textarea>
+              {/* Slot selection */}
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock className="w-4 h-4 text-blue-600" />
+                  <h3 className="text-[13px] font-bold text-slate-800">Available Time Slots</h3>
+                </div>
+                {isLoadingSlots ? (
+                  <div className="bg-white rounded-2xl border border-slate-100 p-8 flex flex-col items-center justify-center shadow-sm">
+                    <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
+                    <p className="text-xs text-slate-500 font-medium">Fetching accurate slots...</p>
+                  </div>
+                ) : (
+                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    {availableSlots.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-3">
+                        {availableSlots.map((s) => {
+                          const isSelected = selectedTime === s.slot;
+                          return (
+                            <button
+                              key={s.slot}
+                              disabled={!s.available}
+                              onClick={() => setSelectedTime(s.slot)}
+                              className={`px-2 py-3 rounded-xl text-[12px] font-bold border transition-all duration-200 flex items-center justify-center ${
+                                !s.available
+                                  ? 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed line-through'
+                                  : isSelected
+                                  ? 'bg-blue-50 border-[#0055ff] text-[#0055ff] shadow-sm ring-1 ring-blue-600'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-slate-50'
+                              }`}
+                            >
+                              {s.slot}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-center py-6">
+                        <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-2">
+                          <span className="text-slate-400 text-xl">🕒</span>
+                        </div>
+                        <p className="text-slate-600 font-semibold text-sm">No slots available</p>
+                        <p className="text-slate-400 text-xs mt-1">Please select another date</p>
+                      </div>
+                    )}
                   </div>
                 )}
+              </div>
 
+              <div className="space-y-3 mt-4">
                 <button
-                  type="submit"
-                  className="w-full mt-4 flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
+                  disabled={!selectedDate || !selectedTime}
+                  onClick={handleProceedToPatient}
+                  className="w-full flex items-center justify-center py-3.5 rounded-xl text-[13px] font-bold transition-all duration-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed bg-[#0055ff] text-white hover:bg-blue-600 shadow-lg shadow-blue-500/30 disabled:shadow-none"
                 >
-                  Continue to Booking Review
+                  Review Booking
                 </button>
-              </form>
+                <button
+                  onClick={() => setViewState('DATE_TIME')} className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
+                >
+                  Back
+                </button>
+              </div>
             </section>
           )}
 
@@ -1324,99 +1381,151 @@ const LabTestList = () => {
               <h2 className="text-[18px] font-black text-slate-900 mb-4">Review Your Booking</h2>
 
               {bookingError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl mb-4 text-xs flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-                  <span>{bookingError}</span>
+                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-[13px] font-medium mb-5 flex items-start gap-3 shadow-sm">
+                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{bookingError}</span>
                 </div>
               )}
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 mb-6">
-                <div>
-                  <p className="text-[11px] font-bold text-slate-500 mb-0.5">Test</p>
-                  <p className="text-[14px] font-black text-slate-800 whitespace-pre-line">{selectedItem?.name}</p>
-                </div>
-                <div className="border-t border-slate-100 pt-3">
-                  <p className="text-[11px] font-bold text-slate-500 mb-0.5">Laboratory</p>
-                  <p className="text-[13px] font-bold text-slate-800">{selectedLab?.name}</p>
-                  <p className="text-[11px] text-slate-500">{selectedLab?.address || selectedLab?.location}</p>
-                </div>
-                <div className="border-t border-slate-100 pt-3 grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-[11px] font-bold text-slate-500 mb-0.5">Date</p>
-                    <p className="text-[13px] font-bold text-slate-800">{selectedDate}</p>
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-5 overflow-hidden">
+                <div className="p-5 bg-slate-50/50 border-b border-slate-100 flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                    <TestTube className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold text-slate-500 mb-0.5">Time</p>
-                    <p className="text-[13px] font-bold text-slate-800">{selectedTime}</p>
+                    <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Selected Test</p>
+                    <p className="text-[14px] font-black text-slate-900">{selectedItem?.name}</p>
+                    <div className="flex items-center gap-1.5 mt-2 text-[11px] font-bold text-emerald-600 bg-emerald-50 w-max px-2 py-1 rounded-md border border-emerald-100">
+                      <Home className="w-3 h-3" />
+                      laboratory visit
+                    </div>
                   </div>
                 </div>
-                <div className="border-t border-slate-100 pt-3">
-                  <p className="text-[11px] font-bold text-slate-500 mb-0.5">Collection Type</p>
-                  <p className="text-[13px] font-bold text-slate-800">
-                    {collectionMethod === 'HOME' ? 'Home Sample Collection' : 'Visit Laboratory'}
-                  </p>
-                </div>
-                <div className="border-t border-slate-100 pt-3">
-                  <p className="text-[11px] font-bold text-slate-500 mb-0.5">Patient Details</p>
-                  <p className="text-[13px] font-bold text-slate-800">
-                    {patientDetails.name} ({patientDetails.age} y, {patientDetails.gender})
-                  </p>
-                  <p className="text-[11px] text-slate-500">Phone: {patientDetails.phone}</p>
-                </div>
-                {collectionMethod === 'HOME' && (
-                  <div className="border-t border-slate-100 pt-3">
-                    <p className="text-[11px] font-bold text-slate-500 mb-0.5">Collection Address</p>
-                    <p className="text-[13px] font-bold text-slate-800 leading-tight">{patientDetails.address}</p>
+
+                <div className="p-5 space-y-5">
+                  <div className="flex items-start gap-3">
+                    <Building2 className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Laboratory Partner</p>
+                      <p className="text-[13px] font-bold text-slate-800">{selectedLab?.name}</p>
+                      <p className="text-[11px] font-medium text-slate-500 mt-0.5">{selectedLab?.address || selectedLab?.location}</p>
+                    </div>
                   </div>
-                )}
+                  
+                  <div className="flex items-start gap-3">
+                    <Calendar className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Date & Time</p>
+                      <p className="text-[13px] font-bold text-slate-800">
+                        {selectedDate} <span className="text-slate-300 mx-1">•</span> {selectedTime}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <User className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Patient Details</p>
+                      <p className="text-[13px] font-bold text-slate-800">
+                        {patientDetails.name} <span className="text-slate-400 mx-1 font-medium">({patientDetails.gender}, {patientDetails.age} yrs)</span>
+                      </p>
+                      <p className="text-[11px] font-medium text-slate-500 mt-0.5">+91 {patientDetails.phone}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                    <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-500 mb-1 tracking-wide uppercase">Collection Address</p>
+                      <p className="text-[12px] font-bold text-slate-800 leading-snug">
+                        {patientDetails.address}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Price Breakdown */}
-              <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 space-y-2 mb-6">
-                <div className="flex justify-between text-xs text-slate-600">
-                  <span>Lab Test Fee</span>
-                  <span className="font-bold text-slate-900">{selectedLab?.price}</span>
-                </div>
-                {collectionMethod === 'HOME' && (
-                  <div className="flex justify-between text-xs text-slate-600">
-                    <span>Home Collection Charge</span>
-                    <span className="font-bold text-slate-900">
-                      {selectedLab?.homeCollectionFee ? `₹${selectedLab.homeCollectionFee}` : 'FREE'}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-5 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-4 -mt-4 opacity-50 pointer-events-none"></div>
+                <h3 className="font-black text-slate-900 text-[14px] mb-4 flex items-center gap-2 relative z-10">
+                  <FileCheck className="w-4 h-4 text-blue-600" /> Payment Summary
+                </h3>
+                <div className="space-y-3 relative z-10">
+                  <div className="flex justify-between items-center text-[13px]">
+                    <span className="font-medium text-slate-600">Diagnostic Test Price</span>
+                    <span className="font-bold text-slate-800">₹{effectiveTestPrice}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[13px]">
+                    <span className="font-medium text-slate-600 flex items-center gap-1.5">
+                      laboratory visit Fee
+                    </span>
+                    <span className="font-bold text-slate-800">
+                      {effectiveCollectionFee > 0 ? `₹${effectiveCollectionFee}` : 'Free'}
                     </span>
                   </div>
-                )}
-                <div className="border-t border-blue-200/60 pt-2 mt-2 flex justify-between items-center">
-                  <span className="text-[14px] font-bold text-blue-950">Total Payable Amount</span>
-                  <span className="text-[20px] font-black text-blue-700">
-                    {selectedLab?.price}
-                  </span>
+                  <div className="h-[1px] w-full border-t border-dashed border-slate-200 my-2"></div>
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <span className="block text-[11px] font-bold text-slate-400 mb-0.5 uppercase tracking-wide">Total Payable</span>
+                    </div>
+                    <span className="text-blue-600 font-black text-[20px] tracking-tight">₹{effectiveTotal}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Mode Selection */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2 mb-6">
+                <h3 className="font-bold text-slate-800 text-xs mb-2">Select Payment Mode</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('ONLINE')}
+                    className={`p-3 rounded-xl border text-left flex items-center gap-2 text-xs font-bold transition-colors ${
+                      paymentMethod === 'ONLINE'
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4 text-blue-600" />
+                    <span>Pay Online (UPI / Card)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('COD')}
+                    className={`p-3 rounded-xl border text-left flex items-center gap-2 text-xs font-bold transition-colors ${
+                      paymentMethod === 'COD'
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <Home className="w-4 h-4 text-emerald-600" />
+                    <span>Pay on Collection</span>
+                  </button>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <button
-                  disabled={isBookingSubmitting}
-                  onClick={handleConfirmBooking}
-                  className="w-full flex items-center justify-center gap-2 bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30 disabled:opacity-60"
+                  disabled={isSubmittingBooking}
+                  onClick={handleConfirmAndPay}
+                  className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 disabled:opacity-50 transition-colors shadow-lg shadow-blue-500/30 gap-2"
                 >
-                  {isBookingSubmitting ? (
+                  {isSubmittingBooking ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Confirming with Database...</span>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Creating Real Booking...</span>
                     </>
                   ) : (
-                    <>
-                      <CreditCard className="w-4 h-4" />
-                      <span>Confirm & Pay</span>
-                    </>
+                    <span>Confirm & Book (₹{effectiveTotal})</span>
                   )}
                 </button>
                 <button
-                  disabled={isBookingSubmitting}
-                  onClick={() => setViewState('PATIENT')}
-                  className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
+                  disabled={isSubmittingBooking}
+                  onClick={() => setViewState('DATE_TIME')}
+                  className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
                 >
-                  Back / Edit
+                  Back
                 </button>
               </div>
             </section>
@@ -1428,79 +1537,94 @@ const LabTestList = () => {
               <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-white shadow-sm">
                 <CheckCircle className="w-10 h-10 text-emerald-600" />
               </div>
-              <h2 className="text-[20px] font-black text-slate-900 mb-1">Lab Booking Confirmed!</h2>
+              <h2 className="text-[20px] font-black text-slate-900 mb-2">Booking Confirmed</h2>
               <p className="text-[12px] text-slate-500 font-medium mb-6">
-                Your diagnostic test appointment is securely registered in the database.
+                Your laboratory visit has been scheduled successfully.
               </p>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left mb-6">
-                <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-3">
-                  <span className="text-[11px] font-bold text-slate-500">Booking Number</span>
-                  <span className="text-[13px] font-black text-blue-600 font-mono">
-                    {confirmedBooking?.bookingNumber || 'MQ-LAB-CONFIRMED'}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-left mb-6 space-y-3 text-xs">
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                  <span className="font-bold text-slate-400">Booking ID</span>
+                  <span className="font-mono font-black text-slate-900">
+                    {createdBooking?.bookingNumber || 'MQ-HSC-001'}
                   </span>
                 </div>
-                <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-3">
-                  <span className="text-[11px] font-bold text-slate-500">Test</span>
-                  <span className="text-[13px] font-bold text-slate-800">{selectedItem?.name}</span>
-                </div>
-                <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-3">
-                  <span className="text-[11px] font-bold text-slate-500">Laboratory</span>
-                  <span className="text-[13px] font-bold text-slate-800">{selectedLab?.name}</span>
-                </div>
-                <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-3">
-                  <span className="text-[11px] font-bold text-slate-500">Patient</span>
-                  <span className="text-[13px] font-bold text-slate-800">{patientDetails.name}</span>
-                </div>
-                <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-3">
-                  <span className="text-[11px] font-bold text-slate-500">Date & Slot</span>
-                  <span className="text-[13px] font-bold text-slate-800">
-                    {selectedDate}, {selectedTime}
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                  <span className="font-bold text-slate-400">Status</span>
+                  <span className="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-md font-bold">
+                    {createdBooking?.status || 'CONFIRMED'}
                   </span>
                 </div>
-                <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-3">
-                  <span className="text-[11px] font-bold text-slate-500">Collection Type</span>
-                  <span className="text-[12px] font-semibold text-slate-800">
-                    {collectionMethod === 'HOME' ? 'Home Sample Collection' : 'Visit Laboratory'}
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                  <span className="font-bold text-slate-400">Test</span>
+                  <span className="font-bold text-slate-800">
+                    {createdBooking?.testName || selectedItem?.name}
                   </span>
                 </div>
-                <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-3">
-                  <span className="text-[11px] font-bold text-slate-500">Payment Status</span>
-                  <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md text-[10px] font-bold">
-                    PAID
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                  <span className="font-bold text-slate-400">Laboratory</span>
+                  <span className="font-bold text-slate-800">
+                    {createdBooking?.laboratoryName || selectedLab?.name}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] font-bold text-slate-500">Total Paid</span>
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                  <span className="font-bold text-slate-400">Patient</span>
+                  <span className="font-bold text-slate-800">
+                    {createdBooking?.patientName || patientDetails.name}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                  <span className="font-bold text-slate-400">Collection Date & Time</span>
+                  <span className="font-bold text-slate-800">
+                    {createdBooking?.date || selectedDate}, {createdBooking?.timeSlot || selectedTime}
+                  </span>
+                </div>
+                <div className="flex justify-between items-start pb-2 border-b border-slate-100">
+                  <span className="font-bold text-slate-400">Address</span>
+                  <span className="font-medium text-slate-800 text-right max-w-[200px]">
+                    {createdBooking?.collectionAddress || patientDetails.address}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                  <span className="font-bold text-slate-400">Payment Status</span>
+                  <span className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md font-bold">
+                    {createdBooking?.paymentStatus || 'PAID'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-1">
+                  <span className="font-bold text-slate-700">Total Amount</span>
                   <span className="text-[16px] font-black text-blue-600">
-                    {confirmedBooking?.amount || selectedLab?.price}
+                    {createdBooking?.amount || `₹${effectiveTotal}`}
                   </span>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <button
-                  onClick={() => setViewState('STATUS')}
+                  onClick={() => navigate('/my-bookings')}
                   className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
                 >
-                  Track Test Status
+                  View in My Bookings
                 </button>
+                {createdBooking?.id && (
+                  <button
+                    onClick={() => navigate(`/booking/${createdBooking.id}`)}
+                    className="w-full flex items-center justify-center bg-slate-100 text-slate-800 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-200 transition-colors"
+                  >
+                    View Booking Details
+                  </button>
+                )}
                 <button
-                  onClick={() => navigate('/my-bookings')}
-                  className="w-full flex items-center justify-center bg-blue-50 text-[#0055ff] py-3 rounded-xl text-[13px] font-bold hover:bg-blue-100 transition-colors"
+                  onClick={() => setViewState('STATUS')}
+                  className="w-full flex items-center justify-center bg-white text-blue-600 border border-blue-200 py-3 rounded-xl text-[13px] font-bold hover:bg-blue-50 transition-colors"
                 >
-                  Go to My Bookings
+                  Track Sample Status
                 </button>
                 <button
-                  onClick={() => {
-                    setViewState('LIST');
-                    setSelectedItem(null);
-                    setSelectedLab(null);
-                    setConfirmedBooking(null);
-                  }}
+                  onClick={() => navigate('/?bookingSuccess=true')}
                   className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
                 >
-                  Back to Lab Tests
+                  Back to Home
                 </button>
               </div>
             </section>
@@ -1509,14 +1633,11 @@ const LabTestList = () => {
           {/* VIEW: STATUS */}
           {viewState === 'STATUS' && (
             <section className="animate-in fade-in zoom-in-95 duration-300">
-              <h2 className="text-[18px] font-black text-slate-900 mb-1">Lab Test Booking Status</h2>
-              <p className="text-xs text-slate-500 mb-4 font-mono">
-                Booking ID: {confirmedBooking?.bookingNumber || 'MQ-LAB-RECORD'}
-              </p>
+              <h2 className="text-[18px] font-black text-slate-900 mb-4">laboratory visit Status</h2>
 
               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm relative pl-10 mb-6">
                 <div className="absolute left-[26px] top-8 bottom-8 w-0.5 bg-slate-100"></div>
-                <div className="absolute left-[26px] top-8 h-1/2 w-0.5 bg-emerald-500"></div>
+                <div className="absolute left-[26px] top-8 h-1/4 w-0.5 bg-emerald-500"></div>
 
                 <div className="flex flex-col gap-6 relative z-10">
                   <div className="flex items-center gap-4">
@@ -1526,29 +1647,15 @@ const LabTestList = () => {
                     <span className="text-[13px] font-bold text-slate-900">Booking Confirmed</span>
                   </div>
 
-                  {collectionMethod === 'HOME' ? (
-                    <>
-                      <div className="flex items-center gap-4">
-                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0 -ml-[1.5rem] ring-4 ring-white">
-                          <CheckCircle className="w-3 h-3 text-white" />
-                        </div>
-                        <span className="text-[13px] font-bold text-slate-900">Agent Assigned</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0 -ml-[1.5rem] ring-4 ring-white">
-                          <CheckCircle className="w-3 h-3 text-white" />
-                        </div>
-                        <span className="text-[13px] font-bold text-slate-900">Sample Collected</span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex items-center gap-4">
-                      <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0 -ml-[1.5rem] ring-4 ring-white">
-                        <CheckCircle className="w-3 h-3 text-white" />
-                      </div>
-                      <span className="text-[13px] font-bold text-slate-900">Sample Collection (Slot: {selectedTime})</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-4">
+                    <div className="w-5 h-5 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center shrink-0 -ml-[1.5rem] ring-4 ring-white"></div>
+                    <span className="text-[13px] font-medium text-slate-400">technician Assigned</span>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className="w-5 h-5 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center shrink-0 -ml-[1.5rem] ring-4 ring-white"></div>
+                    <span className="text-[13px] font-medium text-slate-400">Sample Collected</span>
+                  </div>
 
                   <div className="flex items-center gap-4">
                     <div className="w-5 h-5 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center shrink-0 -ml-[1.5rem] ring-4 ring-white"></div>
@@ -1561,29 +1668,20 @@ const LabTestList = () => {
                 </div>
               </div>
 
-              <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 flex flex-col items-center justify-center text-center">
+              <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 flex flex-col items-center justify-center text-center mb-4">
                 <FileCheck className="w-8 h-8 text-blue-500 mb-2" />
-                <h3 className="text-[14px] font-bold text-blue-900 mb-1">Reports In Progress</h3>
+                <h3 className="text-[14px] font-bold text-blue-900 mb-1">Reports in Progress</h3>
                 <p className="text-[11px] text-blue-700/80 mb-4">
-                  {selectedLab?.name} will upload your test results within{' '}
-                  {selectedItem?.time || '24 Hours'}.
+                  Your laboratory reports will be accessible online once sample testing is finalized.
                 </p>
-
-                <div className="flex gap-3 w-full">
-                  <button
-                    onClick={() => navigate('/my-bookings')}
-                    className="flex-1 flex items-center justify-center gap-2 bg-[#0055ff] text-white py-2.5 rounded-xl text-[12px] font-bold transition-colors"
-                  >
-                    View in My Bookings
-                  </button>
-                  <button
-                    onClick={() => navigate('/?bookingSuccess=true')}
-                    className="flex-1 flex items-center justify-center gap-2 bg-white text-[#0055ff] border border-blue-200 py-2.5 rounded-xl text-[12px] font-bold transition-colors"
-                  >
-                    Back to Home
-                  </button>
-                </div>
               </div>
+
+              <button
+                onClick={() => setViewState('LIST')}
+                className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
+              >
+                Back to laboratory visit
+              </button>
             </section>
           )}
         </div>

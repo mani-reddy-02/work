@@ -651,9 +651,25 @@ export const getMyLaboratoryAvailability = async (req: Request, res: Response, n
       return res.status(403).json({ success: false, error: 'User is not associated with a hospital' });
     }
 
-    const lab = await prisma.lab.findFirst({ where: { hospitalId } });
+    let lab = await prisma.lab.findFirst({ where: { hospitalId } });
     if (!lab) {
-      return res.status(404).json({ success: false, error: 'No lab found for this hospital' });
+      // Auto-create a default lab for this hospital/standalone lab
+      const hospital = await prisma.hospital.findUnique({ where: { id: hospitalId } });
+      if (!hospital) {
+        return res.status(404).json({ success: false, error: 'Hospital not found' });
+      }
+      lab = await prisma.lab.create({
+        data: {
+          name: hospital.businessType === 'LABORATORY' ? hospital.name : `${hospital.name} - Main Laboratory`,
+          type: hospital.businessType === 'LABORATORY' ? 'STANDALONE' : 'HOSPITAL_BASED',
+          hospitalId: hospital.id,
+          contactPhone: hospital.contactPhone,
+          email: hospital.contactEmail,
+          city: hospital.city,
+          state: hospital.state,
+          status: 'Active'
+        }
+      });
     }
 
     const schedules = await prisma.labSchedule.findMany({
@@ -676,9 +692,25 @@ export const updateMyLaboratoryAvailability = async (req: Request, res: Response
       return res.status(403).json({ success: false, error: 'User is not associated with a hospital' });
     }
 
-    const lab = await prisma.lab.findFirst({ where: { hospitalId } });
+    let lab = await prisma.lab.findFirst({ where: { hospitalId } });
     if (!lab) {
-      return res.status(404).json({ success: false, error: 'No lab found for this hospital' });
+      // Auto-create a default lab for this hospital/standalone lab
+      const hospital = await prisma.hospital.findUnique({ where: { id: hospitalId } });
+      if (!hospital) {
+        return res.status(404).json({ success: false, error: 'Hospital not found' });
+      }
+      lab = await prisma.lab.create({
+        data: {
+          name: hospital.businessType === 'LABORATORY' ? hospital.name : `${hospital.name} - Main Laboratory`,
+          type: hospital.businessType === 'LABORATORY' ? 'STANDALONE' : 'HOSPITAL_BASED',
+          hospitalId: hospital.id,
+          contactPhone: hospital.contactPhone,
+          email: hospital.contactEmail,
+          city: hospital.city,
+          state: hospital.state,
+          status: 'Active'
+        }
+      });
     }
 
     const { schedules } = req.body;

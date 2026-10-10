@@ -9,35 +9,32 @@ datasource db {
 }
 
 model Hospital {
-  id                 String       @id @default(uuid())
-  name               String
-  businessType       BusinessType
-  facilityType       String?
-  registrationNumber String?
-  establishedYear    String?
-  logoUrl            String?
-  contactPhone       String?
-  contactEmail       String?
-  website            String?
-  emergencyContact   String?
-  addressLine1       String?
-  addressLine2       String?
-  area               String?
-  city               String?
-  state              String?
-  country            String?
-  pincode            String?
-  services           String[]
-
-  // Verification
-  verificationStatus String    @default("PENDING")
-  cancellationReason String?
-  cancelledAt        DateTime?
-  cancelledBy        String?
-
+  id                  String                 @id @default(uuid())
+  name                String
+  businessType        BusinessType
+  facilityType        String?
+  registrationNumber  String?
+  establishedYear     String?
+  logoUrl             String?
+  contactPhone        String?
+  contactEmail        String?
+  website             String?
+  emergencyContact    String?
+  addressLine1        String?
+  addressLine2        String?
+  area                String?
+  city                String?
+  state               String?
+  country             String?
+  pincode             String?
+  services            String[]
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
   hospitalShare       Float                  @default(80.0)
+  cancellationReason  String?
+  cancelledAt         DateTime?
+  cancelledBy         String?
+  verificationStatus  String                 @default("PENDING")
   departments         Department[]
   verifications       HospitalVerification[]
   opBookings          OPBooking[]
@@ -66,17 +63,17 @@ model PlatformSpecialty {
 }
 
 model PlatformCondition {
-  id          String            @id @default(uuid())
-  name        String            @unique
-  description String?
-  specialtyId String
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  icon        String?
-  isActive    Boolean?          @default(true)
-  classification String         @default("GENERAL") // GENERAL, ADVANCED
-  opBookings  OPBooking[]
-  specialty   PlatformSpecialty @relation(fields: [specialtyId], references: [id])
+  id             String            @id @default(uuid())
+  name           String            @unique
+  description    String?
+  specialtyId    String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  icon           String?
+  isActive       Boolean?          @default(true)
+  classification String            @default("GENERAL")
+  opBookings     OPBooking[]
+  specialty      PlatformSpecialty @relation(fields: [specialtyId], references: [id])
 }
 
 model HospitalVerification {
@@ -86,8 +83,8 @@ model HospitalVerification {
   fileUrl      String
   createdAt    DateTime                    @default(now())
   updatedAt    DateTime                    @updatedAt
-  histories    MedicalCampRequestHistory[]
   hospital     Hospital                    @relation(fields: [hospitalId], references: [id])
+  histories    MedicalCampRequestHistory[]
 }
 
 model User {
@@ -99,7 +96,6 @@ model User {
   role                    Role
   designation             String?
   active                  Boolean               @default(true)
-  whatsappConsent         Boolean?              @default(true)
   hospitalId              String?
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
@@ -117,6 +113,7 @@ model User {
   specialization          String?
   digitalSignature        String?
   prescriptionSettings    Json?
+  whatsappConsent         Boolean?              @default(true)
   doctorBookings          OPBooking[]           @relation("DoctorBookings")
   patientBookings         OPBooking[]           @relation("PatientBookings")
   department              Department?           @relation(fields: [departmentId], references: [id])
@@ -165,7 +162,6 @@ model Disease {
   isActive     Boolean    @default(true)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-  
   department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
 
   @@unique([departmentId, name])
@@ -190,9 +186,9 @@ model RolePermission {
   enabled      Boolean                     @default(false)
   createdAt    DateTime                    @default(now())
   updatedAt    DateTime                    @updatedAt
-  histories    MedicalCampRequestHistory[]
   hospital     Hospital                    @relation(fields: [hospitalId], references: [id])
   permission   Permission                  @relation(fields: [permissionId], references: [id])
+  histories    MedicalCampRequestHistory[]
 
   @@unique([hospitalId, role, permissionId])
 }
@@ -384,25 +380,24 @@ model MedicalCampRequest {
 }
 
 model MedicalCampRequestHistory {
-  id                 String         @id @default(uuid())
-  requestId          String
-  requestType        String         @default("CAMP")
-  status             RequestStatus
-  previousStatus     RequestStatus?
-  actionBy           String?
-  actionAt           DateTime       @default(now())
-  cancellationReason String?
-  notes              String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-
-  request                MedicalCampRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  hospitalVerification   HospitalVerification? @relation(fields: [hospitalVerificationId], references: [id])
+  id                     String                @id @default(uuid())
+  requestId              String
+  requestType            String                @default("CAMP")
+  status                 RequestStatus
+  previousStatus         RequestStatus?
+  actionBy               String?
+  actionAt               DateTime              @default(now())
+  cancellationReason     String?
+  notes                  String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
   hospitalVerificationId String?
-  rolePermission         RolePermission?       @relation(fields: [rolePermissionId], references: [id])
   rolePermissionId       String?
-  notification           Notification?         @relation(fields: [notificationId], references: [id])
   notificationId         String?
+  hospitalVerification   HospitalVerification? @relation(fields: [hospitalVerificationId], references: [id])
+  notification           Notification?         @relation(fields: [notificationId], references: [id])
+  request                MedicalCampRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  rolePermission         RolePermission?       @relation(fields: [rolePermissionId], references: [id])
 
   @@index([requestId])
   @@map("medical_camp_request_history")
@@ -564,6 +559,7 @@ model LabBooking {
   hospitalSharePercentage      Float?
   mediqueeAmount               Float?
   mediqueeCommissionPercentage Float?
+  reportUrl                    String?
   items                        LabBookingItem[]
   hospital                     Hospital         @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
   patient                      User             @relation(fields: [patientId], references: [id], onDelete: Cascade)
@@ -583,15 +579,15 @@ model LabBookingItem {
 }
 
 model Lab {
-  id                    String    @id @default(uuid())
+  id                    String                 @id @default(uuid())
   hospitalId            String?
   platformDepartmentId  String?
   name                  String
   labLicenseNumber      String?
   labLicenseDocumentUrl String?
   licenseValidUntil     DateTime?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
   address               String?
   city                  String?
   contactPhone          String?
@@ -599,17 +595,15 @@ model Lab {
   email                 String?
   pinCode               String?
   state                 String?
-  status                String    @default("Active")
-  type                  String    @default("HOSPITAL_BASED")
-
-  // Verification
-  verificationStatus String                 @default("PENDING")
-  cancellationReason String?
-  cancelledAt        DateTime?
-  cancelledBy        String?
-  hospital           Hospital?              @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
-  platformDepartment PlatformLabDepartment? @relation(fields: [platformDepartmentId], references: [id])
-  schedules          LabSchedule[]
+  status                String                 @default("Active")
+  type                  String                 @default("HOSPITAL_BASED")
+  cancellationReason    String?
+  cancelledAt           DateTime?
+  cancelledBy           String?
+  verificationStatus    String                 @default("PENDING")
+  schedules             LabSchedule[]
+  hospital              Hospital?              @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  platformDepartment    PlatformLabDepartment? @relation(fields: [platformDepartmentId], references: [id])
 
   @@map("hospital_labs")
 }
@@ -640,15 +634,48 @@ model HomePagePoster {
   buttonAction String?
   displayOrder Int       @default(0)
   isActive     Boolean   @default(true)
-  module       String    @default("HOME")
-  position     String    @default("HERO_BANNER")
   startDate    DateTime?
   endDate      DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   isDefault    Boolean   @default(false)
+  module       String    @default("HOME")
+  position     String    @default("HERO_BANNER")
 
   @@map("home_page_posters")
+}
+
+model WhatsAppOtp {
+  id           String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  phone        String
+  code         String?
+  expiresAt    DateTime  @db.Timestamp(6)
+  verified     Boolean   @default(false)
+  attempts     Int       @default(0)
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  codeHash     String?
+  lastResentAt DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([phone], map: "idx_whatsapp_otps_phone")
+  @@map("whatsapp_otps")
+}
+
+model WhatsAppMessageLog {
+  id                String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  messageType       String
+  recipient         String
+  appointmentId     String?
+  providerMessageId String?
+  deliveryStatus    String   @default("PENDING")
+  errorDetails      String?
+  attempts          Int      @default(1)
+  createdAt         DateTime @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
+  @@index([appointmentId], map: "idx_whatsapp_message_logs_appointmentid")
+  @@index([providerMessageId], map: "idx_whatsapp_message_logs_providermessageid")
+  @@index([recipient], map: "idx_whatsapp_message_logs_recipient")
+  @@map("whatsapp_message_logs")
 }
 
 enum SpecimenType {
@@ -722,37 +749,3 @@ enum DoctorPresenceStatus {
   IN_SURGERY
   OFF_DUTY
 }
-
-model WhatsAppOtp {
-  id          String   @id @default(uuid())
-  phone       String
-  code        String?
-  codeHash    String?
-  expiresAt   DateTime
-  verified    Boolean  @default(false)
-  attempts    Int      @default(0)
-  lastResentAt DateTime @default(now())
-  createdAt   DateTime @default(now())
-
-  @@index([phone])
-  @@map("whatsapp_otps")
-}
-
-model WhatsAppMessageLog {
-  id                String   @id @default(uuid())
-  messageType       String
-  recipient         String
-  appointmentId     String?
-  providerMessageId String?
-  deliveryStatus    String   @default("PENDING")
-  errorDetails      String?
-  attempts          Int      @default(1)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  @@index([recipient])
-  @@index([appointmentId])
-  @@index([providerMessageId])
-  @@map("whatsapp_message_logs")
-}
-

@@ -23,13 +23,7 @@ const menuItems = [
     path: '/profile/addresses',
     colorClass: 'text-emerald-500 bg-emerald-50'
   },
-  { 
-    icon: Users, 
-    label: 'Family Members', 
-    subLabel: 'Manage your family profiles',
-    path: '/family',
-    colorClass: 'text-orange-500 bg-orange-50'
-  },
+
   { 
     icon: Settings, 
     label: 'Language & Appearance', 
@@ -37,13 +31,7 @@ const menuItems = [
     path: '/profile/preferences',
     colorClass: 'text-indigo-500 bg-indigo-50'
   },
-  { 
-    icon: FileText, 
-    label: 'Health Records', 
-    subLabel: 'View & manage your medical reports',
-    path: '/services/reports',
-    colorClass: 'text-rose-500 bg-rose-50'
-  },
+
   { 
     icon: HelpCircle, 
     label: 'Help & Support', 

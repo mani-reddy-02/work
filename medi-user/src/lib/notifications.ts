@@ -13,6 +13,7 @@ export interface AppNotification {
 }
 
 let globalNotifications: AppNotification[] = [];
+let backendUnreadCount = 0;
 let listeners = new Set<() => void>();
 let isInitialized = false;
 let sseConnection: EventSource | null = null;
@@ -52,11 +53,17 @@ const initSSE = () => {
   sseConnection.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
+      if (data.type === 'HANDSHAKE') {
+        backendUnreadCount = data.unreadCount || 0;
+        notifyListeners();
+        return;
+      }
       if (data.type === 'ping') return;
       
       if (data.notification) {
         // Add new notification to the top
         globalNotifications = [data.notification, ...globalNotifications];
+        backendUnreadCount += 1;
         notifyListeners();
       }
     } catch (err) {
@@ -79,6 +86,17 @@ export const initializeNotifications = () => {
   initSSE();
 };
 
+export const clearNotifications = () => {
+  globalNotifications = [];
+  backendUnreadCount = 0;
+  isInitialized = false;
+  if (sseConnection) {
+    sseConnection.close();
+    sseConnection = null;
+  }
+  notifyListeners();
+};
+
 export const useNotifications = () => {
   const [notifications, setNotificationsState] = useState(globalNotifications);
 
@@ -94,9 +112,13 @@ export const useNotifications = () => {
   }, []);
 
   const markAsRead = async (id: string) => {
+    const wasUnread = !globalNotifications.find(n => n.id === id)?.read;
     globalNotifications = globalNotifications.map(n => 
       n.id === id ? { ...n, read: true } : n
     );
+    if (wasUnread) {
+      backendUnreadCount = Math.max(0, backendUnreadCount - 1);
+    }
     notifyListeners();
 
     try {
@@ -114,6 +136,7 @@ export const useNotifications = () => {
 
   const markAllAsRead = async () => {
     globalNotifications = globalNotifications.map(n => ({ ...n, read: true }));
+    backendUnreadCount = 0;
     notifyListeners();
 
     try {
@@ -129,7 +152,10 @@ export const useNotifications = () => {
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // Use backend unread count, fallback to local calculation if not yet loaded via SSE
+  const unreadCount = backendUnreadCount > 0 
+    ? backendUnreadCount 
+    : globalNotifications.filter(n => !n.read).length;
 
   return {
     notifications,

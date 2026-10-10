@@ -10,7 +10,7 @@ import { ConditionLabel } from "@/components/shared/ConditionLabel"
 type UploadStep = 1 | 2 | 3 | 'success'
 
 interface SelectedOrder { id: string; patient: string; test: string; date: string; status?: string }
-interface SelectedFile { name: string; type: string; size: string }
+interface SelectedFile { name: string; type: string; size: string; base64: string }
 
 export function UploadReport() {
   const navigate = useNavigate()
@@ -75,7 +75,17 @@ export function UploadReport() {
     const sizeStr = file.size > 1024 * 1024
       ? `${(file.size / 1024 / 1024).toFixed(1)} MB`
       : `${(file.size / 1024).toFixed(0)} KB`
-    setSelectedFile({ name: file.name, type: file.type, size: sizeStr })
+    
+    const reader = new FileReader()
+    reader.onload = () => {
+      setSelectedFile({
+        name: file.name,
+        type: file.type,
+        size: sizeStr,
+        base64: reader.result as string
+      })
+    }
+    reader.readAsDataURL(file)
   }
 
   const handleUpload = async () => {

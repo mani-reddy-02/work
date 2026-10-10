@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { updateGlobalProfile } from './profile';
+import { clearNotifications, initializeNotifications } from './notifications';
 
 export interface User {
   id: string;
@@ -132,6 +133,7 @@ export const useAuth = () => {
           });
         }
 
+        initializeNotifications();
         notifyListeners();
         return { success: true, user: json.data.user };
       } catch (err: any) {
@@ -225,6 +227,7 @@ export const useAuth = () => {
         });
       }
 
+      initializeNotifications();
       notifyListeners();
       return { success: true, user: json.data.user };
     } catch (err: any) {
@@ -243,6 +246,7 @@ export const useAuth = () => {
 
     localStorage.removeItem('mediquee_token');
     localStorage.setItem('mediquee_is_logged_in', 'false');
+    clearNotifications();
     notifyListeners();
   };
 

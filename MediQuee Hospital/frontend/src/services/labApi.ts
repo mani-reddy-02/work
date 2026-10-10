@@ -213,15 +213,19 @@ export const labApi = {
     }
     return data.data;
   },
-  async uploadReport(orderId: string, payload: unknown): Promise<{ id: string }> {
+  async uploadReport(orderId: string, payload: any): Promise<{ id: string }> {
     const res = await fetch(`${API_BASE}/lab-bookings/hospital/${orderId}/status`, {
       method: 'PATCH',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ status: 'REPORT_READY' })
+      body: JSON.stringify({ 
+        status: 'REPORT_READY',
+        reportData: payload.base64,
+        reportName: payload.name
+      })
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
-      throw new Error(data?.error?.message || 'Failed to update order to Report Ready');
+      throw new Error(data?.error?.message || 'Failed to upload report');
     }
     return { id: orderId };
   },

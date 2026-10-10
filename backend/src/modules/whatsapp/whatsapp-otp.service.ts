@@ -40,7 +40,7 @@ export class WhatsAppOtpService {
     });
 
     if (latestActive) {
-      const elapsedSeconds = Math.floor((Date.now() - new Date(latestActive.lastResentAt).getTime()) / 1000);
+      const elapsedSeconds = Math.floor((Date.now() - new Date(latestActive.lastResentAt || latestActive.createdAt).getTime()) / 1000);
       if (elapsedSeconds < this.COOLDOWN_SECONDS) {
         const remaining = this.COOLDOWN_SECONDS - elapsedSeconds;
         throw new Error(`Please wait ${remaining} seconds before requesting a new OTP.`);

@@ -1391,26 +1391,38 @@ const HomeSampleList = () => {
                     <p className="text-xs text-slate-500 font-medium">Fetching accurate slots...</p>
                   </div>
                 ) : (
-                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-3 gap-3">
-                    {availableSlots.map((s) => {
-                      const isSelected = selectedTime === s.slot;
-                      return (
-                        <button
-                          key={s.slot}
-                          disabled={!s.available}
-                          onClick={() => setSelectedTime(s.slot)}
-                          className={`px-2 py-3 rounded-xl text-[12px] font-bold border transition-all duration-200 flex items-center justify-center ${
-                            !s.available
-                              ? 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed line-through'
-                              : isSelected
-                              ? 'bg-blue-50 border-[#0055ff] text-[#0055ff] shadow-sm ring-1 ring-blue-600'
-                              : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-slate-50'
-                          }`}
-                        >
-                          {s.slot}
-                        </button>
-                      );
-                    })}
+                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    {availableSlots.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-3">
+                        {availableSlots.map((s) => {
+                          const isSelected = selectedTime === s.slot;
+                          return (
+                            <button
+                              key={s.slot}
+                              disabled={!s.available}
+                              onClick={() => setSelectedTime(s.slot)}
+                              className={`px-2 py-3 rounded-xl text-[12px] font-bold border transition-all duration-200 flex items-center justify-center ${
+                                !s.available
+                                  ? 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed line-through'
+                                  : isSelected
+                                  ? 'bg-blue-50 border-[#0055ff] text-[#0055ff] shadow-sm ring-1 ring-blue-600'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-slate-50'
+                              }`}
+                            >
+                              {s.slot}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-center py-6">
+                        <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-2">
+                          <span className="text-slate-400 text-xl">🕒</span>
+                        </div>
+                        <p className="text-slate-600 font-semibold text-sm">No slots available</p>
+                        <p className="text-slate-400 text-xs mt-1">Please select another date</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1419,7 +1431,7 @@ const HomeSampleList = () => {
                 <button
                   disabled={!selectedDate || !selectedTime}
                   onClick={handleProceedToReview}
-                  className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold disabled:opacity-50 hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
+                  className="w-full flex items-center justify-center py-3.5 rounded-xl text-[13px] font-bold transition-all duration-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed bg-[#0055ff] text-white hover:bg-blue-600 shadow-lg shadow-blue-500/30 disabled:shadow-none"
                 >
                   Review Booking
                 </button>

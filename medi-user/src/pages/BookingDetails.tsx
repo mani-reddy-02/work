@@ -15,6 +15,7 @@ import {
   Phone,
   Mail,
   Home,
+  FileText,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { opAppointmentApi, type OpBookingRecord } from '../lib/opAppointmentApi';
@@ -280,6 +281,15 @@ const BookingDetails = () => {
               </div>
 
               <div className="pt-2 pb-4 space-y-3">
+                {(labBooking.status === 'REPORT_READY' || labBooking.status === 'COMPLETED') && labBooking.reportUrl && (
+                  <button
+                    onClick={() => window.open(labBooking.reportUrl, '_blank')}
+                    className="w-full bg-emerald-600 text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-emerald-600/30 hover:bg-emerald-700 transition-colors text-sm flex items-center justify-center gap-2"
+                  >
+                    <FileText className="w-5 h-5" />
+                    Download Lab Report
+                  </button>
+                )}
                 <button
                   onClick={() => navigate('/my-bookings')}
                   className="w-full bg-primary text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-primary/30 hover:bg-blue-700 transition-colors text-sm"
