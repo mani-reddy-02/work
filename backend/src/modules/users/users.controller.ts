@@ -29,6 +29,7 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
         hospitalId: true,
         departmentId: true,
         createdAt: true,
+        active: true,
         hospital: {
           select: {
             id: true,
@@ -156,6 +157,7 @@ export const updateMe = async (req: Request, res: Response, next: NextFunction) 
         hospitalId: true,
         departmentId: true,
         createdAt: true,
+        active: true,
         hospital: {
           select: {
             id: true,

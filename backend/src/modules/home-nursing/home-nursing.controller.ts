@@ -640,17 +640,27 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
       title: 'Booking Confirmed',
       message: `Your Home Nursing service (${service.name}) is confirmed for ${displayDate} at ${newBooking.timeSlot}.`,
       type: 'BOOKING_CONFIRMED',
-      metadata: { bookingId: newBooking.id, type: 'HOME_NURSING' }
+      metadata: { 
+        bookingId: newBooking.id, 
+        type: 'HOME_NURSING',
+        targetRoles: ['PATIENT']
+      },
+      targetRoles: ['PATIENT']
     }).catch(console.error);
 
-    // Fire notification to hospital
+    // Fire notification to hospital (Hospital Admin and Nurse only)
     sendNotification({
       hospitalId: newBooking.hospitalId,
       userId: newBooking.nurseId,
       title: 'New Home Nursing Booking',
       message: `Patient ${newBooking.patientName} booked ${service.name} for ${displayDate} at ${newBooking.timeSlot}.`,
       type: 'activity',
-      metadata: { bookingId: newBooking.id, type: 'HOME_NURSING' }
+      metadata: { 
+        bookingId: newBooking.id, 
+        type: 'HOME_NURSING',
+        targetRoles: ['HOSPITAL_ADMIN', 'NURSE']
+      },
+      targetRoles: ['HOSPITAL_ADMIN', 'NURSE']
     }).catch(console.error);
 
     res.status(201).json({
@@ -1205,30 +1215,34 @@ export const updateNurseVisitStatus = async (req: Request, res: Response, next: 
       // Notify patient
       await sendNotification({
         userId: updated.userId,
-        hospitalId: updated.hospitalId,
+        hospitalId: null,
         title: 'Nurse Reached - Service In Progress',
         message: `${nurseName} has arrived and started the ${updated.service.name} service.`,
         type: 'appointment',
-        metadata: { bookingId: updated.id, status: 'IN_PROGRESS' },
+        metadata: { bookingId: updated.id, status: 'IN_PROGRESS', targetRoles: ['PATIENT'] },
+        targetRoles: ['PATIENT']
       });
     } else if (status === 'COMPLETED') {
       // Notify patient that service is completed & request feedback
       await sendNotification({
         userId: updated.userId,
-        hospitalId: updated.hospitalId,
+        hospitalId: null,
         title: 'Home Nursing Service Completed',
         message: `Your ${updated.service.name} service with ${nurseName} has been completed successfully. We value your feedback!`,
         type: 'appointment',
-        metadata: { bookingId: updated.id, status: 'COMPLETED' },
+        metadata: { bookingId: updated.id, status: 'COMPLETED', targetRoles: ['PATIENT'] },
+        targetRoles: ['PATIENT']
       });
 
       // Notify hospital
       await sendNotification({
         hospitalId: updated.hospitalId,
+        userId: updated.nurseId,
         title: 'Home Nursing Service Finished',
         message: `${nurseName} has successfully completed ${updated.service.name} for ${updated.patientName}.`,
-        type: 'appointment',
-        metadata: { bookingId: updated.id, status: 'COMPLETED' },
+        type: 'activity',
+        metadata: { bookingId: updated.id, status: 'COMPLETED', targetRoles: ['HOSPITAL_ADMIN', 'NURSE'] },
+        targetRoles: ['HOSPITAL_ADMIN', 'NURSE']
       });
     }
 
@@ -1424,17 +1438,19 @@ export const assignNurseToBooking = async (req: Request, res: Response, next: Ne
       title: 'New Home Visit Assigned',
       message: `You have been assigned to ${updated.service.name} for ${updated.patientName} on ${updated.serviceDate.toISOString().split('T')[0]} (${updated.timeSlot}).`,
       type: 'appointment',
-      metadata: { bookingId: updated.id, nurseId: nurse.id },
+      metadata: { bookingId: updated.id, nurseId: nurse.id, targetRoles: ['NURSE'] },
+      targetRoles: ['NURSE']
     });
 
     // Notify Patient
     await sendNotification({
       userId: updated.userId,
-      hospitalId: updated.hospitalId,
+      hospitalId: null,
       title: 'Nurse Assigned to Your Booking',
       message: `${nurse.name} has been assigned for your ${updated.service.name} on ${updated.serviceDate.toISOString().split('T')[0]}. Contact: ${nurse.phone || 'Available via App'}.`,
       type: 'appointment',
-      metadata: { bookingId: updated.id, nurseId: nurse.id },
+      metadata: { bookingId: updated.id, nurseId: nurse.id, targetRoles: ['PATIENT'] },
+      targetRoles: ['PATIENT']
     });
 
     res.json({

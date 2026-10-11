@@ -302,7 +302,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
 
-    // Broadcast real-time notification to hospital & doctor
+    // Broadcast real-time notification to hospital reception & assigned doctor
     sendNotification({
       hospitalId: result.hospitalId,
       userId: result.doctorId,
@@ -315,8 +315,10 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
         doctorName: result.doctor.name,
         departmentName: result.department.name,
         timeSlot: result.timeSlot,
-        date: result.appointmentDate
-      }
+        date: result.appointmentDate,
+        targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
+      },
+      targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
     }).catch(console.error);
 
     // Send notification to the patient
@@ -328,7 +330,12 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       title: 'Booking Confirmed',
       message: `Your ${isVideo ? 'video ' : ''}consultation with Dr. ${result.doctor.name} is confirmed for ${displayDate} at ${result.timeSlot}.`,
       type: 'BOOKING_CONFIRMED',
-      metadata: { bookingId: result.id, type: isVideo ? 'VIDEO' : 'OP' }
+      metadata: { 
+        bookingId: result.id, 
+        type: isVideo ? 'VIDEO' : 'OP',
+        targetRoles: ['PATIENT']
+      },
+      targetRoles: ['PATIENT']
     }).catch(console.error);
 
     // Trigger Meta WhatsApp appointment confirmation (Patient & Staff)
@@ -632,13 +639,31 @@ export const cancelAppointment = async (req: Request, res: Response, next: NextF
       },
     });
 
+    // If staff cancelled, notify the patient
+    if (!isPatient && updated.patientId) {
+      sendNotification({
+        hospitalId: null,
+        userId: updated.patientId,
+        title: 'Appointment Cancelled',
+        message: `Your appointment with Dr. ${updated.doctor.name} has been cancelled.`,
+        type: 'BOOKING_CANCELLED',
+        metadata: { bookingId: updated.id, targetRoles: ['PATIENT'] },
+        targetRoles: ['PATIENT']
+      }).catch(console.error);
+    }
+
+    // Notify assigned doctor, receptionists, and hospital admin
     sendNotification({
       hospitalId: updated.hospitalId,
-      userId: isPatient ? updated.doctorId : updated.patientId,
+      userId: updated.doctorId,
       title: 'Appointment Cancelled',
       message: `Appointment for ${updated.patientName} with Dr. ${updated.doctor.name} has been cancelled.`,
       type: 'BOOKING_CANCELLED',
-      metadata: { bookingId: updated.id },
+      metadata: { 
+        bookingId: updated.id,
+        targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR'] 
+      },
+      targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
     }).catch(console.error);
 
     // Trigger Meta WhatsApp cancellation notification
@@ -715,13 +740,31 @@ export const rescheduleAppointment = async (req: Request, res: Response, next: N
       },
     });
 
+    // If staff rescheduled, notify the patient
+    if (!isPatient && updated.patientId) {
+      sendNotification({
+        hospitalId: null,
+        userId: updated.patientId,
+        title: 'Appointment Rescheduled',
+        message: `Your appointment with Dr. ${updated.doctor.name} has been rescheduled to ${date} at ${timeSlot}.`,
+        type: 'BOOKING_RESCHEDULED',
+        metadata: { bookingId: updated.id, targetRoles: ['PATIENT'] },
+        targetRoles: ['PATIENT']
+      }).catch(console.error);
+    }
+
+    // Notify assigned doctor, receptionists, and hospital admin
     sendNotification({
       hospitalId: updated.hospitalId,
-      userId: isPatient ? updated.doctorId : updated.patientId,
+      userId: updated.doctorId,
       title: 'Appointment Rescheduled',
       message: `Appointment for ${updated.patientName} with Dr. ${updated.doctor.name} rescheduled to ${date} at ${timeSlot}.`,
       type: 'BOOKING_RESCHEDULED',
-      metadata: { bookingId: updated.id },
+      metadata: { 
+        bookingId: updated.id,
+        targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR'] 
+      },
+      targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
     }).catch(console.error);
 
     // Trigger Meta WhatsApp rescheduled notification

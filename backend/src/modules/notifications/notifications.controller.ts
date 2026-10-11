@@ -14,11 +14,11 @@ import {
 /**
  * GET /api/v1/notifications/stream
  * Real-time Server-Sent Events (SSE) stream.
- * Can be authenticated via Bearer token header or ?token= query parameter (for EventSource).
+ * Authenticated via Bearer token header or ?token= query parameter (for EventSource).
+ * Subscribes user with their verified role and hospital association.
  */
 export const streamNotifications = async (req: Request, res: Response) => {
-  let userId: string | null = null;
-  let hospitalId: string | null = null;
+  let user: { id: string; role: Role; hospitalId: string | null } | null = null;
 
   try {
     const token = (typeof req.query.token === 'string' ? req.query.token : null) ||
@@ -30,19 +30,21 @@ export const streamNotifications = async (req: Request, res: Response) => {
     }
 
     const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: string };
-    const user = await prisma.user.findUnique({
+    const dbUser = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: { id: true, hospitalId: true, role: true, active: true }
     });
 
-    if (!user || !user.active) {
+    if (!dbUser || !dbUser.active) {
       res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Invalid or inactive account' } });
       return;
     }
 
-    userId = user.id;
-    // Nurses and Patients only receive notifications targeted directly to them, not generic hospital broadcasts
-    hospitalId = (user.role === Role.NURSE || user.role === Role.PATIENT) ? null : user.hospitalId;
+    user = {
+      id: dbUser.id,
+      role: dbUser.role,
+      hospitalId: dbUser.hospitalId
+    };
   } catch (error) {
     res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Invalid token' } });
     return;
@@ -55,11 +57,21 @@ export const streamNotifications = async (req: Request, res: Response) => {
   res.setHeader('X-Accel-Buffering', 'no'); // Disable proxy buffering (Nginx, etc.)
   res.flushHeaders();
 
-  // Register client in stream manager
-  notificationStreamManager.addClient(hospitalId, userId, res);
+  // Register client with verified identity, role, and hospital
+  notificationStreamManager.addClient({
+    res,
+    userId: user.id,
+    role: user.role,
+    hospitalId: user.hospitalId
+  });
 
-  // Send initial handshake and live unread count
-  const initialUnread = await fetchUnreadCount({ hospitalId, userId });
+  // Send initial handshake and live unread count matching this user's role
+  const initialUnread = await fetchUnreadCount({
+    role: user.role,
+    userId: user.id,
+    hospitalId: user.hospitalId
+  });
+
   res.write(`data: ${JSON.stringify({ type: 'HANDSHAKE', unreadCount: initialUnread, timestamp: new Date().toISOString() })}\n\n`);
 
   // Periodic heartbeat every 25 seconds to keep connection alive
@@ -74,27 +86,26 @@ export const streamNotifications = async (req: Request, res: Response) => {
   // Cleanup on connection disconnect
   req.on('close', () => {
     clearInterval(pingInterval);
-    notificationStreamManager.removeClient(hospitalId, userId, res);
+    notificationStreamManager.removeClient(res);
     res.end();
   });
 };
 
 /**
  * GET /api/v1/notifications
- * Retrieves paginated notifications for the authenticated user/hospital.
+ * Retrieves paginated notifications for the authenticated user based strictly on their role & hospital.
  */
 export const getNotifications = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isRestrictedRole = req.user?.role === Role.NURSE || req.user?.role === Role.PATIENT;
-    const hospitalId = isRestrictedRole ? null : req.user?.hospitalId;
-    const userId = req.user?.id;
+    const user = req.user!;
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
     const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
     const unreadOnly = req.query.unread === 'true';
 
     const result = await fetchNotifications({
-      hospitalId,
-      userId,
+      role: user.role,
+      userId: user.id,
+      hospitalId: user.hospitalId,
       limit,
       offset,
       unreadOnly
@@ -112,15 +123,17 @@ export const getNotifications = async (req: Request, res: Response, next: NextFu
 
 /**
  * GET /api/v1/notifications/unread-count
- * Returns the current unread notifications count.
+ * Returns the current unread notifications count for the authenticated user and role.
  */
 export const getUnreadCount = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isRestrictedRole = req.user?.role === Role.NURSE || req.user?.role === Role.PATIENT;
-    const hospitalId = isRestrictedRole ? null : req.user?.hospitalId;
-    const userId = req.user?.id;
+    const user = req.user!;
 
-    const count = await fetchUnreadCount({ hospitalId, userId });
+    const count = await fetchUnreadCount({
+      role: user.role,
+      userId: user.id,
+      hospitalId: user.hospitalId
+    });
 
     res.json({
       success: true,
@@ -133,16 +146,18 @@ export const getUnreadCount = async (req: Request, res: Response, next: NextFunc
 
 /**
  * PATCH /api/v1/notifications/:id/read
- * Marks a specific notification as read.
+ * Marks a specific notification as read, enforcing role and ownership authorization.
  */
 export const markAsRead = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const isRestrictedRole = req.user?.role === Role.NURSE || req.user?.role === Role.PATIENT;
-    const hospitalId = isRestrictedRole ? null : req.user?.hospitalId;
-    const userId = req.user?.id;
+    const user = req.user!;
 
-    await updateMarkAsRead(id as string, { hospitalId, userId });
+    await updateMarkAsRead(id as string, {
+      role: user.role,
+      userId: user.id,
+      hospitalId: user.hospitalId
+    });
 
     res.json({
       success: true,
@@ -155,15 +170,17 @@ export const markAsRead = async (req: Request, res: Response, next: NextFunction
 
 /**
  * POST /api/v1/notifications/read-all
- * Marks all notifications for the hospital as read.
+ * Marks all notifications for the authenticated user's role and hospital as read.
  */
 export const markAllAsRead = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const isRestrictedRole = req.user?.role === Role.NURSE || req.user?.role === Role.PATIENT;
-    const hospitalId = isRestrictedRole ? null : req.user?.hospitalId;
-    const userId = req.user?.id;
+    const user = req.user!;
 
-    await updateMarkAllAsRead({ hospitalId, userId });
+    await updateMarkAllAsRead({
+      role: user.role,
+      userId: user.id,
+      hospitalId: user.hospitalId
+    });
 
     res.json({
       success: true,

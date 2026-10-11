@@ -60,11 +60,13 @@ const initSSE = () => {
       }
       if (data.type === 'ping') return;
       
-      if (data.notification) {
-        // Add new notification to the top
-        globalNotifications = [data.notification, ...globalNotifications];
-        backendUnreadCount += 1;
-        notifyListeners();
+      const incomingNotif = data.notification || (data.id && data.title ? data : null);
+      if (incomingNotif) {
+        if (!globalNotifications.some(n => n.id === incomingNotif.id)) {
+          globalNotifications = [incomingNotif, ...globalNotifications];
+          backendUnreadCount += 1;
+          notifyListeners();
+        }
       }
     } catch (err) {
       console.error('SSE Error', err);

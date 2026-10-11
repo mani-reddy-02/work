@@ -93,7 +93,12 @@ export const createWalkInBooking = async (req: Request, res: Response, next: Nex
       title: 'Walk-In OP Registered',
       message: `Patient ${booking.patientName} registered for Dr. ${booking.doctor?.name || 'Doctor'} (${booking.department?.name || 'OP'})`,
       type: 'appointment',
-      metadata: { bookingId: booking.id, patientName: booking.patientName }
+      metadata: { 
+        bookingId: booking.id, 
+        patientName: booking.patientName,
+        targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
+      },
+      targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
     }).catch(console.error);
 
     // Trigger Meta WhatsApp appointment confirmation
@@ -238,7 +243,13 @@ export const updateBookingStatus = async (req: Request, res: Response, next: Nex
       title: 'Appointment Status Changed',
       message: `${updated.patientName}'s appointment is now ${updated.status.replace(/_/g, ' ')}`,
       type: 'activity',
-      metadata: { bookingId: updated.id, status: updated.status, patientName: updated.patientName }
+      metadata: { 
+        bookingId: updated.id, 
+        status: updated.status, 
+        patientName: updated.patientName,
+        targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
+      },
+      targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
     }).catch(console.error);
 
     // If cancelled, trigger Meta WhatsApp cancellation notification

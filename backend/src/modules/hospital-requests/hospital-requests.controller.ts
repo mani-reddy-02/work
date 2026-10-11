@@ -92,7 +92,9 @@ export const createMarketingRequest = async (req: Request, res: Response, next: 
           preferredTime: input.preferredTime,
           services: input.services,
           createdAt: request.createdAt,
+          targetRoles: ['SUPER_ADMIN']
         },
+        targetRoles: ['SUPER_ADMIN']
       });
     }
 
@@ -103,7 +105,8 @@ export const createMarketingRequest = async (req: Request, res: Response, next: 
       title: 'Marketing Request Submitted',
       message: `Your marketing enquiry for "${campaignType}" has been received by MediQuee Admin.`,
       type: 'success',
-      metadata: { requestId: request.id, campaignType, doctorId, doctorName },
+      metadata: { requestId: request.id, campaignType, doctorId, doctorName, targetRoles: isDoctor ? ['DOCTOR'] : ['HOSPITAL_ADMIN'] },
+      targetRoles: isDoctor ? ['DOCTOR'] : ['HOSPITAL_ADMIN']
     });
 
     return res.status(201).json({
@@ -223,7 +226,9 @@ export const createCampRequest = async (req: Request, res: Response, next: NextF
           expectedFootfall: input.expectedFootfall,
           specialities: specialties,
           createdAt: request.createdAt,
+          targetRoles: ['SUPER_ADMIN']
         },
+        targetRoles: ['SUPER_ADMIN']
       });
     }
 
@@ -234,7 +239,8 @@ export const createCampRequest = async (req: Request, res: Response, next: NextF
       title: 'Medical Camp Request Submitted',
       message: `Your request for "${campTitle}" has been sent to MediQuee Admin. Logistics team will coordinate with you.`,
       type: 'success',
-      metadata: { requestId: request.id, campTitle },
+      metadata: { requestId: request.id, campTitle, targetRoles: ['HOSPITAL_ADMIN'] },
+      targetRoles: ['HOSPITAL_ADMIN']
     });
 
     return res.status(201).json({
@@ -310,7 +316,9 @@ export const createInquiryRequest = async (req: Request, res: Response, next: Ne
           contactPerson,
           contactPhone: contactPhone || hospital?.contactPhone,
           createdAt: request.createdAt,
+          targetRoles: ['SUPER_ADMIN']
         },
+        targetRoles: ['SUPER_ADMIN']
       });
     }
 
@@ -320,7 +328,8 @@ export const createInquiryRequest = async (req: Request, res: Response, next: Ne
       title: 'Inquiry Sent to Admin',
       message: `Your inquiry regarding "${subject}" has been successfully forwarded to MediQuee Administration.`,
       type: 'success',
-      metadata: { requestId: request.id, subject },
+      metadata: { requestId: request.id, subject, targetRoles: ['HOSPITAL_ADMIN'] },
+      targetRoles: ['HOSPITAL_ADMIN']
     });
 
     return res.status(201).json({
@@ -442,7 +451,8 @@ export const updateRequestStatus = async (req: Request, res: Response, next: Nex
       title: `Request ${status}: ${type === 'camp' ? 'Medical Camp' : 'Service Request'}`,
       message: `Your ${type === 'camp' ? 'medical camp request' : 'enquiry'} has been updated to "${status}" by MediQuee Admin.`,
       type: status === 'APPROVED' ? 'success' : 'activity',
-      metadata: { requestId: id, status, type },
+      metadata: { requestId: id, status, type, targetRoles: ['HOSPITAL_ADMIN'] },
+      targetRoles: ['HOSPITAL_ADMIN']
     });
 
     // Notify doctor directly if this request was submitted by a doctor
@@ -453,7 +463,8 @@ export const updateRequestStatus = async (req: Request, res: Response, next: Nex
         title: `Marketing Request ${status}`,
         message: `Your marketing enquiry for "${updated.campaignType}" has been updated to "${status}" by MediQuee Admin.`,
         type: status === 'APPROVED' ? 'success' : 'activity',
-        metadata: { requestId: id, status, type },
+        metadata: { requestId: id, status, type, targetRoles: ['DOCTOR'] },
+        targetRoles: ['DOCTOR']
       });
     }
 

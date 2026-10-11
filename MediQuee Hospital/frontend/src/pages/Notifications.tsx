@@ -85,7 +85,8 @@ export function Notifications() {
     if (!notif.read) {
       await markAsRead(notif.id);
     }
-    if (notif.type === 'appointment') {
+    const titleLower = (notif.title || '').toLowerCase();
+    if (notif.type === 'appointment' || notif.type === 'BOOKING_CANCELLED' || notif.type === 'BOOKING_RESCHEDULED') {
       if (role === 'doctor') {
         navigate('/doctor/ops');
       } else if (role === 'receptionist') {
@@ -97,6 +98,10 @@ export function Notifications() {
       } else {
         navigate('/appointments');
       }
+    } else if (notif.type === 'lab' || titleLower.includes('lab')) {
+      navigate('/lab/orders');
+    } else if (titleLower.includes('home nursing') || titleLower.includes('nurse')) {
+      navigate(role === 'nurse' ? '/nurse/visits' : '/dashboard');
     } else if (notif.type === 'department') {
       navigate('/profile/departments');
     } else if (notif.type === 'staff') {

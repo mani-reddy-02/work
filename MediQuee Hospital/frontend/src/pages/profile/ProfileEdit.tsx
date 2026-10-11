@@ -18,9 +18,10 @@ export function ProfileEdit() {
 
   const isDoctor = role === 'doctor';
   const isNurse = role === 'nurse';
-  const primaryColor = (isDoctor || isNurse) ? "bg-[#1B5DF1] hover:bg-[#1B5DF1]/90" : "bg-[#1769E0] hover:bg-[#1255b8]";
-  const primaryText = (isDoctor || isNurse) ? "text-[#1B5DF1]" : "text-[#1769E0]";
-  const primaryBgSoft = (isDoctor || isNurse) ? "bg-[#1B5DF1]/10" : "bg-[#1769E0]/10";
+  const isReceptionist = role === 'receptionist';
+  const primaryColor = (isDoctor || isNurse || isReceptionist) ? "bg-[#1B5DF1] hover:bg-[#1B5DF1]/90" : "bg-[#1769E0] hover:bg-[#1255b8]";
+  const primaryText = (isDoctor || isNurse || isReceptionist) ? "text-[#1B5DF1]" : "text-[#1769E0]";
+  const primaryBgSoft = (isDoctor || isNurse || isReceptionist) ? "bg-[#1B5DF1]/10" : "bg-[#1769E0]/10";
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -199,6 +200,15 @@ export function ProfileEdit() {
                 <div className="flex items-center justify-center gap-2 mt-1">
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-[#1B5DF1] border border-blue-200 uppercase tracking-wider">
                     {profile.role?.toLowerCase().replace('_', ' ')}
+                  </span>
+                  <span className={cn(
+                    "text-xs font-bold px-2 py-0.5 rounded-full border flex items-center gap-1",
+                    profile.active !== false 
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                      : "bg-red-50 text-red-700 border-red-200"
+                  )}>
+                    <span className={cn("w-1.5 h-1.5 rounded-full", profile.active !== false ? "bg-emerald-500" : "bg-red-500")} />
+                    {profile.active !== false ? "Active Account" : "Inactive Account"}
                   </span>
                   {profile.department?.name && (
                     <span className="text-xs font-medium text-muted">
@@ -502,31 +512,75 @@ export function ProfileEdit() {
               </div>
             )}
 
-            {/* Hospital & Department Affiliation */}
-            {profile.hospital && (
-              <div className="bg-surface rounded-2xl border border-border shadow-sm p-5 flex flex-col gap-3">
-                <h3 className="font-bold text-foreground text-sm uppercase tracking-wider flex items-center gap-2 border-b border-border pb-2.5">
-                  <Building2 className="w-4 h-4 text-[#1B5DF1]" />
-                  Facility Affiliation
-                </h3>
-                <div className="flex items-center justify-between text-sm py-1">
-                  <span className="text-muted font-medium">Hospital</span>
-                  <span className="font-bold text-foreground">{profile.hospital.name}</span>
+            {/* Receptionist Professional Details */}
+            {isReceptionist && (
+              <div className="bg-surface rounded-2xl border border-border shadow-sm p-5 flex flex-col gap-4">
+                <div className="flex items-center justify-between border-b border-border pb-2.5">
+                  <h3 className="font-bold text-foreground text-sm uppercase tracking-wider flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-[#1B5DF1]" />
+                    Front Desk & Professional Details
+                  </h3>
                 </div>
-                {profile.department && (
-                  <div className="flex items-center justify-between text-sm py-1 border-t border-border/50">
-                    <span className="text-muted font-medium">Assigned Department</span>
-                    <span className="font-bold text-[#1B5DF1]">{profile.department.name}</span>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5 md:col-span-2">
+                    <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
+                      <Briefcase className="w-3.5 h-3.5 text-muted" /> Designation
+                    </label>
+                    <input 
+                      type="text" 
+                      value={designation}
+                      onChange={(e) => setDesignation(e.target.value)}
+                      placeholder="e.g. Front Office Executive / Senior Receptionist" 
+                      className="bg-background border border-border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#1B5DF1] focus:ring-2 focus:ring-[#1B5DF1]/20 font-medium" 
+                    />
                   </div>
-                )}
-                {profile.hospital.city && (
-                  <div className="flex items-center justify-between text-sm py-1 border-t border-border/50">
-                    <span className="text-muted font-medium">Location</span>
-                    <span className="font-medium text-foreground">{profile.hospital.city}, {profile.hospital.state}</span>
+
+                  <div className="flex flex-col gap-1.5 md:col-span-2">
+                    <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-muted" /> About / Front Desk Notes
+                    </label>
+                    <textarea 
+                      rows={3}
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="Brief notes about your front desk responsibilities, shift schedule, or administrative focus..."
+                      className="bg-background border border-border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#1B5DF1] focus:ring-2 focus:ring-[#1B5DF1]/20 font-medium resize-none"
+                    />
                   </div>
-                )}
+                </div>
               </div>
             )}
+
+            {/* Hospital & Department Affiliation */}
+            <div className="bg-surface rounded-2xl border border-border shadow-sm p-5 flex flex-col gap-3">
+              <h3 className="font-bold text-foreground text-sm uppercase tracking-wider flex items-center gap-2 border-b border-border pb-2.5">
+                <Building2 className="w-4 h-4 text-[#1B5DF1]" />
+                Facility Affiliation
+              </h3>
+              {profile.hospital ? (
+                <>
+                  <div className="flex items-center justify-between text-sm py-1">
+                    <span className="text-muted font-medium">Hospital</span>
+                    <span className="font-bold text-foreground">{profile.hospital.name}</span>
+                  </div>
+                  {profile.department && (
+                    <div className="flex items-center justify-between text-sm py-1 border-t border-border/50">
+                      <span className="text-muted font-medium">Assigned Department</span>
+                      <span className="font-bold text-[#1B5DF1]">{profile.department.name}</span>
+                    </div>
+                  )}
+                  {profile.hospital.city && (
+                    <div className="flex items-center justify-between text-sm py-1 border-t border-border/50">
+                      <span className="text-muted font-medium">Location</span>
+                      <span className="font-medium text-foreground">{profile.hospital.city}, {profile.hospital.state}</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-muted py-1">No hospital currently associated or not provided.</p>
+              )}
+            </div>
 
             {/* Save Button */}
             <div className="pt-2 pb-16">

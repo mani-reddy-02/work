@@ -41,7 +41,7 @@ export function QueueScreen() {
       />
 
       {/* Sticky Department Filter and Tabs */}
-      <div className="sticky top-[102px] z-20 bg-surface/95 backdrop-blur-xl border-b border-border shadow-[0_4px_24px_rgba(0,0,0,0.02)] pt-3 pb-2 px-4 flex flex-col gap-4">
+      <div className="sticky top-14 z-20 bg-surface/95 backdrop-blur-xl border-b border-border shadow-[0_4px_24px_rgba(0,0,0,0.02)] pt-3 pb-2 px-4 flex flex-col gap-4">
         {/* Department Tiles */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4">
           <button

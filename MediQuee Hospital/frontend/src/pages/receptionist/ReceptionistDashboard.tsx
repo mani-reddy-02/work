@@ -7,7 +7,6 @@ import { Skeleton } from "@/components/ui/Skeleton"
 import { cn } from "@/lib/utils"
 import { receptionistApi, type QueueEntry } from "@/services/receptionistApi"
 import { useTranslation } from "react-i18next"
-import { ReceptionistNavHeader } from "@/components/layout/ReceptionistNavHeader"
 
 export function ReceptionistDashboard() {
   const { t } = useTranslation();
@@ -81,34 +80,39 @@ export function ReceptionistDashboard() {
 
   return (
     <div className="flex flex-col bg-gray-50/30 min-h-[calc(100vh-80px)] pb-24">
-      {/* Top Header with Back Button, Menu Toggle, and Main Navigation Tabs */}
-      <ReceptionistNavHeader 
-        title={t('patient_flow')}
-        subtitle="Manage queues, appointments, and check-ins"
-        backTo="/dashboard"
-        rightActions={
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => loadData(true)}
-              disabled={refreshing || loading}
-              title="Refresh dashboard"
-              className="w-9 h-9 rounded-xl bg-surface border border-border flex items-center justify-center text-gray-600 hover:text-[#1B5DF1] hover:bg-[#EBF5FF] hover:border-[#1B5DF1]/30 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
-            >
-              <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin text-[#1B5DF1]")} />
-            </button>
-            <button 
-              onClick={() => navigate('/receptionist/check-in')}
-              title="Check-In Patient"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1B5DF1] text-white rounded-xl text-xs font-bold hover:bg-[#154ac2] transition-colors shadow-sm cursor-pointer active:scale-95"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Check-In</span>
-            </button>
-          </div>
-        }
-      />
+      {/* Dashboard Section Header */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-1">
+        <div className="flex flex-col">
+          <h1 className="text-[22px] font-black text-[#0A1A3D] tracking-tight">
+            {t('patient_flow', 'Patient Flow')}
+          </h1>
+          <p className="text-[13px] font-medium text-muted/80">
+            Manage live queues, appointments, and check-ins
+          </p>
+        </div>
 
-      <div className="flex flex-col gap-5 p-4">
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => loadData(true)}
+            disabled={refreshing || loading}
+            title="Refresh dashboard"
+            aria-label="Refresh dashboard"
+            className="w-9 h-9 rounded-xl bg-surface border border-border flex items-center justify-center text-gray-600 hover:text-[#1B5DF1] hover:bg-[#EBF5FF] hover:border-[#1B5DF1]/30 transition-colors shadow-sm disabled:opacity-50 cursor-pointer active:scale-95"
+          >
+            <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin text-[#1B5DF1]")} />
+          </button>
+          <button 
+            onClick={() => navigate('/receptionist/check-in')}
+            title="Check-In Patient"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1B5DF1] text-white rounded-xl text-xs font-bold hover:bg-[#154ac2] transition-colors shadow-sm cursor-pointer active:scale-95"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Check-In</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-5 p-4 pt-3">
 
       {/* Top Stats */}
       <div className="grid grid-cols-3 gap-3">

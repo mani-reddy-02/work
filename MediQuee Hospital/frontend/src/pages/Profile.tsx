@@ -134,9 +134,24 @@ export function Profile() {
                     Home Care Nurse
                   </span>
                 ) : role === 'receptionist' ? (
-                  <span className="bg-purple-50 text-purple-600 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border border-purple-100 flex items-center gap-1">
-                    Front Desk Receptionist
-                  </span>
+                  <>
+                    <span className="bg-purple-50 text-purple-600 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border border-purple-100 flex items-center gap-1">
+                      Front Desk Receptionist
+                    </span>
+                    {user?.designation && (
+                      <span className="text-[11px] font-semibold text-muted">
+                        • {user.designation}
+                      </span>
+                    )}
+                    {user?.active !== undefined && (
+                      <span className={cn(
+                        "text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1",
+                        user.active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-700 border-red-200"
+                      )}>
+                        {user.active ? "Active" : "Inactive"}
+                      </span>
+                    )}
+                  </>
                 ) : (
                   <span className="bg-blue-50 text-primary text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border border-blue-100">
                     Hospital Administrator

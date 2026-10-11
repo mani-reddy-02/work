@@ -10,6 +10,7 @@ export interface UserProfile {
   email: string;
   phone?: string | null;
   role: string;
+  active?: boolean;
   designation?: string | null;
   avatar?: string | null;
   dob?: string | null;

@@ -171,6 +171,7 @@ function AnimatedRoutes() {
           {/* Receptionist Routes */}
           <Route element={<RoleProtectedRoute allowedRoles={['receptionist']} />}>
             <Route path="/receptionist" element={<ReceptionistDashboard />} />
+            <Route path="/receptionist/profile" element={<Navigate to="/profile/personal" replace />} />
             <Route path="/receptionist/queue" element={<QueueScreen />} />
             <Route path="/receptionist/check-in" element={<CheckIn />} />
             <Route path="/receptionist/book-appointment" element={<BookAppointment />} />

@@ -175,13 +175,18 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
 
-    // Fire notification to hospital
+    // Fire notification to hospital (Lab staff & Hospital Admin only)
     await sendNotification({
       hospitalId,
       title: `New Lab Test Order`,
       message: `New ${bookingType === 'HOME_COLLECTION' ? 'Home Collection' : 'Walk-in'} order placed by ${booking.patient?.name || 'Patient'}`,
       type: 'lab',
-      metadata: { bookingId: booking.id }
+      metadata: { 
+        bookingId: booking.id,
+        bookingType,
+        targetRoles: ['LAB_ADMIN', 'HOSPITAL_ADMIN']
+      },
+      targetRoles: ['LAB_ADMIN', 'HOSPITAL_ADMIN']
     });
 
     // Fire notification to patient
@@ -197,7 +202,12 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
       title: 'Booking Confirmed',
       message: `Your ${isHome ? 'Home Sample Collection' : 'Lab Test'} booking is confirmed for ${displayDate}${timeText}.`,
       type: 'BOOKING_CONFIRMED',
-      metadata: { bookingId: booking.id, type: isHome ? 'HOME_SAMPLE' : 'LAB' }
+      metadata: { 
+        bookingId: booking.id, 
+        type: isHome ? 'HOME_SAMPLE' : 'LAB',
+        targetRoles: ['PATIENT']
+      },
+      targetRoles: ['PATIENT']
     });
 
     const responseData = {
@@ -523,11 +533,16 @@ export const updateLabBookingStatus = async (req: Request, res: Response, next: 
       }
 
       await sendNotification({
+        hospitalId: null,
         userId: updated.patientId,
         title: 'Lab Report Ready',
         message: 'Your lab test report is ready for download',
-        type: 'lab',
-        metadata: { bookingId: updated.id }
+        type: 'LAB_REPORT_READY',
+        metadata: { 
+          bookingId: updated.id,
+          targetRoles: ['PATIENT']
+        },
+        targetRoles: ['PATIENT']
       });
     }
 

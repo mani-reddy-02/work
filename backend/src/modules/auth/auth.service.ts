@@ -67,6 +67,7 @@ export class AuthService {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        hospitalId: user.hospitalId,
       },
     };
   }

@@ -118,7 +118,7 @@ export function ReceptionistAppointments() {
         }
       />
 
-      <div className="sticky top-[102px] z-20 bg-surface/95 backdrop-blur-xl pt-4 pb-4 px-4 flex flex-col gap-5 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border-b border-border">
+      <div className="sticky top-14 z-20 bg-surface/95 backdrop-blur-xl pt-4 pb-4 px-4 flex flex-col gap-5 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border-b border-border">
         <div className="flex flex-col gap-4">
           <div className="relative group">
             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-muted/70 group-focus-within:text-[#1B5DF1] transition-colors">
