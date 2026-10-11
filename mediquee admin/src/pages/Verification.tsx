@@ -6,6 +6,7 @@ import { ShieldAlert, ShieldCheck, Clock } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
 import { useAdminAuth } from '../contexts/AuthContext';
 import { verificationService } from '../services/verificationService';
+import PendingVerifications from '../components/admin/PendingVerifications';
 
 const Verification: React.FC = () => {
   const { token } = useAdminAuth();
@@ -75,6 +76,8 @@ const Verification: React.FC = () => {
         <KpiCard title="Approved Today" value={0} icon={ShieldCheck} iconColor="text-emerald-600" iconBg="bg-emerald-50" />
         <KpiCard title="Total Reviewed" value={45} icon={ShieldAlert} iconColor="text-blue-600" iconBg="bg-blue-50" />
       </div>
+
+      <PendingVerifications />
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
         <div className="flex border-b border-slate-200">

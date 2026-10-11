@@ -25,27 +25,15 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
       startDate.setFullYear(2000); // all time fallback
     }
 
-    const [
-      totalHospitals,
-      totalUsers,
-      totalPatients,
-      totalDoctors,
-      totalDepartments,
-      activeDoctors,
-      verifiedHospitals,
-      pendingVerifications,
-      hospitalsForShares
-    ] = await Promise.all([
-      prisma.hospital.count(),
-      prisma.user.count(),
-      prisma.user.count({ where: { role: Role.PATIENT } }),
-      prisma.user.count({ where: { role: Role.DOCTOR } }),
-      prisma.department.count(),
-      prisma.user.count({ where: { role: Role.DOCTOR, active: true } }),
-      prisma.hospital.count({ where: { verifications: { some: {} } } }),
-      prisma.hospitalVerification.count(),
-      prisma.hospital.findMany({ select: { id: true, name: true, hospitalShare: true } })
-    ]);
+    const totalHospitals = await prisma.hospital.count();
+    const totalUsers = await prisma.user.count();
+    const totalPatients = await prisma.user.count({ where: { role: Role.PATIENT } });
+    const totalDoctors = await prisma.user.count({ where: { role: Role.DOCTOR } });
+    const totalDepartments = await prisma.department.count();
+    const activeDoctors = await prisma.user.count({ where: { role: Role.DOCTOR, active: true } });
+    const verifiedHospitals = await prisma.hospital.count({ where: { verifications: { some: {} } } });
+    const pendingVerifications = await prisma.hospitalVerification.count();
+    const hospitalsForShares = await prisma.hospital.findMany({ select: { id: true, name: true, hospitalShare: true } });
 
     const hospitalMap = new Map(hospitalsForShares.map(h => [h.id, h]));
 
@@ -246,7 +234,7 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
       address: [h.addressLine1, h.area, h.city].filter(Boolean).join(', '),
       city: h.city || 'N/A',
       state: h.state || 'N/A',
-      verificationStatus: h.verifications.length > 0 ? 'VERIFIED' : 'PENDING',
+      verificationStatus: h.verificationStatus || (h.verifications.length > 0 ? 'VERIFIED' : 'PENDING'),
       status: 'ACTIVE',
       departmentCount: h._count.departments,
       doctorCount: h._count.users,
@@ -742,111 +730,482 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
   }
 };
 
+export const getLabOrdersAnalytics = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { hospitalId, bookingType, date, search } = req.query;
+    const where: any = { AND: [] };
+
+    if (hospitalId && hospitalId !== 'ALL') {
+      where.AND.push({ hospitalId: hospitalId as string });
+    }
+    if (bookingType && bookingType !== 'ALL') {
+      where.AND.push({ bookingType: bookingType as any });
+    }
+    if (date) {
+      const startOfDay = new Date(date as string);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date as string);
+      endOfDay.setHours(23, 59, 59, 999);
+      where.AND.push({ createdAt: { gte: startOfDay, lte: endOfDay } });
+    }
+    if (search) {
+      where.AND.push({
+        OR: [
+          { id: { contains: search as string, mode: 'insensitive' } },
+          { patient: { name: { contains: search as string, mode: 'insensitive' } } },
+          { hospital: { name: { contains: search as string, mode: 'insensitive' } } },
+          { items: { some: { labTest: { platformTest: { name: { contains: search as string, mode: 'insensitive' } } } } } }
+        ]
+      });
+    }
+
+    if (where.AND.length === 0) {
+      delete where.AND;
+    }
+
+    const [
+      totalOrders,
+      pending,
+      sampleCollection,
+      sampleCollected,
+      labProcessing,
+      reportUploadPending,
+      completed,
+      cancelled
+    ] = await Promise.all([
+      prisma.labBooking.count({ where }),
+      prisma.labBooking.count({ where: { ...where, status: 'REQUESTED' } }),
+      prisma.labBooking.count({ where: { ...where, status: 'ASSIGNED' } }),
+      prisma.labBooking.count({ where: { ...where, status: 'SAMPLE_COLLECTED' } }),
+      prisma.labBooking.count({ where: { ...where, status: 'IN_LAB_PROCESSING' } }),
+      prisma.labBooking.count({ where: { ...where, status: 'REPORT_UPLOAD_PENDING' } }),
+      prisma.labBooking.count({ where: { ...where, status: { in: ['REPORT_READY', 'COMPLETED'] } } }),
+      prisma.labBooking.count({ where: { ...where, status: 'CANCELLED' } })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        totalOrders,
+        pending,
+        sampleCollection,
+        sampleCollected,
+        labProcessing,
+        reportUploadPending,
+        completed,
+        cancelled
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getLabBookings = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
-      const search = req.query.search as string;
-      const ageMin = req.query.ageMin ? parseInt(req.query.ageMin as string) : undefined;
-      const ageMax = req.query.ageMax ? parseInt(req.query.ageMax as string) : undefined;
-      const gender = req.query.gender as string;
-      const place = req.query.place as string;
-      const status = req.query.status as string;
-      const bookingType = req.query.bookingType as string;
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const search = req.query.search as string;
+    const status = req.query.status as string;
+    const bookingType = req.query.bookingType as string;
+    const hospitalId = req.query.hospitalId as string;
+    const date = req.query.date as string;
+    const gender = req.query.gender as string;
+    const place = req.query.place as string;
 
-      const where: any = { AND: [] };
+    const where: any = { AND: [] };
 
-      if (search) {
-        where.AND.push({
-          OR: [
-            { id: { contains: search, mode: 'insensitive' } },
-            { patient: { name: { contains: search, mode: 'insensitive' } } },
-            { hospital: { name: { contains: search, mode: 'insensitive' } } },
-            { items: { some: { labTest: { platformTest: { name: { contains: search, mode: 'insensitive' } } } } } }
-          ]
-        });
+    if (search) {
+      where.AND.push({
+        OR: [
+          { id: { contains: search, mode: 'insensitive' } },
+          { patient: { name: { contains: search, mode: 'insensitive' } } },
+          { patient: { phone: { contains: search, mode: 'insensitive' } } },
+          { hospital: { name: { contains: search, mode: 'insensitive' } } },
+          { items: { some: { labTest: { platformTest: { name: { contains: search, mode: 'insensitive' } } } } } }
+        ]
+      });
+    }
+
+    if (status && status !== 'ALL') {
+      const s = status.toUpperCase();
+      if (s === 'COMPLETED' || s === 'REPORT_READY') {
+        where.AND.push({ status: { in: ['REPORT_READY', 'COMPLETED'] } });
+      } else if (s === 'PENDING') {
+        where.AND.push({ status: 'REQUESTED' });
+      } else if (s === 'SAMPLE_COLLECTION' || s === 'ASSIGNED') {
+        where.AND.push({ status: 'ASSIGNED' });
+      } else if (s === 'SAMPLE_COLLECTED') {
+        where.AND.push({ status: 'SAMPLE_COLLECTED' });
+      } else if (s === 'LAB_PROCESSING' || s === 'IN_LAB_PROCESSING') {
+        where.AND.push({ status: 'IN_LAB_PROCESSING' });
+      } else if (s === 'REPORT_UPLOAD_PENDING') {
+        where.AND.push({ status: 'REPORT_UPLOAD_PENDING' });
+      } else if (s === 'CANCELLED') {
+        where.AND.push({ status: 'CANCELLED' });
+      } else {
+        where.AND.push({ status: status as any });
       }
+    }
 
-      if (ageMin !== undefined || ageMax !== undefined) {
-        const today = new Date();
-        const dobCond: any = {};
-        if (ageMin !== undefined) {
-          dobCond.lte = new Date(today.getFullYear() - ageMin, today.getMonth(), today.getDate()).toISOString();
-        }
-        if (ageMax !== undefined) {
-          dobCond.gt = new Date(today.getFullYear() - ageMax - 1, today.getMonth(), today.getDate() + 1).toISOString();
-        }
-        
-        where.AND.push({ patient: { dob: dobCond } });
-      }
+    if (bookingType && bookingType !== 'ALL') {
+      where.AND.push({ bookingType: bookingType as any });
+    }
 
-      if (gender && gender !== 'ALL') {
-        where.AND.push({ patient: { gender: { equals: gender, mode: 'insensitive' } } });
-      }
+    if (hospitalId && hospitalId !== 'ALL') {
+      where.AND.push({ hospitalId });
+    }
 
-      if (place && place !== 'ALL') {
-        where.AND.push({
-          patient: { address: { contains: place, mode: 'insensitive' } }
-        });
-      }
+    if (date) {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+      where.AND.push({ createdAt: { gte: startOfDay, lte: endOfDay } });
+    }
 
-      if (status && status !== 'ALL') {
-        where.status = status;
-      }
+    if (gender && gender !== 'ALL') {
+      where.AND.push({ patient: { gender: { equals: gender, mode: 'insensitive' } } });
+    }
 
-      if (bookingType && bookingType !== 'ALL') {
-        where.bookingType = bookingType;
-      }
+    if (place && place !== 'ALL') {
+      where.AND.push({
+        OR: [
+          { collectionAddress: { contains: place, mode: 'insensitive' } },
+          { patient: { address: { contains: place, mode: 'insensitive' } } },
+          { hospital: { city: { contains: place, mode: 'insensitive' } } }
+        ]
+      });
+    }
 
-      if (where.AND.length === 0) {
-        delete where.AND;
-      }
+    if (where.AND.length === 0) {
+      delete where.AND;
+    }
 
-      const totalCount = await prisma.labBooking.count({ where });
+    const totalCount = await prisma.labBooking.count({ where });
 
-      const bookings = await prisma.labBooking.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-        include: {
-          patient: { select: { name: true } },
-          hospital: { select: { name: true } },
-          items: {
-            include: {
-              labTest: {
-                include: { platformTest: { select: { name: true } } }
+    const bookings = await prisma.labBooking.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+      include: {
+        patient: { select: { id: true, name: true, phone: true, email: true, gender: true, dob: true } },
+        hospital: { select: { id: true, name: true, city: true, businessType: true, contactPhone: true } },
+        items: {
+          include: {
+            labTest: {
+              include: {
+                platformTest: { select: { id: true, name: true, code: true, specimenType: true, canBeCollectedAtHome: true } }
               }
             }
           }
         }
-      });
+      }
+    });
 
-      const formatted = bookings.map((b) => ({
-        id: b.id.substring(0, 8).toUpperCase(),
-        rawId: b.id,
-        patientName: b.patient?.name || 'Unknown',
-        hospitalName: b.hospital?.name || 'Unknown',
-        bookingType: b.bookingType,
-        status: b.status,
-        testCount: b.items.length,
-        testNames: b.items.map(i => i.labTest.platformTest.name).join(', '),
-        totalAmount: b.totalAmount,
-        date: new Date(b.createdAt).toLocaleDateString(),
-        time: new Date(b.createdAt).toLocaleTimeString(),
-      }));
+    const formatStatusLabel = (st: string) => {
+      switch (st) {
+        case 'REQUESTED': return 'Pending';
+        case 'ASSIGNED': return 'Sample Collection Scheduled';
+        case 'SAMPLE_COLLECTED': return 'Sample Collected';
+        case 'IN_LAB_PROCESSING': return 'Lab Processing';
+        case 'REPORT_UPLOAD_PENDING': return 'Report Upload Pending';
+        case 'REPORT_READY':
+        case 'COMPLETED': return 'Completed';
+        case 'CANCELLED': return 'Cancelled';
+        default: return st;
+      }
+    };
 
-      res.json({
-        success: true,
-        data: formatted,
-        pagination: { total: totalCount, page, limit, totalPages: Math.ceil(totalCount / limit) }
-      });
-    } catch (error) {
-      next(error);
+    const formatted = bookings.map((b, idx) => ({
+      sno: ((page - 1) * limit) + idx + 1,
+      id: b.id.substring(0, 8).toUpperCase(),
+      rawId: b.id,
+      patientId: b.patientId,
+      patientName: b.patient?.name || 'Unknown Patient',
+      patientPhone: b.patient?.phone || '',
+      patientEmail: b.patient?.email || '',
+      patientGender: b.patient?.gender || '',
+      patientDob: b.patient?.dob || '',
+      hospitalId: b.hospitalId,
+      labName: b.hospital?.name || 'Unknown Lab',
+      hospitalName: b.hospital?.name || 'Unknown Lab',
+      labCity: b.hospital?.city || '',
+      bookingType: b.bookingType,
+      collectionMethod: b.bookingType === 'HOME_COLLECTION' ? 'Home Collection' : 'Lab Visit',
+      collectionAddress: b.collectionAddress,
+      collectionDate: b.collectionDate,
+      collectionTimeSlot: b.collectionTimeSlot,
+      sampleCollectedAt: b.sampleCollectedAt,
+      phlebotomistName: b.phlebotomistName,
+      phlebotomistPhone: b.phlebotomistPhone,
+      status: b.status,
+      statusLabel: formatStatusLabel(b.status),
+      testCount: b.items.length,
+      testNames: b.items.map(i => i.labTest?.platformTest?.name || 'Diagnostic Test').join(', '),
+      tests: b.items.map(i => ({
+        id: i.id,
+        testId: i.labTestId,
+        name: i.labTest?.platformTest?.name || 'Diagnostic Test',
+        code: i.labTest?.platformTest?.code,
+        price: i.price,
+        specimenType: i.labTest?.platformTest?.specimenType,
+        tatHours: i.labTest?.tatHours
+      })),
+      totalAmount: b.totalAmount,
+      homeCollectionFee: b.homeCollectionFee,
+      reportUrl: b.reportUrl,
+      hasReport: !!b.reportUrl,
+      reportStatus: b.reportUrl ? 'Uploaded' : (['REPORT_READY', 'COMPLETED'].includes(b.status) ? 'Ready' : 'Pending'),
+      cancellationReason: b.cancellationReason,
+      createdAt: b.createdAt,
+      updatedAt: b.updatedAt,
+      date: new Date(b.createdAt).toLocaleDateString(),
+      time: new Date(b.createdAt).toLocaleTimeString(),
+    }));
+
+    res.json({
+      success: true,
+      data: formatted,
+      pagination: {
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit) || 1
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getLabBookingById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const booking = await prisma.labBooking.findUnique({
+      where: { id },
+      include: {
+        patient: { select: { id: true, name: true, phone: true, email: true, gender: true, dob: true, avatar: true } },
+        hospital: { select: { id: true, name: true, contactPhone: true, contactEmail: true, city: true, addressLine1: true, addressLine2: true, businessType: true } },
+        items: {
+          include: {
+            labTest: {
+              include: { platformTest: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Lab booking not found' });
     }
-  };
-export const getLabBookingById = async (req: Request, res: Response, next: NextFunction) => { try { const id = req.params.id as string; const booking = await prisma.labBooking.findUnique({ where: { id }, include: { patient: { select: { id: true, name: true, phone: true, email: true, gender: true, dob: true, avatar: true } }, hospital: { select: { id: true, name: true, contactPhone: true, city: true, addressLine1: true } }, items: { include: { labTest: { include: { platformTest: true } } } } } }); if (!booking) { return res.status(404).json({ success: false, message: 'Lab booking not found' }); } res.json({ success: true, data: booking }); } catch (error) { next(error); } };
-export const updateLabBookingStatus = async (req: Request, res: Response, next: NextFunction) => { try { const id = req.params.id as string; const { status } = req.body; const validStatuses = ['REQUESTED', 'ASSIGNED', 'SAMPLE_COLLECTED', 'IN_LAB_PROCESSING', 'REPORT_READY', 'CANCELLED']; if (!validStatuses.includes(status as any)) { return res.status(400).json({ success: false, message: 'Invalid status' }); } const updated = await prisma.labBooking.update({ where: { id }, data: { status: status as any } }); res.json({ success: true, data: updated, message: 'Status updated successfully' }); } catch (error) { next(error); } };
+
+    // Also look up reports uploaded for this patient
+    const reports = await prisma.patientReport.findMany({
+      where: {
+        userId: booking.patientId,
+        OR: [
+          { fileUrl: booking.reportUrl || '' },
+          { summary: { contains: booking.id.substring(0, 8).toUpperCase() } }
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        ...booking,
+        orderId: booking.id.substring(0, 8).toUpperCase(),
+        reports
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateLabBookingStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const { status, cancellationReason, phlebotomistName, phlebotomistPhone, collectionDate, collectionTimeSlot } = req.body;
+    
+    const validStatuses = [
+      'REQUESTED',
+      'ASSIGNED',
+      'SAMPLE_COLLECTED',
+      'IN_LAB_PROCESSING',
+      'REPORT_UPLOAD_PENDING',
+      'REPORT_READY',
+      'COMPLETED',
+      'CANCELLED'
+    ];
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: `Invalid status: ${status}` });
+    }
+
+    const booking = await prisma.labBooking.findUnique({ where: { id } });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Lab booking not found' });
+    }
+
+    // Business transition validation
+    const current = booking.status;
+    const isTerminal = ['CANCELLED', 'COMPLETED'].includes(current) || (current === 'REPORT_READY' && booking.reportUrl);
+
+    if (isTerminal && status !== current) {
+      return res.status(400).json({
+        success: false,
+        message: `Order is already in terminal state '${current}' and cannot be altered.`
+      });
+    }
+
+    // Validate lifecycle progression
+    if (status === 'CANCELLED') {
+      if (!cancellationReason && !req.body.reason) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cancellation reason is required to cancel an order.'
+        });
+      }
+    } else if (current === 'REQUESTED' && !['ASSIGNED', 'SAMPLE_COLLECTED', 'CANCELLED'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid transition: Pending orders can only move to Sample Collection Scheduled, Sample Collected, or Cancelled.`
+      });
+    } else if (current === 'ASSIGNED' && !['SAMPLE_COLLECTED', 'CANCELLED'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid transition: Scheduled orders must have samples collected before proceeding.`
+      });
+    } else if (current === 'SAMPLE_COLLECTED' && !['IN_LAB_PROCESSING', 'CANCELLED'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid transition: Collected samples must enter Lab Processing next.`
+      });
+    } else if (current === 'IN_LAB_PROCESSING' && !['REPORT_UPLOAD_PENDING', 'REPORT_READY', 'COMPLETED', 'CANCELLED'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid transition from Lab Processing.`
+      });
+    }
+
+    const updateData: any = { status };
+    if (status === 'CANCELLED') {
+      updateData.cancellationReason = cancellationReason || req.body.reason;
+    }
+    if (status === 'ASSIGNED') {
+      if (phlebotomistName) updateData.phlebotomistName = phlebotomistName;
+      if (phlebotomistPhone) updateData.phlebotomistPhone = phlebotomistPhone;
+      if (collectionDate) updateData.collectionDate = new Date(collectionDate);
+      if (collectionTimeSlot) updateData.collectionTimeSlot = collectionTimeSlot;
+    }
+    if (status === 'SAMPLE_COLLECTED') {
+      updateData.sampleCollectedAt = req.body.sampleCollectedAt ? new Date(req.body.sampleCollectedAt) : new Date();
+    }
+
+    const updated = await prisma.labBooking.update({
+      where: { id },
+      data: updateData,
+      include: {
+        patient: { select: { id: true, name: true, phone: true } },
+        hospital: { select: { id: true, name: true } }
+      }
+    });
+
+    res.json({
+      success: true,
+      data: updated,
+      message: `Order status updated to ${status} successfully`
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const uploadLabReport = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const { fileData, fileName } = req.body;
+    
+    if (!fileData || !fileName) {
+      return res.status(400).json({ success: false, message: 'File data and file name are required' });
+    }
+
+    const booking = await prisma.labBooking.findUnique({
+      where: { id },
+      include: { patient: true, hospital: true, items: { include: { labTest: { include: { platformTest: true } } } } }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Lab booking not found' });
+    }
+
+    if (booking.status === 'CANCELLED') {
+      return res.status(400).json({ success: false, message: 'Cannot upload report for a cancelled order' });
+    }
+
+    const matches = fileData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      return res.status(400).json({ success: false, message: 'Invalid file data format. Expected base64 data URI.' });
+    }
+
+    const fileBuffer = Buffer.from(matches[2], 'base64');
+    
+    // Check max file size (10 MB)
+    if (fileBuffer.length > 10 * 1024 * 1024) {
+      return res.status(400).json({ success: false, message: 'File is too large. Maximum size is 10MB.' });
+    }
+
+    const safeFileName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const fs = require('fs');
+    const path = require('path');
+    const UPLOADS_DIR = path.join(process.cwd(), 'uploads/reports');
+    if (!fs.existsSync(UPLOADS_DIR)) {
+      fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+    }
+    const filePath = path.join(UPLOADS_DIR, safeFileName);
+    fs.writeFileSync(filePath, fileBuffer);
+
+    const relativeUrl = `/uploads/reports/${safeFileName}`;
+    const testNames = booking.items.map(i => i.labTest?.platformTest?.name || 'Diagnostic Test').join(', ');
+
+    const newReport = await prisma.patientReport.create({
+      data: {
+        userId: booking.patientId,
+        title: `Lab Report - ${testNames}`,
+        hospital: booking.hospital.name,
+        date: new Date().toISOString().split('T')[0],
+        fileUrl: relativeUrl,
+        summary: `Lab report for order ${booking.id.substring(0,8).toUpperCase()}`,
+        status: 'Ready',
+      },
+    });
+
+    const updatedBooking = await prisma.labBooking.update({
+      where: { id },
+      data: {
+        reportUrl: relativeUrl,
+        status: 'REPORT_READY'
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        report: newReport,
+        booking: updatedBooking,
+        reportUrl: relativeUrl
+      },
+      message: 'Report uploaded and order updated to Completed successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const getHomeNursingBookings = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -987,15 +1346,20 @@ export const getPendingVerifications = async (req: Request, res: Response, next:
       orderBy: { createdAt: 'desc' }
     });
 
-    const hospitalBasedLabs = await prisma.lab.findMany({
+    const hospitalBasedLabsRaw = await prisma.lab.findMany({
       where: { verificationStatus: 'PENDING' },
       include: {
         hospital: {
-          select: { id: true, name: true, city: true, state: true }
+          select: { id: true, name: true, city: true, state: true, hospitalShare: true }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
+
+    const hospitalBasedLabs = hospitalBasedLabsRaw.map(lab => ({
+      ...lab,
+      hospitalShare: lab.hospital?.hospitalShare ?? null
+    }));
 
     res.json({
       success: true,
@@ -1013,9 +1377,9 @@ export const getPendingVerifications = async (req: Request, res: Response, next:
 export const updateVerificationStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id, type } = req.params; // type = 'hospital' | 'lab'
-    const { status, cancellationReason } = req.body;
+    const { status, cancellationReason, hospitalSharePercentage } = req.body;
 
-    if (!['APPROVED', 'CANCELLED'].includes(status)) {
+    if (!['APPROVED', 'CANCELLED', 'CONFIGURED', 'PENDING'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
     }
 
@@ -1023,40 +1387,77 @@ export const updateVerificationStatus = async (req: Request, res: Response, next
       return res.status(400).json({ success: false, message: 'Cancellation reason is mandatory' });
     }
 
+    // Validate commission percentage if provided
+    if (hospitalSharePercentage !== undefined) {
+      const shareNum = Number(hospitalSharePercentage);
+      if (isNaN(shareNum) || shareNum < 0 || shareNum > 100) {
+        return res.status(400).json({ success: false, message: 'Commission percentages must be between 0% and 100% and total 100%.' });
+      }
+    }
+
     let updatedRecord;
 
     if (type === 'hospital') {
+      const updateData: any = {};
+      if (['APPROVED', 'CANCELLED'].includes(status)) {
+        updateData.verificationStatus = String(status);
+        if (status === 'CANCELLED') {
+          updateData.cancellationReason = String(cancellationReason);
+          updateData.cancelledAt = new Date();
+          updateData.cancelledBy = req.user?.id || null;
+        }
+      }
+      if (hospitalSharePercentage !== undefined) {
+        updateData.hospitalShare = Number(hospitalSharePercentage);
+      }
+
       updatedRecord = await prisma.hospital.update({
         where: { id: String(id) },
-        data: {
-          verificationStatus: String(status),
-          cancellationReason: status === 'CANCELLED' ? String(cancellationReason) : null,
-          cancelledAt: status === 'CANCELLED' ? new Date() : null,
-          cancelledBy: status === 'CANCELLED' ? (req.user?.id || null) : null
-        }
+        data: updateData
       });
     } else if (type === 'lab') {
       try {
+        const updateData: any = {};
+        if (['APPROVED', 'CANCELLED'].includes(status)) {
+          updateData.verificationStatus = String(status);
+          if (status === 'CANCELLED') {
+            updateData.cancellationReason = String(cancellationReason);
+            updateData.cancelledAt = new Date();
+            updateData.cancelledBy = req.user?.id || null;
+          }
+        }
+        // If hospital-based lab, also update associated hospital's share or standalone lab's share
         updatedRecord = await prisma.lab.update({
           where: { id: String(id) },
-          data: {
-            verificationStatus: String(status),
-            cancellationReason: status === 'CANCELLED' ? String(cancellationReason) : null,
-            cancelledAt: status === 'CANCELLED' ? new Date() : null,
-            cancelledBy: status === 'CANCELLED' ? (req.user?.id || null) : null
-          }
+          data: updateData,
+          include: { hospital: true }
         });
+
+        if (hospitalSharePercentage !== undefined && updatedRecord.hospitalId) {
+          await prisma.hospital.update({
+            where: { id: updatedRecord.hospitalId },
+            data: { hospitalShare: Number(hospitalSharePercentage) }
+          });
+        }
       } catch (err: any) {
         if (err.code === 'P2025') {
-          // Might be a standalone lab stored in hospital table
+          // Standalone lab stored in hospital table
+          const updateData: any = {};
+          if (['APPROVED', 'CANCELLED'].includes(status)) {
+            updateData.verificationStatus = String(status);
+            if (status === 'CANCELLED') {
+              updateData.cancellationReason = String(cancellationReason);
+              updateData.cancelledAt = new Date();
+              updateData.cancelledBy = req.user?.id || null;
+            }
+          }
+          if (hospitalSharePercentage !== undefined) {
+            updateData.hospitalShare = Number(hospitalSharePercentage);
+          }
+
           updatedRecord = await prisma.hospital.update({
             where: { id: String(id) },
-            data: {
-              verificationStatus: String(status),
-              cancellationReason: status === 'CANCELLED' ? String(cancellationReason) : null,
-              cancelledAt: status === 'CANCELLED' ? new Date() : null,
-              cancelledBy: status === 'CANCELLED' ? (req.user?.id || null) : null
-            }
+            data: updateData
           });
         } else {
           throw err;

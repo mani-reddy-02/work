@@ -505,7 +505,7 @@ const LabTestList = () => {
   };
 
   // Price calculations
-  const effectiveTestPrice = selectedLab ? selectedLab.numericPrice : selectedItem?.numericPrice || 499;
+  const effectiveTestPrice = selectedLab ? selectedLab.numericPrice : (selectedItem?.numericPrice || 0);
   const effectiveCollectionFee = selectedLab ? selectedLab.homeCollectionFee || 0 : 0;
   const effectiveTotal = effectiveTestPrice + effectiveCollectionFee;
 
@@ -1323,19 +1323,16 @@ const LabTestList = () => {
                   </div>
                 ) : (
                   <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                    {availableSlots.length > 0 ? (
+                    {availableSlots.filter(s => s.available).length > 0 ? (
                       <div className="grid grid-cols-3 gap-3">
-                        {availableSlots.map((s) => {
+                        {availableSlots.filter(s => s.available).map((s) => {
                           const isSelected = selectedTime === s.slot;
                           return (
                             <button
                               key={s.slot}
-                              disabled={!s.available}
                               onClick={() => setSelectedTime(s.slot)}
                               className={`px-2 py-3 rounded-xl text-[12px] font-bold border transition-all duration-200 flex items-center justify-center ${
-                                !s.available
-                                  ? 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed line-through'
-                                  : isSelected
+                                isSelected
                                   ? 'bg-blue-50 border-[#0055ff] text-[#0055ff] shadow-sm ring-1 ring-blue-600'
                                   : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-slate-50'
                               }`}

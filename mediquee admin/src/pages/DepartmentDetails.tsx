@@ -7,7 +7,7 @@ import DiseaseModal from '../components/DiseaseModal';
 
 const DepartmentDetails: React.FC = () => {
   const { id } = useParams();
-  const { token, user } = useAdminAuth();
+  const { token, adminUser } = useAdminAuth();
   const navigate = useNavigate();
   
   const [department, setDepartment] = useState<any>(null);
@@ -46,12 +46,12 @@ const DepartmentDetails: React.FC = () => {
   useEffect(() => { fetchDepartment(); }, [id, token]);
 
   const diseaseColumns: Column<any>[] = [
-    { header: 'S.No', accessor: (_, idx) => <span className="text-sm text-slate-500">{idx + 1}</span> },
-    { header: 'Icon', accessor: 'icon', render: (val) => val ? <img src={val} className="w-8 h-8 rounded-full" /> : <div className="w-8 h-8 rounded-full bg-slate-200" /> },
+    { header: 'S.No', accessor: (_: any, idx: number) => <span className="text-sm text-slate-500">{idx + 1}</span> },
+    { header: 'Icon', accessor: (row: any) => row.icon ? <img src={row.icon} className="w-8 h-8 rounded-full" /> : <div className="w-8 h-8 rounded-full bg-slate-200" /> },
     { header: 'Disease', accessor: 'name', className: 'font-medium text-slate-900' },
-    { header: 'Description', accessor: 'description', render: (val) => val || '-' },
-    { header: 'Status', accessor: 'isActive', render: (val) => val ? <span className="text-green-600 bg-green-100 px-2 py-1 rounded">Active</span> : <span className="text-red-600 bg-red-100 px-2 py-1 rounded">Inactive</span> },
-    { header: 'Actions', accessor: 'id', render: (_, row) => (
+    { header: 'Description', accessor: (row: any) => row.description || '-' },
+    { header: 'Status', accessor: (row: any) => row.isActive ? <span className="text-green-600 bg-green-100 px-2 py-1 rounded">Active</span> : <span className="text-red-600 bg-red-100 px-2 py-1 rounded">Inactive</span> },
+    { header: 'Actions', accessor: (row: any) => (
       <div className="flex space-x-2">
         <button onClick={() => { setEditingDisease(row); setModalOpen(true); }} className="text-indigo-600 hover:text-indigo-900 p-1"><Edit size={16}/></button>
       </div>
@@ -59,17 +59,17 @@ const DepartmentDetails: React.FC = () => {
   ];
 
   const doctorColumns: Column<any>[] = [
-    { header: 'S.No', accessor: (_, idx) => <span className="text-sm text-slate-500">{idx + 1}</span> },
+    { header: 'S.No', accessor: (_: any, idx: number) => <span className="text-sm text-slate-500">{idx + 1}</span> },
     { header: 'Doctor Name', accessor: 'name', className: 'font-medium text-slate-900' },
-    { header: 'Specialization', accessor: 'specialization', render: (val) => val || '-' },
-    { header: 'Experience', accessor: 'experienceYears', render: (val) => val ? `${val} Years` : '-' },
-    { header: 'Status', accessor: 'active', render: (val) => val ? <span className="text-green-600 bg-green-100 px-2 py-1 rounded">Active</span> : <span className="text-red-600 bg-red-100 px-2 py-1 rounded">Inactive</span> },
+    { header: 'Specialization', accessor: (row: any) => row.specialization || '-' },
+    { header: 'Experience', accessor: (row: any) => row.experienceYears ? `${row.experienceYears} Years` : '-' },
+    { header: 'Status', accessor: (row: any) => row.active ? <span className="text-green-600 bg-green-100 px-2 py-1 rounded">Active</span> : <span className="text-red-600 bg-red-100 px-2 py-1 rounded">Inactive</span> },
   ];
 
   const hospitalColumns: Column<any>[] = [
-    { header: 'S.No', accessor: (_, idx) => <span className="text-sm text-slate-500">{idx + 1}</span> },
+    { header: 'S.No', accessor: (_: any, idx: number) => <span className="text-sm text-slate-500">{idx + 1}</span> },
     { header: 'Hospital Name', accessor: 'name', className: 'font-medium text-slate-900' },
-    { header: 'City', accessor: 'city', render: (val) => val || '-' },
+    { header: 'City', accessor: (row: any) => row.city || '-' },
     { header: 'Total Doctors', accessor: 'totalDoctors' },
   ];
 
@@ -140,7 +140,7 @@ const DepartmentDetails: React.FC = () => {
             <ActivitySquare size={20} className="text-indigo-600" />
             <h2 className="text-lg font-bold text-slate-800">Diseases ({diseases.length})</h2>
           </div>
-          {(user?.role === 'SUPER_ADMIN' || user?.role === 'HOSPITAL_ADMIN') && (
+          {(adminUser?.role === 'SUPER_ADMIN' || adminUser?.role === 'HOSPITAL_ADMIN') && (
             <button onClick={() => { setEditingDisease(null); setModalOpen(true); }} className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-3 py-1.5 text-sm font-medium rounded flex items-center transition-colors">
               <Plus size={16} className="mr-1"/> Add Disease
             </button>

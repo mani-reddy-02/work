@@ -229,8 +229,28 @@ export const labApi = {
     }
     return { id: orderId };
   },
-  async createPackage(payload: unknown): Promise<{ id: string }> {
-    throw new Error('Test packages are managed through the master platform catalog.');
+  async createPackage(payload: { name: string; originalPrice: number; packagePrice: number; tests: string[] }): Promise<{ id: string }> {
+    const res = await fetch(`${API_BASE}/hospital/lab-tests/packages`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data?.error?.message || 'Failed to create package');
+    }
+    return data.data;
+  },
+
+  async getHospitalLabPackages(): Promise<{ data: any[] }> {
+    const res = await fetch(`${API_BASE}/hospital/lab-tests/packages`, {
+      headers: getAuthHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data?.error?.message || 'Failed to fetch packages');
+    }
+    return data;
   },
   async createHomeCollection(payload: {
     patientName: string;

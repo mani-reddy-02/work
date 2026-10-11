@@ -6,14 +6,7 @@ import { useToast } from "@/context/ToastContext"
 import { labApi } from "@/services/labApi"
 import { cn } from "@/lib/utils"
 
-// The lab's test catalog comes from the backend. Empty until connected.
-const availableTests: { id: string; name: string; price: number }[] = []
-
-// Saved packages come from the backend. Empty until connected.
-const existingPackages: {
-  id: string; name: string; tests: string[];
-  originalPrice: number; packagePrice: number; status: string;
-}[] = []
+import { useEffect } from "react"
 
 export function TestPackages() {
   const navigate = useNavigate()
@@ -22,7 +15,36 @@ export function TestPackages() {
   const [pkgName, setPkgName] = useState('')
   const [pkgPrice, setPkgPrice] = useState('')
   const [selectedTests, setSelectedTests] = useState<string[]>([])
+  const [availableTests, setAvailableTests] = useState<{ id: string; name: string; price: number }[]>([])
+  const [existingPackages, setExistingPackages] = useState<{
+    id: string; name: string; tests: string[];
+    originalPrice: number; packagePrice: number; status: string;
+  }[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  useEffect(() => {
+    const fetchTests = async () => {
+      try {
+        const res = await labApi.getHospitalLabMenu()
+        if (res && res.data) {
+          const formattedTests = res.data.map((t: any) => ({
+            id: t.id,
+            name: t.platformTest?.name || 'Unknown Test',
+            price: t.price || 0
+          }))
+          setAvailableTests(formattedTests)
+        }
+
+        const pkgRes = await labApi.getHospitalLabPackages()
+        if (pkgRes && pkgRes.data) {
+          setExistingPackages(pkgRes.data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch lab tests or packages:", error)
+      }
+    }
+    fetchTests()
+  }, [])
 
   const toggleTest = (id: string) =>
     setSelectedTests(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id])
@@ -34,7 +56,14 @@ export function TestPackages() {
     if (!pkgName || !pkgPrice || selectedTests.length === 0) { toast("Fill all required fields", "error"); return }
     setIsSubmitting(true)
     try {
-      await labApi.createPackage({ name: pkgName, price: pkgPrice, tests: selectedTests })
+      const testsNames = availableTests.filter(t => selectedTests.includes(t.id)).map(t => t.name)
+      await labApi.createPackage({ name: pkgName, originalPrice: originalTotal, packagePrice: parseInt(pkgPrice), tests: testsNames })
+      
+      const pkgRes = await labApi.getHospitalLabPackages()
+      if (pkgRes && pkgRes.data) {
+        setExistingPackages(pkgRes.data)
+      }
+      
       toast("Package created successfully", "success")
       setShowAdd(false)
       setPkgName(''); setPkgPrice(''); setSelectedTests([])

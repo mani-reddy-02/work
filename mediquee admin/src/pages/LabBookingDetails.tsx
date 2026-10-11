@@ -14,6 +14,8 @@ const LabBookingDetails: React.FC = () => {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [uploadingReport, setUploadingReport] = useState(false);
+
   const fetchBooking = async () => {
     if (!token || !id) return;
     try {
@@ -42,6 +44,31 @@ const LabBookingDetails: React.FC = () => {
     } finally {
       setUpdating(false);
     }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !token || !id) return;
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const fileData = reader.result as string;
+      setUploadingReport(true);
+      try {
+        const res = await labService.uploadLabReport(id, fileData, file.name, token);
+        if (res.success) {
+          alert('Report uploaded successfully');
+          await fetchBooking();
+        } else {
+          alert(res.message || 'Failed to upload report');
+        }
+      } catch (err) {
+        alert('Error uploading report');
+      } finally {
+        setUploadingReport(false);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   if (loading) return <div className="p-12 flex justify-center"><div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div></div>;
@@ -141,6 +168,22 @@ const LabBookingDetails: React.FC = () => {
               <button onClick={() => handleStatusUpdate('CANCELLED')} disabled={updating || booking.status === 'REPORT_READY' || booking.status === 'CANCELLED'} className="w-full flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg disabled:opacity-50 mt-4 text-sm font-medium"><XCircle size={16} />Cancel</button>
             </div>
           </div>
+          
+          {booking.status === 'REPORT_READY' ? (
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2 text-emerald-600">
+                <CheckCircle size={20} /> Report Uploaded
+              </h3>
+              <p className="text-sm text-slate-600">The report for this booking has been successfully uploaded and is available to the patient.</p>
+            </div>
+          ) : (
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+               <h3 className="text-lg font-bold text-slate-900 mb-4">Upload Report</h3>
+               <p className="text-sm text-slate-500 mb-4">Upload the final test results (PDF). This will automatically mark the booking as Completed.</p>
+               <input type="file" accept=".pdf,image/*" onChange={handleFileUpload} disabled={uploadingReport || booking.status === 'CANCELLED'} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors" />
+               {uploadingReport && <p className="text-sm text-blue-600 mt-2 font-medium">Uploading...</p>}
+            </div>
+          )}
           
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
              <h3 className="text-lg font-bold text-slate-900 mb-4">Timeline</h3>

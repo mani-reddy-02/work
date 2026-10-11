@@ -6,7 +6,7 @@ import { Plus, Edit, X } from 'lucide-react';
 import DepartmentModal from '../components/DepartmentModal';
 
 const Departments: React.FC = () => {
-  const { token, user } = useAdminAuth();
+  const { token, adminUser } = useAdminAuth();
   const navigate = useNavigate();
   const [departments, setDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -144,7 +144,7 @@ const Departments: React.FC = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Departments</h1>
-        {(user?.role === 'SUPER_ADMIN' || user?.role === 'HOSPITAL_ADMIN') && (
+        {(adminUser?.role === 'SUPER_ADMIN' || adminUser?.role === 'HOSPITAL_ADMIN') && (
           <button onClick={() => { setEditingDept(null); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-2 rounded flex items-center shadow-sm">
             <Plus size={16} className="mr-2"/> Add New Department
           </button>
@@ -168,16 +168,7 @@ const Departments: React.FC = () => {
           searchPlaceholder="Search departments..."
           onSearch={(value) => setSearch(value)}
           onRowClick={(item) => navigate(`/admin/departments/${item.id}`)}
-          emptyMessage={loading ? "Loading departments..." : departments.length === 0 && !error ? (
-            <div className="flex flex-col items-center">
-              <span className="mb-4">No departments found.</span>
-              {(user?.role === 'SUPER_ADMIN' || user?.role === 'HOSPITAL_ADMIN') && (
-                <button onClick={() => { setEditingDept(null); setModalOpen(true); }} className="text-blue-600 hover:underline">
-                  + Add New Department
-                </button>
-              )}
-            </div>
-          ) : ""}
+          emptyMessage={loading ? "Loading departments..." : "No departments found."}
           onFilterClick={() => setIsFilterOpen(!isFilterOpen)}
           pagination={{
             currentPage,

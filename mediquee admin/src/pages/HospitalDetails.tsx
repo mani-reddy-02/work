@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, Building, Calendar, DollarSign, MapPin, Mail, Phone, Stethoscope, FileText, CheckCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Building2, Building, Calendar, DollarSign, MapPin, Mail, Phone, Stethoscope, FileText, CheckCircle, Clock, Percent } from 'lucide-react';
 import { useAdminAuth } from '../contexts/AuthContext';
 import StatusBadge from '../components/ui/StatusBadge';
 import DataTable, { Column } from '../components/ui/DataTable';
@@ -110,6 +110,47 @@ const HospitalDetails: React.FC = () => {
             <div><span className="text-sm text-slate-500 block">Facility Type</span><span className="font-medium text-slate-900">{hospital.facilityType || 'N/A'}</span></div>
             <div><span className="text-sm text-slate-500 block">License Number</span><span className="font-medium text-slate-900">{hospital.registrationNumber || 'N/A'}</span></div>
             <div><span className="text-sm text-slate-500 block">System Registration</span><span className="font-medium text-slate-900">{new Date(hospital.createdAt).toLocaleDateString()}</span></div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b pb-2">
+            <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+              <Percent size={18} className="text-blue-600" />
+              Commission & Revenue Sharing
+            </h3>
+            <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+              hospital.hospitalShare !== null && hospital.hospitalShare !== undefined
+                ? 'bg-emerald-100 text-emerald-800'
+                : 'bg-slate-100 text-slate-600'
+            }`}>
+              {hospital.hospitalShare !== null && hospital.hospitalShare !== undefined ? 'Configured' : 'Not configured'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm">
+            <div>
+              <span className="text-xs text-slate-500 block">Admin Commission</span>
+              <span className="font-bold text-slate-900 text-base">
+                {hospital.hospitalShare !== null && hospital.hospitalShare !== undefined ? `${100 - Number(hospital.hospitalShare)}%` : 'Not configured'}
+              </span>
+              <span className="text-[11px] text-slate-400 block mt-0.5">Platform retained rate</span>
+            </div>
+            <div>
+              <span className="text-xs text-slate-500 block">Hospital Share</span>
+              <span className="font-bold text-slate-900 text-base">
+                {hospital.hospitalShare !== null && hospital.hospitalShare !== undefined ? `${Number(hospital.hospitalShare)}%` : 'Not configured'}
+              </span>
+              <span className="text-[11px] text-slate-400 block mt-0.5">Direct hospital payout</span>
+            </div>
+            <div>
+              <span className="text-xs text-slate-500 block">Revenue Basis</span>
+              <span className="font-medium text-slate-800">Net Eligible Order Value</span>
+            </div>
+            <div>
+              <span className="text-xs text-slate-500 block">Effective Date</span>
+              <span className="font-medium text-slate-800">{new Date(hospital.createdAt).toLocaleDateString()}</span>
+            </div>
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, MapPin, Phone, Mail, FileText, Settings as SettingsIcon } from 'lucide-react';
+import { ArrowLeft, Building2, MapPin, Phone, Mail, FileText, Settings as SettingsIcon, Percent, CheckCircle2, XCircle, Save } from 'lucide-react';
 import { useAdminAuth } from '../contexts/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -15,8 +15,9 @@ const LabDetails: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [savingComm, setSavingComm] = useState(false);
-  const [adminComm, setAdminComm] = useState<string>('');
-  const [labShare, setLabShare] = useState<string>('');
+  const [adminComm, setAdminComm] = useState<string>('20');
+  const [labShare, setLabShare] = useState<string>('80');
+  const [commFeedback, setCommFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const fetchLab = async () => {
     if (!token || !id) return;
@@ -39,9 +40,12 @@ const LabDetails: React.FC = () => {
           } : null
         };
         setLab(labData);
-        if (labData.hospitalShare !== undefined) {
+        if (labData.hospitalShare !== undefined && labData.hospitalShare !== null) {
           setLabShare(labData.hospitalShare.toString());
-          setAdminComm((100 - labData.hospitalShare).toString());
+          setAdminComm((100 - Number(labData.hospitalShare)).toString());
+        } else {
+          setLabShare('80');
+          setAdminComm('20');
         }
       }
       else setError(result.message || 'Lab not found');
@@ -62,6 +66,9 @@ const LabDetails: React.FC = () => {
     const num = parseFloat(val);
     if (!isNaN(num) && num >= 0 && num <= 100) {
       setLabShare((100 - num).toString());
+      setCommFeedback(null);
+    } else {
+      setCommFeedback({ message: 'Percentages must be between 0 and 100', type: 'error' });
     }
   };
 
@@ -71,19 +78,23 @@ const LabDetails: React.FC = () => {
     const num = parseFloat(val);
     if (!isNaN(num) && num >= 0 && num <= 100) {
       setAdminComm((100 - num).toString());
+      setCommFeedback(null);
+    } else {
+      setCommFeedback({ message: 'Percentages must be between 0 and 100', type: 'error' });
     }
   };
 
   const handleSaveCommission = async () => {
     const lShare = parseFloat(labShare);
     const aComm = parseFloat(adminComm);
-    if (isNaN(lShare) || isNaN(aComm) || lShare + aComm !== 100 || lShare < 0 || aComm < 0) {
-      alert("Invalid commission configuration. Total must equal 100%.");
+    if (isNaN(lShare) || isNaN(aComm) || Math.round(lShare + aComm) !== 100 || lShare < 0 || aComm < 0) {
+      setCommFeedback({ message: 'Admin commission and lab share must total exactly 100%.', type: 'error' });
       return;
     }
 
     try {
       setSavingComm(true);
+      setCommFeedback(null);
       const res = await fetch(`${API_URL}/admin/hospitals/${id}/revenue-share`, {
         method: 'PATCH',
         headers: {
@@ -94,13 +105,13 @@ const LabDetails: React.FC = () => {
       });
       const result = await res.json();
       if (result.success) {
-        alert("Configuration saved successfully!");
+        setCommFeedback({ message: 'Commission configuration saved successfully!', type: 'success' });
         fetchLab();
       } else {
-        alert(result.message || "Failed to update commission configuration.");
+        setCommFeedback({ message: result.message || 'Failed to update commission configuration.', type: 'error' });
       }
     } catch (err) {
-      alert("Network error.");
+      setCommFeedback({ message: 'Network error occurred while saving.', type: 'error' });
     } finally {
       setSavingComm(false);
     }
@@ -194,43 +205,113 @@ const LabDetails: React.FC = () => {
           </div>
           
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-            <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-2">
-               <SettingsIcon size={20} className="text-slate-600" />
-               <h3 className="text-lg font-bold text-slate-900">Financial Configuration</h3>
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Percent size={20} className="text-blue-600" />
+                <h3 className="text-lg font-bold text-slate-900">Commission & Revenue Sharing</h3>
+              </div>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                lab.hospitalShare !== null && lab.hospitalShare !== undefined
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-slate-100 text-slate-600'
+              }`}>
+                {lab.hospitalShare !== null && lab.hospitalShare !== undefined ? 'Configured' : 'Not configured'}
+              </span>
             </div>
-            
+
+            {/* Current Applied Status Info */}
+            <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-lg border border-slate-100 text-xs mb-5">
+              <div>
+                <span className="text-slate-500 block">Applied Admin Commission</span>
+                <span className="font-bold text-slate-900 text-sm">
+                  {lab.hospitalShare !== null && lab.hospitalShare !== undefined ? `${100 - Number(lab.hospitalShare)}%` : 'Not configured'}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500 block">Applied Lab Share</span>
+                <span className="font-bold text-slate-900 text-sm">
+                  {lab.hospitalShare !== null && lab.hospitalShare !== undefined ? `${Number(lab.hospitalShare)}%` : 'Not configured'}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500 block">Revenue Basis</span>
+                <span className="font-medium text-slate-700">Net Eligible Order Value</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block">Effective Date</span>
+                <span className="font-medium text-slate-700">{new Date(lab.createdAt).toLocaleDateString()}</span>
+              </div>
+            </div>
+
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Update Arrangement</h4>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Admin Commission %</label>
-                <input 
-                  type="number" 
-                  value={adminComm} 
-                  onChange={handleAdminCommChange}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                  min="0"
-                  max="100"
-                />
+                <label className="block text-xs font-medium text-slate-600 mb-1">Admin Commission (%)</label>
+                <div className="relative">
+                  <input 
+                    type="number" 
+                    value={adminComm} 
+                    onChange={handleAdminCommChange}
+                    className="w-full px-3 py-2 pr-7 border border-slate-300 rounded-lg text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    placeholder="20"
+                  />
+                  <span className="absolute right-2.5 top-2 text-slate-400 text-xs font-bold">%</span>
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Lab Share %</label>
-                <input 
-                  type="number" 
-                  value={labShare} 
-                  onChange={handleLabShareChange}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                  min="0"
-                  max="100"
-                />
+                <label className="block text-xs font-medium text-slate-600 mb-1">Lab Share (%)</label>
+                <div className="relative">
+                  <input 
+                    type="number" 
+                    value={labShare} 
+                    onChange={handleLabShareChange}
+                    className="w-full px-3 py-2 pr-7 border border-slate-300 rounded-lg text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    placeholder="80"
+                  />
+                  <span className="absolute right-2.5 top-2 text-slate-400 text-xs font-bold">%</span>
+                </div>
               </div>
             </div>
+
+            {commFeedback && (
+              <div className={`p-3 rounded-lg text-xs font-medium mb-3 flex items-center ${
+                commFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'
+              }`}>
+                {commFeedback.type === 'success' ? <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 mr-2 text-red-600 shrink-0" />}
+                <span>{commFeedback.message}</span>
+              </div>
+            )}
             
-            <button 
-              onClick={handleSaveCommission} 
-              disabled={savingComm}
-              className="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-50"
-            >
-              {savingComm ? 'Saving...' : 'Save Configuration'}
-            </button>
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <span className="text-xs text-slate-500">
+                Sum: <span className={`font-bold ${(parseFloat(adminComm) + parseFloat(labShare)) === 100 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {(parseFloat(adminComm) || 0) + (parseFloat(labShare) || 0)}%
+                </span>
+              </span>
+              <button 
+                onClick={handleSaveCommission} 
+                disabled={savingComm || (parseFloat(adminComm) + parseFloat(labShare)) !== 100}
+                className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center shadow-sm"
+              >
+                {savingComm ? (
+                  <>
+                    <span className="animate-spin mr-1.5">⏳</span>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5 mr-1.5" />
+                    Save Commission Arrangement
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

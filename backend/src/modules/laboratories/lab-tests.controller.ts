@@ -138,3 +138,52 @@ export const updateHospitalLabTest = async (req: Request, res: Response, next: N
     next(error);
   }
 };
+
+export const getHospitalLabPackages = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = (req as any).user?.hospitalId;
+    if (!hospitalId) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'User is not associated with a hospital' } });
+    }
+
+    const packages = await prisma.labPackage.findMany({
+      where: { hospitalId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ success: true, data: packages });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createHospitalLabPackage = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = (req as any).user?.hospitalId;
+    if (!hospitalId) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'User is not associated with a hospital' } });
+    }
+
+    const { name, tests, originalPrice, packagePrice } = req.body;
+    
+    if (!name || !tests || !packagePrice) {
+      return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'Name, tests, and packagePrice are required' } });
+    }
+
+    const newPackage = await prisma.labPackage.create({
+      data: {
+        hospitalId,
+        name,
+        tests: tests as string[], // array of test IDs or Names
+        originalPrice: Number(originalPrice || 0),
+        packagePrice: Number(packagePrice),
+        status: 'Active'
+      }
+    });
+
+    res.json({ success: true, data: newPackage });
+  } catch (error) {
+    next(error);
+  }
+};
+

@@ -31,11 +31,42 @@ export const getDiseases = async (req: Request, res: Response, next: NextFunctio
       where.name = { contains: search as string, mode: 'insensitive' };
     }
     
-    const conditionsData = await prisma.platformCondition.findMany({ 
+    // Fetch active diseases added explicitly by hospitals that have active doctors
+    const addedDiseases = await prisma.disease.findMany({
+      where: { 
+        isActive: true,
+        department: {
+          isActive: true,
+          users: { some: { role: 'DOCTOR', active: true } }
+        }
+      },
+      select: { name: true },
+      distinct: ['name']
+    });
+    const addedDiseaseNames = new Set(addedDiseases.map(d => d.name.toLowerCase()));
+
+    // Fetch specialty IDs of active hospital departments that have active doctors
+    const activeDepartments = await prisma.department.findMany({
+      where: { 
+        isActive: true, 
+        specialtyId: { not: null },
+        users: { some: { role: 'DOCTOR', active: true } }
+      },
+      select: { specialtyId: true },
+      distinct: ['specialtyId']
+    });
+    const activeSpecialtyIds = new Set(activeDepartments.map(d => d.specialtyId));
+
+    const conditionsDataRaw = await prisma.platformCondition.findMany({ 
       where, 
       orderBy: { name: 'asc' },
       include: { specialty: true } 
     });
+
+    // Filter to only diseases supported by at least one hospital with an active doctor
+    const conditionsData = conditionsDataRaw.filter(d => 
+      addedDiseaseNames.has(d.name.toLowerCase()) || activeSpecialtyIds.has(d.specialtyId)
+    );
     const conditions = conditionsData.map(d => ({
       id: d.id,
       name: d.name,

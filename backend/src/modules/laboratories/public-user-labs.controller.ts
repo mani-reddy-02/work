@@ -83,7 +83,75 @@ export const getPublicLabTests = async (req: Request, res: Response, next: NextF
       };
     });
 
-    res.json({ success: true, data: formattedTests });
+    const packages = await prisma.labPackage.findMany({
+      where: {
+        status: 'Active',
+        hospital: { verificationStatus: 'APPROVED' },
+        ...(hospitalId ? { hospitalId: String(hospitalId) } : {}),
+        ...(laboratoryId ? { hospitalId: String(laboratoryId) } : {})
+      },
+      include: { hospital: true }
+    });
+
+    const allHospitalTests = await prisma.labTest.findMany({
+      where: { isActive: true },
+      include: { platformTest: true }
+    });
+
+    const formattedPackages = [];
+    for (const pkg of packages) {
+      const hospitalTests = allHospitalTests.filter((lt: any) => lt.hospitalId === pkg.hospitalId);
+      
+      let homeCollectionAvailable = true;
+      for (const testName of pkg.tests) {
+         const matchedTest = hospitalTests.find((lt: any) => lt.platformTest.name === testName);
+         if (!matchedTest || !matchedTest.isHomeCollectionAvailable) {
+            homeCollectionAvailable = false;
+            break;
+         }
+      }
+
+      if (isHomeCollectionRequest && !homeCollectionAvailable) {
+        continue;
+      }
+
+      formattedPackages.push({
+        id: pkg.id,
+        name: pkg.name,
+        code: `PKG-${pkg.id.substring(0, 4).toUpperCase()}`,
+        category: 'Package',
+        sampleType: 'Multiple',
+        sample: 'Multiple',
+        numericPrice: (hospitalId || laboratoryId) ? pkg.packagePrice : 0,
+        price: (hospitalId || laboratoryId) ? `₹${pkg.packagePrice}` : 'Select Provider',
+        time: '24',
+        tat: '24 Hours',
+        parametersCount: pkg.tests.length,
+        parameters: pkg.tests.length,
+        description: `Tests included: ${pkg.tests.join(', ')}`,
+        desc: `Tests included: ${pkg.tests.join(', ')}`,
+        prep: 'Consult laboratory',
+        preparation: 'Consult laboratory',
+        concern: 'General',
+        healthConcern: 'General',
+        availableLabCount: 1,
+        homeCollectionAvailable,
+        isPackage: true
+      });
+    }
+
+    let allResults = [...formattedTests, ...formattedPackages];
+    
+    if (search) {
+      const s = String(search).toLowerCase();
+      allResults = allResults.filter((t: any) => t.name.toLowerCase().includes(s));
+    }
+    if (category && category !== 'All Tests') {
+      const c = String(category).toLowerCase();
+      allResults = allResults.filter((t: any) => t.category.toLowerCase() === c);
+    }
+
+    res.json({ success: true, data: allResults });
   } catch (error) {
     next(error);
   }
@@ -106,6 +174,50 @@ export const getEligibleLaboratories = async (req: Request, res: Response, next:
     const { id } = req.params; 
     const { search, homeCollectionOnly } = req.query;
     const isHomeCollectionRequest = req.originalUrl.includes('home-sample-collection') || homeCollectionOnly === 'true';
+
+    const pkg = await prisma.labPackage.findUnique({
+      where: { id: String(id), status: 'Active' },
+      include: { hospital: true }
+    });
+
+    if (pkg) {
+      const allHospitalTests = await prisma.labTest.findMany({
+        where: { hospitalId: pkg.hospitalId, isActive: true },
+        include: { platformTest: true }
+      });
+
+      let homeCollectionAvailable = true;
+      for (const testName of pkg.tests) {
+         const matchedTest = allHospitalTests.find((lt: any) => lt.platformTest.name === testName);
+         if (!matchedTest || !matchedTest.isHomeCollectionAvailable) {
+            homeCollectionAvailable = false;
+            break;
+         }
+      }
+
+      if (isHomeCollectionRequest && !homeCollectionAvailable) {
+        return res.json({ success: true, data: [] });
+      }
+
+      const lab = {
+        id: pkg.hospital.id,
+        name: pkg.hospital.name,
+        businessType: pkg.hospital.businessType,
+        facilityType: pkg.hospital.facilityType,
+        logoUrl: pkg.hospital.logoUrl,
+        contactPhone: pkg.hospital.contactPhone,
+        contactEmail: pkg.hospital.contactEmail,
+        location: pkg.hospital.city || 'Unknown',
+        address: pkg.hospital.addressLine1 || 'Unknown',
+        rating: 4.5,
+        time: 'Open 24/7',
+        price: pkg.packagePrice.toString(),
+        numericPrice: pkg.packagePrice,
+        homeCollectionAvailable,
+        homeCollectionFee: 0 // Packages don't explicitly store fee; assumes free or included
+      };
+      return res.json({ success: true, data: [lab] });
+    }
 
     const offerings: any = await prisma.labTest.findMany({
       where: {
@@ -302,10 +414,9 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
         }
       }
 
-      // Filter by existing bookings capacity (Assuming max 1 Home collection or max 5 total walk-ins)
+      // Filter by existing bookings capacity (Assuming max 1 booking per slot)
       if (isAvailable && slotCounts[s.slot]) {
-        // You can tweak this capacity. Let's say a slot is full if it has >= 3 bookings
-        if (slotCounts[s.slot].total >= 3) {
+        if (slotCounts[s.slot].total >= 1) {
           isAvailable = false;
         }
       }
@@ -314,7 +425,7 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
         ...s,
         available: isAvailable
       };
-    });
+    }).filter(s => s.available);
 
     res.json({
       success: true,
@@ -334,6 +445,52 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
 export const getPublicLabTestById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+
+    const pkg = await prisma.labPackage.findUnique({
+      where: { id: String(id), status: 'Active' },
+      include: { hospital: true }
+    });
+
+    if (pkg) {
+      const allHospitalTests = await prisma.labTest.findMany({
+        where: { hospitalId: pkg.hospitalId, isActive: true },
+        include: { platformTest: true }
+      });
+
+      let homeCollectionAvailable = true;
+      for (const testName of pkg.tests) {
+         const matchedTest = allHospitalTests.find((lt: any) => lt.platformTest.name === testName);
+         if (!matchedTest || !matchedTest.isHomeCollectionAvailable) {
+            homeCollectionAvailable = false;
+            break;
+         }
+      }
+
+      const testDetail = {
+        id: pkg.id,
+        name: pkg.name,
+        code: `PKG-${pkg.id.substring(0, 4).toUpperCase()}`,
+        category: 'Package',
+        sampleType: 'Multiple',
+        sample: 'Multiple',
+        numericPrice: 0,
+        price: 'Select Provider',
+        time: '24',
+        tat: '24 Hours',
+        parametersCount: pkg.tests.length,
+        parameters: pkg.tests.length,
+        description: `Tests included: ${pkg.tests.join(', ')}`,
+        desc: `Tests included: ${pkg.tests.join(', ')}`,
+        prep: 'Consult laboratory',
+        preparation: 'Consult laboratory',
+        concern: 'General',
+        healthConcern: 'General',
+        availableLabCount: 1,
+        homeCollectionAvailable,
+        isPackage: true
+      };
+      return res.json({ success: true, data: testDetail });
+    }
     
     const pt: any = await prisma.platformLabTest.findUnique({
       where: { id: String(id) },

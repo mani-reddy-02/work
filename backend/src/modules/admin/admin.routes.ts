@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate, requireRole } from '../../middleware/auth';
 import { Role } from '@prisma/client';
-import { getStats, getHospitals, createHospital, updateHospital, getUsers, getAppointments, updateHospitalRevenueShare, getUserById, getHospitalById, getAppointmentById, updateAppointmentStatus, getLabBookings, getLabBookingById, updateLabBookingStatus, getHomeNursingBookings, getHomeNursingBookingById, updateHomeNursingBookingStatus, getPatientFilters, getPendingVerifications, updateVerificationStatus } from './admin.controller';
+import { getStats, getHospitals, createHospital, updateHospital, getUsers, getAppointments, updateHospitalRevenueShare, getUserById, getHospitalById, getAppointmentById, updateAppointmentStatus, getLabBookings, getLabOrdersAnalytics, getLabBookingById, updateLabBookingStatus, uploadLabReport, getHomeNursingBookings, getHomeNursingBookingById, updateHomeNursingBookingStatus, getPatientFilters, getPendingVerifications, updateVerificationStatus } from './admin.controller';
 import {
   getAllHospitalRequests,
   updateRequestStatus,
@@ -41,8 +41,11 @@ router.get('/appointments/:id', getAppointmentById);
 router.patch('/appointments/:id/status', updateAppointmentStatus);
 
 router.get('/lab-bookings', getLabBookings);
+router.get('/lab-bookings/analytics', getLabOrdersAnalytics);
+router.get('/lab-orders/analytics', getLabOrdersAnalytics);
 router.get('/lab-bookings/:id', getLabBookingById);
 router.patch('/lab-bookings/:id/status', updateLabBookingStatus);
+router.post('/lab-bookings/:id/report', uploadLabReport);
 
 router.get('/home-nursing', getHomeNursingBookings);
 router.get('/home-nursing/:id', getHomeNursingBookingById);

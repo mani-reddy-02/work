@@ -2,7 +2,9 @@ import { Router } from 'express';
 import {
   getHospitalLabTests,
   addHospitalLabTestsBatch,
-  updateHospitalLabTest
+  updateHospitalLabTest,
+  getHospitalLabPackages,
+  createHospitalLabPackage
 } from './lab-tests.controller';
 
 const router = Router();
@@ -12,5 +14,7 @@ const router = Router();
 router.get('/', getHospitalLabTests);
 router.post('/batch', addHospitalLabTestsBatch);
 router.patch('/:id', updateHospitalLabTest);
+router.get('/packages', getHospitalLabPackages);
+router.post('/packages', createHospitalLabPackage);
 
 export default router;

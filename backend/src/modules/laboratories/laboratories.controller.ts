@@ -78,7 +78,8 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
         city: true,
         state: true,
         pincode: true,
-        services: true
+        services: true,
+        hospitalShare: true
       },
       orderBy: { name: 'asc' }
     });
@@ -128,6 +129,7 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
         location: [lab.area, lab.city, lab.state].filter(Boolean).join(', ') || lab.city || 'India',
         address: [lab.addressLine1, lab.area, lab.city].filter(Boolean).join(', ') || lab.city || 'India',
         services: lab.services,
+        hospitalShare: lab.hospitalShare ?? null,
         rating: 4.8,
         time: 'Within 24 Hours',
         price: minPrice,
@@ -175,7 +177,8 @@ export const getLaboratoryById = async (req: Request, res: Response, next: NextF
         city: true,
         state: true,
         pincode: true,
-        services: true
+        services: true,
+        hospitalShare: true
       }
     });
 
@@ -217,6 +220,7 @@ export const getLaboratoryById = async (req: Request, res: Response, next: NextF
         location: [lab.area, lab.city, lab.state].filter(Boolean).join(', ') || lab.city || 'India',
         address: [lab.addressLine1, lab.area, lab.city].filter(Boolean).join(', ') || lab.city || 'India',
         services: lab.services,
+        hospitalShare: lab.hospitalShare ?? null,
         rating: 4.8,
         time: 'Within 24 Hours',
         price: `₹${Math.round(minPrice)}`,

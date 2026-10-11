@@ -185,8 +185,8 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
 
     for (const b of rangeOpBookings) {
       const amount = b.fee || 0;
-      const adminCut = b.mediqueeAmount ?? Math.round(amount * 0.20);
-      const hospitalNet = b.hospitalAmount ?? Math.round(amount * 0.80);
+      const adminCut = b.mediqueeAmount ?? Math.round(amount * ADMIN_COMMISSION_RATE);
+      const hospitalNet = b.hospitalAmount ?? Math.round(amount * HOSPITAL_SHARE_RATE);
       const isVideo = (b.opType || '').toLowerCase().includes('video');
       if (isVideo) {
         videoRevenue += amount;
@@ -229,8 +229,8 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
 
     for (const b of rangeLabBookings) {
       const amount = (b as any).totalAmount || (b as any).price || 0;
-      const adminCut = (b as any).mediqueeAmount ?? Math.round(amount * 0.20);
-      const hospitalNet = (b as any).hospitalAmount ?? Math.round(amount * 0.80);
+      const adminCut = (b as any).mediqueeAmount ?? Math.round(amount * ADMIN_COMMISSION_RATE);
+      const hospitalNet = (b as any).hospitalAmount ?? Math.round(amount * HOSPITAL_SHARE_RATE);
       const isSample = b.bookingType === 'HOME_COLLECTION';
       if (isSample) {
         sampleRevenue += amount;
@@ -271,8 +271,8 @@ export const getHospitalPayouts = async (req: Request, res: Response, next: Next
 
     for (const b of rangeNursingBookings) {
       const amount = b.totalAmount || 0;
-      const adminCut = b.mediqueeAmount ?? Math.round(amount * 0.20);
-      const hospitalNet = b.hospitalAmount ?? Math.round(amount * 0.80);
+      const adminCut = b.mediqueeAmount ?? Math.round(amount * ADMIN_COMMISSION_RATE);
+      const hospitalNet = b.hospitalAmount ?? Math.round(amount * HOSPITAL_SHARE_RATE);
       nursingRevenue += amount;
       nursingCount += 1;
       allTransactions.push({

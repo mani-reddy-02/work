@@ -650,22 +650,19 @@ const HomeNursingList = () => {
                   </div>
 
                   {/* Available Slots Pills (if loaded) */}
-                  {availableSlots.length > 0 && (
+                  {availableSlots.filter(s => s.available).length > 0 && (
                     <div className="pt-2">
                       <label className="block text-[11px] font-bold text-slate-700 mb-2">
                         Available Shift Slots
                       </label>
                       <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                        {availableSlots.map((s) => (
+                        {availableSlots.filter(s => s.available).map((s) => (
                           <button
                             key={s.slot}
                             type="button"
-                            disabled={!s.available}
                             onClick={() => setPatientDetails((p) => ({ ...p, time: s.slot }))}
                             className={`px-2 py-3 rounded-xl text-[12px] font-bold border transition-all duration-200 flex items-center justify-center ${
-                              !s.available
-                                ? 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed line-through'
-                                : patientDetails.time === s.slot
+                              patientDetails.time === s.slot
                                 ? 'bg-blue-50 border-[#0055ff] text-[#0055ff] shadow-sm ring-1 ring-blue-600'
                                 : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-slate-50'
                             }`}

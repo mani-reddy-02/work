@@ -1,3 +1,9 @@
+import dns from 'dns';
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch (e) {
+  // ignore
+}
 import app from './app';
 import { env } from './config/env';
 import { prisma } from './config/prisma';

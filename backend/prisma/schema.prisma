@@ -45,6 +45,7 @@ model Hospital {
   labs                Lab[]
   labBookings         LabBooking[]
   labTests            LabTest[]
+  labPackages         LabPackage[]
   marketingRequests   MarketingRequest[]
   medicalCampRequests MedicalCampRequest[]
   notifications       Notification[]
@@ -580,6 +581,7 @@ model LabBooking {
   mediqueeAmount               Float?
   mediqueeCommissionPercentage Float?
   reportUrl                    String?
+  cancellationReason           String?
   items                        LabBookingItem[]
   hospital                     Hospital         @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
   patient                      User             @relation(fields: [patientId], references: [id], onDelete: Cascade)
@@ -721,7 +723,9 @@ enum LabBookingStatus {
   ASSIGNED
   SAMPLE_COLLECTED
   IN_LAB_PROCESSING
+  REPORT_UPLOAD_PENDING
   REPORT_READY
+  COMPLETED
   CANCELLED
 }
 
@@ -768,4 +772,19 @@ enum DoctorPresenceStatus {
   ON_BREAK
   IN_SURGERY
   OFF_DUTY
+}
+
+model LabPackage {
+  id            String   @id @default(uuid())
+  hospitalId    String
+  name          String
+  originalPrice Float
+  packagePrice  Float
+  status        String   @default("Active")
+  tests         String[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  hospital      Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@map("lab_packages")
 }

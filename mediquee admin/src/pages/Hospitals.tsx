@@ -211,6 +211,35 @@ const Hospitals: React.FC = () => {
     {
       header: 'Verification',
       accessor: (h) => <StatusBadge status={h.verificationStatus} />,
+    },
+    {
+      header: 'Admin Commission',
+      accessor: (h) => (
+        <span className="text-sm font-semibold text-slate-900">
+          {h.hospitalShare !== null && h.hospitalShare !== undefined ? `${100 - Number(h.hospitalShare)}%` : <span className="text-xs font-normal text-slate-400">Not configured</span>}
+        </span>
+      ),
+    },
+    {
+      header: 'Hospital Share',
+      accessor: (h) => (
+        <span className="text-sm font-semibold text-slate-900">
+          {h.hospitalShare !== null && h.hospitalShare !== undefined ? `${h.hospitalShare}%` : <span className="text-xs font-normal text-slate-400">Not configured</span>}
+        </span>
+      ),
+    },
+    {
+      header: 'Commission Status',
+      accessor: (h) => {
+        const isConfigured = h.hospitalShare !== null && h.hospitalShare !== undefined;
+        return (
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
+            isConfigured ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+          }`}>
+            {isConfigured ? 'Configured' : 'Not configured'}
+          </span>
+        );
+      },
     }
   ];
 
