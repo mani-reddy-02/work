@@ -223,6 +223,7 @@ const Transactions: React.FC = () => {
         data={paginatedTransactions}
         columns={columns}
         keyExtractor={(t) => t.id}
+        onRowClick={(t) => navigate(`/admin/transactions/${t.id}`)}
         searchPlaceholder="Search by ID, Patient, Hospital, or Service..."
         searchValue={search}
         onSearch={(val) => {
