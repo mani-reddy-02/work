@@ -1188,11 +1188,15 @@ export const updateNurseVisitStatus = async (req: Request, res: Response, next: 
       });
     }
 
-    // Verify permission: nurse assigned or hospital admin
-    if (booking.nurseId !== nurseId && req.user?.role !== Role.HOSPITAL_ADMIN && req.user?.role !== Role.SUPER_ADMIN) {
+    // Verify permission: nurse assigned or hospital admin of this hospital or super admin
+    const isAssignedNurse = booking.nurseId === nurseId;
+    const isHospitalAdmin = req.user?.role === Role.HOSPITAL_ADMIN && req.user?.hospitalId === booking.hospitalId;
+    const isSuperAdmin = req.user?.role === Role.SUPER_ADMIN;
+
+    if (!isAssignedNurse && !isHospitalAdmin && !isSuperAdmin) {
       return res.status(403).json({
         success: false,
-        error: { code: 'FORBIDDEN', message: 'You are not assigned to this home nursing visit' },
+        error: { code: 'FORBIDDEN', message: 'You are not authorized to update this home nursing visit' },
       });
     }
 

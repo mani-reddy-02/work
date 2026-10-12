@@ -45,7 +45,8 @@ export class VideoController {
       const result = await VideoService.generateToken(
         parsed.data.bookingId,
         req.user!.id,
-        req.user!.role
+        req.user!.role,
+        req.user?.hospitalId
       );
 
       res.status(200).json({
@@ -81,7 +82,7 @@ export class VideoController {
         return;
       }
 
-      const result = await VideoService.getStatus(bookingId, req.user!.id, req.user!.role);
+      const result = await VideoService.getStatus(bookingId, req.user!.id, req.user!.role, req.user?.hospitalId);
       res.status(200).json({
         success: true,
         data: result,
@@ -112,7 +113,7 @@ export class VideoController {
         return;
       }
 
-      const result = await VideoService.endConsultation(bookingId, req.user!.id, req.user!.role);
+      const result = await VideoService.endConsultation(bookingId, req.user!.id, req.user!.role, req.user?.hospitalId);
       res.status(200).json({
         success: true,
         data: result,

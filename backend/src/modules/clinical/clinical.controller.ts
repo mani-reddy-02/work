@@ -193,7 +193,16 @@ export const recordConsultation = async (req: Request, res: Response, next: Next
  */
 export const getPatientHistory = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const userRole = req.user?.role;
     const hospitalId = req.user?.hospitalId;
+
+    if (userRole === Role.DOCTOR && !hospitalId) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Doctor must be affiliated with a hospital to access patient records' }
+      });
+    }
+
     const patientId = (req.params.patientId || req.query.patientId) as string | undefined;
     const phone = req.query.phone as string | undefined;
 
@@ -417,6 +426,21 @@ export const sendPrescriptionToPatient = async (req: Request, res: Response, nex
       return res.status(404).json({
         success: false,
         error: { code: 'NOT_FOUND', message: 'Consultation booking record not found' }
+      });
+    }
+
+    const userRole = req.user?.role;
+    const userId = req.user?.id;
+    const userHospitalId = req.user?.hospitalId;
+
+    // Strict authorization: Only the assigned doctor for this booking and hospital (or super admin) can issue and send prescriptions
+    const isAssignedDoctor = userRole === Role.DOCTOR && booking.doctorId === userId && Boolean(userHospitalId && booking.hospitalId === userHospitalId);
+    const isSuperAdmin = userRole === Role.SUPER_ADMIN;
+
+    if (!isAssignedDoctor && !isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Only the assigned doctor for this consultation can issue and send prescriptions' }
       });
     }
 

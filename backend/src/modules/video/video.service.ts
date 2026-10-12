@@ -41,7 +41,8 @@ export class VideoService {
   public static async generateToken(
     bookingId: string,
     userId: string,
-    userRole: Role
+    userRole: Role,
+    userHospitalId?: string | null
   ): Promise<VideoConsultationResponse> {
     const configCheck = this.validateConfig();
     if (!configCheck.isConfigured) {
@@ -79,8 +80,8 @@ export class VideoService {
 
     // 3. Verify user authorization
     const isPatient = userRole === Role.PATIENT && (booking.patientId === userId || booking.patient?.id === userId);
-    const isAssignedDoctor = userRole === Role.DOCTOR && booking.doctorId === userId;
-    const isHospitalStaff = userRole === Role.HOSPITAL_ADMIN || userRole === Role.SUPER_ADMIN;
+    const isAssignedDoctor = userRole === Role.DOCTOR && booking.doctorId === userId && Boolean(userHospitalId && booking.hospitalId === userHospitalId);
+    const isHospitalStaff = (userRole === Role.HOSPITAL_ADMIN && Boolean(userHospitalId && booking.hospitalId === userHospitalId)) || userRole === Role.SUPER_ADMIN;
 
     if (!isPatient && !isAssignedDoctor && !isHospitalStaff) {
       const err: any = new Error('Access denied: You are not authorized to join this consultation');
@@ -190,7 +191,8 @@ export class VideoService {
   public static async getStatus(
     bookingId: string,
     userId: string,
-    userRole: Role
+    userRole: Role,
+    userHospitalId?: string | null
   ): Promise<VideoConsultationStatusResponse> {
     const booking = await prisma.oPBooking.findUnique({
       where: { id: bookingId },
@@ -211,8 +213,8 @@ export class VideoService {
 
     // Verify access
     const isPatient = userRole === Role.PATIENT && (booking.patientId === userId || booking.patient?.id === userId);
-    const isAssignedDoctor = userRole === Role.DOCTOR && booking.doctorId === userId;
-    const isHospitalStaff = userRole === Role.HOSPITAL_ADMIN || userRole === Role.SUPER_ADMIN;
+    const isAssignedDoctor = userRole === Role.DOCTOR && booking.doctorId === userId && Boolean(userHospitalId && booking.hospitalId === userHospitalId);
+    const isHospitalStaff = (userRole === Role.HOSPITAL_ADMIN && Boolean(userHospitalId && booking.hospitalId === userHospitalId)) || userRole === Role.SUPER_ADMIN;
 
     if (!isPatient && !isAssignedDoctor && !isHospitalStaff) {
       const err: any = new Error('Access denied: You are not authorized to view this consultation status');
@@ -255,7 +257,8 @@ export class VideoService {
   public static async endConsultation(
     bookingId: string,
     userId: string,
-    userRole: Role
+    userRole: Role,
+    userHospitalId?: string | null
   ): Promise<VideoConsultationStatusResponse> {
     const booking = await prisma.oPBooking.findUnique({
       where: { id: bookingId },
@@ -276,8 +279,8 @@ export class VideoService {
 
     // Authorization
     const isPatient = userRole === Role.PATIENT && booking.patientId === userId;
-    const isAssignedDoctor = userRole === Role.DOCTOR && booking.doctorId === userId;
-    const isHospitalStaff = userRole === Role.HOSPITAL_ADMIN || userRole === Role.SUPER_ADMIN;
+    const isAssignedDoctor = userRole === Role.DOCTOR && booking.doctorId === userId && Boolean(userHospitalId && booking.hospitalId === userHospitalId);
+    const isHospitalStaff = (userRole === Role.HOSPITAL_ADMIN && Boolean(userHospitalId && booking.hospitalId === userHospitalId)) || userRole === Role.SUPER_ADMIN;
 
     if (!isPatient && !isAssignedDoctor && !isHospitalStaff) {
       const err: any = new Error('Access denied: You cannot end this consultation');

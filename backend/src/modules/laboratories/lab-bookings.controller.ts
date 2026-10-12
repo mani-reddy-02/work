@@ -588,11 +588,12 @@ export const getLabBookingById = async (req: Request, res: Response, next: NextF
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } });
     }
 
-    if (hospitalId && booking.hospitalId !== hospitalId) {
-      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized access to this booking' } });
-    }
+    const userRole = (req as any).user?.role;
+    const isPatient = userRole === 'PATIENT' && booking.patientId === userId;
+    const isHospitalStaff = Boolean(hospitalId && booking.hospitalId === hospitalId);
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
 
-    if (userId && (req as any).user?.role === 'PATIENT' && booking.patientId !== userId) {
+    if (!isPatient && !isHospitalStaff && !isSuperAdmin) {
       return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized access to this booking' } });
     }
 

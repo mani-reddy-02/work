@@ -117,7 +117,12 @@ export const updateDepartment = async (req: Request, res: Response, next: NextFu
 
 export const deleteDepartment = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const hospitalId = req.user!.hospitalId;
     const { id } = req.params;
+    const department = await prisma.department.findUnique({ where: { id: String(id) } });
+    if (!department || department.hospitalId !== hospitalId) {
+      return res.status(404).json({ success: false, error: { message: 'Department not found' } });
+    }
     await prisma.department.delete({ where: { id: String(id) } });
     res.json({ success: true, message: 'Deleted' });
   } catch (error) { next(error); }

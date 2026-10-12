@@ -459,10 +459,10 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
       });
     }
 
-    // Authorization: patient owner, doctor assigned or in hospital, hospital staff, or super admin
+    // Authorization: patient owner, assigned doctor, hospital staff/doctor in the same hospital, or super admin
     const isPatient = booking.patientId === userId;
-    const isHospitalStaff = userHospitalId && booking.hospitalId === userHospitalId;
-    const isDoctor = booking.doctorId === userId || userRole === Role.DOCTOR;
+    const isHospitalStaff = Boolean(userHospitalId && booking.hospitalId === userHospitalId);
+    const isDoctor = booking.doctorId === userId || (userRole === Role.DOCTOR && isHospitalStaff);
     const isSuperAdmin = userRole === Role.SUPER_ADMIN;
 
     if (!isPatient && !isHospitalStaff && !isDoctor && !isSuperAdmin) {
