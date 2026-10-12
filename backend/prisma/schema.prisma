@@ -514,6 +514,7 @@ model PlatformLabDepartment {
   name        String
   description String?
   icon        String?
+  isActive    Boolean           @default(true)
   createdAt   DateTime          @default(now())
   departments Department[]
   labs        Lab[]
@@ -533,6 +534,8 @@ model PlatformLabTest {
   canBeCollectedAtHome Boolean               @default(true)
   defaultTatHours      Int                   @default(24)
   description          String?
+  icon                 String?
+  isActive             Boolean               @default(true)
   createdAt            DateTime              @default(now())
   hospitalOfferings    LabTest[]
   department           PlatformLabDepartment @relation(fields: [departmentId], references: [id])

@@ -52,7 +52,8 @@ export const navGroups = [
     items: [
       { name: 'Hospitals', path: '/admin/hospitals', icon: Building2 },
       { name: 'Departments', path: '/admin/departments', icon: Network },
-        { name: 'Labs', path: '/admin/labs', icon: FlaskConical }
+      { name: 'Labs', path: '/admin/labs', icon: FlaskConical },
+      { name: 'Lab Departments', path: '/admin/lab-departments', icon: TestTube }
     ]
   },
   {

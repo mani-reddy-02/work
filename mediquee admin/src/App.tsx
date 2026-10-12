@@ -16,6 +16,8 @@ import LabDetails from './pages/LabDetails';
 import HospitalDetails from './pages/HospitalDetails';
 import Departments from './pages/Departments';
 import DepartmentDetails from './pages/DepartmentDetails';
+import LabDepartments from './pages/LabDepartments';
+import LabDepartmentDetails from './pages/LabDepartmentDetails';
 import Doctors from './pages/Doctors';
 import DoctorDetails from './pages/DoctorDetails';
 import Appointments from './pages/Appointments';
@@ -80,6 +82,8 @@ function App() {
               <Route path="hospitals/:id" element={<HospitalDetails />} />
               <Route path="departments" element={<Departments />} />
               <Route path="departments/:id" element={<DepartmentDetails />} />
+              <Route path="lab-departments" element={<LabDepartments />} />
+              <Route path="lab-departments/:id" element={<LabDepartmentDetails />} />
               <Route path="labs" element={<Labs />} />
               <Route path="labs/:id" element={<LabDetails />} />
               <Route path="doctors" element={<Doctors />} />

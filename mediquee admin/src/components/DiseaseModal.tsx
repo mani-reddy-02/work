@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAdminAuth } from '../contexts/AuthContext';
 import IconPicker from './IconPicker';
+import { X } from 'lucide-react';
 
 export default function DiseaseModal({ isOpen, onClose, onSuccess, existing, departmentId, departmentName }: any) {
   const { token } = useAdminAuth();
@@ -29,7 +30,6 @@ export default function DiseaseModal({ isOpen, onClose, onSuccess, existing, dep
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Disease ${existing ? 'updated' : 'created'} successfully.`);
         onSuccess();
         onClose();
       } else {
@@ -43,31 +43,46 @@ export default function DiseaseModal({ isOpen, onClose, onSuccess, existing, dep
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg p-6 w-full max-w-xl my-8">
-        <h2 className="text-xl font-bold mb-4">{existing ? 'Edit Disease' : 'Add New Disease'}</h2>
-        {error && <div className="text-red-500 mb-4 bg-red-50 p-3 rounded">{error}</div>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1 text-slate-700">Disease Name *</label>
-            <input type="text" className="w-full border rounded p-2 focus:ring-blue-500 focus:border-blue-500" value={name} onChange={e => setName(e.target.value)} required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1 text-slate-700">Description *</label>
-            <textarea className="w-full border rounded p-2 focus:ring-blue-500 focus:border-blue-500" rows={3} value={description} onChange={e => setDescription(e.target.value)} required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1 text-slate-700">Department</label>
-            <input type="text" className="w-full border border-slate-200 rounded p-2 bg-slate-50 text-slate-500 cursor-not-allowed" value={departmentName} disabled />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1 text-slate-700">Disease Icon *</label>
-            <IconPicker value={icon} onChange={setIcon} folderType="conditions" />
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex min-h-full items-center justify-center p-3 sm:p-4">
+      <div 
+        className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white shrink-0">
+          <h2 className="text-lg font-bold text-slate-900">{existing ? 'Edit Disease' : 'Add New Disease'}</h2>
+          <button 
+            type="button" 
+            onClick={onClose} 
+            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg p-1.5 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-6 overflow-y-auto flex-1 space-y-4">
+            {error && <div className="text-red-700 bg-red-50 border border-red-200 p-3.5 rounded-xl text-sm">{error}</div>}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Disease Name *</label>
+              <input type="text" className="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none" value={name} onChange={e => setName(e.target.value)} required />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Description *</label>
+              <textarea className="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none" rows={3} value={description} onChange={e => setDescription(e.target.value)} required />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Department</label>
+              <input type="text" className="w-full border border-slate-200 rounded-xl p-2.5 text-sm bg-slate-50 text-slate-500 cursor-not-allowed" value={departmentName} disabled />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Disease Icon *</label>
+              <IconPicker value={icon} onChange={setIcon} folderType="conditions" />
+            </div>
           </div>
           
-          <div className="flex justify-end space-x-3 pt-4 border-t mt-6">
-            <button type="button" onClick={onClose} className="px-4 py-2 border border-slate-300 font-medium text-slate-700 rounded hover:bg-slate-50">Cancel</button>
-            <button type="submit" disabled={loading} className="px-4 py-2 bg-blue-600 font-medium text-white rounded hover:bg-blue-700">{loading ? 'Saving...' : (existing ? 'Save Changes' : 'Create Disease')}</button>
+          <div className="flex justify-end space-x-3 px-6 py-4 border-t border-slate-100 bg-slate-50 shrink-0">
+            <button type="button" onClick={onClose} className="px-4 py-2 border border-slate-200 font-medium text-sm text-slate-700 rounded-xl hover:bg-white transition-colors">Cancel</button>
+            <button type="submit" disabled={loading} className="px-5 py-2 bg-blue-600 font-semibold text-sm text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all shadow-sm">{loading ? 'Saving...' : (existing ? 'Save Changes' : 'Create Disease')}</button>
           </div>
         </form>
       </div>

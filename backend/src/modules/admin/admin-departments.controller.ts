@@ -11,7 +11,7 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 
 function processIcon(iconData: string | undefined): string | undefined {
   if (!iconData) return undefined;
-  if (iconData.startsWith('/icons/')) return iconData;
+  if (iconData.startsWith('/icons/') || iconData.startsWith('/optimized/') || iconData.startsWith('/uploads/') || iconData.startsWith('http')) return iconData;
   if (iconData.startsWith('data:image')) {
     const matches = iconData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
     if (!matches || matches.length !== 3) return undefined;
@@ -20,6 +20,9 @@ function processIcon(iconData: string | undefined): string | undefined {
     const filePath = path.join(UPLOADS_DIR, safeFileName);
     fs.writeFileSync(filePath, fileBuffer);
     return `/uploads/icons/${safeFileName}`;
+  }
+  if (!iconData.startsWith('/')) {
+    return `/optimized/${iconData}`;
   }
   return iconData;
 }
@@ -343,6 +346,48 @@ export const updateAdminDepartment = async (req: Request, res: Response, next: N
     });
 
     res.json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteAdminDepartment = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const specialty = await prisma.platformSpecialty.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            conditions: true,
+            departments: true
+          }
+        }
+      }
+    });
+    if (!specialty) {
+      return res.status(404).json({ success: false, error: { message: 'Department not found' } });
+    }
+    if (specialty._count.departments > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: { message: `Cannot delete department because it is assigned to ${specialty._count.departments} hospitals. Please deactivate instead.` } 
+      });
+    }
+    if (specialty._count.conditions > 0) {
+      const usedConditions = await prisma.oPBooking.count({
+        where: { condition: { specialtyId: id } }
+      });
+      if (usedConditions > 0) {
+        return res.status(400).json({ 
+          success: false, 
+          error: { message: 'Cannot delete department because its diseases are referenced in appointments. Please deactivate instead.' } 
+        });
+      }
+      await prisma.platformCondition.deleteMany({ where: { specialtyId: id } });
+    }
+    await prisma.platformSpecialty.delete({ where: { id } });
+    res.json({ success: true, message: 'Department deleted successfully' });
   } catch (error) {
     next(error);
   }

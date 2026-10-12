@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Search, Filter, Building2, FlaskConical, Clock, CheckCircle2, 
   XCircle, FileText, Upload, RefreshCw, Calendar, ChevronLeft, ChevronRight,
-  Eye, FileCheck, X, AlertCircle, Home, MapPin, UserCheck
+  Eye, FileCheck, X, AlertCircle, Home, MapPin, UserCheck, TestTube
 } from 'lucide-react';
 import { useAdminAuth } from '../contexts/AuthContext';
 import DataTable from '../components/ui/DataTable';
@@ -572,6 +572,14 @@ const Labs: React.FC = () => {
           <p className="text-slate-500 text-sm">
             Manage laboratory facilities and track diagnostic test orders through their complete lifecycle.
           </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/admin/lab-departments')}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-sm flex items-center gap-2"
+          >
+            <TestTube size={16} /> Manage Lab Departments & Tests
+          </button>
         </div>
       </div>
 

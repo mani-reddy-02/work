@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import { useAdminAuth } from '../contexts/AuthContext';
-import { Plus, Edit, X } from 'lucide-react';
+import { Plus, Edit, Trash2, X } from 'lucide-react';
 import DepartmentModal from '../components/DepartmentModal';
+import { IconImage } from '../components/IconImage';
 
 const Departments: React.FC = () => {
   const { token, adminUser } = useAdminAuth();
@@ -97,6 +98,28 @@ const Departments: React.FC = () => {
     setIsFilterOpen(false);
   };
 
+  const handleDeleteDepartment = async (e: React.MouseEvent, dept: any) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to delete the department "${dept.name}"?`)) {
+      return;
+    }
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
+      const res = await fetch(`${API_URL}/admin/departments/${dept.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchDepartments();
+      } else {
+        alert(data.error?.message || 'Could not delete department.');
+      }
+    } catch (err) {
+      alert('Network error while deleting department.');
+    }
+  };
+
   const columns: Column<any>[] = [
     {
       header: 'S.No',
@@ -110,7 +133,7 @@ const Departments: React.FC = () => {
       header: 'Department', 
       accessor: (item) => (
         <div className="flex items-center space-x-3">
-          {item.icon ? <img src={item.icon} className="w-8 h-8 rounded-full" /> : <div className="w-8 h-8 rounded-full bg-slate-200" />}
+          <IconImage icon={item.icon} name={item.name} size="sm" rounded="rounded-lg" />
           <span className="font-medium text-slate-900">{item.name}</span>
         </div>
       )
@@ -132,8 +155,11 @@ const Departments: React.FC = () => {
       header: 'Actions', 
       accessor: (item) => (
         <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-          <button onClick={() => { setEditingDept(item); setModalOpen(true); }} className="text-indigo-600 hover:text-indigo-900 p-1">
+          <button title="Edit Department" onClick={() => { setEditingDept(item); setModalOpen(true); }} className="text-indigo-600 hover:text-indigo-900 p-1">
             <Edit size={16}/>
+          </button>
+          <button title="Delete Department" onClick={(e) => handleDeleteDepartment(e, item)} className="text-red-500 hover:text-red-700 p-1">
+            <Trash2 size={16}/>
           </button>
         </div>
       )

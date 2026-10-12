@@ -15,10 +15,21 @@ import {
   getAdminDepartmentById,
   createAdminDepartment,
   updateAdminDepartment,
+  deleteAdminDepartment,
   createAdminDisease,
   updateAdminDisease,
   deleteAdminDisease
 } from './admin-departments.controller';
+import {
+  getAdminLabDepartments,
+  getAdminLabDepartmentById,
+  createAdminLabDepartment,
+  updateAdminLabDepartment,
+  deleteAdminLabDepartment,
+  createAdminLabTest,
+  updateAdminLabTest,
+  deleteAdminLabTest
+} from './admin-lab-departments.controller';
 import { getLabs, getLabById, createLab } from './admin.lab.controller';
 
 const router = Router();
@@ -58,15 +69,27 @@ router.get('/camp-requests/active', getActiveCampRequests);
 router.get('/camp-requests/history', getCampRequestsHistory);
 router.patch('/hospital-requests/:type/:id/status', updateRequestStatus);
 
-// Department & Disease Management Routes
+// Hospital Department & Disease Management Routes
 router.post('/departments', createAdminDepartment);
 router.patch('/departments/:id', updateAdminDepartment);
+router.delete('/departments/:id', deleteAdminDepartment);
 router.get('/departments', getAdminDepartments);
 router.get('/departments/filters', getDepartmentFilters);
 router.get('/departments/:id', getAdminDepartmentById);
 router.post('/departments/:id/diseases', createAdminDisease);
 router.patch('/diseases/:diseaseId', updateAdminDisease);
 router.delete('/diseases/:diseaseId', deleteAdminDisease);
+
+// Lab Department & Test Management Routes
+router.get('/lab-departments', getAdminLabDepartments);
+router.post('/lab-departments', createAdminLabDepartment);
+router.get('/lab-departments/:id', getAdminLabDepartmentById);
+router.patch('/lab-departments/:id', updateAdminLabDepartment);
+router.delete('/lab-departments/:id', deleteAdminLabDepartment);
+
+router.post('/lab-departments/:id/tests', createAdminLabTest);
+router.patch('/lab-tests/:testId', updateAdminLabTest);
+router.delete('/lab-tests/:testId', deleteAdminLabTest);
 
 
 // Verifications

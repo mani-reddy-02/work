@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import { useAdminAuth } from '../contexts/AuthContext';
-import { Plus, Edit, ArrowLeft, Building, UserSquare2, ActivitySquare } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, Building, UserSquare2, ActivitySquare } from 'lucide-react';
 import DiseaseModal from '../components/DiseaseModal';
+import { IconImage } from '../components/IconImage';
 
 const DepartmentDetails: React.FC = () => {
   const { id } = useParams();
@@ -45,15 +46,42 @@ const DepartmentDetails: React.FC = () => {
 
   useEffect(() => { fetchDepartment(); }, [id, token]);
 
+  const handleDeleteDisease = async (disease: any) => {
+    if (!window.confirm(`Are you sure you want to delete the disease "${disease.name}"?`)) {
+      return;
+    }
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
+      const res = await fetch(`${API_URL}/admin/diseases/${disease.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchDepartment();
+      } else {
+        alert(data.error?.message || 'Could not delete disease.');
+      }
+    } catch (err) {
+      alert('Network error while deleting disease.');
+    }
+  };
+
   const diseaseColumns: Column<any>[] = [
     { header: 'S.No', accessor: (_: any, idx: number) => <span className="text-sm text-slate-500">{idx + 1}</span> },
-    { header: 'Icon', accessor: (row: any) => row.icon ? <img src={row.icon} className="w-8 h-8 rounded-full" /> : <div className="w-8 h-8 rounded-full bg-slate-200" /> },
+    { 
+      header: 'Icon', 
+      accessor: (row: any) => (
+        <IconImage icon={row.icon} name={row.name} size="sm" rounded="rounded-lg" />
+      ) 
+    },
     { header: 'Disease', accessor: 'name', className: 'font-medium text-slate-900' },
     { header: 'Description', accessor: (row: any) => row.description || '-' },
     { header: 'Status', accessor: (row: any) => row.isActive ? <span className="text-green-600 bg-green-100 px-2 py-1 rounded">Active</span> : <span className="text-red-600 bg-red-100 px-2 py-1 rounded">Inactive</span> },
     { header: 'Actions', accessor: (row: any) => (
       <div className="flex space-x-2">
-        <button onClick={() => { setEditingDisease(row); setModalOpen(true); }} className="text-indigo-600 hover:text-indigo-900 p-1"><Edit size={16}/></button>
+        <button title="Edit Disease" onClick={() => { setEditingDisease(row); setModalOpen(true); }} className="text-indigo-600 hover:text-indigo-900 p-1"><Edit size={16}/></button>
+        <button title="Delete Disease" onClick={() => handleDeleteDisease(row)} className="text-red-500 hover:text-red-700 p-1"><Trash2 size={16}/></button>
       </div>
     )}
   ];
@@ -101,13 +129,7 @@ const DepartmentDetails: React.FC = () => {
         </div>
         <div className="p-6 flex flex-col md:flex-row gap-6">
           <div className="shrink-0 flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-100 rounded-xl h-32 w-32">
-            {department.icon ? (
-              <img src={department.icon} className="w-16 h-16 object-contain mb-2" alt={department.name} />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center mb-2">
-                <span className="text-slate-400 text-2xl">{department.name?.charAt(0)}</span>
-              </div>
-            )}
+            <IconImage icon={department.icon} name={department.name} size="lg" rounded="rounded-xl" className="mb-2" />
             <span className={`text-xs px-2 py-1 rounded-full font-medium ${department.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
               {department.isActive ? 'Active' : 'Inactive'}
             </span>

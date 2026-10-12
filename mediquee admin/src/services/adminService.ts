@@ -13,7 +13,7 @@ export const adminService = {
     }
   },
 
-  updateVerificationStatus: async (token: string, type: string, id: string, payload: { status: string, cancellationReason?: string }) => {
+  updateVerificationStatus: async (token: string, type: string, id: string, payload: { status: string, cancellationReason?: string, hospitalSharePercentage?: number }) => {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/verifications/${type}/${id}`, {
         method: 'PATCH',
