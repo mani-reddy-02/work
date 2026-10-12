@@ -14,6 +14,12 @@ const Verification: React.FC = () => {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'HOSPITAL' | 'DOCTOR'>('HOSPITAL');
 
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const filterRef = React.useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+
   React.useEffect(() => {
     const fetchRequests = async () => {
       if (!token) return;
@@ -29,11 +35,40 @@ const Verification: React.FC = () => {
     fetchRequests();
   }, [token]);
 
-  const filteredRequests = requests.filter(r => 
-    r.entityType === activeTab &&
-    (r.entityName.toLowerCase().includes(search.toLowerCase()) || 
-     r.id.toLowerCase().includes(search.toLowerCase()))
-  );
+  // Click outside listener for filter popover
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setShowFilters(false);
+      }
+    };
+    if (showFilters) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFilters]);
+
+  const filteredRequests = requests.filter(r => {
+    const matchesTab = r.entityType === activeTab;
+    const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
+    const term = search.trim().toLowerCase();
+    const matchesSearch = !term || 
+      r.entityName.toLowerCase().includes(term) || 
+      r.id.toLowerCase().includes(term);
+    return matchesTab && matchesStatus && matchesSearch;
+  });
+
+  const totalResults = filteredRequests.length;
+  const paginatedRequests = filteredRequests.slice((page - 1) * pageSize, page * pageSize);
+
+  const handleClearFilters = () => {
+    setStatusFilter('all');
+    setSearch('');
+    setPage(1);
+    setShowFilters(false);
+  };
+
+  const hasActiveFilters = statusFilter !== 'all' || search.trim().length > 0;
 
   const columns: Column<VerificationRequest>[] = [
     {
@@ -79,31 +114,94 @@ const Verification: React.FC = () => {
 
       <PendingVerifications />
 
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col relative">
         <div className="flex border-b border-slate-200">
           <button 
             className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'HOSPITAL' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-            onClick={() => setActiveTab('HOSPITAL')}
+            onClick={() => {
+              setActiveTab('HOSPITAL');
+              setPage(1);
+            }}
           >
             Hospitals
           </button>
           <button 
             className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'DOCTOR' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-            onClick={() => setActiveTab('DOCTOR')}
+            onClick={() => {
+              setActiveTab('DOCTOR');
+              setPage(1);
+            }}
           >
             Doctors
           </button>
         </div>
         
+        {showFilters && (
+          <div ref={filterRef} className="absolute right-4 top-16 w-72 bg-white border border-slate-200 rounded-xl shadow-lg z-50 p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-slate-900 text-sm">Filter Verifications</h3>
+              <button onClick={() => setShowFilters(false)} className="text-slate-400 hover:text-slate-600 text-xs">
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Status</label>
+                <select 
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex gap-2">
+                <button 
+                  onClick={handleClearFilters}
+                  className="flex-1 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
+                >
+                  Clear All
+                </button>
+                <button 
+                  onClick={() => setShowFilters(false)}
+                  className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="p-0 border-t-0">
-           {/* Custom wrapper to reuse DataTable styling but avoiding double borders */}
            <div className="border-0 shadow-none">
              <DataTable 
-                data={filteredRequests}
+                data={paginatedRequests}
                 columns={columns}
                 keyExtractor={(r) => r.id}
-                searchPlaceholder={`Search ${activeTab.toLowerCase()} verifications...`}
-                onSearch={setSearch}
+                searchPlaceholder={`Search ${activeTab.toLowerCase()} by name or ID...`}
+                searchValue={search}
+                onSearch={(term) => {
+                  setSearch(term);
+                  setPage(1);
+                }}
+                onFilterClick={() => setShowFilters(!showFilters)}
+                pagination={{
+                  currentPage: page,
+                  totalPages: Math.max(1, Math.ceil(totalResults / pageSize)),
+                  totalResults,
+                  pageSize,
+                  onPageChange: (p) => setPage(p)
+                }}
+                emptyMessage={hasActiveFilters ? "No matching verification records found." : "No verification requests."}
               />
            </div>
         </div>

@@ -27,8 +27,27 @@ const Reports: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   
-  // Modal State
   const [selectedRequest, setSelectedRequest] = useState<CampRequest | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'REVIEWING' | 'APPROVED'>('ALL');
+
+  const term = search.trim().toLowerCase();
+  const filteredCamps = camps.filter(camp => {
+    const matchesStatus = statusFilter === 'ALL' || camp.status === statusFilter;
+    const matchesSearch = !term ||
+      camp.campTitle.toLowerCase().includes(term) ||
+      camp.id.toLowerCase().includes(term) ||
+      (camp.hospital?.name && camp.hospital.name.toLowerCase().includes(term)) ||
+      camp.location.toLowerCase().includes(term);
+    return matchesStatus && matchesSearch;
+  });
+
+  const hasActiveFilters = statusFilter !== 'ALL' || term.length > 0;
+
+  const handleClearFilters = () => {
+    setSearch('');
+    setStatusFilter('ALL');
+  };
 
   const fetchActiveCamps = useCallback(async () => {
     if (!token) return;
@@ -165,18 +184,63 @@ const Reports: React.FC = () => {
                 <RefreshCw size={15} className={isLoading ? 'animate-spin text-blue-600' : ''} />
               </button>
               <span className="text-xs font-bold text-slate-500 bg-white border px-2.5 py-1 rounded-full shadow-2xs">
-                {camps.length} Active
+                {filteredCamps.length} Active
               </span>
             </div>
           </div>
 
-          {camps.length === 0 ? (
+          {/* Search & Status Filters */}
+          <div className="p-3 border-b border-slate-100 bg-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-sm">
+              <input
+                type="text"
+                placeholder="Search active camps by title, hospital, location..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-3 pr-8 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {(['ALL', 'PENDING', 'REVIEWING', 'APPROVED'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setStatusFilter(tab)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
+                    statusFilter === tab
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {tab === 'ALL' ? 'All' : tab.charAt(0) + tab.slice(1).toLowerCase()}
+                </button>
+              ))}
+              {hasActiveFilters && (
+                <button
+                  onClick={handleClearFilters}
+                  className="px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded-md font-medium border border-rose-200"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          {filteredCamps.length === 0 ? (
             <div className="p-8 text-center text-slate-400 text-sm">
-              No active camp requests found.
+              {hasActiveFilters ? "No matching active camp requests found. Try changing your search or filters." : "No active camp requests found."}
             </div>
           ) : (
             <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
-              {camps.map(camp => (
+              {filteredCamps.map(camp => (
                 <div key={camp.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
                   <div className="space-y-1.5 flex-1 cursor-pointer" onClick={() => setSelectedRequest(camp)}>
                     <div className="flex flex-wrap items-center gap-2">

@@ -18,6 +18,11 @@ const DepartmentDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // Search states for module sub-tables
+  const [diseaseSearch, setDiseaseSearch] = useState('');
+  const [doctorSearch, setDoctorSearch] = useState('');
+  const [hospitalSearch, setHospitalSearch] = useState('');
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingDisease, setEditingDisease] = useState<any>(null);
 
@@ -168,7 +173,20 @@ const DepartmentDetails: React.FC = () => {
             </button>
           )}
         </div>
-        <DataTable columns={diseaseColumns} data={diseases} keyExtractor={(item) => item.id} emptyMessage="No diseases added to this department yet." />
+        <DataTable 
+          columns={diseaseColumns} 
+          data={diseases.filter(d => 
+            !diseaseSearch || 
+            d.name.toLowerCase().includes(diseaseSearch.toLowerCase()) || 
+            (d.id && d.id.toLowerCase().includes(diseaseSearch.toLowerCase())) ||
+            (d.description && d.description.toLowerCase().includes(diseaseSearch.toLowerCase()))
+          )} 
+          keyExtractor={(item) => item.id} 
+          searchPlaceholder="Search diseases by name, ID, or description..."
+          searchValue={diseaseSearch}
+          onSearch={setDiseaseSearch}
+          emptyMessage="No diseases match the search." 
+        />
       </div>
 
       {/* Doctors */}
@@ -177,7 +195,19 @@ const DepartmentDetails: React.FC = () => {
           <UserSquare2 size={20} className="text-blue-600" />
           <h2 className="text-lg font-bold text-slate-800">Doctors ({doctors.length})</h2>
         </div>
-        <DataTable columns={doctorColumns} data={doctors} keyExtractor={(item) => item.id} emptyMessage="No doctors are currently assigned to this department." />
+        <DataTable 
+          columns={doctorColumns} 
+          data={doctors.filter(doc => 
+            !doctorSearch || 
+            doc.name.toLowerCase().includes(doctorSearch.toLowerCase()) || 
+            (doc.specialization && doc.specialization.toLowerCase().includes(doctorSearch.toLowerCase()))
+          )} 
+          keyExtractor={(item) => item.id} 
+          searchPlaceholder="Search doctors by name or specialization..."
+          searchValue={doctorSearch}
+          onSearch={setDoctorSearch}
+          emptyMessage="No doctors match the search." 
+        />
       </div>
 
       {/* Hospitals */}
@@ -186,7 +216,19 @@ const DepartmentDetails: React.FC = () => {
           <Building size={20} className="text-emerald-600" />
           <h2 className="text-lg font-bold text-slate-800">Hospitals ({hospitals.length})</h2>
         </div>
-        <DataTable columns={hospitalColumns} data={hospitals} keyExtractor={(item) => item.id} emptyMessage="No hospitals are associated with this department yet." />
+        <DataTable 
+          columns={hospitalColumns} 
+          data={hospitals.filter(h => 
+            !hospitalSearch || 
+            h.name.toLowerCase().includes(hospitalSearch.toLowerCase()) || 
+            (h.city && h.city.toLowerCase().includes(hospitalSearch.toLowerCase()))
+          )} 
+          keyExtractor={(item) => item.id} 
+          searchPlaceholder="Search hospitals by name or city..."
+          searchValue={hospitalSearch}
+          onSearch={setHospitalSearch}
+          emptyMessage="No hospitals match the search." 
+        />
       </div>
 
       {modalOpen && <DiseaseModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onSuccess={fetchDepartment} existing={editingDisease} departmentId={department.id} departmentName={department.name} />}

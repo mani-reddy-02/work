@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate, requireRole } from '../../middleware/auth';
 import { Role } from '@prisma/client';
-import { getStats, getHospitals, createHospital, updateHospital, getUsers, getAppointments, updateHospitalRevenueShare, getUserById, getHospitalById, getAppointmentById, updateAppointmentStatus, getLabBookings, getLabOrdersAnalytics, getLabBookingById, updateLabBookingStatus, uploadLabReport, getHomeNursingBookings, getHomeNursingBookingById, updateHomeNursingBookingStatus, getPatientFilters, getPendingVerifications, updateVerificationStatus } from './admin.controller';
+import { getStats, getHospitals, createHospital, updateHospital, getUsers, getAppointments, updateHospitalRevenueShare, getUserById, getHospitalById, getAppointmentById, updateAppointmentStatus, getLabBookings, getLabOrdersAnalytics, getLabBookingById, updateLabBookingStatus, uploadLabReport, getHomeNursingBookings, getHomeNursingBookingById, updateHomeNursingBookingStatus, getPatientFilters, getPendingVerifications, updateVerificationStatus, getVideoConsultations, getVideoConsultationById, updateVideoConsultationStatus } from './admin.controller';
 import {
   getAllHospitalRequests,
   updateRequestStatus,
@@ -50,6 +50,10 @@ router.get('/users/:id', getUserById);
 router.get('/appointments', getAppointments);
 router.get('/appointments/:id', getAppointmentById);
 router.patch('/appointments/:id/status', updateAppointmentStatus);
+
+router.get('/video-consultations', getVideoConsultations);
+router.get('/video-consultations/:id', getVideoConsultationById);
+router.patch('/video-consultations/:id/status', updateVideoConsultationStatus);
 
 router.get('/lab-bookings', getLabBookings);
 router.get('/lab-bookings/analytics', getLabOrdersAnalytics);

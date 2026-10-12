@@ -127,6 +127,39 @@ const Requests: React.FC = () => {
     }
   };
 
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'REVIEWING' | 'APPROVED' | 'REJECTED'>('ALL');
+
+  const term = search.trim().toLowerCase();
+
+  const filteredCamps = camps.filter(camp => {
+    const matchesStatus = statusFilter === 'ALL' || camp.status === statusFilter;
+    const matchesSearch = !term ||
+      camp.campTitle.toLowerCase().includes(term) ||
+      camp.id.toLowerCase().includes(term) ||
+      (camp.hospital?.name && camp.hospital.name.toLowerCase().includes(term)) ||
+      camp.location.toLowerCase().includes(term) ||
+      (camp.specialties && camp.specialties.some(s => s.toLowerCase().includes(term)));
+    return matchesStatus && matchesSearch;
+  });
+
+  const filteredMarketing = marketing.filter(req => {
+    const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;
+    const matchesSearch = !term ||
+      req.campaignType.toLowerCase().includes(term) ||
+      req.id.toLowerCase().includes(term) ||
+      (req.hospital?.name && req.hospital.name.toLowerCase().includes(term)) ||
+      (req.doctorName && req.doctorName.toLowerCase().includes(term));
+    return matchesStatus && matchesSearch;
+  });
+
+  const hasActiveFilters = statusFilter !== 'ALL' || term.length > 0;
+
+  const handleClearFilters = () => {
+    setSearch('');
+    setStatusFilter('ALL');
+  };
+
   return (
     <div className="space-y-6 max-w-5xl pb-16 relative">
       {/* Header */}
@@ -147,6 +180,51 @@ const Requests: React.FC = () => {
         </div>
       </div>
 
+      {/* Search and Status Filters */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+        <div className="relative flex-1 max-w-md">
+          <input
+            type="text"
+            placeholder="Search camp title, hospital, location, or request ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-3 pr-8 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50"
+          />
+          {search && (
+            <button 
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {(['ALL', 'PENDING', 'REVIEWING', 'APPROVED', 'REJECTED'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setStatusFilter(tab)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                statusFilter === tab 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {tab === 'ALL' ? 'All' : tab.charAt(0) + tab.slice(1).toLowerCase()}
+            </button>
+          ))}
+          {hasActiveFilters && (
+            <button
+              onClick={handleClearFilters}
+              className="px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg font-medium transition-colors border border-rose-200"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Medical Camps Section */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
@@ -160,17 +238,17 @@ const Requests: React.FC = () => {
             </div>
           </div>
           <span className="text-xs font-bold text-slate-500 bg-white border px-2.5 py-1 rounded-full shadow-2xs">
-            {camps.length} Requests
+            {filteredCamps.length} Requests
           </span>
         </div>
 
-        {camps.length === 0 ? (
+        {filteredCamps.length === 0 ? (
           <div className="p-8 text-center text-slate-400 text-sm">
-            No medical camp booking requests submitted yet.
+            {hasActiveFilters ? "No matching medical camp requests found. Try changing your search or filters." : "No medical camp booking requests submitted yet."}
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {camps.map(camp => (
+            {filteredCamps.map(camp => (
               <div key={camp.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
                 <div className="space-y-1.5 flex-1 cursor-pointer" onClick={() => setSelectedRequest({ type: 'camp', data: camp })}>
                   <div className="flex flex-wrap items-center gap-2">
@@ -231,17 +309,17 @@ const Requests: React.FC = () => {
             </div>
           </div>
           <span className="text-xs font-bold text-slate-500 bg-white border px-2.5 py-1 rounded-full shadow-2xs">
-            {marketing.length} Requests
+            {filteredMarketing.length} Requests
           </span>
         </div>
 
-        {marketing.length === 0 ? (
+        {filteredMarketing.length === 0 ? (
           <div className="p-8 text-center text-slate-400 text-sm">
-            No marketing or platform inquiries submitted yet.
+            {hasActiveFilters ? "No matching marketing or platform inquiries found. Try changing your search or filters." : "No marketing or platform inquiries submitted yet."}
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {marketing.map(m => {
+            {filteredMarketing.map(m => {
               const isInquiry = m.campaignType.startsWith('PLATFORM_INQUIRY:');
               return (
                 <div key={m.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">

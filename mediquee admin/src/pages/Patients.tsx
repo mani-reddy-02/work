@@ -96,9 +96,13 @@ const Patients: React.FC = () => {
       if (debouncedSearch) filters.search = debouncedSearch;
       
       if (ageRange !== 'all') {
-        const [min, max] = ageRange.split('-');
-        if (min) filters.ageMin = min;
-        if (max) filters.ageMax = max === '+' ? '999' : max; // Handling 61+
+        if (ageRange === '61-+' || ageRange === '61+') {
+          filters.ageMin = '61';
+        } else {
+          const [min, max] = ageRange.split('-');
+          if (min) filters.ageMin = min;
+          if (max && max !== '+') filters.ageMax = max;
+        }
       }
 
       const res = await userService.getUsers(token, filters);
@@ -137,6 +141,7 @@ const Patients: React.FC = () => {
     setGender('all');
     setCity('all');
     setHospitalId('all');
+    setPage(1);
     setShowFilters(false);
   };
 

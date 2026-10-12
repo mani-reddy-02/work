@@ -21,6 +21,10 @@ const LabDepartmentDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Search states
+  const [testSearch, setTestSearch] = useState('');
+  const [labSearch, setLabSearch] = useState('');
+
   // Modals
   const [deptModalOpen, setDeptModalOpen] = useState(false);
   const [testModalOpen, setTestModalOpen] = useState(false);
@@ -375,9 +379,18 @@ const LabDepartmentDetails: React.FC = () => {
 
         <DataTable
           columns={testColumns}
-          data={tests}
+          data={tests.filter(t => 
+            !testSearch || 
+            t.name.toLowerCase().includes(testSearch.toLowerCase()) || 
+            (t.code && t.code.toLowerCase().includes(testSearch.toLowerCase())) ||
+            (t.specimenType && t.specimenType.toLowerCase().includes(testSearch.toLowerCase())) ||
+            (t.id && t.id.toLowerCase().includes(testSearch.toLowerCase()))
+          )}
           keyExtractor={(item) => item.id}
-          emptyMessage="No diagnostic tests added to this lab department yet."
+          searchPlaceholder="Search tests by name, code, or specimen..."
+          searchValue={testSearch}
+          onSearch={setTestSearch}
+          emptyMessage="No diagnostic tests match the search."
         />
       </div>
 
@@ -399,9 +412,17 @@ const LabDepartmentDetails: React.FC = () => {
 
         <DataTable
           columns={labColumns}
-          data={labs}
+          data={labs.filter(l => 
+            !labSearch || 
+            l.name.toLowerCase().includes(labSearch.toLowerCase()) || 
+            (l.id && l.id.toLowerCase().includes(labSearch.toLowerCase())) ||
+            (l.city && l.city.toLowerCase().includes(labSearch.toLowerCase()))
+          )}
           keyExtractor={(item) => item.id}
-          emptyMessage="No diagnostic laboratories are currently linked directly to this department."
+          searchPlaceholder="Search laboratories by name or location..."
+          searchValue={labSearch}
+          onSearch={setLabSearch}
+          emptyMessage="No diagnostic laboratories match the search."
         />
       </div>
 

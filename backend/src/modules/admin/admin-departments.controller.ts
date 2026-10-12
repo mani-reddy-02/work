@@ -36,8 +36,13 @@ export const getAdminDepartments = async (req: Request, res: Response, next: Nex
 
     const whereClause: any = {};
 
-    if (search) {
-      whereClause.name = { contains: search as string, mode: 'insensitive' };
+    if (search && (search as string).trim() !== '') {
+      const s = (search as string).trim();
+      whereClause.OR = [
+        { name: { contains: s, mode: 'insensitive' } },
+        { id: { contains: s, mode: 'insensitive' } },
+        { description: { contains: s, mode: 'insensitive' } }
+      ];
     }
     if (hospitalId && hospitalId !== 'all') {
       whereClause.departments = { some: { hospitalId: hospitalId as string } };
@@ -92,7 +97,7 @@ export const getAdminDepartments = async (req: Request, res: Response, next: Nex
         icon: s.icon,
         isActive: s.isActive,
         doctorCount,
-        status: 'ACTIVE',
+        status: s.isActive ? 'ACTIVE' : 'INACTIVE',
         createdAt: s.createdAt.toISOString(),
       };
     });

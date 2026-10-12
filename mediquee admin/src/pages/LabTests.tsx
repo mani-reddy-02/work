@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { Activity, Clock, CheckCircle, XCircle, FileText, FlaskConical, Filter, X } from 'lucide-react';
@@ -26,15 +26,33 @@ const LabTests: React.FC = () => {
   const limit = 20;
 
   // Filters
+  const [searchParams] = useSearchParams();
+  const urlStatus = searchParams.get('status') || 'ALL';
+  const rawBookingType = searchParams.get('bookingType') || 'ALL';
+  const urlBookingType = (rawBookingType === 'LAB_VISIT' || rawBookingType === 'WALK_IN') ? 'WALK_IN' : rawBookingType;
+
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
   const [filters, setFilters] = useState({
-    bookingType: 'ALL',
-    status: 'ALL',
+    bookingType: urlBookingType,
+    status: urlStatus,
     age: 'ALL',
     gender: 'ALL',
     place: 'ALL'
   });
+
+  useEffect(() => {
+    const s = searchParams.get('status');
+    const bt = searchParams.get('bookingType');
+    if (s || bt) {
+      const normalizedBt = (bt === 'LAB_VISIT' || bt === 'WALK_IN') ? 'WALK_IN' : (bt || 'ALL');
+      setFilters(prev => ({
+        ...prev,
+        ...(s ? { status: s } : {}),
+        ...(bt ? { bookingType: normalizedBt } : {})
+      }));
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -67,7 +85,10 @@ const LabTests: React.FC = () => {
         limit: limit.toString()
       });
       if (debouncedSearch) queryParams.append('search', debouncedSearch);
-      if (filters.bookingType !== 'ALL') queryParams.append('bookingType', filters.bookingType);
+      if (filters.bookingType !== 'ALL') {
+        const bType = (filters.bookingType === 'LAB_VISIT' || filters.bookingType === 'WALK_IN') ? 'WALK_IN' : filters.bookingType;
+        queryParams.append('bookingType', bType);
+      }
       if (filters.status !== 'ALL') queryParams.append('status', filters.status);
       if (filters.gender !== 'ALL') queryParams.append('gender', filters.gender);
       if (filters.place !== 'ALL') queryParams.append('place', filters.place);
@@ -92,27 +113,25 @@ const LabTests: React.FC = () => {
       if (data.success && Array.isArray(data.data)) {
         setOrders(data.data);
         if (data.pagination) {
-          setTotalPages(data.pagination.totalPages);
-          setTotalResults(data.pagination.total);
+          setTotalPages(data.pagination.totalPages || 1);
+          setTotalResults(data.pagination.total || data.data.length);
         }
         
-        // Fetch KPIs if not filtered
-        if (debouncedSearch === '' && filters.status === 'ALL' && filters.age === 'ALL' && filters.gender === 'ALL' && filters.place === 'ALL') {
-          const allRes = await fetch(`${API_URL}/admin/lab-bookings?limit=1000`, { headers: { Authorization: `Bearer ${token}` } });
-          const allData = await allRes.json();
-          if (allData.success && Array.isArray(allData.data)) {
-            const all = allData.data;
-            setKpis({
-              totalLabVisit: all.filter((o: any) => o.bookingType === 'LAB_VISIT').length,
-              totalHSC: all.filter((o: any) => o.bookingType === 'HOME_COLLECTION').length,
-              pending: all.filter((o: any) => o.status === 'REQUESTED').length,
-              confirmed: all.filter((o: any) => o.status === 'ASSIGNED').length,
-              inProgress: all.filter((o: any) => ['SAMPLE_COLLECTED', 'IN_LAB_PROCESSING'].includes(o.status)).length,
-              cancelled: all.filter((o: any) => o.status === 'CANCELLED').length,
-              completed: all.filter((o: any) => o.status === 'COMPLETED').length,
-              reportsReady: all.filter((o: any) => o.status === 'REPORT_READY').length,
-            });
-          }
+        // Fetch KPIs safely without blocking
+        const allRes = await fetch(`${API_URL}/admin/lab-bookings?limit=1000`, { headers: { Authorization: `Bearer ${token}` } });
+        const allData = await allRes.json();
+        if (allData.success && Array.isArray(allData.data)) {
+          const all = allData.data;
+          setKpis({
+            totalLabVisit: all.filter((o: any) => o.bookingType === 'WALK_IN' || o.bookingType === 'LAB_VISIT').length,
+            totalHSC: all.filter((o: any) => o.bookingType === 'HOME_COLLECTION').length,
+            pending: all.filter((o: any) => o.status === 'REQUESTED').length,
+            confirmed: all.filter((o: any) => o.status === 'ASSIGNED').length,
+            inProgress: all.filter((o: any) => ['SAMPLE_COLLECTED', 'IN_LAB_PROCESSING', 'REPORT_UPLOAD_PENDING'].includes(o.status)).length,
+            cancelled: all.filter((o: any) => o.status === 'CANCELLED').length,
+            completed: all.filter((o: any) => o.status === 'COMPLETED' || o.status === 'REPORT_READY').length,
+            reportsReady: all.filter((o: any) => o.status === 'REPORT_READY').length,
+          });
         }
       }
     } catch (err) {
@@ -173,6 +192,20 @@ const LabTests: React.FC = () => {
     {
       header: 'Status',
       accessor: (o) => <StatusBadge status={o.status} />,
+    },
+    {
+      header: 'Actions',
+      accessor: (o) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/admin/lab-tests/${o.rawId || o.id}`);
+          }}
+          className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+        >
+          View Details
+        </button>
+      ),
     }
   ];
 
@@ -186,29 +219,53 @@ const LabTests: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div onClick={() => setFilters({ ...filters, bookingType: 'LAB_VISIT' })} className="cursor-pointer hover:opacity-90 transition-opacity">
+        <div 
+          onClick={() => setFilters({ ...filters, bookingType: (filters.bookingType === 'WALK_IN' || filters.bookingType === 'LAB_VISIT') ? 'ALL' : 'WALK_IN' })} 
+          className="cursor-pointer hover:opacity-90 transition-opacity"
+        >
           <KpiCard title="Lab Visit Orders" value={kpis.totalLabVisit} icon={FlaskConical} iconColor="text-indigo-600" iconBg="bg-indigo-50" />
         </div>
-        <div onClick={() => setFilters({ ...filters, bookingType: 'HOME_COLLECTION' })} className="cursor-pointer hover:opacity-90 transition-opacity">
+        <div 
+          onClick={() => setFilters({ ...filters, bookingType: filters.bookingType === 'HOME_COLLECTION' ? 'ALL' : 'HOME_COLLECTION' })} 
+          className="cursor-pointer hover:opacity-90 transition-opacity"
+        >
           <KpiCard title="Home Collection Orders" value={kpis.totalHSC} icon={FlaskConical} iconColor="text-purple-600" iconBg="bg-purple-50" />
         </div>
-        <div onClick={() => setFilters({ ...filters, status: 'REQUESTED' })} className="cursor-pointer hover:opacity-90 transition-opacity">
+        <div 
+          onClick={() => setFilters({ ...filters, status: filters.status === 'REQUESTED' ? 'ALL' : 'REQUESTED' })} 
+          className="cursor-pointer hover:opacity-90 transition-opacity"
+        >
           <KpiCard title="Pending" value={kpis.pending} icon={Clock} iconColor="text-amber-600" iconBg="bg-amber-50" />
         </div>
-        <div onClick={() => setFilters({ ...filters, status: 'ASSIGNED' })} className="cursor-pointer hover:opacity-90 transition-opacity">
+        <div 
+          onClick={() => setFilters({ ...filters, status: filters.status === 'ASSIGNED' ? 'ALL' : 'ASSIGNED' })} 
+          className="cursor-pointer hover:opacity-90 transition-opacity"
+        >
           <KpiCard title="Confirmed" value={kpis.confirmed} icon={CheckCircle} iconColor="text-blue-600" iconBg="bg-blue-50" />
         </div>
         
-        <div onClick={() => setFilters({ ...filters, status: 'IN_LAB_PROCESSING' })} className="cursor-pointer hover:opacity-90 transition-opacity">
+        <div 
+          onClick={() => setFilters({ ...filters, status: filters.status === 'IN_LAB_PROCESSING' ? 'ALL' : 'IN_LAB_PROCESSING' })} 
+          className="cursor-pointer hover:opacity-90 transition-opacity"
+        >
           <KpiCard title="In Progress" value={kpis.inProgress} icon={Activity} iconColor="text-sky-600" iconBg="bg-sky-50" />
         </div>
-        <div onClick={() => setFilters({ ...filters, status: 'CANCELLED' })} className="cursor-pointer hover:opacity-90 transition-opacity">
+        <div 
+          onClick={() => setFilters({ ...filters, status: filters.status === 'CANCELLED' ? 'ALL' : 'CANCELLED' })} 
+          className="cursor-pointer hover:opacity-90 transition-opacity"
+        >
           <KpiCard title="Cancelled" value={kpis.cancelled} icon={XCircle} iconColor="text-rose-600" iconBg="bg-rose-50" />
         </div>
-        <div onClick={() => setFilters({ ...filters, status: 'COMPLETED' })} className="cursor-pointer hover:opacity-90 transition-opacity">
+        <div 
+          onClick={() => setFilters({ ...filters, status: filters.status === 'COMPLETED' ? 'ALL' : 'COMPLETED' })} 
+          className="cursor-pointer hover:opacity-90 transition-opacity"
+        >
           <KpiCard title="Completed" value={kpis.completed} icon={CheckCircle} iconColor="text-emerald-600" iconBg="bg-emerald-50" />
         </div>
-        <div onClick={() => setFilters({ ...filters, status: 'REPORT_READY' })} className="cursor-pointer hover:opacity-90 transition-opacity">
+        <div 
+          onClick={() => setFilters({ ...filters, status: filters.status === 'REPORT_READY' ? 'ALL' : 'REPORT_READY' })} 
+          className="cursor-pointer hover:opacity-90 transition-opacity"
+        >
           <KpiCard title="Reports Ready" value={kpis.reportsReady} icon={FileText} iconColor="text-teal-600" iconBg="bg-teal-50" />
         </div>
       </div>
@@ -307,19 +364,19 @@ const LabTests: React.FC = () => {
         <div className="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1 gap-1 mb-4 mt-2">
           <button
             onClick={() => setFilters({ ...filters, bookingType: 'ALL' })}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${filters.bookingType === 'ALL' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${filters.bookingType === 'ALL' ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
           >
             All Orders
           </button>
           <button
-            onClick={() => setFilters({ ...filters, bookingType: 'LAB_VISIT' })}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${filters.bookingType === 'LAB_VISIT' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+            onClick={() => setFilters({ ...filters, bookingType: 'WALK_IN' })}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${(filters.bookingType === 'WALK_IN' || filters.bookingType === 'LAB_VISIT') ? 'bg-blue-50 text-blue-700 shadow-sm font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}
           >
             Lab Visit
           </button>
           <button
             onClick={() => setFilters({ ...filters, bookingType: 'HOME_COLLECTION' })}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${filters.bookingType === 'HOME_COLLECTION' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${filters.bookingType === 'HOME_COLLECTION' ? 'bg-blue-50 text-blue-700 shadow-sm font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}
           >
             Home Sample Collection
           </button>

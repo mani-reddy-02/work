@@ -19,9 +19,13 @@ const getStatusConfig = (status: string): { type: StatusType; label: string } =>
     case 'REPORT_READY':
       return { type: 'success', label: normalized === 'REPORT_READY' || normalized === 'COMPLETED' ? 'Completed' : status };
     case 'PENDING':
+    case 'WAITING':
     case 'REQUESTED':
     case 'WARNING':
-      return { type: 'warning', label: normalized === 'REQUESTED' ? 'Pending' : status };
+      return { type: 'warning', label: normalized === 'REQUESTED' ? 'Pending' : normalized === 'WAITING' ? 'Waiting' : status };
+    case 'IN_CONSULTATION':
+    case 'IN_PROGRESS':
+      return { type: 'purple', label: normalized === 'IN_CONSULTATION' ? 'In Consultation' : 'In Progress' };
     case 'INACTIVE':
     case 'REJECTED':
     case 'CANCELLED':

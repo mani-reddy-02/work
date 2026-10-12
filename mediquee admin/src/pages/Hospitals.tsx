@@ -23,8 +23,9 @@ const Hospitals: React.FC = () => {
   const [totalResults, setTotalResults] = useState(0);
   const limit = 20;
 
-  // Location filter
+  // Location & Verification filters
   const [locationFilter, setLocationFilter] = useState('all');
+  const [verificationFilter, setVerificationFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
   const [availableLocations, setAvailableLocations] = useState<string[]>([]);
@@ -72,15 +73,13 @@ const Hospitals: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // Build query string since hospitalService.getHospitals doesn't naturally accept filters argument in its default definition.
-      // Assuming hospitalService.getHospitals can be extended or we use fetch directly for the new API.
-      // Let's just use raw fetch to guarantee we hit our new query parameters perfectly.
       const queryParams = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString()
       });
       if (debouncedSearch) queryParams.append('search', debouncedSearch);
       if (locationFilter !== 'all') queryParams.append('location', locationFilter);
+      if (verificationFilter !== 'all') queryParams.append('verificationStatus', verificationFilter);
 
       const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
       const res = await fetch(`${API_URL}/admin/hospitals?${queryParams.toString()}`, {
@@ -94,11 +93,10 @@ const Hospitals: React.FC = () => {
         if (data.pagination) {
           setTotalPages(data.pagination.totalPages);
           setTotalResults(data.pagination.total);
-          if (locationFilter === 'all' && !debouncedSearch) {
+          if (locationFilter === 'all' && verificationFilter === 'all' && !debouncedSearch) {
              setTotalCount(data.pagination.total);
           }
         } else {
-          // Fallback if pagination object is missing
           setTotalResults(data.data.length);
           setTotalPages(1);
         }
@@ -124,12 +122,12 @@ const Hospitals: React.FC = () => {
 
   useEffect(() => {
     fetchHospitals();
-  }, [token, debouncedSearch, page, locationFilter]);
+  }, [token, debouncedSearch, page, locationFilter, verificationFilter]);
 
   // Reset pagination on filter change
   useEffect(() => {
     setPage(1);
-  }, [locationFilter]);
+  }, [locationFilter, verificationFilter]);
 
   const handleAddHospital = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -267,9 +265,22 @@ const Hospitals: React.FC = () => {
           </select>
         </div>
 
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">Verification Status</label>
+          <select 
+            className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2"
+            value={verificationFilter}
+            onChange={(e) => setVerificationFilter(e.target.value)}
+          >
+            <option value="all">All Verification Statuses</option>
+            <option value="VERIFIED">Verified</option>
+            <option value="PENDING">Pending</option>
+          </select>
+        </div>
+
         <div className="flex gap-2 pt-2 border-t border-slate-100">
           <button 
-            onClick={() => { setLocationFilter('all'); setShowFilters(false); }}
+            onClick={() => { setLocationFilter('all'); setVerificationFilter('all'); setShowFilters(false); }}
             className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50"
           >
             Clear

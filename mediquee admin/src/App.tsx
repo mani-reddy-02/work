@@ -43,8 +43,8 @@ import HomeSample from './pages/HomeSample';
 import HomeSampleDetails from './pages/HomeSampleDetails';
 import HomeNursing from './pages/HomeNursing';
 import HomeNursingDetails from './pages/HomeNursingDetails';
+import VideoConsultations from './pages/VideoConsultations';
 import {
-  VideoConsultations,
   ActivityLog
 } from './pages/AdvancedPlaceholders';
 

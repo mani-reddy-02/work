@@ -29,25 +29,58 @@ const RequestsHistory: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   
-  // Search state
+  // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const filterRef = React.useRef<HTMLDivElement>(null);
 
   // Modal State
   const [selectedRequest, setSelectedRequest] = useState<CampRequest | null>(null);
 
-  const fetchHistory = useCallback(async (pageNum: number) => {
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Click outside to close filter
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setShowFilters(false);
+      }
+    };
+    if (showFilters) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFilters]);
+
+  const fetchHistory = useCallback(async (pageNum: number, search: string, status: string) => {
     if (!token) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/camp-requests/history?page=${pageNum}&limit=20`, {
+      const params = new URLSearchParams({
+        page: pageNum.toString(),
+        limit: '20'
+      });
+      if (search) params.append('search', search);
+      if (status && status !== 'all') params.append('status', status);
+
+      const res = await fetch(`${API_BASE_URL}/admin/camp-requests/history?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
         const json = await res.json();
         setHistory(json.data || []);
         if (json.pagination) {
-          setTotalPages(json.pagination.totalPages);
-          setTotalRecords(json.pagination.total);
+          setTotalPages(json.pagination.totalPages || 1);
+          setTotalRecords(json.pagination.total || 0);
         }
       }
     } catch (err) {
@@ -58,8 +91,8 @@ const RequestsHistory: React.FC = () => {
   }, [token]);
 
   useEffect(() => {
-    fetchHistory(page);
-  }, [fetchHistory, page]);
+    fetchHistory(page, debouncedSearch, statusFilter);
+  }, [fetchHistory, page, debouncedSearch, statusFilter]);
 
   const formatDateTime = (dateStr: string) => {
     try {
@@ -70,16 +103,15 @@ const RequestsHistory: React.FC = () => {
     }
   };
 
-  const filteredHistory = history.filter(item => {
-    if (!searchQuery) return true;
-    const lowerQ = searchQuery.toLowerCase();
-    return (
-      item.campTitle.toLowerCase().includes(lowerQ) ||
-      item.id.toLowerCase().includes(lowerQ) ||
-      (item.hospital?.name || '').toLowerCase().includes(lowerQ) ||
-      item.location.toLowerCase().includes(lowerQ)
-    );
-  });
+  const handleClearFilters = () => {
+    setStatusFilter('all');
+    setSearchQuery('');
+    setDebouncedSearch('');
+    setPage(1);
+    setShowFilters(false);
+  };
+
+  const hasActiveFilters = statusFilter !== 'all' || debouncedSearch.length > 0;
 
   return (
     <div className="space-y-6 max-w-6xl pb-16 relative">
@@ -98,21 +130,73 @@ const RequestsHistory: React.FC = () => {
       </div>
 
       {/* Controls */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-3 relative">
         <div className="relative flex-1 max-w-md">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search request history..."
+            placeholder="Search by ID, Camp Title, Location, Hospital..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-shadow bg-white"
           />
         </div>
-        <button className="flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
-          <Filter size={16} />
-          Filters
-        </button>
+
+        <div className="relative">
+          <button 
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center justify-center gap-2 border px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+              hasActiveFilters ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
+            }`}
+          >
+            <Filter size={16} />
+            Filters {hasActiveFilters && '(Active)'}
+          </button>
+
+          {showFilters && (
+            <div ref={filterRef} className="absolute right-0 top-12 w-72 bg-white border border-slate-200 rounded-xl shadow-lg z-50 p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold text-slate-900 text-sm">Filter Request History</h3>
+                <button onClick={() => setShowFilters(false)} className="text-slate-400 hover:text-slate-600 text-xs">
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Status</label>
+                  <select 
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    value={statusFilter}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value);
+                      setPage(1);
+                    }}
+                  >
+                    <option value="all">All Historical Statuses</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="REJECTED">Rejected</option>
+                  </select>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex gap-2">
+                  <button 
+                    onClick={handleClearFilters}
+                    className="flex-1 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
+                  >
+                    Reset All
+                  </button>
+                  <button 
+                    onClick={() => setShowFilters(false)}
+                    className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -142,14 +226,21 @@ const RequestsHistory: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ) : filteredHistory.length === 0 ? (
+              ) : history.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-12 text-center text-slate-500">
-                    No Request History. Completed and closed camp requests will appear here.
+                    {hasActiveFilters ? (
+                      <div>
+                        <p className="font-medium text-slate-700">No matching records found.</p>
+                        <p className="text-xs text-slate-400 mt-1">Try changing your search or filters.</p>
+                      </div>
+                    ) : (
+                      "No Request History. Completed and closed camp requests will appear here."
+                    )}
                   </td>
                 </tr>
               ) : (
-                filteredHistory.map((item, index) => (
+                history.map((item, index) => (
                   <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3 text-center text-slate-500 font-medium">
                       {(page - 1) * 20 + index + 1}
@@ -207,7 +298,7 @@ const RequestsHistory: React.FC = () => {
         </div>
         
         {/* Pagination */}
-        {!isLoading && filteredHistory.length > 0 && (
+        {!isLoading && history.length > 0 && (
           <div className="px-4 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
             <div className="text-sm text-slate-500">
               Showing <span className="font-medium text-slate-900">{(page - 1) * 20 + 1}</span> to <span className="font-medium text-slate-900">{Math.min(page * 20, totalRecords)}</span> of <span className="font-medium text-slate-900">{totalRecords}</span>

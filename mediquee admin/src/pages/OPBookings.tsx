@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { Appointment } from '../types';
@@ -44,92 +44,118 @@ const OPBookings: React.FC = () => {
     };
   }, [isFilterOpen]);
   
+  const [searchParams] = useSearchParams();
+  const urlStatus = searchParams.get('status') || 'ALL';
+
   const [filters, setFilters] = useState({
     age: 'ALL',
     gender: 'ALL',
     place: 'ALL',
-    status: 'ALL'
+    status: urlStatus
   });
+
+  useEffect(() => {
+    const s = searchParams.get('status');
+    if (s && s !== filters.status) {
+      setFilters(prev => ({ ...prev, status: s }));
+    }
+  }, [searchParams]);
+
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   const fetchBookings = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      let ageMin, ageMax;
+      let ageMin: string | undefined;
+      let ageMax: string | undefined;
       if (filters.age !== 'ALL') {
-        if (filters.age === '61+') {
+        if (filters.age === '61+' || filters.age.includes('61')) {
           ageMin = '61';
         } else {
-          const parts = filters.age.split('–');
+          const parts = filters.age.includes('–') ? filters.age.split('–') : filters.age.split('-');
           if (parts.length === 2) {
-            ageMin = parts[0];
-            ageMax = parts[1];
+            ageMin = parts[0].trim();
+            ageMax = parts[1].trim();
           }
         }
       }
 
-      const params = {
+      const params: Record<string, any> = {
         page: currentPage,
         limit,
-        search,
-        ageMin,
-        ageMax,
-        gender: filters.gender !== 'ALL' ? filters.gender : undefined,
-        place: filters.place !== 'ALL' ? filters.place : undefined,
-        status: filters.status !== 'ALL' ? filters.status : undefined
       };
+
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (ageMin) params.ageMin = ageMin;
+      if (ageMax) params.ageMax = ageMax;
+      if (filters.gender !== 'ALL') params.gender = filters.gender;
+      if (filters.place !== 'ALL') params.place = filters.place;
+      if (filters.status !== 'ALL') params.status = filters.status;
 
       const res = await appointmentService.getAppointments(token, params);
       
-      if (res.success && res.data) {
+      if (res.success && Array.isArray(res.data)) {
         setBookings(res.data);
         if (res.pagination) {
-          setTotalPages(res.pagination.totalPages);
-          setTotalResults(res.pagination.total);
+          setTotalPages(res.pagination.totalPages || 1);
+          setTotalResults(res.pagination.total || res.data.length);
         } else {
-          // Fallback if backend pagination fails
           setTotalResults(res.data.length);
-          setTotalPages(Math.ceil(res.data.length / limit));
+          setTotalPages(Math.ceil(res.data.length / limit) || 1);
         }
         
-        // Compute KPIs - usually from a separate endpoint, but approximating here for demo
-        const allRes = await appointmentService.getAppointments(token, { limit: 1000 });
-        if (allRes.success && allRes.data) {
-          const allB = allRes.data;
-          const todayStr = new Date().toLocaleDateString();
-          setKpis({
-            total: allB.length,
-            today: allB.filter((b: any) => b.date === todayStr).length,
-            pending: allB.filter((b: any) => ['PENDING', 'WAITING'].includes(b.status)).length,
-            confirmed: allB.filter((b: any) => b.status === 'CONFIRMED').length,
-            completed: allB.filter((b: any) => b.status === 'COMPLETED').length,
-            cancelled: allB.filter((b: any) => b.status === 'CANCELLED').length,
-          });
-        }
+        // Fetch KPI counts safely without blocking main table
+        appointmentService.getAppointments(token, { limit: 100 })
+          .then((allRes) => {
+            if (allRes?.success && Array.isArray(allRes.data)) {
+              const allB = allRes.data;
+              const todayStr = new Date().toLocaleDateString();
+              setKpis({
+                total: res.pagination?.total || allB.length,
+                today: allB.filter((b: any) => b.date === todayStr).length,
+                pending: allB.filter((b: any) => ['PENDING', 'WAITING'].includes(b.status)).length,
+                confirmed: allB.filter((b: any) => ['CONFIRMED', 'IN_CONSULTATION'].includes(b.status)).length,
+                completed: allB.filter((b: any) => b.status === 'COMPLETED').length,
+                cancelled: allB.filter((b: any) => ['CANCELLED', 'NO_SHOW'].includes(b.status)).length,
+              });
+            }
+          })
+          .catch((kpiErr) => console.warn('KPI count error:', kpiErr));
       } else {
-        setError('Unable to load OP bookings.');
+        setError(res?.error?.message || 'Unable to load OP bookings.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch OP bookings:', err);
-      setError('Unable to load OP bookings.');
+      setError(err?.message || 'Unable to load OP bookings.');
     } finally {
       setLoading(false);
     }
-  }, [token, currentPage, search, filters]);
+  }, [token, currentPage, debouncedSearch, filters]);
 
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
 
-  // Reset to page 1 on search or filter change
+  // Reset to page 1 on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filters]);
+  }, [filters]);
 
   const handleClearFilters = () => {
     setFilters({ age: 'ALL', gender: 'ALL', place: 'ALL', status: 'ALL' });
     setCurrentPage(1);
+    setIsFilterOpen(false);
   };
 
   const handleApplyFilters = () => {
@@ -140,22 +166,29 @@ const OPBookings: React.FC = () => {
     {
       header: 'S.No',
       accessor: (_, index) => (
-        <span className="text-sm text-slate-500">
+        <span className="text-sm font-medium text-slate-500">
           {((currentPage - 1) * limit) + index + 1}
         </span>
       ),
     },
     {
       header: 'Booking ID',
-      accessor: (b) => <span className="font-medium text-slate-900">{b.id.substring(0,8).toUpperCase()}</span>,
+      accessor: (b: any) => (
+        <span className="font-semibold text-blue-600 hover:text-blue-700 tracking-wide">
+          {b.bookingId || b.id.substring(0, 8).toUpperCase()}
+        </span>
+      ),
     },
     {
       header: 'Patient',
-      accessor: (b) => (
-         <div className="flex flex-col">
-            <span className="font-medium text-slate-900">{b.patientName}</span>
-         </div>
-      )
+      accessor: (b: any) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-slate-900">{b.patientName}</span>
+          {b.patientPhone && b.patientPhone !== 'N/A' && (
+            <span className="text-xs text-slate-500">{b.patientPhone}</span>
+          )}
+        </div>
+      ),
     },
     {
       header: 'Doctor',
@@ -170,18 +203,45 @@ const OPBookings: React.FC = () => {
       accessor: (b) => <span className="text-sm text-slate-700">{b.hospitalName}</span>,
     },
     {
+      header: 'Booking Date/Time',
+      accessor: (b: any) => (
+        <div className="flex flex-col text-sm">
+          <span className="font-medium text-slate-800">{b.date}</span>
+          <span className="text-xs text-slate-500">{b.time || 'N/A'}</span>
+        </div>
+      ),
+    },
+    {
       header: 'Status',
       accessor: (b) => <StatusBadge status={b.status} />,
-    }
+    },
+    {
+      header: 'Actions',
+      accessor: (b) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/admin/op-bookings/${b.id}`);
+          }}
+          className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200"
+        >
+          View Details
+        </button>
+      ),
+    },
   ];
 
   if (error) {
     return (
-      <div className="p-8 text-center bg-white rounded-xl shadow-sm border border-slate-200">
-        <h3 className="text-lg font-medium text-slate-900 mb-2">{error}</h3>
+      <div className="p-12 text-center bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col items-center justify-center min-h-[350px]">
+        <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-4">
+          <XCircle size={28} />
+        </div>
+        <h3 className="text-lg font-bold text-slate-900 mb-1">Unable to load OP bookings</h3>
+        <p className="text-sm text-slate-500 max-w-md mb-6">{error}</p>
         <button 
-          onClick={fetchBookings}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          onClick={() => fetchBookings()}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition shadow-sm"
         >
           Retry
         </button>

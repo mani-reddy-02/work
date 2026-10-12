@@ -32,10 +32,48 @@ const Settlements: React.FC = () => {
     fetchData();
   }, [token]);
 
-  const filteredSettlements = settlements.filter(s => 
-    s.id.toLowerCase().includes(search.toLowerCase()) || 
-    s.hospitalName.toLowerCase().includes(search.toLowerCase())
-  );
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const filterRef = React.useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+
+  // Click outside to close filter popover
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setShowFilters(false);
+      }
+    };
+    if (showFilters) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFilters]);
+
+  const filteredSettlements = settlements.filter(s => {
+    const term = search.trim().toLowerCase();
+    const matchesSearch = !term ||
+      (s.id && s.id.toLowerCase().includes(term)) || 
+      (s.hospitalName && s.hospitalName.toLowerCase().includes(term)) ||
+      (s.period && s.period.toLowerCase().includes(term));
+
+    const matchesStatus = statusFilter === 'all' || (s.status && s.status.toUpperCase() === statusFilter.toUpperCase());
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalResults = filteredSettlements.length;
+  const paginatedSettlements = filteredSettlements.slice((page - 1) * pageSize, page * pageSize);
+
+  const handleClearFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setPage(1);
+    setShowFilters(false);
+  };
+
+  const hasActiveFilters = statusFilter !== 'all' || search.trim().length > 0;
 
   const columns: Column<any>[] = [
     {
@@ -82,10 +120,10 @@ const Settlements: React.FC = () => {
     }
   ];
 
-  if (loading) return <div className="p-6">Loading settlements...</div>;
+  if (loading) return <div className="p-6 text-slate-500">Loading settlements...</div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Settlements</h2>
@@ -93,19 +131,71 @@ const Settlements: React.FC = () => {
         </div>
       </div>
 
-      {settlements.length === 0 ? (
-        <div className="bg-white p-12 text-center rounded-xl border border-slate-200">
-          <p className="text-slate-500">No settlements found.</p>
+      {showFilters && (
+        <div ref={filterRef} className="absolute right-0 top-20 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-semibold text-slate-900 text-sm">Filter Settlements</h3>
+            <button onClick={() => setShowFilters(false)} className="text-slate-400 hover:text-slate-600 text-xs">
+              ✕
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Status</label>
+              <select 
+                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="all">All Statuses</option>
+                <option value="SETTLED">Settled</option>
+                <option value="PENDING">Pending</option>
+                <option value="PROCESSING">Processing</option>
+              </select>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex gap-2">
+              <button 
+                onClick={handleClearFilters}
+                className="flex-1 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
+              >
+                Clear All
+              </button>
+              <button 
+                onClick={() => setShowFilters(false)}
+                className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
         </div>
-      ) : (
-        <DataTable 
-          data={filteredSettlements}
-          columns={columns}
-          keyExtractor={(s) => s.id}
-          searchPlaceholder="Search by ID or Hospital..."
-          onSearch={setSearch}
-        />
       )}
+
+      <DataTable 
+        data={paginatedSettlements}
+        columns={columns}
+        keyExtractor={(s) => s.id}
+        searchPlaceholder="Search by ID, Hospital, or Period..."
+        searchValue={search}
+        onSearch={(val) => {
+          setSearch(val);
+          setPage(1);
+        }}
+        onFilterClick={() => setShowFilters(!showFilters)}
+        pagination={{
+          currentPage: page,
+          totalPages: Math.max(1, Math.ceil(totalResults / pageSize)),
+          totalResults,
+          pageSize,
+          onPageChange: (p) => setPage(p)
+        }}
+        emptyMessage={hasActiveFilters ? "No matching settlement records found." : "No settlements found."}
+      />
     </div>
   );
 };

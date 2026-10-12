@@ -13,7 +13,9 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const hospitalId = typeof req.query.hospitalId === 'string' ? req.query.hospitalId.trim() : '';
-    const location = typeof req.query.location === 'string' ? req.query.location.trim() : '';
+    const location = (typeof req.query.location === 'string' && req.query.location.trim() !== '' && req.query.location !== 'ALL')
+      ? req.query.location.trim()
+      : ((typeof req.query.place === 'string' && req.query.place.trim() !== '' && req.query.place !== 'ALL') ? req.query.place.trim() : '');
 
     const whereClause: any = {};
     if (type === 'STANDALONE') {
@@ -28,7 +30,7 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
       ];
     }
 
-    if (hospitalId) {
+    if (hospitalId && hospitalId !== 'ALL') {
       whereClause.id = hospitalId;
     }
 
@@ -38,9 +40,13 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
         {
           OR: [
             { name: { contains: search, mode: 'insensitive' } },
+            { id: { contains: search, mode: 'insensitive' } },
             { city: { contains: search, mode: 'insensitive' } },
             { area: { contains: search, mode: 'insensitive' } },
-            { addressLine1: { contains: search, mode: 'insensitive' } }
+            { state: { contains: search, mode: 'insensitive' } },
+            { addressLine1: { contains: search, mode: 'insensitive' } },
+            { contactPhone: { contains: search, mode: 'insensitive' } },
+            { contactEmail: { contains: search, mode: 'insensitive' } },
           ]
         }
       ];
@@ -53,7 +59,8 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
           OR: [
             { city: { contains: location, mode: 'insensitive' } },
             { area: { contains: location, mode: 'insensitive' } },
-            { state: { contains: location, mode: 'insensitive' } }
+            { state: { contains: location, mode: 'insensitive' } },
+            { addressLine1: { contains: location, mode: 'insensitive' } }
           ]
         }
       ];

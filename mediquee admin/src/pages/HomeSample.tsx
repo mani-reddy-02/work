@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { Activity, Clock, CheckCircle, XCircle, FileText, FlaskConical, Filter, X } from 'lucide-react';
@@ -26,14 +26,24 @@ const HomeSample: React.FC = () => {
   const limit = 20;
 
   // Filters
+  const [searchParams] = useSearchParams();
+  const urlStatus = searchParams.get('status') || 'ALL';
+
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
   const [filters, setFilters] = useState({
-    status: 'ALL',
+    status: urlStatus,
     age: 'ALL',
     gender: 'ALL',
     place: 'ALL'
   });
+
+  useEffect(() => {
+    const s = searchParams.get('status');
+    if (s && s !== filters.status) {
+      setFilters(prev => ({ ...prev, status: s }));
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

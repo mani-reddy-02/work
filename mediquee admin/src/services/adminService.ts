@@ -30,11 +30,13 @@ export const adminService = {
     }
   },
 
-  getAdminDashboardStats: async (token: string, period?: string, serviceFilter?: string) => {
+  getAdminDashboardStats: async (token: string, period?: string, serviceFilter?: string, startDate?: string, endDate?: string) => {
     try {
       const params = new URLSearchParams();
       if (period) params.append('period', period);
       if (serviceFilter) params.append('service', serviceFilter);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
       
       const queryStr = params.toString() ? `?${params.toString()}` : '';
       const res = await fetch(`${API_BASE_URL}/admin/stats${queryStr}`, {

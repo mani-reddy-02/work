@@ -502,12 +502,28 @@ export const getCampRequestsHistory = async (req: Request, res: Response, next: 
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const skip = (page - 1) * limit;
+    const search = (req.query.search as string || '').trim();
+    const status = (req.query.status as string || '').trim().toUpperCase();
+
+    const whereClause: any = {};
+    if (status && status !== 'ALL' && ['COMPLETED', 'REJECTED'].includes(status)) {
+      whereClause.status = status;
+    } else {
+      whereClause.status = { in: ['COMPLETED', 'REJECTED'] };
+    }
+
+    if (search) {
+      whereClause.OR = [
+        { request: { campTitle: { contains: search, mode: 'insensitive' } } },
+        { request: { id: { contains: search, mode: 'insensitive' } } },
+        { request: { location: { contains: search, mode: 'insensitive' } } },
+        { request: { hospital: { name: { contains: search, mode: 'insensitive' } } } }
+      ];
+    }
 
     const [histories, total] = await Promise.all([
       prisma.medicalCampRequestHistory.findMany({
-        where: {
-          status: { in: ['COMPLETED', 'REJECTED'] }
-        },
+        where: whereClause,
         include: {
           request: {
             include: {
@@ -522,9 +538,7 @@ export const getCampRequestsHistory = async (req: Request, res: Response, next: 
         take: limit,
       }),
       prisma.medicalCampRequestHistory.count({
-        where: {
-          status: { in: ['COMPLETED', 'REJECTED'] }
-        }
+        where: whereClause
       })
     ]);
 

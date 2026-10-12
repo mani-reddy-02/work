@@ -83,7 +83,8 @@ export const navGroups = [
   {
     title: 'Analytics',
     items: [
-      { name: 'Reports & Analytics', path: '/admin/reports', icon: BarChart3 }
+      { name: 'Reports & Analytics', path: '/admin/reports', icon: BarChart3 },
+      { name: 'Requests History', path: '/admin/reports/requests-history', icon: ListTodo }
     ]
   },
   {

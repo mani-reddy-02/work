@@ -177,32 +177,90 @@ const HomePosters: React.FC = () => {
     }
   };
 
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+
+  const term = search.trim().toLowerCase();
+  const filteredPosters = posters.filter(p => {
+    const matchesSearch = !term ||
+      (p.title && p.title.toLowerCase().includes(term)) ||
+      (p.description && p.description.toLowerCase().includes(term)) ||
+      (p.buttonText && p.buttonText.toLowerCase().includes(term)) ||
+      (p.id && p.id.toLowerCase().includes(term));
+    const matchesStatus = statusFilter === 'ALL' ? true : statusFilter === 'ACTIVE' ? p.isActive : !p.isActive;
+    return matchesSearch && matchesStatus;
+  });
+
+  const hasActiveFilters = statusFilter !== 'ALL' || term.length > 0;
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Posters</h2>
-          <p className="text-sm text-slate-500">Manage posters across different user modules.</p>
+          <p className="text-sm text-slate-500">Manage promotional and awareness posters across user modules.</p>
         </div>
         <button 
           onClick={openAddModal}
-          className="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+          className="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 self-start sm:self-auto"
         >
           <Plus size={16} /> Add New Poster
         </button>
       </div>
 
-      <div className="flex items-center gap-4 mb-4">
-        <label className="text-sm font-medium text-slate-700">Module:</label>
-        <select 
-          value={module}
-          onChange={(e) => setModule(e.target.value)}
-          className="border-slate-300 rounded-lg text-sm py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-          {MODULES.map(m => (
-            <option key={m} value={m}>{m === 'HOME' ? 'Home' : m === 'HOSPITAL' ? 'Hospital' : m === 'DOCTOR' ? 'Doctor' : 'Labs'}</option>
-          ))}
-        </select>
+      {/* Controls: Module, Search, and Status Filter */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-slate-600">Module:</label>
+            <select 
+              value={module}
+              onChange={(e) => {
+                setModule(e.target.value);
+                setSearch('');
+              }}
+              className="border border-slate-200 rounded-lg text-sm py-1.5 px-3 outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 font-medium"
+            >
+              {MODULES.map(m => (
+                <option key={m} value={m}>{m === 'HOME' ? 'Home' : m === 'HOSPITAL' ? 'Hospital' : m === 'DOCTOR' ? 'Doctor' : 'Labs'}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setStatusFilter(tab)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  statusFilter === tab 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {tab === 'ALL' ? 'All' : tab === 'ACTIVE' ? 'Active' : 'Inactive'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative flex-1 max-w-sm">
+          <input
+            type="text"
+            placeholder="Search poster title, button, or ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-3 pr-8 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50"
+          />
+          {search && (
+            <button 
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -215,17 +273,24 @@ const HomePosters: React.FC = () => {
 
         <div className="divide-y divide-slate-300">
           {(POSITIONS_BY_MODULE[module] || []).map((pos, posIndex) => {
-            const posPosters = posters.filter(p => p.position === pos.id || (!p.position && pos.id === 'HERO_BANNER'));
+            const posPosters = filteredPosters.filter(p => p.position === pos.id || (!p.position && pos.id === 'HERO_BANNER'));
             
             return (
               <div key={pos.id} className="pb-8">
-                <div className="bg-slate-100 px-4 py-3 border-b border-slate-200">
-                  <h3 className="font-bold text-slate-800 text-sm">POSITION {posIndex + 1}</h3>
-                  <p className="text-xs text-slate-500">{pos.label}</p>
+                <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-800 text-sm">POSITION {posIndex + 1}</h3>
+                    <p className="text-xs text-slate-500">{pos.label}</p>
+                  </div>
+                  <span className="text-xs font-semibold bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-600">
+                    {posPosters.length} Posters
+                  </span>
                 </div>
                 
                 {posPosters.length === 0 ? (
-                  <div className="p-8 text-center text-slate-500">No posters found in this position.</div>
+                  <div className="p-8 text-center text-slate-500 text-sm">
+                    {hasActiveFilters ? "No matching posters found for this position. Try clearing your search or status filter." : "No posters found in this position."}
+                  </div>
                 ) : (
                   <div className="divide-y divide-slate-100">
                     {posPosters.map((poster, idx) => (

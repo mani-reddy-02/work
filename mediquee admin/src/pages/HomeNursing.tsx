@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { Activity, Clock, CheckCircle, HeartPulse, X } from 'lucide-react';
@@ -21,13 +21,23 @@ const HomeNursing: React.FC = () => {
   const [totalResults, setTotalResults] = useState(0);
   const limit = 20;
 
+  const [searchParams] = useSearchParams();
+  const urlStatus = searchParams.get('status') || 'ALL';
+
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     gender: 'all',
     ageRange: 'all',
     city: 'all',
-    status: 'ALL'
+    status: urlStatus
   });
+
+  useEffect(() => {
+    const s = searchParams.get('status');
+    if (s && s !== filters.status) {
+      setFilters(prev => ({ ...prev, status: s }));
+    }
+  }, [searchParams]);
 
   const [kpis, setKpis] = useState({
     totalRequests: 0,

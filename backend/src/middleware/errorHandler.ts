@@ -26,6 +26,17 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
     });
   }
 
+  // Handle database connection unreachable errors from Prisma
+  if (err.code === 'P1001' || err.message?.includes("Can't reach database server")) {
+    return res.status(503).json({
+      success: false,
+      error: {
+        code: 'DATABASE_UNAVAILABLE',
+        message: 'Database server is temporarily unreachable. Please check your network connection and try again.',
+      },
+    });
+  }
+
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
 

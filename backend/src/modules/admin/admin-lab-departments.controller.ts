@@ -54,11 +54,13 @@ export const getAdminLabDepartments = async (req: Request, res: Response, next: 
 
     const whereClause: any = {};
 
-    if (search) {
+    if (search && (search as string).trim() !== '') {
+      const s = (search as string).trim();
       whereClause.OR = [
-        { name: { contains: search as string, mode: 'insensitive' } },
-        { code: { contains: search as string, mode: 'insensitive' } },
-        { description: { contains: search as string, mode: 'insensitive' } }
+        { name: { contains: s, mode: 'insensitive' } },
+        { code: { contains: s, mode: 'insensitive' } },
+        { id: { contains: s, mode: 'insensitive' } },
+        { description: { contains: s, mode: 'insensitive' } }
       ];
     }
 

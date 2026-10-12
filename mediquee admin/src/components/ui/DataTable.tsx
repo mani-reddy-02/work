@@ -12,6 +12,7 @@ interface DataTableProps<T> {
   columns: Column<T>[];
   keyExtractor: (item: T) => string | number;
   searchPlaceholder?: string;
+  searchValue?: string;
   onSearch?: (value: string) => void;
   onRowClick?: (item: T) => void;
   actions?: React.ReactNode;
@@ -31,6 +32,7 @@ function DataTable<T>({
   columns, 
   keyExtractor, 
   searchPlaceholder = 'Search...',
+  searchValue,
   onSearch,
   onRowClick,
   actions,
@@ -49,6 +51,7 @@ function DataTable<T>({
           <input
             type="text"
             placeholder={searchPlaceholder}
+            value={searchValue !== undefined ? searchValue : undefined}
             onChange={(e) => onSearch?.(e.target.value)}
             className="pl-9 pr-4 py-2 w-full border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
           />
@@ -56,13 +59,15 @@ function DataTable<T>({
         
         <div className="flex items-center gap-2">
           {actions}
-          <button 
-            onClick={onFilterClick}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">
-            <Filter size={16} />
-            Filters
-            <ChevronDown size={14} className="text-slate-400" />
-          </button>
+          {onFilterClick && (
+            <button 
+              onClick={onFilterClick}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+              <Filter size={16} />
+              Filters
+              <ChevronDown size={14} className="text-slate-400" />
+            </button>
+          )}
         </div>
       </div>
 

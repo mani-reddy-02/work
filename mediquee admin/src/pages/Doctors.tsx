@@ -29,25 +29,28 @@ const Doctors: React.FC = () => {
 
   const [showFilters, setShowFilters] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Available Specializations (simulated fetch or hardcoded for now, ideal to fetch)
-  // The user said: "Specialization must use real doctor specialization/department data from the backend... Do not hardcode the final list if the backend already provides"
-  // Let's fetch them if possible, but for now we will just use a predefined list or fetch from departments
   const [availableDepartments, setAvailableDepartments] = useState<string[]>([]);
   
   useEffect(() => {
     const fetchDeps = async () => {
       if (!token) return;
       try {
-        const res = await fetch('/api/admin/dashboard/metrics', { headers: { Authorization: `Bearer ${token}` } });
-        // Actually the best way is to fetch departments list if there's an API, let's just fetch hospitals/departments if possible.
-        // I will just use the standard ones for now or leave it empty initially since no explicit filter API for doctors is created.
-        // Wait, I can just fetch departments from /api/admin/departments if it exists. But to be safe:
-      } catch (err) {}
-    }
+        const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
+        const res = await fetch(`${API_URL}/admin/departments?limit=100`, { headers: { Authorization: `Bearer ${token}` } });
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          const names = json.data.map((d: any) => d.name).filter(Boolean);
+          setAvailableDepartments(prev => Array.from(new Set([...prev, ...names])).sort());
+        }
+      } catch (err) {
+        console.warn('Failed to load department list for doctor filter:', err);
+      }
+    };
     fetchDeps();
   }, [token]);
 
@@ -88,6 +91,7 @@ const Doctors: React.FC = () => {
       
       if (debouncedSearch) filters.search = debouncedSearch;
       if (specialization !== 'all') filters.specialization = specialization;
+      if (statusFilter !== 'all') filters.status = statusFilter;
       
       if (experienceRange !== 'all') {
         if (experienceRange === '16+') {
@@ -106,11 +110,11 @@ const Doctors: React.FC = () => {
           setTotalPages(res.pagination.totalPages);
           setTotalResults(res.pagination.total);
           // Update KPI if no filters applied
-          if (specialization === 'all' && experienceRange === 'all' && !debouncedSearch) {
+          if (specialization === 'all' && experienceRange === 'all' && statusFilter === 'all' && !debouncedSearch) {
              setTotalDoctorsCount(res.pagination.total);
           }
           
-          // Populate dynamic specializations from current dataset if we don't have a dedicated API
+          // Populate dynamic specializations from current dataset if not loaded
           if (availableDepartments.length === 0) {
             const specs = new Set<string>();
             res.data.forEach((d: any) => {
@@ -134,16 +138,17 @@ const Doctors: React.FC = () => {
 
   useEffect(() => {
     fetchDoctors();
-  }, [token, debouncedSearch, page, specialization, experienceRange]);
+  }, [token, debouncedSearch, page, specialization, experienceRange, statusFilter]);
 
   // Reset pagination when a filter changes
   useEffect(() => {
     setPage(1);
-  }, [specialization, experienceRange]);
+  }, [specialization, experienceRange, statusFilter]);
 
   const handleClearFilters = () => {
     setSpecialization('all');
     setExperienceRange('all');
+    setStatusFilter('all');
     setShowFilters(false);
   };
 
@@ -243,6 +248,19 @@ const Doctors: React.FC = () => {
             <option value="6-10">6–10 Years</option>
             <option value="11-15">11–15 Years</option>
             <option value="16+">16+ Years</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">Status / Verification</label>
+          <select 
+            className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">All Statuses</option>
+            <option value="ACTIVE">Active / Verified</option>
+            <option value="INACTIVE">Inactive / Pending</option>
           </select>
         </div>
 
