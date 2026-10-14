@@ -49,6 +49,7 @@ model Hospital {
   marketingRequests   MarketingRequest[]
   medicalCampRequests MedicalCampRequest[]
   notifications       Notification[]
+  settlements         Settlement[]
 }
 
 model PlatformSpecialty {
@@ -790,4 +791,111 @@ model LabPackage {
   hospital      Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
 
   @@map("lab_packages")
+}
+
+model Settlement {
+  id                  String                 @id @default(uuid())
+  settlementNumber    String                 @unique
+  partnerId           String
+  partnerName         String
+  partnerType         String                 // HOSPITAL or LABORATORY
+  periodStart         DateTime
+  periodEnd           DateTime
+  periodLabel         String
+  status              String                 @default("PENDING") // PENDING, APPROVED, PROCESSING, PAID, FAILED
+  transactionCount    Int                    @default(0)
+  grossRevenue        Float                  @default(0)
+  commissionBasis     Float                  @default(0)
+  adminCommissionRate Float                  @default(20.0)
+  adminCommission     Float                  @default(0)
+  partnerShareRate    Float                  @default(80.0)
+  partnerShare        Float                  @default(0)
+  adjustments         Float                  @default(0)
+  refunds             Float                  @default(0)
+  payableAmount       Float                  @default(0)
+  paidAmount          Float?
+  paymentReference    String?
+  paymentDate         DateTime?
+  paymentMethod       String?                @default("BANK_TRANSFER")
+  paymentProofUrl     String?
+  processedBy         String?
+  notes               String?
+  dueDate             DateTime?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  hospital            Hospital?              @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  items               SettlementItem[]
+  attachments         SettlementAttachment[]
+  payoutHistory       PayoutRecord[]
+
+  @@index([partnerId, status])
+  @@index([periodStart, periodEnd])
+  @@map("settlements")
+}
+
+model SettlementItem {
+  id                   String     @id @default(uuid())
+  settlementId         String
+  bookingType          String     // OP_BOOKING, LAB_BOOKING, HOME_NURSING
+  bookingId            String
+  bookingNumber        String?
+  serviceName          String
+  patientName          String?
+  transactionDate      DateTime
+  grossAmount          Float      @default(0)
+  commissionPercentage Float      @default(20.0)
+  adminCommission      Float      @default(0)
+  partnerShare         Float      @default(0)
+  status               String     @default("COMPLETED")
+  createdAt            DateTime   @default(now())
+
+  settlement           Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingType, bookingId])
+  @@index([settlementId])
+  @@map("settlement_items")
+}
+
+model SettlementAttachment {
+  id           String     @id @default(uuid())
+  settlementId String
+  fileName     String
+  documentType String     // SETTLEMENT_STATEMENT, BANK_TRANSFER_RECEIPT, UPI_RECEIPT, PAYMENT_CONFIRMATION, OTHER
+  fileUrl      String
+  fileSize     Int?
+  mimeType     String?
+  uploadedBy   String?
+  uploadedAt   DateTime   @default(now())
+
+  settlement   Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+
+  @@index([settlementId])
+  @@map("settlement_attachments")
+}
+
+model PayoutRecord {
+  id                String     @id @default(uuid())
+  payoutNumber      String     @unique
+  settlementId      String
+  partnerId         String
+  partnerName       String
+  partnerType       String     // HOSPITAL or LABORATORY
+  periodLabel       String
+  amountPaid        Float
+  paymentDate       DateTime
+  transferReference String
+  paymentMethod     String     @default("BANK_TRANSFER")
+  paymentProofUrl   String?
+  processedBy       String
+  status            String     @default("COMPLETED")
+  notes             String?
+  createdAt         DateTime   @default(now())
+
+  settlement        Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+
+  @@index([settlementId])
+  @@index([partnerId])
+  @@index([paymentDate])
+  @@map("payout_records")
 }

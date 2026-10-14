@@ -93,4 +93,42 @@ export const payoutsApi = {
     const json = await res.json();
     return json.data;
   },
+
+  /**
+   * GET /api/v1/hospital/payouts/settlements
+   * Fetches partner's weekly settlements, breakdowns, payment reference & proofs
+   */
+  async getSettlements(): Promise<any[]> {
+    const res = await fetch(`${API_URL}/api/v1/hospital/payouts/settlements`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error?.message || 'Failed to fetch settlements');
+    }
+
+    const json = await res.json();
+    return json.data || [];
+  },
+
+  /**
+   * GET /api/v1/hospital/payouts/settlements/:id
+   */
+  async getSettlementById(id: string): Promise<any> {
+    const res = await fetch(`${API_URL}/api/v1/hospital/payouts/settlements/${id}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error?.message || 'Failed to fetch settlement details');
+    }
+
+    const json = await res.json();
+    return json.data;
+  }
 };
+

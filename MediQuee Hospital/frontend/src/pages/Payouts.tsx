@@ -11,7 +11,15 @@ import {
   RefreshCw,
   X,
   Check,
-  Percent
+  Percent,
+  FileText,
+  FileCheck2,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  ShieldCheck,
+  Building2,
+  Clock
 } from "lucide-react"
 import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts'
 import { cn } from "@/lib/utils"
@@ -36,6 +44,50 @@ export function Payouts() {
   const [payoutsData, setPayoutsData] = useState<PayoutsResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Settlements Tab State
+  const [viewTab, setViewTab] = useState<'settlements' | 'analytics'>('settlements');
+  const [settlements, setSettlements] = useState<any[]>([]);
+  const [isSettlementsLoading, setIsSettlementsLoading] = useState<boolean>(false);
+  const [settlementError, setSettlementError] = useState<string | null>(null);
+  const [selectedSettlementDetail, setSelectedSettlementDetail] = useState<any | null>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
+
+  // Fetch partner settlements
+  const fetchSettlements = useCallback(async () => {
+    setIsSettlementsLoading(true);
+    setSettlementError(null);
+    try {
+      const data = await payoutsApi.getSettlements();
+      setSettlements(data);
+    } catch (err: any) {
+      console.error("Failed to load settlements:", err);
+      setSettlementError(err?.message || "Failed to load settlement statements");
+    } finally {
+      setIsSettlementsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSettlements();
+  }, [fetchSettlements]);
+
+  // Load single settlement details
+  const handleViewSettlementDetail = async (settlementId: string) => {
+    if (selectedSettlementDetail?.id === settlementId) {
+      setSelectedSettlementDetail(null);
+      return;
+    }
+    setIsLoadingDetail(true);
+    try {
+      const data = await payoutsApi.getSettlementById(settlementId);
+      setSelectedSettlementDetail(data);
+    } catch (err: any) {
+      console.error("Failed to load settlement detail:", err);
+    } finally {
+      setIsLoadingDetail(false);
+    }
+  };
 
   // Helper to calculate preset dates safely without UTC day-shifts
   const calculatePresetDates = useCallback((preset: DatePreset) => {
@@ -152,16 +204,242 @@ export function Payouts() {
           <span className="text-[12px] text-muted font-medium">Hospital Share: {hospitalSharePercent}% &middot; Platform Fee: {adminSharePercent}%</span>
         </div>
         <button 
-          onClick={() => fetchPayouts(startDate, endDate, true)}
-          disabled={isLoading}
+          onClick={() => {
+            if (viewTab === 'settlements') {
+              fetchSettlements();
+            } else {
+              fetchPayouts(startDate, endDate, true);
+            }
+          }}
+          disabled={isLoading || isSettlementsLoading}
           className="p-2 -mr-2 text-foreground hover:text-primary active:scale-95 transition-all"
           title="Refresh data"
         >
-          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin text-primary' : ''}`} />
+          <RefreshCw className={`w-5 h-5 ${isLoading || isSettlementsLoading ? 'animate-spin text-primary' : ''}`} />
         </button>
       </div>
 
-      <div className="flex flex-col gap-5 px-4 pt-4">
+      {/* Main Tab Switcher */}
+      <div className="flex border-b border-border px-4 bg-background/80 backdrop-blur-sm gap-6 pt-1">
+        <button
+          onClick={() => setViewTab('settlements')}
+          className={cn(
+            "pb-2.5 text-[13px] font-semibold flex items-center gap-1.5 border-b-2 transition-all",
+            viewTab === 'settlements'
+              ? "border-primary text-primary"
+              : "border-transparent text-muted hover:text-foreground"
+          )}
+        >
+          <FileText className="w-4 h-4" />
+          Weekly Settlements & Proofs ({settlements.length})
+        </button>
+
+        <button
+          onClick={() => setViewTab('analytics')}
+          className={cn(
+            "pb-2.5 text-[13px] font-semibold flex items-center gap-1.5 border-b-2 transition-all",
+            viewTab === 'analytics'
+              ? "border-primary text-primary"
+              : "border-transparent text-muted hover:text-foreground"
+          )}
+        >
+          <TrendingUp className="w-4 h-4" />
+          Revenue Trends & Daily Txns
+        </button>
+      </div>
+
+      {viewTab === 'settlements' ? (
+        /* ── WEEKLY SETTLEMENTS & PAYOUT PROOFS VIEW ── */
+        <div className="flex flex-col gap-4 px-4 pt-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-[16px] font-bold text-foreground">Weekly Settlement Statements</h2>
+              <p className="text-[12px] text-muted">Official weekly payout batches, calculation breakdown, and attached transfer proofs.</p>
+            </div>
+          </div>
+
+          {settlementError && (
+            <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl flex items-center justify-between">
+              <span>{settlementError}</span>
+              <button onClick={fetchSettlements} className="underline font-semibold ml-2">Retry</button>
+            </div>
+          )}
+
+          {isSettlementsLoading ? (
+            <div className="flex flex-col gap-3 py-6">
+              <Skeleton className="h-24 w-full rounded-2xl" />
+              <Skeleton className="h-24 w-full rounded-2xl" />
+              <Skeleton className="h-24 w-full rounded-2xl" />
+            </div>
+          ) : settlements.length === 0 ? (
+            <div className="py-12 bg-surface rounded-2xl border border-border text-center flex flex-col items-center justify-center p-6 gap-2">
+              <FileText className="w-10 h-10 text-muted opacity-40" />
+              <p className="text-sm font-semibold text-foreground">No Weekly Settlements Yet</p>
+              <p className="text-xs text-muted max-w-sm">When MediQuee processes your weekly settlement cycles, official statements and bank transfer receipts will appear here.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3.5">
+              {settlements.map((s) => {
+                const isPaid = s.status === 'PAID';
+                const isExpanded = selectedSettlementDetail?.id === s.id;
+                const attachments = s.attachments || [];
+
+                return (
+                  <div
+                    key={s.id}
+                    className={cn(
+                      "bg-surface rounded-2xl border transition-all shadow-sm overflow-hidden",
+                      isPaid ? "border-emerald-200/80" : "border-border"
+                    )}
+                  >
+                    <div className="p-4 sm:p-5 flex flex-col gap-3">
+                      {/* Top Row: Settlement ID, Status Badge & Period */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs sm:text-sm font-bold text-foreground">
+                            {s.settlementNumber || s.id}
+                          </span>
+                          <span className={cn(
+                            "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                            isPaid
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-amber-50 text-amber-700 border border-amber-200"
+                          )}>
+                            {isPaid ? "Paid & Transferred" : (s.status || "Approved")}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 text-xs text-muted font-medium">
+                          <CalendarIcon className="w-3.5 h-3.5 text-primary" />
+                          <span>{s.periodLabel}</span>
+                        </div>
+                      </div>
+
+                      {/* Middle Row: Financial Split */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-1">
+                        <div className="p-2.5 bg-background/60 rounded-xl border border-border/50">
+                          <span className="text-[10px] text-muted font-semibold uppercase tracking-wider block">Gross Revenue</span>
+                          <span className="text-sm font-bold text-foreground mt-0.5 block">{formatCurrency(s.grossRevenue)}</span>
+                          <span className="text-[10px] text-muted">{s.transactionCount || 0} transactions</span>
+                        </div>
+
+                        <div className="p-2.5 bg-background/60 rounded-xl border border-border/50">
+                          <span className="text-[10px] text-muted font-semibold uppercase tracking-wider block">MediQuee Fee ({s.adminCommissionRate}%)</span>
+                          <span className="text-sm font-semibold text-blue-600 mt-0.5 block">-{formatCurrency(s.adminCommission)}</span>
+                          <span className="text-[10px] text-muted">Platform service cut</span>
+                        </div>
+
+                        <div className="p-2.5 bg-background/60 rounded-xl border border-border/50">
+                          <span className="text-[10px] text-muted font-semibold uppercase tracking-wider block">Adjustments</span>
+                          <span className="text-sm font-medium text-muted mt-0.5 block">{formatCurrency(s.adjustments || 0)}</span>
+                          <span className="text-[10px] text-muted">Refunds / debits</span>
+                        </div>
+
+                        <div className="p-2.5 bg-emerald-50/70 border border-emerald-200 rounded-xl">
+                          <span className="text-[10px] text-emerald-800 font-bold uppercase tracking-wider block">Net Payable Amount</span>
+                          <span className="text-base font-extrabold text-emerald-700 mt-0.5 block">{formatCurrency(s.payableAmount)}</span>
+                          <span className="text-[10px] text-emerald-600 font-medium">
+                            {isPaid ? "Transferred" : "Payable to hospital"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Payment Transfer Proof Strip (If Paid) */}
+                      {isPaid && (
+                        <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                            <span className="text-slate-600">
+                              Payment Ref (UTR): <strong className="font-mono text-slate-900">{s.paymentReference || "N/A"}</strong>
+                            </span>
+                            {s.paymentDate && (
+                              <span className="text-slate-500 hidden sm:inline">
+                                &middot; Paid on {new Date(s.paymentDate).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+
+                          {attachments.length > 0 && (
+                            <div className="flex items-center gap-2">
+                              {attachments.map((att: any) => (
+                                <a
+                                  key={att.id}
+                                  href={att.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-semibold transition-colors"
+                                >
+                                  <FileCheck2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>{att.fileName}</span>
+                                  <ExternalLink className="w-3 h-3 opacity-60" />
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Bottom Controls: Expand Breakdown */}
+                      <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
+                        <button
+                          onClick={() => handleViewSettlementDetail(s.id)}
+                          className="text-primary hover:text-primary/80 font-semibold inline-flex items-center gap-1 active:scale-95 transition-all"
+                        >
+                          {isExpanded ? (
+                            <>Hide Itemized Transactions <ChevronUp className="w-3.5 h-3.5" /></>
+                          ) : (
+                            <>View Itemized Transactions & Breakdown <ChevronDown className="w-3.5 h-3.5" /></>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Expandable Included Transactions Table */}
+                      {isExpanded && (
+                        <div className="mt-2 pt-3 border-t border-border/60 animate-fadeIn">
+                          {isLoadingDetail ? (
+                            <div className="py-4 text-center text-xs text-muted">Loading transactions...</div>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left text-xs border-collapse">
+                                <thead>
+                                  <tr className="bg-background/80 border-b border-border text-[10px] text-muted uppercase tracking-wider font-semibold">
+                                    <th className="py-2 px-3">Txn ID</th>
+                                    <th className="py-2 px-3">Service</th>
+                                    <th className="py-2 px-3">Patient</th>
+                                    <th className="py-2 px-3">Date</th>
+                                    <th className="py-2 px-3 text-right">Gross</th>
+                                    <th className="py-2 px-3 text-right">Admin Fee</th>
+                                    <th className="py-2 px-3 text-right">Net Share</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/40">
+                                  {(selectedSettlementDetail?.items || []).map((item: any, i: number) => (
+                                    <tr key={item.id || i} className="hover:bg-background/40">
+                                      <td className="py-2 px-3 font-mono text-primary font-medium">{item.bookingNumber || item.bookingId.substring(0, 8)}</td>
+                                      <td className="py-2 px-3 font-medium text-foreground">{item.serviceName}</td>
+                                      <td className="py-2 px-3 text-muted">{item.patientName || 'Patient'}</td>
+                                      <td className="py-2 px-3 text-muted">{new Date(item.transactionDate).toLocaleDateString()}</td>
+                                      <td className="py-2 px-3 text-right font-medium text-foreground">{formatCurrency(item.grossAmount)}</td>
+                                      <td className="py-2 px-3 text-right text-blue-600">-{formatCurrency(item.adminCommission)}</td>
+                                      <td className="py-2 px-3 text-right font-bold text-emerald-600">+{formatCurrency(item.partnerShare)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* ── EXISTING REVENUE TRENDS & DAILY TXNS VIEW ── */
+        <div className="flex flex-col gap-5 px-4 pt-4">
 
         {/* Date Filter & Presets Bar */}
         <div className="flex flex-col gap-2.5">
@@ -621,8 +899,8 @@ export function Payouts() {
             ))}
           </div>
         </div>
-        
       </div>
+    )}
 
       {/* Custom Date Range Modal */}
       {isCustomModalOpen && (
