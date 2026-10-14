@@ -10,6 +10,8 @@ interface KpiCardProps {
   iconColor?: string;
   iconBg?: string;
   subtitle?: string;
+  onClick?: () => void;
+  className?: string;
 }
 
 const KpiCard: React.FC<KpiCardProps> = ({ 
@@ -20,7 +22,9 @@ const KpiCard: React.FC<KpiCardProps> = ({
   icon: Icon,
   iconColor = 'text-blue-600 ',
   iconBg = 'bg-blue-50 ',
-  subtitle
+  subtitle,
+  onClick,
+  className = ''
 }) => {
   const renderTrend = () => {
     if (trend === undefined) return null;
@@ -51,7 +55,10 @@ const KpiCard: React.FC<KpiCardProps> = ({
   };
 
   return (
-    <div className="bg-white  rounded-xl p-5 border border-slate-200  shadow-sm transition-all hover:shadow-md cursor-pointer">
+    <div 
+      onClick={onClick}
+      className={`bg-white rounded-xl p-5 border border-slate-200 shadow-sm transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : ''} ${className}`}
+    >
       <div className="flex justify-between items-start mb-2">
         <h3 className="text-sm font-medium text-slate-500 ">{title}</h3>
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconBg} ${iconColor}`}>

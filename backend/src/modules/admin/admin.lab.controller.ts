@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
+import { BusinessType } from '@prisma/client';
 
 export const getLabs = async (req: any, res: any, next: any) => {
   try {
@@ -120,23 +121,64 @@ export const createLab = async (req: any, res: any, next: any) => {
       status
     } = req.body;
 
-    const newLab = await prisma.lab.create({
-      data: {
-        name,
-        type: type || 'STANDALONE',
-        hospitalId: type === 'HOSPITAL_BASED' ? hospitalId : null,
-        contactPhone,
-        email,
-        address,
-        city,
-        state,
-        pinCode,
-        description,
-        status: status || 'Active'
+    const labType = type || 'STANDALONE';
+
+    const result = await prisma.$transaction(async (tx) => {
+      let resolvedHospitalId = hospitalId;
+
+      if (labType === 'STANDALONE') {
+        const createdHospital = await tx.hospital.create({
+          data: {
+            name,
+            businessType: BusinessType.LABORATORY,
+            facilityType: 'Standalone Laboratory',
+            contactPhone: contactPhone || null,
+            contactEmail: email || null,
+            addressLine1: address || null,
+            city: city || null,
+            state: state || null,
+            pincode: pinCode || null,
+            services: ['lab_tests', 'diagnostics', 'lab'],
+            verificationStatus: 'APPROVED',
+            hospitalShare: 80.0
+          }
+        });
+        resolvedHospitalId = createdHospital.id;
+      } else if (labType === 'HOSPITAL_BASED' && hospitalId) {
+        const existingHospital = await tx.hospital.findUnique({
+          where: { id: hospitalId },
+          select: { services: true }
+        });
+        if (existingHospital) {
+          const services = Array.from(new Set([...existingHospital.services, 'lab_tests', 'diagnostics', 'lab']));
+          await tx.hospital.update({
+            where: { id: hospitalId },
+            data: { services }
+          });
+        }
       }
+
+      const newLab = await tx.lab.create({
+        data: {
+          name,
+          type: labType,
+          hospitalId: resolvedHospitalId || null,
+          contactPhone,
+          email,
+          address,
+          city,
+          state,
+          pinCode,
+          description,
+          status: status || 'Active',
+          verificationStatus: 'APPROVED'
+        }
+      });
+
+      return newLab;
     });
 
-    res.json({ success: true, data: newLab, message: 'Lab created successfully' });
+    res.json({ success: true, data: result, message: 'Lab created successfully' });
   } catch (error) {
     next(error);
   }

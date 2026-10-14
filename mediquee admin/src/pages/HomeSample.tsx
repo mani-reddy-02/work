@@ -104,22 +104,6 @@ const HomeSample: React.FC = () => {
           setTotalPages(data.pagination.totalPages);
           setTotalResults(data.pagination.total);
         }
-        
-        // Fetch KPIs if not filtered
-        if (debouncedSearch === '' && filters.status === 'ALL' && filters.age === 'ALL' && filters.gender === 'ALL' && filters.place === 'ALL') {
-          const allRes = await fetch(`${API_URL}/admin/lab-bookings?limit=1000`, { headers: { Authorization: `Bearer ${token}` } });
-          const allData = await allRes.json();
-          if (allData.success && Array.isArray(allData.data)) {
-            const all = allData.data;
-            setKpis({
-              totalOrders: all.length,
-              pending: all.filter((o: any) => ['REQUESTED', 'ASSIGNED'].includes(o.status)).length,
-              inProgress: all.filter((o: any) => ['SAMPLE_COLLECTED', 'IN_LAB_PROCESSING'].includes(o.status)).length,
-              completed: all.filter((o: any) => o.status === 'REPORT_READY').length,
-              cancelled: all.filter((o: any) => o.status === 'CANCELLED').length,
-            });
-          }
-        }
       }
     } catch (err) {
       console.error('Failed to fetch lab orders:', err);
@@ -128,9 +112,54 @@ const HomeSample: React.FC = () => {
     }
   }, [token, currentPage, debouncedSearch, filters]);
 
+  const fetchKpis = useCallback(async () => {
+    if (!token) return;
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
+      // 1. Live analytics endpoint scoped specifically to HOME_COLLECTION
+      const analyticsRes = await fetch(`${API_URL}/admin/lab-orders/analytics?bookingType=HOME_COLLECTION`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const analyticsData = await analyticsRes.json();
+      if (analyticsData.success && analyticsData.data) {
+        const a = analyticsData.data;
+        setKpis({
+          totalOrders: a.totalOrders ?? 0,
+          pending: (a.pending || 0) + (a.sampleCollection || 0),
+          inProgress: (a.sampleCollected || 0) + (a.labProcessing || 0) + (a.reportUploadPending || 0),
+          completed: a.completed || 0,
+          cancelled: a.cancelled || 0,
+        });
+        return;
+      }
+
+      // 2. Direct fallback: query all HOME_COLLECTION bookings from backend
+      const allRes = await fetch(`${API_URL}/admin/lab-bookings?limit=1000&bookingType=HOME_COLLECTION`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const allData = await allRes.json();
+      if (allData.success && Array.isArray(allData.data)) {
+        const all = allData.data;
+        setKpis({
+          totalOrders: all.length,
+          pending: all.filter((o: any) => ['REQUESTED', 'ASSIGNED'].includes(o.status)).length,
+          inProgress: all.filter((o: any) => ['SAMPLE_COLLECTED', 'IN_LAB_PROCESSING', 'REPORT_UPLOAD_PENDING'].includes(o.status)).length,
+          completed: all.filter((o: any) => ['REPORT_READY', 'COMPLETED'].includes(o.status)).length,
+          cancelled: all.filter((o: any) => o.status === 'CANCELLED').length,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch home sample KPIs:', err);
+    }
+  }, [token]);
+
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  useEffect(() => {
+    fetchKpis();
+  }, [fetchKpis]);
 
   const handleClearFilters = () => {
     setFilters({ status: 'ALL', age: 'ALL', gender: 'ALL', place: 'ALL' });
@@ -192,11 +221,49 @@ const HomeSample: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <KpiCard title="Total Orders" value={kpis.totalOrders} icon={FlaskConical} />
-        <KpiCard title="Pending" value={kpis.pending} icon={Clock} iconColor="text-amber-600" iconBg="bg-amber-50" />
-        <KpiCard title="In Progress" value={kpis.inProgress} icon={Activity} iconColor="text-blue-600" iconBg="bg-blue-50" />
-        <KpiCard title="Completed" value={kpis.completed} icon={CheckCircle} iconColor="text-emerald-600" iconBg="bg-emerald-50" />
-        <KpiCard title="Cancelled" value={kpis.cancelled} icon={XCircle} iconColor="text-rose-600" iconBg="bg-rose-50" />
+        <KpiCard 
+          title="Total Orders" 
+          value={kpis.totalOrders} 
+          icon={FlaskConical} 
+          onClick={() => setFilters(prev => ({ ...prev, status: 'ALL' }))}
+          className={filters.status === 'ALL' ? 'ring-2 ring-blue-500 shadow-md' : ''}
+        />
+        <KpiCard 
+          title="Pending" 
+          value={kpis.pending} 
+          icon={Clock} 
+          iconColor="text-amber-600" 
+          iconBg="bg-amber-50" 
+          onClick={() => setFilters(prev => ({ ...prev, status: prev.status === 'REQUESTED' ? 'ALL' : 'REQUESTED' }))}
+          className={filters.status === 'REQUESTED' ? 'ring-2 ring-amber-500 shadow-md' : ''}
+        />
+        <KpiCard 
+          title="In Progress" 
+          value={kpis.inProgress} 
+          icon={Activity} 
+          iconColor="text-blue-600" 
+          iconBg="bg-blue-50" 
+          onClick={() => setFilters(prev => ({ ...prev, status: prev.status === 'IN_PROGRESS' ? 'ALL' : 'IN_PROGRESS' }))}
+          className={filters.status === 'IN_PROGRESS' ? 'ring-2 ring-blue-500 shadow-md' : ''}
+        />
+        <KpiCard 
+          title="Completed" 
+          value={kpis.completed} 
+          icon={CheckCircle} 
+          iconColor="text-emerald-600" 
+          iconBg="bg-emerald-50" 
+          onClick={() => setFilters(prev => ({ ...prev, status: prev.status === 'COMPLETED' ? 'ALL' : 'COMPLETED' }))}
+          className={filters.status === 'COMPLETED' ? 'ring-2 ring-emerald-500 shadow-md' : ''}
+        />
+        <KpiCard 
+          title="Cancelled" 
+          value={kpis.cancelled} 
+          icon={XCircle} 
+          iconColor="text-rose-600" 
+          iconBg="bg-rose-50" 
+          onClick={() => setFilters(prev => ({ ...prev, status: prev.status === 'CANCELLED' ? 'ALL' : 'CANCELLED' }))}
+          className={filters.status === 'CANCELLED' ? 'ring-2 ring-rose-500 shadow-md' : ''}
+        />
       </div>
 
       <div className="relative">
@@ -218,11 +285,11 @@ const HomeSample: React.FC = () => {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
                 >
                   <option value="ALL">All Statuses</option>
-                  <option value="REQUESTED">Requested</option>
-                  <option value="ASSIGNED">Assigned</option>
+                  <option value="REQUESTED">Pending (Requested)</option>
+                  <option value="ASSIGNED">Assigned (Scheduled)</option>
                   <option value="SAMPLE_COLLECTED">Sample Collected</option>
                   <option value="IN_LAB_PROCESSING">In Lab Processing</option>
-                  <option value="REPORT_READY">Report Ready</option>
+                  <option value="COMPLETED">Completed (Report Ready)</option>
                   <option value="CANCELLED">Cancelled</option>
                 </select>
               </div>

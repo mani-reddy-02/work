@@ -638,7 +638,7 @@ export const uploadSettlementAttachment = async (req: Request, res: Response, ne
         fileUrl,
         fileSize: fileBuffer.length,
         mimeType,
-        uploadedBy: req.user?.name || req.user?.email || 'Super Admin'
+        uploadedBy: req.user?.name || (req.user as any)?.email || 'Super Admin'
       }
     });
 
@@ -661,7 +661,7 @@ export const deleteSettlementAttachment = async (req: Request, res: Response, ne
     const { id, attachmentId } = req.params;
 
     const attachment = await prisma.settlementAttachment.findFirst({
-      where: { id: attachmentId, settlementId: id }
+      where: { id: attachmentId as string, settlementId: id as string }
     });
 
     if (!attachment) {
@@ -680,7 +680,7 @@ export const deleteSettlementAttachment = async (req: Request, res: Response, ne
     }
 
     await prisma.settlementAttachment.delete({
-      where: { id: attachmentId }
+      where: { id: attachmentId as string }
     });
 
     res.json({ success: true, message: 'Attachment deleted successfully' });
@@ -752,7 +752,7 @@ export const processManualPayout = async (req: Request, res: Response, next: Nex
             fileUrl: proofUrl,
             fileSize: fileBuffer.length,
             mimeType,
-            uploadedBy: req.user?.name || req.user?.email || 'Super Admin'
+            uploadedBy: req.user?.name || (req.user as any)?.email || 'Super Admin'
           }
         });
       } catch (err) {
@@ -787,7 +787,7 @@ export const processManualPayout = async (req: Request, res: Response, next: Nex
 
       const effectiveProofUrl = proofUrl || settlement.paymentProofUrl || (settlement.attachments.length > 0 ? settlement.attachments[0].fileUrl : null);
       const effectiveReference = ref || `EXCEPTION: ${exReason}`;
-      const adminIdentifier = req.user?.name || req.user?.email || 'Super Admin';
+      const adminIdentifier = req.user?.name || (req.user as any)?.email || 'Super Admin';
       const payoutNumber = `PAY-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
 
       // 1. Create permanent PayoutRecord

@@ -5,7 +5,8 @@ import {
   CalendarCheck, Activity, Video, Home, CreditCard, Landmark, 
   ShieldAlert, AlertCircle, CheckCircle2, IndianRupee, TrendingUp, Network,
   Clock, ArrowRight, RefreshCw, Calendar, Check, XCircle, FileText,
-  AlertTriangle, PhoneCall, Sparkles, ChevronRight
+  AlertTriangle, PhoneCall, Sparkles, ChevronRight, Megaphone, HeartPulse,
+  Shield, UserCheck
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -39,10 +40,12 @@ const PIE_PALETTE = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#06b6d4', '#ef
 
 const Dashboard: React.FC = () => {
   const { token } = useAdminAuth();
-  const [period, setPeriod] = useState('30d');
+  const [period, setPeriod] = useState('this_month');
   const [serviceFilter, setServiceFilter] = useState('all');
-  const [customStart, setCustomStart] = useState('');
-  const [customEnd, setCustomEnd] = useState('');
+  const defaultEndDate = new Date().toISOString().slice(0, 10);
+  const defaultStartDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const [customStart, setCustomStart] = useState(defaultStartDate);
+  const [customEnd, setCustomEnd] = useState(defaultEndDate);
   const [showCustomDates, setShowCustomDates] = useState(false);
 
   const [loading, setLoading] = useState(true);
@@ -64,6 +67,9 @@ const Dashboard: React.FC = () => {
       totalLabOrders: number;
       totalHomeSampleOrders: number;
       totalHomeNursingRequests: number;
+      totalNurses: number;
+      totalReceptionists: number;
+      totalInsurances: number;
       pendingHospitalVerifications: number;
       pendingLabVerifications: number;
     };
@@ -113,6 +119,9 @@ const Dashboard: React.FC = () => {
       totalLabOrders: 0,
       totalHomeSampleOrders: 0,
       totalHomeNursingRequests: 0,
+      totalNurses: 0,
+      totalReceptionists: 0,
+      totalInsurances: 0,
       pendingHospitalVerifications: 0,
       pendingLabVerifications: 0,
     },
@@ -180,6 +189,9 @@ const Dashboard: React.FC = () => {
             totalLabOrders: 0,
             totalHomeSampleOrders: 0,
             totalHomeNursingRequests: 0,
+            totalNurses: d.totalNurses || 0,
+            totalReceptionists: d.totalReceptionists || 0,
+            totalInsurances: d.totalInsurances || 0,
             pendingHospitalVerifications: d.pendingVerifications || 0,
             pendingLabVerifications: 0,
           },
@@ -252,122 +264,26 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-red-200 shadow-sm text-center">
-        <div className="w-14 h-14 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
-          <AlertCircle size={28} />
-        </div>
-        <h3 className="text-lg font-bold text-slate-900 mb-1">Analytics Unavailable</h3>
-        <p className="text-slate-600 text-sm max-w-md mb-6">{error}</p>
-        <button 
-          onClick={fetchStats} 
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium text-sm transition-colors shadow-sm"
-        >
-          <RefreshCw size={16} /> Retry Analytics Connection
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8 pb-12">
-      {/* 1. MASTER HEADER & DYNAMIC DATE FILTER */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200/60">
-              <Sparkles size={12} className="text-blue-500" /> Live Platform Telemetry
-            </span>
-            <span className="text-xs text-slate-400 font-medium">Reconciled with DB</span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Centralized Operations & Analytics</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Real-time operational lifecycle tracking across all supported healthcare services</p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Service Scoping Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-slate-400">Service:</span>
-            <select 
-              className="bg-slate-50 border border-slate-200 text-slate-700 text-sm font-medium rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer"
-              value={serviceFilter}
-              onChange={(e) => setServiceFilter(e.target.value)}
-            >
-              <option value="all">All Services</option>
-              <option value="op">OP Bookings</option>
-              <option value="video">Video Consultations</option>
-              <option value="lab">Lab Visits</option>
-              <option value="home_sample">Home Sample Collection</option>
-              <option value="home_nursing">Home Nursing</option>
-            </select>
-          </div>
-
-          {/* Time Window Selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-slate-400">Period:</span>
-            <select 
-              className="bg-slate-50 border border-slate-200 text-slate-700 text-sm font-medium rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer"
-              value={period}
-              onChange={(e) => handlePeriodChange(e.target.value)}
-            >
-              <option value="today">Today</option>
-              <option value="7d">Last 7 Days</option>
-              <option value="30d">Last 30 Days</option>
-              <option value="month">This Month</option>
-              <option value="3m">Last 3 Months</option>
-              <option value="6m">Last 6 Months</option>
-              <option value="1y">Last Year</option>
-              <option value="all">All Time</option>
-              <option value="custom">Custom Date Range...</option>
-            </select>
-          </div>
-
-          <button
-            onClick={fetchStats}
-            title="Refresh analytics data"
-            className="p-2.5 text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors cursor-pointer"
-          >
-            <RefreshCw size={16} className={loading ? "animate-spin text-blue-600" : ""} />
-          </button>
-        </div>
-      </div>
-
-      {/* Custom Date Range Picker Modal/Inline Bar */}
-      {showCustomDates && (
-        <div className="bg-blue-50/70 border border-blue-200/80 p-4 rounded-xl flex flex-wrap items-center gap-4 animate-in fade-in">
-          <div className="flex items-center gap-2 text-sm text-blue-900 font-semibold">
-            <Calendar size={18} className="text-blue-600" />
-            <span>Select Custom Range:</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-600 font-medium">Start:</span>
-            <input 
-              type="date" 
-              value={customStart}
-              onChange={(e) => setCustomStart(e.target.value)}
-              className="bg-white border border-slate-200 text-slate-800 text-sm rounded-lg p-1.5 outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-600 font-medium">End:</span>
-            <input 
-              type="date" 
-              value={customEnd}
-              onChange={(e) => setCustomEnd(e.target.value)}
-              className="bg-white border border-slate-200 text-slate-800 text-sm rounded-lg p-1.5 outline-none focus:ring-2 focus:ring-blue-500"
-            />
+      {/* ERROR / SYNC ALERT BANNER IF ANY */}
+      {error && (
+        <div className="bg-rose-50 border border-rose-200/80 p-4 rounded-xl flex items-center justify-between text-rose-800 text-sm shadow-sm animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle size={18} className="text-rose-600 shrink-0" />
+            <div>
+              <span className="font-semibold block">Analytics Notice</span>
+              <span className="text-xs text-rose-600">{error}</span>
+            </div>
           </div>
           <button 
-            onClick={handleApplyCustomDates}
-            disabled={!customStart || !customEnd}
-            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
+            onClick={fetchStats}
+            className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shrink-0"
           >
-            Apply Filter
+            Retry Connection
           </button>
         </div>
       )}
-
       {/* ACTIONABLE PENDING ACTIONS BANNER */}
       <section>
         <div className="flex items-center justify-between mb-3">
@@ -375,9 +291,8 @@ const Dashboard: React.FC = () => {
             <AlertTriangle className="text-amber-500" size={18} />
             <h2 className="text-base font-bold text-slate-900 tracking-tight">Immediate Action Required</h2>
           </div>
-          <span className="text-xs text-slate-500 font-medium">Real operational queues</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           <Link 
             to="/admin/verification" 
             className="p-3.5 bg-white hover:bg-amber-50/40 rounded-xl border border-slate-200 hover:border-amber-300 transition-all shadow-sm group"
@@ -411,66 +326,34 @@ const Dashboard: React.FC = () => {
           </Link>
 
           <Link 
-            to="/admin/op-bookings?status=WAITING" 
-            className="p-3.5 bg-white hover:bg-blue-50/40 rounded-xl border border-slate-200 hover:border-blue-300 transition-all shadow-sm group"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">OP Queued</span>
-              <Activity size={16} className="text-blue-500" />
-            </div>
-            <p className="text-xl font-bold text-slate-900 mt-2 group-hover:text-blue-600 transition-colors">
-              {analytics.actionablePending.opWaiting}
-            </p>
-            <span className="text-[11px] text-blue-600 font-medium flex items-center gap-1 mt-0.5">
-              In waiting room <ChevronRight size={12} />
-            </span>
-          </Link>
-
-          <Link 
-            to="/admin/services/lab-tests?status=IN_LAB_PROCESSING" 
+            to="/admin/requests" 
             className="p-3.5 bg-white hover:bg-purple-50/40 rounded-xl border border-slate-200 hover:border-purple-300 transition-all shadow-sm group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Pending Reports</span>
-              <FileText size={16} className="text-purple-500" />
+              <span className="text-xs font-semibold text-slate-500">Marketing Requests</span>
+              <Megaphone size={16} className="text-purple-500" />
             </div>
             <p className="text-xl font-bold text-slate-900 mt-2 group-hover:text-purple-600 transition-colors">
-              {analytics.actionablePending.labReportsPending}
+              {analytics.actionablePending.marketingRequests}
             </p>
             <span className="text-[11px] text-purple-600 font-medium flex items-center gap-1 mt-0.5">
-              Awaiting upload <ChevronRight size={12} />
+              Review requests <ChevronRight size={12} />
             </span>
           </Link>
 
           <Link 
-            to="/admin/services/home-sample-collection?status=REQUESTED" 
-            className="p-3.5 bg-white hover:bg-cyan-50/40 rounded-xl border border-slate-200 hover:border-cyan-300 transition-all shadow-sm group"
+            to="/admin/requests" 
+            className="p-3.5 bg-white hover:bg-emerald-50/40 rounded-xl border border-slate-200 hover:border-emerald-300 transition-all shadow-sm group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Home Sample Pickup</span>
-              <Home size={16} className="text-cyan-500" />
+              <span className="text-xs font-semibold text-slate-500">Medical Camps Request</span>
+              <HeartPulse size={16} className="text-emerald-500" />
             </div>
-            <p className="text-xl font-bold text-slate-900 mt-2 group-hover:text-cyan-600 transition-colors">
-              {analytics.actionablePending.homeSampleRequested}
+            <p className="text-xl font-bold text-slate-900 mt-2 group-hover:text-emerald-600 transition-colors">
+              {analytics.actionablePending.campRequests}
             </p>
-            <span className="text-[11px] text-cyan-600 font-medium flex items-center gap-1 mt-0.5">
-              Assign collector <ChevronRight size={12} />
-            </span>
-          </Link>
-
-          <Link 
-            to="/admin/services/home-nursing?status=CONFIRMED" 
-            className="p-3.5 bg-white hover:bg-rose-50/40 rounded-xl border border-slate-200 hover:border-rose-300 transition-all shadow-sm group"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Home Nursing Orders</span>
-              <HeartHandshake size={16} className="text-rose-500" />
-            </div>
-            <p className="text-xl font-bold text-slate-900 mt-2 group-hover:text-rose-600 transition-colors">
-              {analytics.actionablePending.homeNursingConfirmed}
-            </p>
-            <span className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-0.5">
-              Assign nurse <ChevronRight size={12} />
+            <span className="text-[11px] text-emerald-600 font-medium flex items-center gap-1 mt-0.5">
+              Review camps <ChevronRight size={12} />
             </span>
           </Link>
         </div>
@@ -480,61 +363,147 @@ const Dashboard: React.FC = () => {
       <PendingVerifications />
 
       {/* 2. PLATFORM OVERVIEW TILES (CLICKABLE) */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
+      <section className="space-y-4">
+        <div className="flex items-center justify-between mb-1">
           <div>
             <h2 className="text-lg font-bold text-slate-900 tracking-tight">Platform Overview</h2>
             <p className="text-xs text-slate-500">All-time active network entities and total bookings</p>
           </div>
-          <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">Distinct Records</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
+        {/* Row 1: Network & Staff Entities */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
           <Link to="/admin/patients" className="block hover:scale-[1.02] transition-transform">
             <KpiCard title="Total Patients" value={analytics.overview.totalPatients.toLocaleString()} icon={UserCircle} iconColor="text-blue-600" iconBg="bg-blue-50" subtitle="Registered users" />
-          </Link>
-          <Link to="/admin/doctors" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Total Doctors" value={analytics.overview.totalDoctors.toLocaleString()} icon={Stethoscope} iconColor="text-emerald-600" iconBg="bg-emerald-50" subtitle={`${analytics.overview.activeDoctors} Active`} />
           </Link>
           <Link to="/admin/hospitals" className="block hover:scale-[1.02] transition-transform">
             <KpiCard title="Total Hospitals" value={analytics.overview.totalHospitals.toLocaleString()} icon={Building2} iconColor="text-purple-600" iconBg="bg-purple-50" subtitle={`${analytics.overview.verifiedHospitals} Verified`} />
           </Link>
-          <Link to="/admin/departments" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Departments" value={analytics.overview.totalDepartments.toLocaleString()} icon={Network} iconColor="text-orange-600" iconBg="bg-orange-50" subtitle="Medical specialties" />
-          </Link>
           <Link to="/admin/labs" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Diagnostic Labs" value={analytics.overview.totalLabs.toLocaleString()} icon={TestTube} iconColor="text-teal-600" iconBg="bg-teal-50" subtitle="Diagnostic centers" />
+            <KpiCard title="Total Labs" value={analytics.overview.totalLabs.toLocaleString()} icon={TestTube} iconColor="text-teal-600" iconBg="bg-teal-50" subtitle="Diagnostic centers" />
           </Link>
-          <Link to="/admin/op-bookings" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Total OP Bookings" value={analytics.overview.totalOpBookings.toLocaleString()} icon={CalendarCheck} iconColor="text-indigo-600" iconBg="bg-indigo-50" subtitle="Clinical visits" />
-          </Link>
-          <Link to="/admin/services/video-consultation" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Video Consults" value={analytics.overview.totalVideoConsultations.toLocaleString()} icon={Video} iconColor="text-sky-600" iconBg="bg-sky-50" subtitle="Virtual sessions" />
-          </Link>
-          <Link to="/admin/services/lab-tests" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Lab Visit Orders" value={analytics.overview.totalLabOrders.toLocaleString()} icon={TestTube} iconColor="text-violet-600" iconBg="bg-violet-50" subtitle="Walk-in lab tests" />
-          </Link>
-          <Link to="/admin/services/home-sample-collection" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Home Samples" value={analytics.overview.totalHomeSampleOrders.toLocaleString()} icon={Home} iconColor="text-cyan-600" iconBg="bg-cyan-50" subtitle="Doorstep collections" />
+          <Link to="/admin/doctors" className="block hover:scale-[1.02] transition-transform">
+            <KpiCard title="Total Doctors" value={analytics.overview.totalDoctors.toLocaleString()} icon={Stethoscope} iconColor="text-emerald-600" iconBg="bg-emerald-50" subtitle={`${analytics.overview.activeDoctors} Active`} />
           </Link>
           <Link to="/admin/services/home-nursing" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Home Nursing" value={analytics.overview.totalHomeNursingRequests.toLocaleString()} icon={HeartHandshake} iconColor="text-rose-600" iconBg="bg-rose-50" subtitle="Attendant requests" />
+            <KpiCard title="Total Nurses" value={analytics.overview.totalNurses.toLocaleString()} icon={HeartPulse} iconColor="text-rose-600" iconBg="bg-rose-50" subtitle="Registered staff" />
           </Link>
-          <Link to="/admin/verification" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Hosp. Verifications" value={analytics.overview.pendingHospitalVerifications.toLocaleString()} icon={ShieldAlert} iconColor="text-amber-600" iconBg="bg-amber-50" subtitle="Pending review" />
+          <Link to="/admin/hospitals" className="block hover:scale-[1.02] transition-transform">
+            <KpiCard title="Total Receptionist" value={analytics.overview.totalReceptionists.toLocaleString()} icon={UserCheck} iconColor="text-amber-600" iconBg="bg-amber-50" subtitle="Front desk staff" />
           </Link>
-          <Link to="/admin/labs?verification=pending" className="block hover:scale-[1.02] transition-transform">
-            <KpiCard title="Lab Verifications" value={analytics.overview.pendingLabVerifications.toLocaleString()} icon={ShieldAlert} iconColor="text-amber-600" iconBg="bg-amber-50" subtitle="Pending review" />
+        </div>
+
+        {/* Row 2: Bookings, Services & Insurances */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+          <Link to="/admin/op-bookings" className="block hover:scale-[1.02] transition-transform">
+            <KpiCard title="Total OPs" value={analytics.overview.totalOpBookings.toLocaleString()} icon={CalendarCheck} iconColor="text-indigo-600" iconBg="bg-indigo-50" subtitle="Clinical visits" />
+          </Link>
+          <Link to="/admin/services/video-consultation" className="block hover:scale-[1.02] transition-transform">
+            <KpiCard title="Total Video Consultancies" value={analytics.overview.totalVideoConsultations.toLocaleString()} icon={Video} iconColor="text-sky-600" iconBg="bg-sky-50" subtitle="Virtual sessions" />
+          </Link>
+          <Link to="/admin/services/lab-tests" className="block hover:scale-[1.02] transition-transform">
+            <KpiCard title="Total Lab Tests" value={analytics.overview.totalLabOrders.toLocaleString()} icon={TestTube} iconColor="text-violet-600" iconBg="bg-violet-50" subtitle="Walk-in lab tests" />
+          </Link>
+          <Link to="/admin/services/home-sample-collection" className="block hover:scale-[1.02] transition-transform">
+            <KpiCard title="Total Home Sample Collections" value={analytics.overview.totalHomeSampleOrders.toLocaleString()} icon={Home} iconColor="text-cyan-600" iconBg="bg-cyan-50" subtitle="Doorstep collections" />
+          </Link>
+          <Link to="/admin/services/home-nursing" className="block hover:scale-[1.02] transition-transform">
+            <KpiCard title="Total Home Nursing" value={analytics.overview.totalHomeNursingRequests.toLocaleString()} icon={HeartHandshake} iconColor="text-rose-600" iconBg="bg-rose-50" subtitle="Attendant requests" />
+          </Link>
+          <Link to="/admin/reports" className="block hover:scale-[1.02] transition-transform">
+            <KpiCard title="Total Insurances" value={analytics.overview.totalInsurances.toLocaleString()} icon={Shield} iconColor="text-blue-600" iconBg="bg-blue-50" subtitle="Active plans" />
           </Link>
         </div>
       </section>
 
       {/* 3. END-TO-END SERVICE WORKFLOW LIFECYCLES */}
       <section className="space-y-6">
-        <div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 className="text-lg font-bold text-slate-900 tracking-tight">Service Workflows & Lifecycle Analytics</h2>
-          <p className="text-xs text-slate-500">Granular operational status progression and conversion rates ({period === 'all' ? 'All Time' : period})</p>
+          
+          {/* Period Filter Tiles: Today, This Week, This Month, Custom */}
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => handlePeriodChange('today')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                period === 'today'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePeriodChange('this_week')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                period === 'this_week' || period === '7d' || period === 'week'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+            >
+              This Week
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePeriodChange('this_month')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                period === 'this_month' || period === 'month' || period === '30d'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+            >
+              This Month
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePeriodChange('custom')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                period === 'custom'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+            >
+              <Calendar size={13} />
+              Custom
+            </button>
+          </div>
         </div>
+
+        {/* Custom Date Range Picker */}
+        {showCustomDates && (
+          <div className="flex flex-wrap items-center gap-3 p-3.5 bg-blue-50/60 border border-blue-200 rounded-xl animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2 text-xs text-slate-700 font-medium">
+              <span>From:</span>
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCustomDates(); }}
+                className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-700 font-medium">
+              <span>To:</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCustomDates(); }}
+                className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleApplyCustomDates}
+              disabled={!customStart || !customEnd}
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm"
+            >
+              Apply Filter
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
@@ -548,7 +517,6 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-slate-900">OP Booking Workflow</h3>
-                    <p className="text-xs text-slate-400">Created → Waiting → Consultation → Completed</p>
                   </div>
                 </div>
                 <Link to="/admin/op-bookings" className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
@@ -556,54 +524,36 @@ const Dashboard: React.FC = () => {
                 </Link>
               </div>
 
-              {/* Status progression pipeline */}
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 my-4">
-                <Link to="/admin/op-bookings" className="p-2.5 bg-slate-50 rounded-xl text-center hover:bg-slate-100 transition-colors">
-                  <span className="text-[11px] text-slate-500 font-medium block">Total</span>
-                  <span className="text-base font-bold text-slate-900">{analytics.services.op.total}</span>
+              {/* 4 Status Tiles: Total, Pending, Completed, Cancelled */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
+                <Link to="/admin/op-bookings" className="p-3 bg-slate-50 rounded-xl text-center hover:bg-slate-100 transition-colors">
+                  <span className="text-xs text-slate-500 font-medium block">Total</span>
+                  <span className="text-lg font-bold text-slate-900">{analytics.services.op.total}</span>
                 </Link>
-                <Link to="/admin/op-bookings?status=WAITING" className="p-2.5 bg-blue-50 rounded-xl text-center hover:bg-blue-100 transition-colors">
-                  <span className="text-[11px] text-blue-600 font-medium block">Waiting</span>
-                  <span className="text-base font-bold text-blue-700">{analytics.services.op.waiting}</span>
+                <Link to="/admin/op-bookings?status=WAITING" className="p-3 bg-amber-50 rounded-xl text-center hover:bg-amber-100 transition-colors">
+                  <span className="text-xs text-amber-600 font-medium block">Pending</span>
+                  <span className="text-lg font-bold text-amber-700">
+                    {Math.max(0, (analytics.services.op.total || 0) - (analytics.services.op.completed || 0) - (analytics.services.op.cancelled || 0))}
+                  </span>
                 </Link>
-                <Link to="/admin/op-bookings?status=IN_CONSULTATION" className="p-2.5 bg-purple-50 rounded-xl text-center hover:bg-purple-100 transition-colors">
-                  <span className="text-[11px] text-purple-600 font-medium block">In Consult</span>
-                  <span className="text-base font-bold text-purple-700">{analytics.services.op.inConsultation}</span>
+                <Link to="/admin/op-bookings?status=COMPLETED" className="p-3 bg-emerald-50 rounded-xl text-center hover:bg-emerald-100 transition-colors">
+                  <span className="text-xs text-emerald-600 font-medium block">Completed</span>
+                  <span className="text-lg font-bold text-emerald-700">{analytics.services.op.completed}</span>
                 </Link>
-                <div className="p-2.5 bg-indigo-50 rounded-xl text-center">
-                  <span className="text-[11px] text-indigo-600 font-medium block">Today</span>
-                  <span className="text-base font-bold text-indigo-700">{analytics.services.op.todayAppointments}</span>
-                </div>
-                <Link to="/admin/op-bookings?status=COMPLETED" className="p-2.5 bg-emerald-50 rounded-xl text-center hover:bg-emerald-100 transition-colors">
-                  <span className="text-[11px] text-emerald-600 font-medium block">Done</span>
-                  <span className="text-base font-bold text-emerald-700">{analytics.services.op.completed}</span>
+                <Link to="/admin/op-bookings?status=CANCELLED" className="p-3 bg-rose-50 rounded-xl text-center hover:bg-rose-100 transition-colors">
+                  <span className="text-xs text-rose-600 font-medium block">Cancelled</span>
+                  <span className="text-lg font-bold text-rose-700">{analytics.services.op.cancelled}</span>
                 </Link>
-                <Link to="/admin/op-bookings?status=CANCELLED" className="p-2.5 bg-rose-50 rounded-xl text-center hover:bg-rose-100 transition-colors">
-                  <span className="text-[11px] text-rose-600 font-medium block">Cancelled</span>
-                  <span className="text-base font-bold text-rose-700">{analytics.services.op.cancelled}</span>
-                </Link>
-              </div>
-
-              {/* Status progression bar */}
-              <div className="space-y-1.5 mt-2">
-                <div className="flex justify-between text-xs font-semibold text-slate-600">
-                  <span>Completion Rate: <strong className="text-emerald-600">{analytics.services.op.completionRate}%</strong></span>
-                  <span>Cancellation Rate: <strong className="text-rose-600">{analytics.services.op.cancellationRate}%</strong></span>
-                </div>
-                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden flex">
-                  <div style={{ width: `${analytics.services.op.completionRate}%` }} className="bg-emerald-500 h-full" />
-                  <div style={{ width: `${analytics.services.op.cancellationRate}%` }} className="bg-rose-500 h-full" />
-                </div>
               </div>
             </div>
 
             {/* Micro pie chart */}
-            {analytics.services.op.statusDistribution?.length > 0 && (
+            {(analytics.services.op.statusDistribution || []).filter((d: any) => d.value > 0).length > 0 ? (
               <div className="h-32 mt-3">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={analytics.services.op.statusDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={2}>
-                      {analytics.services.op.statusDistribution.map((entry: any, index: number) => (
+                    <Pie data={(analytics.services.op.statusDistribution || []).filter((d: any) => d.value > 0)} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={2}>
+                      {(analytics.services.op.statusDistribution || []).filter((d: any) => d.value > 0).map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || PIE_PALETTE[index % PIE_PALETTE.length]} />
                       ))}
                     </Pie>
@@ -611,6 +561,11 @@ const Dashboard: React.FC = () => {
                     <Legend iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
                   </PieChart>
                 </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-28 mt-2 flex flex-col items-center justify-center text-slate-400 text-xs bg-slate-50/60 rounded-xl border border-dashed border-slate-200">
+                <Activity size={22} className="text-slate-300 mb-1" />
+                <span>No OP bookings in this period</span>
               </div>
             )}
           </div>
@@ -625,7 +580,6 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-slate-900">Video Consultation Workflow</h3>
-                    <p className="text-xs text-slate-400">Scheduled → Waiting → In Progress → Completed</p>
                   </div>
                 </div>
                 <Link to="/admin/services/video-consultation" className="text-xs font-semibold text-sky-600 hover:text-sky-700 flex items-center gap-1">
@@ -633,56 +587,36 @@ const Dashboard: React.FC = () => {
                 </Link>
               </div>
 
-              {/* Status breakdown */}
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 my-4">
-                <div className="p-2.5 bg-slate-50 rounded-xl text-center">
-                  <span className="text-[11px] text-slate-500 font-medium block">Total</span>
-                  <span className="text-base font-bold text-slate-900">{analytics.services.video.total}</span>
-                </div>
-                <div className="p-2.5 bg-sky-50 rounded-xl text-center">
-                  <span className="text-[11px] text-sky-600 font-medium block">Scheduled</span>
-                  <span className="text-base font-bold text-sky-700">{analytics.services.video.scheduled}</span>
-                </div>
-                <div className="p-2.5 bg-blue-50 rounded-xl text-center">
-                  <span className="text-[11px] text-blue-600 font-medium block">Waiting</span>
-                  <span className="text-base font-bold text-blue-700">{analytics.services.video.waiting}</span>
-                </div>
-                <div className="p-2.5 bg-purple-50 rounded-xl text-center">
-                  <span className="text-[11px] text-purple-600 font-medium block">Live Call</span>
-                  <span className="text-base font-bold text-purple-700">{analytics.services.video.inProgress}</span>
-                </div>
-                <div className="p-2.5 bg-emerald-50 rounded-xl text-center">
-                  <span className="text-[11px] text-emerald-600 font-medium block">Done</span>
-                  <span className="text-base font-bold text-emerald-700">{analytics.services.video.completed}</span>
-                </div>
-                <div className="p-2.5 bg-rose-50 rounded-xl text-center">
-                  <span className="text-[11px] text-rose-600 font-medium block">Cancelled</span>
-                  <span className="text-base font-bold text-rose-700">{analytics.services.video.cancelled}</span>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 mt-2">
-                <div className="flex justify-between text-xs font-semibold text-slate-600">
-                  <span>Session Completion: <strong className="text-emerald-600">{analytics.services.video.completionRate}%</strong></span>
-                  <span>Session Drop/Cancel: <strong className="text-rose-600">{analytics.services.video.cancellationRate}%</strong></span>
-                </div>
-                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden flex">
-                  <div style={{ width: `${analytics.services.video.completionRate}%` }} className="bg-emerald-500 h-full" />
-                  <div style={{ width: `${analytics.services.video.cancellationRate}%` }} className="bg-rose-500 h-full" />
-                </div>
+              {/* 4 Status Tiles: Total, Pending, Completed, Cancelled */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
+                <Link to="/admin/services/video-consultation" className="p-3 bg-slate-50 rounded-xl text-center hover:bg-slate-100 transition-colors">
+                  <span className="text-xs text-slate-500 font-medium block">Total</span>
+                  <span className="text-lg font-bold text-slate-900">{analytics.services.video.total}</span>
+                </Link>
+                <Link to="/admin/services/video-consultation?status=SCHEDULED" className="p-3 bg-amber-50 rounded-xl text-center hover:bg-amber-100 transition-colors">
+                  <span className="text-xs text-amber-600 font-medium block">Pending</span>
+                  <span className="text-lg font-bold text-amber-700">
+                    {Math.max(0, (analytics.services.video.total || 0) - (analytics.services.video.completed || 0) - (analytics.services.video.cancelled || 0))}
+                  </span>
+                </Link>
+                <Link to="/admin/services/video-consultation?status=COMPLETED" className="p-3 bg-emerald-50 rounded-xl text-center hover:bg-emerald-100 transition-colors">
+                  <span className="text-xs text-emerald-600 font-medium block">Completed</span>
+                  <span className="text-lg font-bold text-emerald-700">{analytics.services.video.completed}</span>
+                </Link>
+                <Link to="/admin/services/video-consultation?status=CANCELLED" className="p-3 bg-rose-50 rounded-xl text-center hover:bg-rose-100 transition-colors">
+                  <span className="text-xs text-rose-600 font-medium block">Cancelled</span>
+                  <span className="text-lg font-bold text-rose-700">{analytics.services.video.cancelled}</span>
+                </Link>
               </div>
             </div>
 
-            {analytics.services.video.total === 0 ? (
-              <div className="p-4 bg-slate-50/80 rounded-xl text-center text-xs text-slate-500 mt-3 border border-dashed border-slate-200">
-                LiveKit RTC backend configured & verified. Virtual appointments appear here as patients and doctors join consultations.
-              </div>
-            ) : (
+            {/* Micro pie chart */}
+            {(analytics.services.video.statusDistribution || []).filter((d: any) => d.value > 0).length > 0 ? (
               <div className="h-32 mt-3">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={analytics.services.video.statusDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={2}>
-                      {analytics.services.video.statusDistribution.map((entry: any, index: number) => (
+                    <Pie data={(analytics.services.video.statusDistribution || []).filter((d: any) => d.value > 0)} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={2}>
+                      {(analytics.services.video.statusDistribution || []).filter((d: any) => d.value > 0).map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || PIE_PALETTE[index % PIE_PALETTE.length]} />
                       ))}
                     </Pie>
@@ -690,6 +624,11 @@ const Dashboard: React.FC = () => {
                     <Legend iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
                   </PieChart>
                 </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-28 mt-2 flex flex-col items-center justify-center text-slate-400 text-xs bg-slate-50/60 rounded-xl border border-dashed border-slate-200">
+                <Video size={22} className="text-slate-300 mb-1" />
+                <span>No video consultations in this period</span>
               </div>
             )}
           </div>
@@ -704,7 +643,6 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-slate-900">Lab Visit Workflow (Walk-in)</h3>
-                    <p className="text-xs text-slate-400">Order → Sample Collection → Processing → Report Ready</p>
                   </div>
                 </div>
                 <Link to="/admin/services/lab-tests?bookingType=WALK_IN" className="text-xs font-semibold text-violet-600 hover:text-violet-700 flex items-center gap-1">
@@ -712,52 +650,38 @@ const Dashboard: React.FC = () => {
                 </Link>
               </div>
 
-              {/* Status progression pipeline */}
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 my-4">
-                <Link to="/admin/services/lab-tests?bookingType=WALK_IN" className="p-2.5 bg-slate-50 rounded-xl text-center hover:bg-slate-100">
-                  <span className="text-[11px] text-slate-500 font-medium block">Total</span>
-                  <span className="text-base font-bold text-slate-900">{analytics.services.labVisit.total}</span>
+              {/* 4 Status Tiles: Total, Pending, Completed, Cancelled */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
+                <Link to="/admin/services/lab-tests?bookingType=WALK_IN" className="p-3 bg-slate-50 rounded-xl text-center hover:bg-slate-100 transition-colors">
+                  <span className="text-xs text-slate-500 font-medium block">Total</span>
+                  <span className="text-lg font-bold text-slate-900">{analytics.services.labVisit.total}</span>
                 </Link>
-                <Link to="/admin/services/lab-tests?bookingType=WALK_IN&status=REQUESTED" className="p-2.5 bg-amber-50 rounded-xl text-center hover:bg-amber-100">
-                  <span className="text-[11px] text-amber-600 font-medium block">Requested</span>
-                  <span className="text-base font-bold text-amber-700">{analytics.services.labVisit.requested}</span>
+                <Link to="/admin/services/lab-tests?bookingType=WALK_IN&status=PENDING" className="p-3 bg-amber-50 rounded-xl text-center hover:bg-amber-100 transition-colors">
+                  <span className="text-xs text-amber-600 font-medium block">Pending</span>
+                  <span className="text-lg font-bold text-amber-700">
+                    {Math.max(0, (analytics.services.labVisit.total || 0) - ((analytics.services.labVisit.reportReady || 0) + (analytics.services.labVisit.completed || 0)) - (analytics.services.labVisit.cancelled || 0))}
+                  </span>
                 </Link>
-                <Link to="/admin/services/lab-tests?bookingType=WALK_IN&status=SAMPLE_COLLECTED" className="p-2.5 bg-cyan-50 rounded-xl text-center hover:bg-cyan-100">
-                  <span className="text-[11px] text-cyan-600 font-medium block">Sample Taken</span>
-                  <span className="text-base font-bold text-cyan-700">{analytics.services.labVisit.sampleCollected}</span>
+                <Link to="/admin/services/lab-tests?bookingType=WALK_IN&status=REPORT_READY" className="p-3 bg-emerald-50 rounded-xl text-center hover:bg-emerald-100 transition-colors">
+                  <span className="text-xs text-emerald-600 font-medium block">Completed</span>
+                  <span className="text-lg font-bold text-emerald-700">
+                    {(analytics.services.labVisit.reportReady || 0) + (analytics.services.labVisit.completed || 0)}
+                  </span>
                 </Link>
-                <Link to="/admin/services/lab-tests?bookingType=WALK_IN&status=IN_LAB_PROCESSING" className="p-2.5 bg-purple-50 rounded-xl text-center hover:bg-purple-100">
-                  <span className="text-[11px] text-purple-600 font-medium block">In Lab</span>
-                  <span className="text-base font-bold text-purple-700">{analytics.services.labVisit.inProcessing}</span>
+                <Link to="/admin/services/lab-tests?bookingType=WALK_IN&status=CANCELLED" className="p-3 bg-rose-50 rounded-xl text-center hover:bg-rose-100 transition-colors">
+                  <span className="text-xs text-rose-600 font-medium block">Cancelled</span>
+                  <span className="text-lg font-bold text-rose-700">{analytics.services.labVisit.cancelled}</span>
                 </Link>
-                <Link to="/admin/services/lab-tests?bookingType=WALK_IN&status=REPORT_READY" className="p-2.5 bg-emerald-50 rounded-xl text-center hover:bg-emerald-100">
-                  <span className="text-[11px] text-emerald-600 font-medium block">Report Ready</span>
-                  <span className="text-base font-bold text-emerald-700">{analytics.services.labVisit.reportReady}</span>
-                </Link>
-                <Link to="/admin/services/lab-tests?bookingType=WALK_IN&status=CANCELLED" className="p-2.5 bg-rose-50 rounded-xl text-center hover:bg-rose-100">
-                  <span className="text-[11px] text-rose-600 font-medium block">Cancelled</span>
-                  <span className="text-base font-bold text-rose-700">{analytics.services.labVisit.cancelled}</span>
-                </Link>
-              </div>
-
-              <div className="space-y-1.5 mt-2">
-                <div className="flex justify-between text-xs font-semibold text-slate-600">
-                  <span>Report Ready Rate: <strong className="text-emerald-600">{analytics.services.labVisit.completionRate}%</strong></span>
-                  <span>Cancellation Rate: <strong className="text-rose-600">{analytics.services.labVisit.cancellationRate}%</strong></span>
-                </div>
-                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden flex">
-                  <div style={{ width: `${analytics.services.labVisit.completionRate}%` }} className="bg-emerald-500 h-full" />
-                  <div style={{ width: `${analytics.services.labVisit.cancellationRate}%` }} className="bg-rose-500 h-full" />
-                </div>
               </div>
             </div>
 
-            {analytics.services.labVisit.statusDistribution?.length > 0 && (
+            {/* Micro pie chart */}
+            {(analytics.services.labVisit.statusDistribution || []).filter((d: any) => d.value > 0).length > 0 ? (
               <div className="h-32 mt-3">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={analytics.services.labVisit.statusDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={2}>
-                      {analytics.services.labVisit.statusDistribution.map((entry: any, index: number) => (
+                    <Pie data={(analytics.services.labVisit.statusDistribution || []).filter((d: any) => d.value > 0)} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={2}>
+                      {(analytics.services.labVisit.statusDistribution || []).filter((d: any) => d.value > 0).map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || PIE_PALETTE[index % PIE_PALETTE.length]} />
                       ))}
                     </Pie>
@@ -765,6 +689,11 @@ const Dashboard: React.FC = () => {
                     <Legend iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
                   </PieChart>
                 </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-28 mt-2 flex flex-col items-center justify-center text-slate-400 text-xs bg-slate-50/60 rounded-xl border border-dashed border-slate-200">
+                <TestTube size={22} className="text-slate-300 mb-1" />
+                <span>No walk-in lab orders in this period</span>
               </div>
             )}
           </div>
@@ -779,7 +708,6 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-slate-900">Home Sample Collection Workflow</h3>
-                    <p className="text-xs text-slate-400">Request → Phlebotomist Pickup → Lab Processing → Report</p>
                   </div>
                 </div>
                 <Link to="/admin/services/home-sample-collection" className="text-xs font-semibold text-cyan-600 hover:text-cyan-700 flex items-center gap-1">
@@ -787,52 +715,38 @@ const Dashboard: React.FC = () => {
                 </Link>
               </div>
 
-              {/* Status progression pipeline */}
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 my-4">
-                <Link to="/admin/services/home-sample-collection" className="p-2.5 bg-slate-50 rounded-xl text-center hover:bg-slate-100">
-                  <span className="text-[11px] text-slate-500 font-medium block">Total</span>
-                  <span className="text-base font-bold text-slate-900">{analytics.services.homeSample.total}</span>
+              {/* 4 Status Tiles: Total, Pending, Completed, Cancelled */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
+                <Link to="/admin/services/home-sample-collection" className="p-3 bg-slate-50 rounded-xl text-center hover:bg-slate-100 transition-colors">
+                  <span className="text-xs text-slate-500 font-medium block">Total</span>
+                  <span className="text-lg font-bold text-slate-900">{analytics.services.homeSample.total}</span>
                 </Link>
-                <Link to="/admin/services/home-sample-collection?status=REQUESTED" className="p-2.5 bg-amber-50 rounded-xl text-center hover:bg-amber-100">
-                  <span className="text-[11px] text-amber-600 font-medium block">Pending</span>
-                  <span className="text-base font-bold text-amber-700">{analytics.services.homeSample.requested}</span>
+                <Link to="/admin/services/home-sample-collection?status=REQUESTED" className="p-3 bg-amber-50 rounded-xl text-center hover:bg-amber-100 transition-colors">
+                  <span className="text-xs text-amber-600 font-medium block">Pending</span>
+                  <span className="text-lg font-bold text-amber-700">
+                    {Math.max(0, (analytics.services.homeSample.total || 0) - ((analytics.services.homeSample.reportReady || 0) + (analytics.services.homeSample.completed || 0)) - (analytics.services.homeSample.cancelled || 0))}
+                  </span>
                 </Link>
-                <Link to="/admin/services/home-sample-collection?status=SAMPLE_COLLECTED" className="p-2.5 bg-cyan-50 rounded-xl text-center hover:bg-cyan-100">
-                  <span className="text-[11px] text-cyan-600 font-medium block">Collected</span>
-                  <span className="text-base font-bold text-cyan-700">{analytics.services.homeSample.sampleCollected}</span>
+                <Link to="/admin/services/home-sample-collection?status=REPORT_READY" className="p-3 bg-emerald-50 rounded-xl text-center hover:bg-emerald-100 transition-colors">
+                  <span className="text-xs text-emerald-600 font-medium block">Completed</span>
+                  <span className="text-lg font-bold text-emerald-700">
+                    {(analytics.services.homeSample.reportReady || 0) + (analytics.services.homeSample.completed || 0)}
+                  </span>
                 </Link>
-                <Link to="/admin/services/home-sample-collection?status=IN_LAB_PROCESSING" className="p-2.5 bg-purple-50 rounded-xl text-center hover:bg-purple-100">
-                  <span className="text-[11px] text-purple-600 font-medium block">In Lab</span>
-                  <span className="text-base font-bold text-purple-700">{analytics.services.homeSample.inProcessing}</span>
+                <Link to="/admin/services/home-sample-collection?status=CANCELLED" className="p-3 bg-rose-50 rounded-xl text-center hover:bg-rose-100 transition-colors">
+                  <span className="text-xs text-rose-600 font-medium block">Cancelled</span>
+                  <span className="text-lg font-bold text-rose-700">{analytics.services.homeSample.cancelled}</span>
                 </Link>
-                <Link to="/admin/services/home-sample-collection?status=REPORT_READY" className="p-2.5 bg-emerald-50 rounded-xl text-center hover:bg-emerald-100">
-                  <span className="text-[11px] text-emerald-600 font-medium block">Delivered</span>
-                  <span className="text-base font-bold text-emerald-700">{analytics.services.homeSample.reportReady}</span>
-                </Link>
-                <Link to="/admin/services/home-sample-collection?status=CANCELLED" className="p-2.5 bg-rose-50 rounded-xl text-center hover:bg-rose-100">
-                  <span className="text-[11px] text-rose-600 font-medium block">Cancelled</span>
-                  <span className="text-base font-bold text-rose-700">{analytics.services.homeSample.cancelled}</span>
-                </Link>
-              </div>
-
-              <div className="space-y-1.5 mt-2">
-                <div className="flex justify-between text-xs font-semibold text-slate-600">
-                  <span>Success Rate: <strong className="text-emerald-600">{analytics.services.homeSample.completionRate}%</strong></span>
-                  <span>Cancellation Rate: <strong className="text-rose-600">{analytics.services.homeSample.cancellationRate}%</strong></span>
-                </div>
-                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden flex">
-                  <div style={{ width: `${analytics.services.homeSample.completionRate}%` }} className="bg-emerald-500 h-full" />
-                  <div style={{ width: `${analytics.services.homeSample.cancellationRate}%` }} className="bg-rose-500 h-full" />
-                </div>
               </div>
             </div>
 
-            {analytics.services.homeSample.statusDistribution?.length > 0 && (
+            {/* Micro pie chart */}
+            {(analytics.services.homeSample.statusDistribution || []).filter((d: any) => d.value > 0).length > 0 ? (
               <div className="h-32 mt-3">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={analytics.services.homeSample.statusDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={2}>
-                      {analytics.services.homeSample.statusDistribution.map((entry: any, index: number) => (
+                    <Pie data={(analytics.services.homeSample.statusDistribution || []).filter((d: any) => d.value > 0)} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={2}>
+                      {(analytics.services.homeSample.statusDistribution || []).filter((d: any) => d.value > 0).map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || PIE_PALETTE[index % PIE_PALETTE.length]} />
                       ))}
                     </Pie>
@@ -840,6 +754,11 @@ const Dashboard: React.FC = () => {
                     <Legend iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
                   </PieChart>
                 </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-28 mt-2 flex flex-col items-center justify-center text-slate-400 text-xs bg-slate-50/60 rounded-xl border border-dashed border-slate-200">
+                <Home size={22} className="text-slate-300 mb-1" />
+                <span>No home sample orders in this period</span>
               </div>
             )}
           </div>
@@ -854,7 +773,6 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-slate-900">Home Nursing Workflow</h3>
-                    <p className="text-xs text-slate-400">Order Confirmed → Nurse Assigned → Service In-Progress → Completed</p>
                   </div>
                 </div>
                 <Link to="/admin/services/home-nursing" className="text-xs font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1">
@@ -862,45 +780,59 @@ const Dashboard: React.FC = () => {
                 </Link>
               </div>
 
-              {/* Status progression pipeline */}
-              <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 my-4">
-                <Link to="/admin/services/home-nursing" className="p-3 bg-slate-50 rounded-xl text-center hover:bg-slate-100">
-                  <span className="text-xs text-slate-500 font-medium block">Total Bookings</span>
+              {/* 4 Status Tiles: Total, Pending, Completed, Cancelled */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
+                <Link to="/admin/services/home-nursing" className="p-3 bg-slate-50 rounded-xl text-center hover:bg-slate-100 transition-colors">
+                  <span className="text-xs text-slate-500 font-medium block">Total</span>
                   <span className="text-lg font-bold text-slate-900">{analytics.services.homeNursing.total}</span>
                 </Link>
-                <Link to="/admin/services/home-nursing?status=CONFIRMED" className="p-3 bg-blue-50 rounded-xl text-center hover:bg-blue-100">
-                  <span className="text-xs text-blue-600 font-medium block">Confirmed (Unassigned)</span>
-                  <span className="text-lg font-bold text-blue-700">{analytics.services.homeNursing.confirmed}</span>
+                <Link to="/admin/services/home-nursing?status=CONFIRMED" className="p-3 bg-amber-50 rounded-xl text-center hover:bg-amber-100 transition-colors">
+                  <span className="text-xs text-amber-600 font-medium block">Pending</span>
+                  <span className="text-lg font-bold text-amber-700">
+                    {Math.max(0, (analytics.services.homeNursing.total || 0) - (analytics.services.homeNursing.completed || 0) - (analytics.services.homeNursing.cancelled || 0))}
+                  </span>
                 </Link>
-                <Link to="/admin/services/home-nursing?status=ASSIGNED" className="p-3 bg-purple-50 rounded-xl text-center hover:bg-purple-100">
-                  <span className="text-xs text-purple-600 font-medium block">Nurse Assigned</span>
-                  <span className="text-lg font-bold text-purple-700">{analytics.services.homeNursing.assigned}</span>
-                </Link>
-                <Link to="/admin/services/home-nursing?status=IN_PROGRESS" className="p-3 bg-indigo-50 rounded-xl text-center hover:bg-indigo-100">
-                  <span className="text-xs text-indigo-600 font-medium block">Active Service</span>
-                  <span className="text-lg font-bold text-indigo-700">{analytics.services.homeNursing.inProgress}</span>
-                </Link>
-                <Link to="/admin/services/home-nursing?status=COMPLETED" className="p-3 bg-emerald-50 rounded-xl text-center hover:bg-emerald-100">
+                <Link to="/admin/services/home-nursing?status=COMPLETED" className="p-3 bg-emerald-50 rounded-xl text-center hover:bg-emerald-100 transition-colors">
                   <span className="text-xs text-emerald-600 font-medium block">Completed</span>
                   <span className="text-lg font-bold text-emerald-700">{analytics.services.homeNursing.completed}</span>
                 </Link>
-                <Link to="/admin/services/home-nursing?status=CANCELLED" className="p-3 bg-rose-50 rounded-xl text-center hover:bg-rose-100">
+                <Link to="/admin/services/home-nursing?status=CANCELLED" className="p-3 bg-rose-50 rounded-xl text-center hover:bg-rose-100 transition-colors">
                   <span className="text-xs text-rose-600 font-medium block">Cancelled</span>
                   <span className="text-lg font-bold text-rose-700">{analytics.services.homeNursing.cancelled}</span>
                 </Link>
               </div>
-
-              <div className="space-y-1.5 mt-2">
-                <div className="flex justify-between text-xs font-semibold text-slate-600">
-                  <span>Care Completion Rate: <strong className="text-emerald-600">{analytics.services.homeNursing.completionRate}%</strong></span>
-                  <span>Cancellation Rate: <strong className="text-rose-600">{analytics.services.homeNursing.cancellationRate}%</strong></span>
-                </div>
-                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden flex">
-                  <div style={{ width: `${analytics.services.homeNursing.completionRate}%` }} className="bg-emerald-500 h-full" />
-                  <div style={{ width: `${analytics.services.homeNursing.cancellationRate}%` }} className="bg-rose-500 h-full" />
-                </div>
-              </div>
             </div>
+
+            {/* Donut pie chart */}
+            {(analytics.services.homeNursing.statusDistribution || []).filter((d: any) => d.value > 0).length > 0 ? (
+              <div className="h-36 mt-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={(analytics.services.homeNursing.statusDistribution || []).filter((d: any) => d.value > 0)}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={30}
+                      outerRadius={52}
+                      paddingAngle={2}
+                    >
+                      {(analytics.services.homeNursing.statusDistribution || []).filter((d: any) => d.value > 0).map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || PIE_PALETTE[index % PIE_PALETTE.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-28 mt-2 flex flex-col items-center justify-center text-slate-400 text-xs bg-slate-50/60 rounded-xl border border-dashed border-slate-200">
+                <HeartHandshake size={22} className="text-slate-300 mb-1" />
+                <span>No home nursing bookings in this period</span>
+              </div>
+            )}
           </div>
 
         </div>

@@ -87,3 +87,8 @@ yarn-error.log*
 # Uploads
 uploads/
 */uploads/
+
+# Audit Dumps
+admin_pages_audit.json
+backend/db_inventory.json
+backend/table_columns.json

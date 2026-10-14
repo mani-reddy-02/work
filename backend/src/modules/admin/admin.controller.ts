@@ -16,66 +16,148 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
     let endDate: Date | undefined = undefined;
 
     if (customStartDate && customEndDate) {
-      startDate = new Date(customStartDate);
-      endDate = new Date(customEndDate);
-      endDate.setHours(23, 59, 59, 999);
+      if (customStartDate.includes('-')) {
+        const [sy, sm, sd] = customStartDate.split('-').map(Number);
+        startDate = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+      } else {
+        startDate = new Date(customStartDate);
+        startDate.setHours(0, 0, 0, 0);
+      }
+
+      if (customEndDate.includes('-')) {
+        const [ey, em, ed] = customEndDate.split('-').map(Number);
+        endDate = new Date(ey, em - 1, ed, 23, 59, 59, 999);
+      } else {
+        endDate = new Date(customEndDate);
+        endDate.setHours(23, 59, 59, 999);
+      }
     } else if (period === 'today') {
+      startDate = new Date();
       startDate.setHours(0, 0, 0, 0);
-    } else if (period === '7d') {
-      startDate.setDate(startDate.getDate() - 7);
+      endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
+    } else if (period === '7d' || period === 'week' || period === 'this_week') {
+      // Start of current week (Monday at 00:00:00) to end of week (Sunday at 23:59:59)
+      const day = startDate.getDay();
+      const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+      startDate.setDate(diff);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
     } else if (period === '30d') {
       startDate.setDate(startDate.getDate() - 30);
-    } else if (period === 'month') {
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
+    } else if (period === 'month' || period === 'this_month') {
       startDate.setDate(1);
       startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0, 23, 59, 59, 999);
     } else if (period === '3m') {
       startDate.setMonth(startDate.getMonth() - 3);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
     } else if (period === '6m') {
       startDate.setMonth(startDate.getMonth() - 6);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
     } else if (period === '1y') {
       startDate.setFullYear(startDate.getFullYear() - 1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
     } else {
       startDate.setFullYear(2000); // all time fallback
+      startDate.setHours(0, 0, 0, 0);
+      endDate = undefined;
     }
 
     // 1. Operational Counts (All-time distinct totals, not clipped by reporting date filter)
+    // 1. Operational Counts (Optimized grouped queries to prevent pool exhaustion)
+    const [userRoleCounts, activeDoctorsCount] = await Promise.all([
+      prisma.user.groupBy({ by: ['role'], _count: { id: true } }).catch(() => []),
+      prisma.user.count({ where: { role: Role.DOCTOR, active: true } }).catch(() => 0)
+    ]);
+
+    const roleMap: Record<string, number> = {};
+    let totalUsers = 0;
+    userRoleCounts.forEach(r => {
+      roleMap[r.role] = r._count.id;
+      totalUsers += r._count.id;
+    });
+    const totalPatients = roleMap[Role.PATIENT] || 0;
+    const totalDoctors = roleMap[Role.DOCTOR] || 0;
+    const totalNurses = roleMap[Role.NURSE] || 0;
+    const totalReceptionists = roleMap[Role.RECEPTIONIST] || 0;
+    const activeDoctors = activeDoctorsCount;
+
+    // 2. Hospital & Lab grouped counts
+    const [hospitalStatusCounts, labStatusCounts, totalDepartments] = await Promise.all([
+      prisma.hospital.groupBy({ by: ['verificationStatus'], _count: { id: true } }).catch(() => []),
+      prisma.lab.groupBy({ by: ['verificationStatus'], _count: { id: true } }).catch(() => []),
+      prisma.department.count().catch(() => 0),
+    ]);
+
+    let totalHospitals = 0;
+    let verifiedHospitals = 0;
+    let pendingHospitalVerifications = 0;
+    hospitalStatusCounts.forEach(h => {
+      totalHospitals += h._count.id;
+      if (h.verificationStatus === 'APPROVED') verifiedHospitals += h._count.id;
+      if (h.verificationStatus === 'PENDING') pendingHospitalVerifications += h._count.id;
+    });
+
+    let totalLabs = 0;
+    let pendingLabVerifications = 0;
+    labStatusCounts.forEach(l => {
+      totalLabs += l._count.id;
+      if (l.verificationStatus === 'PENDING') pendingLabVerifications += l._count.id;
+    });
+
+    // 3. Requests and Bookings counts
     const [
-      totalUsers,
-      totalPatients,
-      totalDoctors,
-      totalHospitals,
-      totalDepartments,
-      totalLabs,
-      activeDoctors,
-      verifiedHospitals,
-      pendingHospitalVerifications,
-      pendingLabVerifications,
       pendingMarketingRequests,
       pendingCampRequests,
       allTimeOpBookings,
       allTimeVideoConsultations,
-      allTimeLabOrders,
-      allTimeHomeSampleOrders,
+      labBookingTypeCounts,
       allTimeHomeNursingRequests,
     ] = await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { role: Role.PATIENT } }),
-      prisma.user.count({ where: { role: Role.DOCTOR } }),
-      prisma.hospital.count(),
-      prisma.department.count(),
-      prisma.lab.count(),
-      prisma.user.count({ where: { role: Role.DOCTOR, active: true } }),
-      prisma.hospital.count({ where: { verificationStatus: 'APPROVED' } }),
-      prisma.hospital.count({ where: { verificationStatus: 'PENDING' } }),
-      prisma.lab.count({ where: { verificationStatus: 'PENDING' } }),
-      prisma.marketingRequest.count({ where: { status: 'PENDING' } }),
-      prisma.medicalCampRequest.count({ where: { status: 'PENDING' } }),
-      prisma.oPBooking.count(),
-      prisma.videoConsultation.count(),
-      prisma.labBooking.count({ where: { bookingType: 'WALK_IN' } }),
-      prisma.labBooking.count({ where: { bookingType: 'HOME_COLLECTION' } }),
-      prisma.homeNursingBooking.count(),
+      prisma.marketingRequest.count({ where: { status: 'PENDING' } }).catch(() => 0),
+      prisma.medicalCampRequest.count({ where: { status: 'PENDING' } }).catch(() => 0),
+      prisma.oPBooking.count({
+        where: {
+          NOT: {
+            OR: [
+              { opType: 'Video Consultation' },
+              { opType: 'VIDEO' },
+              { videoConsultation: { isNot: null } }
+            ]
+          }
+        }
+      }).catch(() => 0),
+      prisma.oPBooking.count({
+        where: {
+          OR: [
+            { opType: 'Video Consultation' },
+            { opType: 'VIDEO' },
+            { videoConsultation: { isNot: null } }
+          ]
+        }
+      }).catch(() => 0),
+      prisma.labBooking.groupBy({ by: ['bookingType'], _count: { id: true } }).catch(() => []),
+      prisma.homeNursingBooking.count().catch(() => 0),
     ]);
+
+    let allTimeLabOrders = 0;
+    let allTimeHomeSampleOrders = 0;
+    labBookingTypeCounts.forEach(lb => {
+      if (lb.bookingType === 'WALK_IN') allTimeLabOrders = lb._count.id;
+      if (lb.bookingType === 'HOME_COLLECTION') allTimeHomeSampleOrders = lb._count.id;
+    });
 
     const hospitalsForShares = await prisma.hospital.findMany({ select: { id: true, name: true, hospitalShare: true } });
     const hospitalMap = new Map(hospitalsForShares.map(h => [h.id, h]));
@@ -162,6 +244,14 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
       COMPLETED: 0,
       CANCELLED: 0,
     };
+    // Helper to determine if an OP booking is a Video Consultation
+    const isVideoBooking = (b: any) =>
+      b.opType === 'Video Consultation' || b.opType === 'VIDEO' || (b.videoConsultation !== null && b.videoConsultation !== undefined);
+
+    const inPersonOpBookings = opBookings.filter(b => !isVideoBooking(b));
+    const videoConsultationsList = opBookings.filter(b => isVideoBooking(b));
+
+    // 1. In-Person OP Workflow
     let opTodayAppointments = 0;
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -171,11 +261,11 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
     const departmentBookingsMap: Record<string, number> = {};
     const doctorBookingsMap: Record<string, number> = {};
 
-    opBookings.forEach(b => {
+    inPersonOpBookings.forEach(b => {
       const st = b.status || 'WAITING';
       opStatusCounts[st] = (opStatusCounts[st] || 0) + 1;
 
-      const apptDate = new Date(b.appointmentDate);
+      const apptDate = new Date(b.appointmentDate || b.createdAt);
       if (apptDate >= todayStart && apptDate <= todayEnd) {
         opTodayAppointments += 1;
       }
@@ -187,17 +277,13 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
       doctorBookingsMap[docName] = (doctorBookingsMap[docName] || 0) + 1;
     });
 
-    const opTotal = opBookings.length;
+    const opTotal = inPersonOpBookings.length;
     const opCompleted = opStatusCounts['COMPLETED'] || 0;
     const opCancelled = opStatusCounts['CANCELLED'] || 0;
     const opCompletionRate = opTotal > 0 ? Number(((opCompleted / opTotal) * 100).toFixed(1)) : 0;
     const opCancellationRate = opTotal > 0 ? Number(((opCancelled / opTotal) * 100).toFixed(1)) : 0;
 
-    // Video Consultations Workflow (Attached videoConsultation records)
-    const videoConsultationsList = opBookings
-      .filter(b => b.videoConsultation !== null)
-      .map(b => b.videoConsultation!);
-
+    // 2. Video Consultations Workflow
     const videoStatusCounts: Record<string, number> = {
       SCHEDULED: 0,
       WAITING: 0,
@@ -208,8 +294,13 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
     };
 
     videoConsultationsList.forEach(v => {
-      const st = v.status || 'SCHEDULED';
-      videoStatusCounts[st] = (videoStatusCounts[st] || 0) + 1;
+      const rawStatus = v.videoConsultation?.status || v.status || 'SCHEDULED';
+      let st = rawStatus.toUpperCase();
+      if (st === 'IN_CONSULTATION') st = 'IN_PROGRESS';
+      if (st === 'PENDING') st = 'WAITING';
+      if (st === 'CONFIRMED') st = 'SCHEDULED';
+      if (videoStatusCounts[st] === undefined) videoStatusCounts[st] = 0;
+      videoStatusCounts[st] += 1;
     });
 
     const videoTotal = videoConsultationsList.length;
@@ -292,8 +383,8 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
     const hospitalRevMap: Record<string, { id: string, name: string, gross: number, admin: number, provider: number, transactions: number }> = {};
 
     const getFormatKey = (date: Date) => {
-      if (period === 'today') return date.getHours() + ':00';
-      if (['7d', '30d', 'month'].includes(period)) return date.toISOString().slice(0, 10);
+      if (period === 'today') return String(date.getHours()).padStart(2, '0') + ':00';
+      if (['7d', 'week', 'this_week', '30d', 'month', 'this_month', 'custom'].includes(period)) return date.toISOString().slice(0, 10);
       return date.toISOString().slice(0, 7); // YYYY-MM
     };
 
@@ -331,7 +422,7 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
     opBookings.forEach(b => {
       const fee = b.fee || 0;
       const { prov, admin } = processBooking(b, fee);
-      if (b.videoConsultation) {
+      if (isVideoBooking(b)) {
         videoGross += fee; videoProv += prov; videoAdmin += admin;
       } else {
         opGross += fee; opProv += prov; opAdmin += admin;
@@ -359,7 +450,7 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
     const transactions = opBookings.length + labBookings.length + nursingBookings.length;
 
     const revenueByService = [
-      { name: 'OP Bookings', gross: opGross, admin: opAdmin, provider: opProv, transactions: opBookings.filter(b => !b.videoConsultation).length },
+      { name: 'OP Bookings', gross: opGross, admin: opAdmin, provider: opProv, transactions: inPersonOpBookings.length },
       { name: 'Video Consultations', gross: videoGross, admin: videoAdmin, provider: videoProv, transactions: videoConsultationsList.length },
       { name: 'Lab Visits', gross: labVisitGross, admin: labVisitAdmin, provider: labVisitProv, transactions: labVisitOrders.length },
       { name: 'Home Sample Collection', gross: homeSampleGross, admin: homeSampleAdmin, provider: homeSampleProv, transactions: homeSampleOrders.length },
@@ -495,6 +586,9 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
           totalLabOrders: allTimeLabOrders,
           totalHomeSampleOrders: allTimeHomeSampleOrders,
           totalHomeNursingRequests: allTimeHomeNursingRequests,
+          totalNurses,
+          totalReceptionists,
+          totalInsurances: 0,
           pendingHospitalVerifications,
           pendingLabVerifications,
         },
@@ -511,7 +605,7 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
             cancelled: opCancelled,
             completionRate: opCompletionRate,
             cancellationRate: opCancellationRate,
-            statusDistribution: Object.entries(opStatusCounts).map(([status, count]) => ({ name: status, value: count })),
+            statusDistribution: Object.entries(opStatusCounts).filter(([_, count]) => count > 0).map(([status, count]) => ({ name: status, value: count })),
           },
           video: {
             isSupported: true,
@@ -524,7 +618,7 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
             failed: videoStatusCounts['FAILED'] || 0,
             completionRate: videoCompletionRate,
             cancellationRate: videoCancellationRate,
-            statusDistribution: Object.entries(videoStatusCounts).map(([status, count]) => ({ name: status, value: count })),
+            statusDistribution: Object.entries(videoStatusCounts).filter(([_, count]) => count > 0).map(([status, count]) => ({ name: status, value: count })),
           },
           labVisit: {
             total: labVisitTotal,
@@ -538,7 +632,7 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
             cancelled: labVisitCancelled,
             completionRate: labVisitCompletionRate,
             cancellationRate: labVisitCancellationRate,
-            statusDistribution: Object.entries(labVisitStatusCounts).map(([status, count]) => ({ name: status, value: count })),
+            statusDistribution: Object.entries(labVisitStatusCounts).filter(([_, count]) => count > 0).map(([status, count]) => ({ name: status, value: count })),
           },
           homeSample: {
             total: homeSampleTotal,
@@ -552,7 +646,7 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
             cancelled: homeSampleCancelled,
             completionRate: homeSampleCompletionRate,
             cancellationRate: homeSampleCancellationRate,
-            statusDistribution: Object.entries(homeSampleStatusCounts).map(([status, count]) => ({ name: status, value: count })),
+            statusDistribution: Object.entries(homeSampleStatusCounts).filter(([_, count]) => count > 0).map(([status, count]) => ({ name: status, value: count })),
           },
           homeNursing: {
             total: homeNursingTotal,
@@ -563,7 +657,7 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
             cancelled: homeNursingCancelled,
             completionRate: homeNursingCompletionRate,
             cancellationRate: homeNursingCancellationRate,
-            statusDistribution: Object.entries(homeNursingStatusCounts).map(([status, count]) => ({ name: status, value: count })),
+            statusDistribution: Object.entries(homeNursingStatusCounts).filter(([_, count]) => count > 0).map(([status, count]) => ({ name: status, value: count })),
           },
         },
 
@@ -2045,12 +2139,24 @@ export const getPendingVerifications = async (req: Request, res: Response, next:
       hospitalShare: lab.hospital?.hospitalShare ?? null
     }));
 
+    const [approvedHospitalsCount, approvedLabsCount, totalPartnersCount] = await Promise.all([
+      prisma.hospital.count({ where: { verificationStatus: 'APPROVED', businessType: 'HOSPITAL' } }),
+      prisma.hospital.count({ where: { verificationStatus: 'APPROVED', businessType: 'LABORATORY' } }),
+      prisma.hospital.count()
+    ]);
+
     res.json({
       success: true,
       data: {
         hospitals,
         standaloneLabs,
-        hospitalBasedLabs
+        hospitalBasedLabs,
+        stats: {
+          pending: hospitals.length + standaloneLabs.length + hospitalBasedLabs.length,
+          approvedHospitals: approvedHospitalsCount,
+          approvedLabs: approvedLabsCount,
+          totalPartners: totalPartnersCount
+        }
       }
     });
   } catch (error) {
