@@ -335,24 +335,6 @@ export function DoctorOPs() {
           </div>
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {filterTypes.map((type) => {
-            const isActive = selectedFilter === type.id;
-            return (
-              <button 
-                key={type.id}
-                onClick={() => setSelectedFilter(type.id)}
-                className={cn(
-                  "px-5 py-2 rounded-full flex-shrink-0 transition-all active:scale-95 font-bold text-[13px] cursor-pointer",
-                  isActive ? "bg-[#1B5DF1] text-white shadow-md shadow-[#1B5DF1]/20" : "bg-surface text-[#667085] border border-border hover:bg-gray-50"
-                )}
-              >
-                {type.label}
-              </button>
-            )
-          })}
-        </div>
 
         {/* Date Strip */}
         <div className="flex items-center gap-2.5 mt-1">
