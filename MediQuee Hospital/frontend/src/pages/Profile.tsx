@@ -93,12 +93,31 @@ export function Profile() {
     </div>
   );
 
+  const homeDashboardPath = (() => {
+    switch (role) {
+      case 'doctor':
+        return '/doctor';
+      case 'nurse':
+        return '/nurse';
+      case 'receptionist':
+        return '/receptionist';
+      case 'lab':
+        return '/lab';
+      default:
+        return '/dashboard';
+    }
+  })();
+
   return (
     <div className="flex flex-col min-h-full pb-[120px] bg-background">
       
       {/* Sticky Top Controls */}
       <div className="sticky top-0 z-30 pt-4 pb-3 px-4 flex items-center gap-3 bg-background/95 backdrop-blur-md border-b border-border shadow-sm">
-        <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer">
+        <button 
+          onClick={() => navigate(homeDashboardPath)} 
+          className="p-2 -ml-2 text-foreground hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
+          title="Back to Dashboard"
+        >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h1 className="text-[20px] font-bold text-foreground">{t('profile', 'Profile')}</h1>
