@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom"
-import { LayoutGrid, ClipboardList, FileText, User, Plus, X, CalendarClock } from "lucide-react"
+import { LayoutGrid, ClipboardList, FileText, User, Plus, X, CalendarClock, IndianRupee } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/context/AuthContext"
 
 export function LabSideNav({ 
   onQuickAdd,
@@ -12,6 +13,8 @@ export function LabSideNav({
   onClose?: () => void;
 }) {
   const location = useLocation()
+  const { user } = useAuth()
+  const isStandalone = user?.hospital?.businessType === 'LABORATORY'
 
   return (
     <>
@@ -102,6 +105,20 @@ export function LabSideNav({
             <CalendarClock className="w-4.5 h-4.5" />
             <span>Availability</span>
           </NavLink>
+
+          {isStandalone && (
+            <NavLink 
+              to="/lab/payouts" 
+              onClick={onClose}
+              className={({ isActive }) => 
+                cn("flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors font-medium text-sm", 
+                isActive || location.pathname.includes('/lab/payouts') ? "bg-primary/10 text-primary font-semibold" : "text-[#667085] hover:bg-gray-50 hover:text-[#172033]")
+              }
+            >
+              <IndianRupee className="w-4.5 h-4.5" />
+              <span>Payouts</span>
+            </NavLink>
+          )}
 
           <NavLink 
             to="/lab/profile" 

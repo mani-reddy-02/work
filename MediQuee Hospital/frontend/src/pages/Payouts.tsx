@@ -40,6 +40,7 @@ import { Skeleton } from "../components/ui/Skeleton"
 import { dashboardApi, type RevenueAnalyticsResponse, type PayoutTransaction } from "../services/dashboardApi"
 import { payoutsApi } from "../services/payoutsApi"
 import { useTranslation } from "react-i18next"
+import { useAuth } from "@/context/AuthContext"
 
 type DatePreset = 'week' | 'today' | 'month' | 'custom';
 type ServiceDetailKey = 'op' | 'videoConsultation' | 'homeNursing' | 'labTests' | 'homeSampleCollection';
@@ -198,6 +199,10 @@ function PaginationBar({
 export function Payouts() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user, role } = useAuth();
+
+  const isLabUser = role === 'lab' || user?.role === 'LAB_ADMIN';
+  const isHospitalLab = isLabUser && user?.hospital?.businessType !== 'LABORATORY';
 
   const [selectedPreset, setSelectedPreset] = useState<DatePreset>('week');
   const [startDate, setStartDate] = useState<string>('');
@@ -308,6 +313,10 @@ export function Payouts() {
     eDate?: string,
     showLoading = true
   ) => {
+    if (isHospitalLab) {
+      setIsLoading(false);
+      return;
+    }
     if (showLoading) setIsLoading(true);
     setError(null);
     try {
@@ -461,6 +470,51 @@ export function Payouts() {
     });
     return Array.from(set);
   }, [serviceTransactions]);
+
+  if (isHospitalLab) {
+    return (
+      <div className="flex flex-col bg-background min-h-screen px-4 py-6 md:p-8 max-w-4xl mx-auto">
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => navigate('/lab')}
+            className="p-2 -ml-2 rounded-xl text-muted hover:text-foreground hover:bg-gray-100 transition-colors cursor-pointer"
+            title="Back to Lab Dashboard"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Laboratory Payouts</h1>
+            <p className="text-sm text-muted">Financial settlement & reconciliation</p>
+          </div>
+        </div>
+
+        <div className="bg-surface rounded-2xl p-6 sm:p-10 border border-border shadow-xs text-center flex flex-col items-center justify-center gap-4 py-12">
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-xs">
+            <Building2 className="w-8 h-8" />
+          </div>
+          <div className="max-w-md">
+            <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 mb-2">
+              Hospital-Affiliated Laboratory
+            </span>
+            <h2 className="text-lg sm:text-xl font-bold text-foreground">
+              Payout Details are Managed in the Hospital Dashboard
+            </h2>
+            <p className="text-sm text-muted mt-2 leading-relaxed">
+              This laboratory operates directly under <strong>{user?.hospital?.name || 'Hospital Administration'}</strong>. All booking revenue, platform fee deductions, and weekly payouts are consolidated and handled inside the main <strong>Hospital Dashboard</strong>.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 mt-4">
+            <button
+              onClick={() => navigate('/lab')}
+              className="px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-all shadow-xs cursor-pointer active:scale-95"
+            >
+              Return to Lab Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col bg-background min-h-full pb-32 sm:pb-36">

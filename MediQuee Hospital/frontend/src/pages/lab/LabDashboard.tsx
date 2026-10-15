@@ -16,7 +16,8 @@ import {
   TrendingUp,
   Calendar,
   X,
-  Check
+  Check,
+  Building2
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, CartesianGrid } from "recharts"
@@ -29,8 +30,17 @@ import { ConditionLabel } from "@/components/shared/ConditionLabel"
 import { labApi } from "@/services/labApi"
 import { LabOrderQuickModal } from "@/components/lab/LabOrderQuickModal"
 import { useToast } from "@/context/ToastContext"
+import { useAuth } from "@/context/AuthContext"
 
 interface DashboardData {
+  labInfo?: {
+    id: string
+    name: string
+    hospitalName?: string
+    type: string
+    typeLabel: string
+    isStandalone: boolean
+  }
   kpis: {
     totalOrders: number
     pendingTests: number
@@ -244,33 +254,49 @@ export function LabDashboard() {
     setIsModalOpen(true)
   }
 
-  // Quick action navigation items
-  const quickAccessItems = [
-    {
-      label: 'Orders',
-      subtext: 'Manage test requests & lab queue',
-      path: '/lab/orders',
-      icon: ClipboardList,
-      bg: 'bg-blue-50',
-      text: 'text-primary'
-    },
-    {
-      label: 'Payout',
-      subtext: 'Track settlements & lab revenue shares',
-      path: '/lab/payouts',
-      icon: IndianRupee,
-      bg: 'bg-emerald-50',
-      text: 'text-emerald-600'
-    },
-    {
+  const { user } = useAuth()
+  const labInfo = data?.labInfo
+  const isStandalone = labInfo?.isStandalone ?? (user?.hospital?.businessType === 'LABORATORY')
+  const labName = labInfo?.name || user?.hospital?.name || "Laboratory"
+  const labTypeLabel = labInfo?.typeLabel || (isStandalone ? "Standalone Lab" : "Hospital Lab")
+  const hospitalName = labInfo?.hospitalName || user?.hospital?.name
+
+  // Quick action navigation items (Payouts available ONLY for Standalone Lab)
+  const quickAccessItems = useMemo(() => {
+    const items = [
+      {
+        label: 'Orders',
+        subtext: 'Manage test requests & lab queue',
+        path: '/lab/orders',
+        icon: ClipboardList,
+        bg: 'bg-blue-50',
+        text: 'text-primary'
+      }
+    ]
+
+    // Only Standalone Labs have dedicated payout settlements in Lab module
+    if (isStandalone) {
+      items.push({
+        label: 'Payout',
+        subtext: 'Track settlements & lab revenue shares',
+        path: '/lab/payouts',
+        icon: IndianRupee,
+        bg: 'bg-emerald-50',
+        text: 'text-emerald-600'
+      })
+    }
+
+    items.push({
       label: 'Reports',
       subtext: 'Issue & upload diagnostic test reports',
       path: '/lab/reports',
       icon: FileText,
       bg: 'bg-purple-50',
       text: 'text-purple-600'
-    }
-  ]
+    })
+
+    return items
+  }, [isStandalone])
 
   return (
     <div className="flex flex-col gap-6 md:gap-7 px-4 md:px-0 pt-4 md:pt-2 pb-16 w-full max-w-7xl mx-auto">
@@ -280,14 +306,30 @@ export function LabDashboard() {
         animate={{ opacity: 1, y: 0 }} 
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 md:p-5 rounded-2xl border border-border shadow-xs"
       >
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl md:text-3xl font-bold text-[#172033]">
-              {getGreeting()} 👋
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl md:text-3xl font-bold text-[#172033] tracking-tight">
+              {getGreeting()}, <span className="text-primary">{labName}</span> 👋
             </h1>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border shadow-xs tracking-wide",
+                isStandalone
+                  ? "bg-purple-50 text-purple-700 border-purple-200"
+                  : "bg-blue-50 text-blue-700 border-blue-200"
+              )}
+            >
+              <span
+                className={cn(
+                  "w-1.5 h-1.5 rounded-full",
+                  isStandalone ? "bg-purple-500 animate-pulse" : "bg-blue-500"
+                )}
+              />
+              {labTypeLabel}
+            </span>
           </div>
           <p className="text-sm text-[#667085] mt-0.5">
-            {getFormattedDate()} · Here's your real-time laboratory activity.
+            {getFormattedDate()} · Here's your real-time laboratory activity{!isStandalone && hospitalName ? ` · ${hospitalName}` : ''}.
           </p>
         </div>
 
@@ -514,27 +556,34 @@ export function LabDashboard() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200/70">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-[12px] font-semibold text-emerald-800">
-                Lab Share ({hospitalSharePercent}%):
-              </span>
-              <span className="text-[12px] font-bold text-emerald-700">
-                ₹{labShareAmount.toLocaleString()}
-              </span>
-            </div>
+          {isStandalone ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200/70">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="text-[12px] font-semibold text-emerald-800">
+                  Lab Share ({hospitalSharePercent}%):
+                </span>
+                <span className="text-[12px] font-bold text-emerald-700">
+                  ₹{labShareAmount.toLocaleString()}
+                </span>
+              </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200/70">
-              <span className="w-2 h-2 rounded-full bg-amber-500" />
-              <span className="text-[12px] font-semibold text-amber-800">
-                Platform Fee ({platformFeePercent}%):
-              </span>
-              <span className="text-[12px] font-bold text-amber-700">
-                ₹{platformFeeAmount.toLocaleString()}
-              </span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200/70">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <span className="text-[12px] font-semibold text-amber-800">
+                  Platform Fee ({platformFeePercent}%):
+                </span>
+                <span className="text-[12px] font-bold text-amber-700">
+                  ₹{platformFeeAmount.toLocaleString()}
+                </span>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-50/80 border border-blue-200/70 text-blue-800 text-xs font-medium">
+              <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>Settled via {hospitalName || 'Hospital'} Account (Hospital Dashboard)</span>
+            </div>
+          )}
         </div>
 
         {/* Full-Width Recharts Area Chart */}
@@ -607,7 +656,10 @@ export function LabDashboard() {
         <div className="flex items-center justify-between px-0.5">
           <h3 className="text-[17px] font-bold text-[#172033]">Quick Access</h3>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        <div className={cn(
+          "grid grid-cols-1 gap-3.5",
+          isStandalone ? "sm:grid-cols-3" : "sm:grid-cols-2"
+        )}>
           {quickAccessItems.map((item, idx) => (
             <button
               key={idx}
@@ -630,6 +682,15 @@ export function LabDashboard() {
             </button>
           ))}
         </div>
+
+        {!isStandalone && (
+          <div className="flex items-center gap-2.5 px-4 py-3 bg-blue-50/70 border border-blue-200/60 rounded-2xl text-xs text-blue-900 shadow-xs">
+            <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>
+              <strong>Hospital Laboratory Notice:</strong> Payout and financial settlement records are consolidated and managed directly inside the <strong>{hospitalName || 'Hospital'} Dashboard</strong>.
+            </span>
+          </div>
+        )}
       </motion.div>
 
       {/* ── 5. Recent Orders Full-Width List ──────────────────────────────── */}

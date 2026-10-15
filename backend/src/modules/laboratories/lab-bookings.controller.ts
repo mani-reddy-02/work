@@ -254,24 +254,39 @@ export const getHospitalLabDashboard = async (req: Request, res: Response, next:
     startOfMonth.setDate(startOfMonth.getDate() - 29);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const allBookings = await prisma.labBooking.findMany({
-      where: { hospitalId },
-      include: {
-        items: {
-          include: {
-            labTest: {
-              include: {
-                platformTest: {
-                  include: { department: true }
+    const [hospital, allBookings] = await Promise.all([
+      prisma.hospital.findUnique({
+        where: { id: hospitalId },
+        include: {
+          labs: {
+            select: { id: true, name: true, type: true, status: true }
+          }
+        }
+      }),
+      prisma.labBooking.findMany({
+        where: { hospitalId },
+        include: {
+          items: {
+            include: {
+              labTest: {
+                include: {
+                  platformTest: {
+                    include: { department: true }
+                  }
                 }
               }
             }
-          }
+          },
+          patient: { select: { id: true, name: true, phone: true } }
         },
-        patient: { select: { id: true, name: true, phone: true } }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
+
+    const isStandalone = hospital?.businessType === 'LABORATORY' || Boolean(hospital?.labs?.some(l => l.type === 'STANDALONE'));
+    const labType = isStandalone ? 'STANDALONE' : 'HOSPITAL_BASED';
+    const labTypeLabel = isStandalone ? 'Standalone Lab' : 'Hospital Lab';
+    const labName = (isStandalone && hospital?.name) || hospital?.labs[0]?.name || hospital?.name || 'Laboratory';
 
     const totalOrders = allBookings.length;
     let pendingTests = 0;
@@ -436,6 +451,14 @@ export const getHospitalLabDashboard = async (req: Request, res: Response, next:
     res.json({
       success: true,
       data: {
+        labInfo: {
+          id: hospital?.labs[0]?.id || hospitalId,
+          name: labName,
+          hospitalName: hospital?.name,
+          type: labType,
+          typeLabel: labTypeLabel,
+          isStandalone,
+        },
         kpis: {
           totalOrders,
           pendingTests,
