@@ -41,9 +41,11 @@ export function Profile() {
     { icon: Headphones, label: t('contact_support', 'Contact Support'), path: "/contact", subtitle: "Priority partner desk, phone, email & FAQs" },
   ];
 
-  const accountLinks = (role === 'doctor' || role === 'nurse' || role === 'receptionist') ? [
+  const accountLinks = role === 'doctor' ? [
     { icon: User, label: t('personal_info', 'Personal Information'), path: "/profile/personal", subtitle: "Profile and contact details" },
-    { icon: Send, label: "My Requests", path: "/requests", subtitle: "Marketing campaigns & platform requests" },
+    { icon: Send, label: "My Requests", path: "/requests", subtitle: "Doctor branding & marketing requests" },
+  ] : (role === 'nurse' || role === 'receptionist') ? [
+    { icon: User, label: t('personal_info', 'Personal Information'), path: "/profile/personal", subtitle: "Profile and contact details" },
   ] : [
     { icon: Building2, label: t('hospital_info', 'Hospital Information'), path: "/profile/hospital", subtitle: "Facility metadata, contacts & licenses" },
     { icon: Send, label: "My Requests", path: "/requests", subtitle: "Marketing campaigns & platform requests" },

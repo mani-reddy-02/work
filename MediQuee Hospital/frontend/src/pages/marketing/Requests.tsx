@@ -7,6 +7,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { adminApi, type MarketingRequestRecord, type MedicalCampRecord } from '@/services/adminApi';
 import { useToast } from '@/context/ToastContext';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 
 type FilterTab = 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -30,6 +31,8 @@ interface UnifiedRequest {
 export function Requests() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, role } = useAuth();
+  const isDoctor = role === 'doctor';
   const [camps, setCamps] = useState<MedicalCampRecord[]>([]);
   const [marketing, setMarketing] = useState<MarketingRequestRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,6 +62,22 @@ export function Requests() {
     // Marketing & Platform Requests
     marketing.forEach((m) => {
       const isPlatformInquiry = m.campaignType?.startsWith('PLATFORM_INQUIRY:');
+
+      // If user is a Doctor, only show requests submitted by this doctor
+      // Exclude platform inquiries (hospital-level) and other doctors' requests
+      if (isDoctor) {
+        if (isPlatformInquiry) return;
+        const matchesId = m.doctorId && user?.id && m.doctorId === user.id;
+        const matchesName = m.doctorName && user?.name && 
+          (m.doctorName.toLowerCase().includes(user.name.toLowerCase()) || 
+           user.name.toLowerCase().includes(m.doctorName.toLowerCase()));
+        const notesMatch = m.notes && user?.name && m.notes.toLowerCase().includes(user.name.toLowerCase());
+
+        if (!matchesId && !matchesName && !notesMatch) {
+          return;
+        }
+      }
+
       const cleanTitle = isPlatformInquiry 
         ? m.campaignType.replace('PLATFORM_INQUIRY:', '').trim()
         : (m.campaignType || 'Hospital Marketing & Visibility Campaign');
@@ -67,36 +86,40 @@ export function Requests() {
         id: m.id,
         type: isPlatformInquiry ? 'INQUIRY' : 'MARKETING',
         title: cleanTitle,
-        category: isPlatformInquiry ? 'Platform Inquiry & Integration' : 'Marketing & Promotional Campaign',
+        category: isPlatformInquiry 
+          ? 'Platform Inquiry & Integration' 
+          : (isDoctor ? 'Doctor Branding & Promotion' : 'Marketing & Promotional Campaign'),
         referenceId: `REQ-${m.id.slice(0, 8).toUpperCase()}`,
         submittedAt: m.createdAt,
         status: m.status as any,
         budget: m.budget,
         notes: m.notes,
-        doctorName: (m as any).doctorName,
+        doctorName: m.doctorName,
       });
     });
 
-    // Medical Camp Requests
-    camps.forEach((c) => {
-      list.push({
-        id: c.id,
-        type: 'CAMP',
-        title: c.campTitle || 'Community Health & Medical Camp',
-        category: 'Medical & Health Camp',
-        referenceId: `CMP-${c.id.slice(0, 8).toUpperCase()}`,
-        submittedAt: c.createdAt,
-        status: c.status as any,
-        location: c.location,
-        expectedDate: c.expectedDate,
-        specialties: c.specialties,
-        notes: c.notes,
+    // Medical Camp Requests (only for hospital admins, never for doctors)
+    if (!isDoctor) {
+      camps.forEach((c) => {
+        list.push({
+          id: c.id,
+          type: 'CAMP',
+          title: c.campTitle || 'Community Health & Medical Camp',
+          category: 'Medical & Health Camp',
+          referenceId: `CMP-${c.id.slice(0, 8).toUpperCase()}`,
+          submittedAt: c.createdAt,
+          status: c.status as any,
+          location: c.location,
+          expectedDate: c.expectedDate,
+          specialties: c.specialties,
+          notes: c.notes,
+        });
       });
-    });
+    }
 
     // Sort by latest submitted date
     return list.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-  }, [marketing, camps]);
+  }, [marketing, camps, isDoctor, user]);
 
   // Filtered list based on active tab
   const filteredRequests = useMemo(() => {
@@ -190,7 +213,11 @@ export function Requests() {
           </button>
           <div>
             <h1 className="text-xl font-bold text-foreground">My Requests</h1>
-            <p className="text-xs text-muted">Marketing campaigns, medical camps & platform requests</p>
+            <p className="text-xs text-muted">
+              {isDoctor 
+                ? "Doctor branding, reels & appointment campaign requests" 
+                : "Marketing campaigns, medical camps & platform requests"}
+            </p>
           </div>
         </div>
 
@@ -311,7 +338,9 @@ export function Requests() {
               {activeTab === 'ALL' ? 'No requests submitted yet' : `No ${activeTab.toLowerCase()} requests`}
             </h3>
             <p className="text-xs text-muted max-w-sm mt-1.5 mb-6">
-              Promote your hospital doctors, boost OPD footfall with marketing campaigns, or organize community medical camps.
+              {isDoctor
+                ? "Promote your OPD practice, create doctor reels, or boost patient appointments with targeted marketing campaigns."
+                : "Promote your hospital doctors, boost OPD footfall with marketing campaigns, or organize community medical camps."}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button
@@ -320,16 +349,18 @@ export function Requests() {
                 className="flex items-center gap-2 px-4 py-2.5 bg-[#1769E0] hover:bg-[#1255b8] text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
               >
                 <Megaphone className="w-4 h-4" />
-                <span>Book Marketing Campaign</span>
+                <span>{isDoctor ? 'Book Doctor Marketing' : 'Book Marketing Campaign'}</span>
               </button>
-              <button
-                type="button"
-                onClick={() => navigate('/book-camp')}
-                className="flex items-center gap-2 px-4 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold rounded-xl transition-all cursor-pointer"
-              >
-                <HeartPulse className="w-4 h-4" />
-                <span>Organize Medical Camp</span>
-              </button>
+              {!isDoctor && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/book-camp')}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                >
+                  <HeartPulse className="w-4 h-4" />
+                  <span>Organize Medical Camp</span>
+                </button>
+              )}
             </div>
           </div>
         ) : (

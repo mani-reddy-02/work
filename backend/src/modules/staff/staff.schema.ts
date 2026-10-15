@@ -11,10 +11,10 @@ export const createStaffSchema = z.object({
     role: z.enum(ALLOWED_STAFF_ROLES, {
       message: 'Role must be one of: DOCTOR, NURSE, RECEPTIONIST, LAB_ADMIN',
     }),
-    phone: z.string().optional(),
-    designation: z.string().optional(),
-    avatar: z.string().optional(),
-    departmentId: z.string().uuid().optional(),
+    phone: z.string().optional().nullable(),
+    designation: z.string().optional().nullable(),
+    avatar: z.string().optional().nullable(),
+    departmentId: z.string().optional().nullable(),
   }).refine((data) => {
     if (data.role === 'DOCTOR' && !data.departmentId) {
       return false;
@@ -29,9 +29,9 @@ export const createStaffSchema = z.object({
 export const updateStaffSchema = z.object({
   body: z.object({
     name: z.string().min(2, 'Name must be at least 2 characters').optional(),
-    phone: z.string().optional(),
-    designation: z.string().optional(),
-    departmentId: z.string().uuid().optional().nullable(),
+    phone: z.string().optional().nullable(),
+    designation: z.string().optional().nullable(),
+    departmentId: z.string().optional().nullable(),
     active: z.boolean().optional(),
     // Role is intentionally NOT included — role is immutable in Step 3
     // Password is intentionally NOT included — separate flow

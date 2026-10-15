@@ -29,6 +29,8 @@ export interface MarketingRequestRecord {
   targetAudience: string | null;
   notes: string | null;
   status: 'PENDING' | 'REVIEWING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
+  doctorId?: string | null;
+  doctorName?: string | null;
   createdAt: string;
   updatedAt: string;
 }

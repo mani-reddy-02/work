@@ -360,6 +360,33 @@ export const getMyRequests = async (req: Request, res: Response, next: NextFunct
       });
     }
 
+    const isDoctor = req.user?.role === Role.DOCTOR;
+
+    if (isDoctor) {
+      const doctorId = req.user?.id;
+      const doctorName = req.user?.name;
+
+      // Doctors only see marketing requests they specifically submitted, matching by doctorId or doctorName
+      const marketingRequests = await prisma.marketingRequest.findMany({
+        where: {
+          hospitalId,
+          OR: [
+            ...(doctorId ? [{ doctorId }] : []),
+            ...(doctorName ? [{ doctorName: { equals: doctorName, mode: 'insensitive' as const } }] : []),
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          marketingRequests,
+          campRequests: [], // Doctors do not manage hospital-wide medical camps
+        },
+      });
+    }
+
     const [marketingRequests, campRequests] = await Promise.all([
       prisma.marketingRequest.findMany({
         where: { hospitalId },

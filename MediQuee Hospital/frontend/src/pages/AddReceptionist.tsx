@@ -58,11 +58,11 @@ export function AddReceptionist() {
     setIsSubmitting(true);
     try {
       await adminApi.createStaff({
-        name: data.fullName,
-        email: data.email,
+        name: data.fullName.trim(),
+        email: data.email.trim(),
         password: data.password,
-        phone: data.mobile,
-        avatar: photoPreview,
+        phone: data.mobile.trim(),
+        avatar: photoPreview || undefined,
         role: 'RECEPTIONIST',
         designation: data.qualification // Store rich info in designation for now
       });

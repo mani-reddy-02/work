@@ -16,17 +16,13 @@ const doctorSchema = z.object({
   mobile: z.string().min(10, "Mobile number must be at least 10 digits"),
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  departmentId: z.string().uuid("Please select a valid department"),
+  departmentId: z.string().min(1, "Please select a valid department"),
   experience: z.string().min(1, "Experience is required"),
   licenseNumber: z.string().min(4, "License number is required"),
   consultationFee: z.string().min(1, "Consultation fee is required"),
-  availableDays: z.string().min(2, "Available days are required"),
-  shiftTiming: z.string().min(2, "Shift timing is required"),
 });
 
 type DoctorFormValues = z.infer<typeof doctorSchema>;
-
-
 
 export function AddDoctor() {
   const navigate = useNavigate();
@@ -51,8 +47,6 @@ export function AddDoctor() {
     d.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     (d.code && d.code.toLowerCase().includes(searchQuery.toLowerCase()))
   );
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,21 +56,13 @@ export function AddDoctor() {
       .finally(() => setIsLoadingDepartments(false));
   }, []);
 
-  useEffect(() => {
-    if (startTime && endTime) {
-      setValue("shiftTiming", `${startTime} - ${endTime}`, { shouldValidate: true });
-    }
-  }, [startTime, endTime, setValue]);
-
-  const selectedDept = watch("departmentId");
-  const availableDays = watch("availableDays") || "";
-  const daysList = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const selectedDeptId = watch("departmentId");
+  const selectedDept = departments.find(d => d.id === selectedDeptId);
 
   const nextStep = async () => {
     let fieldsToValidate: any[] = [];
     if (step === 1) fieldsToValidate = ["fullName", "mobile", "email", "password"];
     if (step === 2) fieldsToValidate = ["departmentId", "experience", "licenseNumber", "consultationFee"];
-    if (step === 3) fieldsToValidate = ["availableDays", "shiftTiming"];
 
     const isStepValid = await trigger(fieldsToValidate as any);
     if (isStepValid) {
@@ -89,7 +75,7 @@ export function AddDoctor() {
   }
 
   const onSubmit = async (data: DoctorFormValues) => {
-    if (step !== 4) return;
+    if (step !== 3) return;
     setIsSubmitting(true);
     try {
       await adminApi.createStaff({
@@ -135,9 +121,9 @@ export function AddDoctor() {
         {/* Progress Bar */}
         <div className="w-full flex items-center justify-between mb-8 px-2 relative">
           <div className="absolute top-4 left-[10%] right-[10%] h-[2px] bg-gray-200/60 -z-10 rounded-full" />
-          <div className="absolute top-4 left-[10%] right-[10%] h-[2px] bg-primary -z-10 transition-all duration-300 rounded-full" style={{ width: `${((step - 1) / 3) * 100}%` }} />
+          <div className="absolute top-4 left-[10%] right-[10%] h-[2px] bg-primary -z-10 transition-all duration-300 rounded-full" style={{ width: `${((step - 1) / 2) * 100}%` }} />
 
-          {[1, 2, 3, 4].map((i) => (
+          {[1, 2, 3].map((i) => (
             <div key={i} className="flex flex-col items-center gap-2 bg-background">
               <div className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold border-2 transition-colors duration-300 shadow-sm",
@@ -151,8 +137,7 @@ export function AddDoctor() {
               )}>
                 {i === 1 && "Personal"}
                 {i === 2 && "Professional"}
-                {i === 3 && "Availability"}
-                {i === 4 && "Review"}
+                {i === 3 && "Review"}
               </span>
             </div>
           ))}
@@ -191,7 +176,7 @@ export function AddDoctor() {
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              if (step < 4) nextStep();
+              if (step < 3) nextStep();
             }
           }}
           className="w-full flex flex-col gap-5"
@@ -275,12 +260,10 @@ export function AddDoctor() {
                       if (!isLoadingDepartments && departments.length > 0) setIsDropdownOpen(!isDropdownOpen);
                     }}
                   >
-                    <span className={cn("text-[15px] truncate", !isDirty && !departments.find(d => d.id === register("departmentId").name) ? "text-[#98A2B3]" : "text-[#172033]")}>
+                    <span className={cn("text-[15px] truncate", !selectedDept ? "text-[#98A2B3]" : "text-[#172033]")}>
                       {isLoadingDepartments ? "Loading departments..." : 
                        departments.length === 0 ? "Please add a department first" :
-                       (departments.find(d => d.id === document.getElementsByName("departmentId")[0]?.getAttribute("value"))?.name || 
-                        departments.find(d => d.id === (register("departmentId") as any).value)?.name || // For initial render before selection
-                        "Search and select department...")}
+                       (selectedDept?.name || "Search and select department...")}
                     </span>
                     {isLoadingDepartments ? <Loader2 className="w-5 h-5 animate-spin text-[#98A2B3]" /> : <ChevronDown className="w-5 h-5 text-[#98A2B3]" />}
                   </div>
@@ -313,9 +296,7 @@ export function AddDoctor() {
                               key={dept.id}
                               className="px-4 py-2.5 hover:bg-blue-50/50 cursor-pointer flex items-center justify-between group transition-colors"
                               onClick={() => {
-                                const event = { target: { name: 'departmentId', value: dept.id } };
-                                register("departmentId").onChange(event);
-                                document.getElementsByName("departmentId")[0]?.setAttribute("value", dept.id); // Update DOM value for display logic
+                                setValue("departmentId", dept.id, { shouldValidate: true, shouldDirty: true });
                                 setIsDropdownOpen(false);
                                 setSearchQuery("");
                               }}
@@ -378,74 +359,9 @@ export function AddDoctor() {
               </motion.div>
             )}
 
-            {/* Step 3: Availability */}
+            {/* Step 3: Review */}
             {step === 3 && (
-              <motion.div key="step3" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="flex flex-col gap-5">
-                <div className="flex flex-col gap-2">
-                  <label className="text-[13px] font-semibold text-[#172033]">Available Days <span className="text-destructive">*</span></label>
-                  <div className="flex flex-wrap gap-2">
-                    {daysList.map(day => {
-                      const isSelected = availableDays.includes(day);
-                      return (
-                        <button
-                          key={day}
-                          type="button"
-                          onClick={() => {
-                            const current = availableDays ? availableDays.split(',') : [];
-                            const updated = isSelected ? current.filter(d => d !== day) : [...current, day];
-                            setValue("availableDays", updated.join(','), { shouldValidate: true });
-                          }}
-                          className={cn(
-                            "px-4 py-2 rounded-xl text-[14px] font-semibold border transition-all shadow-sm",
-                            isSelected ? "bg-primary text-white border-primary" : "bg-surface text-[#667085] border-border hover:border-primary/50"
-                          )}
-                        >
-                          {day}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {/* Hidden input for react-hook-form validation */}
-                  <input type="hidden" {...register("availableDays")} />
-                  {errors.availableDays && <span className="text-destructive text-[12px] font-medium mt-0.5">{errors.availableDays.message}</span>}
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[13px] font-semibold text-[#172033]">Shift Timing <span className="text-destructive">*</span></label>
-                  <div className="flex items-center gap-3">
-                    <div className="relative flex-1">
-                      <input 
-                        type="time" 
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                        className={cn(
-                          "w-full px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] shadow-sm",
-                          errors.shiftTiming ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
-                        )}
-                      />
-                    </div>
-                    <span className="text-[#667085] font-medium">to</span>
-                    <div className="relative flex-1">
-                      <input 
-                        type="time" 
-                        value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
-                        className={cn(
-                          "w-full px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] shadow-sm",
-                          errors.shiftTiming ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
-                        )}
-                      />
-                    </div>
-                  </div>
-                  <input type="hidden" {...register("shiftTiming")} />
-                  {errors.shiftTiming && <span className="text-destructive text-[12px] font-medium mt-0.5">{errors.shiftTiming.message}</span>}
-                </div>
-              </motion.div>
-            )}
-
-            {/* Step 4: Review */}
-            {step === 4 && (
-              <motion.div key="step4" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="flex flex-col gap-4">
+              <motion.div key="step3" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="flex flex-col gap-4">
                 <div className="bg-surface p-4 rounded-2xl border border-border shadow-sm flex flex-col gap-3">
                   <h3 className="font-bold text-[#172033] border-b border-gray-50 pb-2 text-[15px]">Personal Info</h3>
                   <div className="grid grid-cols-[100px_1fr] gap-y-2 text-[14px]">
@@ -462,23 +378,13 @@ export function AddDoctor() {
                   <h3 className="font-bold text-[#172033] border-b border-gray-50 pb-2 text-[15px]">Professional Info</h3>
                   <div className="grid grid-cols-[100px_1fr] gap-y-2 text-[14px]">
                     <span className="text-[#667085]">Department</span>
-                    <span className="font-semibold text-[#172033]">{departments.find(d => d.id === values.departmentId)?.name || values.departmentId}</span>
+                    <span className="font-semibold text-[#172033]">{selectedDept?.name || values.departmentId}</span>
                     <span className="text-[#667085]">Experience</span>
                     <span className="font-semibold text-[#172033]">{values.experience} years</span>
                     <span className="text-[#667085]">License</span>
                     <span className="font-semibold text-[#172033]">{values.licenseNumber}</span>
                     <span className="text-[#667085]">Fee</span>
                     <span className="font-semibold text-[#172033]">₹{values.consultationFee}</span>
-                  </div>
-                </div>
-
-                <div className="bg-surface p-4 rounded-2xl border border-border shadow-sm flex flex-col gap-3">
-                  <h3 className="font-bold text-[#172033] border-b border-gray-50 pb-2 text-[15px]">Availability</h3>
-                  <div className="grid grid-cols-[100px_1fr] gap-y-2 text-[14px]">
-                    <span className="text-[#667085]">Days</span>
-                    <span className="font-semibold text-[#172033]">{values.availableDays}</span>
-                    <span className="text-[#667085]">Timing</span>
-                    <span className="font-semibold text-[#172033]">{values.shiftTiming}</span>
                   </div>
                 </div>
               </motion.div>
@@ -498,7 +404,7 @@ export function AddDoctor() {
                 </button>
               )}
               
-              {step < 4 ? (
+              {step < 3 ? (
                 <button 
                   type="button" 
                   onClick={nextStep}

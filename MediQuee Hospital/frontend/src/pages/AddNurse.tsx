@@ -1,4 +1,4 @@
-import { Camera, ArrowLeft, Loader2, Check } from "lucide-react"
+import { Camera, ArrowLeft, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
@@ -20,8 +20,6 @@ const nurseSchema = z.object({
   experience: z.string().min(1, "Experience is required"),
   licenseNumber: z.string().optional(),
   department: z.string().min(2, "Department is required"),
-  shiftType: z.string().min(2, "Shift type is required"),
-  homeNursing: z.boolean().optional(),
 });
 
 type NurseFormValues = z.infer<typeof nurseSchema>;
@@ -35,19 +33,15 @@ export function AddNurse() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
-  const { register, handleSubmit, trigger, getValues, watch, setValue, formState: { errors, isDirty } } = useForm<NurseFormValues>({
+  const { register, handleSubmit, trigger, getValues, formState: { errors, isDirty } } = useForm<NurseFormValues>({
     resolver: zodResolver(nurseSchema),
     mode: "onChange",
-    defaultValues: {
-      homeNursing: false
-    }
   });
 
   const nextStep = async () => {
     let fieldsToValidate: any[] = [];
     if (step === 1) fieldsToValidate = ["fullName", "mobile", "email", "password"];
     if (step === 2) fieldsToValidate = ["qualification", "experience", "licenseNumber", "department"];
-    if (step === 3) fieldsToValidate = ["shiftType", "homeNursing"];
 
     const isStepValid = await trigger(fieldsToValidate as any);
     if (isStepValid) {
@@ -60,17 +54,17 @@ export function AddNurse() {
   }
 
   const onSubmit = async (data: NurseFormValues) => {
-    if (step !== 4) return;
+    if (step !== 3) return;
     setIsSubmitting(true);
     try {
       await adminApi.createStaff({
-        name: data.fullName,
-        email: data.email,
+        name: data.fullName.trim(),
+        email: data.email.trim(),
         password: data.password,
-        phone: data.mobile,
-        avatar: photoPreview,
+        phone: data.mobile.trim(),
+        avatar: photoPreview || undefined,
         role: 'NURSE',
-        designation: data.qualification // Store rich info in designation for now
+        designation: data.qualification ? `${data.qualification}${data.department ? ` (${data.department})` : ''}` : undefined
       });
       setShowSuccess(true);
     } catch (error) {
@@ -89,11 +83,10 @@ export function AddNurse() {
   }
 
   const values = getValues();
-  const homeNursing = watch("homeNursing");
 
   return (
     <div className="flex flex-col bg-background min-h-screen">
-      
+
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md pt-4 pb-3 px-4 flex items-center gap-4 border-b border-border/50 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
         <button onClick={handleBack} className="p-2 -ml-2 text-[#172033] interactive-element rounded-full hover:bg-gray-100">
@@ -103,13 +96,13 @@ export function AddNurse() {
       </div>
 
       <div className="flex flex-col px-4 pt-6 pb-28 overflow-y-auto w-full max-w-md mx-auto">
-        
+
         {/* Progress Bar */}
         <div className="w-full flex items-center justify-between mb-8 px-2 relative">
           <div className="absolute top-4 left-[10%] right-[10%] h-[2px] bg-gray-200/60 -z-10 rounded-full" />
-          <div className="absolute top-4 left-[10%] right-[10%] h-[2px] bg-primary -z-10 transition-all duration-300 rounded-full" style={{ width: `${((step - 1) / 3) * 100}%` }} />
+          <div className="absolute top-4 left-[10%] right-[10%] h-[2px] bg-primary -z-10 transition-all duration-300 rounded-full" style={{ width: `${((step - 1) / 2) * 100}%` }} />
 
-          {[1, 2, 3, 4].map((i) => (
+          {[1, 2, 3].map((i) => (
             <div key={i} className="flex flex-col items-center gap-2 bg-background">
               <div className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold border-2 transition-colors duration-300 shadow-sm",
@@ -123,8 +116,7 @@ export function AddNurse() {
               )}>
                 {i === 1 && "Personal"}
                 {i === 2 && "Professional"}
-                {i === 3 && "Availability"}
-                {i === 4 && "Review"}
+                {i === 3 && "Review"}
               </span>
             </div>
           ))}
@@ -158,53 +150,53 @@ export function AddNurse() {
           </div>
         )}
 
-        <form 
-          onSubmit={handleSubmit(onSubmit)} 
+        <form
+          onSubmit={handleSubmit(onSubmit)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              if (step < 4) nextStep();
+              if (step < 3) nextStep();
             }
           }}
           className="w-full flex flex-col gap-5"
         >
           <AnimatePresence mode="wait">
-            
+
             {/* Step 1: Personal Info */}
             {step === 1 && (
               <motion.div key="step1" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="flex flex-col gap-5">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">Full Name <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("fullName")}
-                    type="text" 
-                    placeholder="e.g. Sarah Smith" 
+                    type="text"
+                    placeholder="e.g. Nurse Name"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.fullName ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
-                    )} 
+                    )}
                   />
                   {errors.fullName && <span className="text-destructive text-[12px] font-medium mt-0.5">{errors.fullName.message}</span>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">Mobile Number <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("mobile")}
-                    type="tel" 
-                    placeholder="e.g. 8331045500" 
+                    type="tel"
+                    placeholder="e.g. 9876543210"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.mobile ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
-                    )} 
+                    )}
                   />
                   {errors.mobile && <span className="text-destructive text-[12px] font-medium mt-0.5">{errors.mobile.message}</span>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">Email Address <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("email")}
-                    type="email" 
-                    placeholder="e.g. nurse@hospital.com" 
+                    type="email"
+                    placeholder="e.g. nurse@hospital.com"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.email ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
@@ -215,10 +207,10 @@ export function AddNurse() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">Password <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("password")}
-                    type="password" 
-                    placeholder="Create a password" 
+                    type="password"
+                    placeholder="Create a password"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.password ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
@@ -234,101 +226,62 @@ export function AddNurse() {
               <motion.div key="step2" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="flex flex-col gap-5">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">Qualification <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("qualification")}
-                    type="text" 
-                    placeholder="e.g. B.Sc Nursing" 
+                    type="text"
+                    placeholder="e.g. B.Sc Nursing"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.qualification ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
-                    )} 
+                    )}
                   />
                   {errors.qualification && <span className="text-destructive text-[12px] font-medium mt-0.5">{errors.qualification.message}</span>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">Experience (Years) <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("experience")}
-                    type="number" 
-                    placeholder="e.g. 3" 
+                    type="number"
+                    placeholder="e.g. 3"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.experience ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
-                    )} 
+                    )}
                   />
                   {errors.experience && <span className="text-destructive text-[12px] font-medium mt-0.5">{errors.experience.message}</span>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">License Number <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("licenseNumber")}
-                    type="text" 
-                    placeholder="e.g. RN9876" 
+                    type="text"
+                    placeholder="e.g. RN9876"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.licenseNumber ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
-                    )} 
+                    )}
                   />
                   {errors.licenseNumber && <span className="text-destructive text-[12px] font-medium mt-0.5">{errors.licenseNumber.message}</span>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">Department <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("department")}
-                    type="text" 
-                    placeholder="e.g. ICU" 
+                    type="text"
+                    placeholder="e.g. ICU"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.department ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
-                    )} 
+                    )}
                   />
                   {errors.department && <span className="text-destructive text-[12px] font-medium mt-0.5">{errors.department.message}</span>}
                 </div>
               </motion.div>
             )}
 
-            {/* Step 3: Availability */}
+            {/* Step 3: Review */}
             {step === 3 && (
-              <motion.div key="step3" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="flex flex-col gap-6">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[13px] font-semibold text-[#172033]">Shift Type <span className="text-destructive">*</span></label>
-                  <select 
-                    {...register("shiftType")}
-                    className={cn(
-                      "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm appearance-none",
-                      errors.shiftType ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
-                    )} 
-                  >
-                    <option value="">Select Shift</option>
-                    <option value="Morning">Morning</option>
-                    <option value="Evening">Evening</option>
-                    <option value="Night">Night</option>
-                    <option value="Rotational">Rotational</option>
-                  </select>
-                  {errors.shiftType && <span className="text-destructive text-[12px] font-medium mt-0.5">{errors.shiftType.message}</span>}
-                </div>
-
-                <div 
-                  className="bg-surface border border-border/60 rounded-xl p-4 flex items-center justify-between shadow-sm cursor-pointer hover:border-primary/50 transition-colors"
-                  onClick={() => setValue("homeNursing", !homeNursing, { shouldDirty: true })}
-                >
-                  <div className="flex flex-col">
-                    <span className="text-[15px] font-semibold text-[#172033]">Home Nursing Services</span>
-                    <span className="text-[13px] text-[#667085]">Available for home visits</span>
-                  </div>
-                  <div className={cn(
-                    "w-6 h-6 rounded-md border flex items-center justify-center transition-colors",
-                    homeNursing ? "bg-primary border-primary" : "bg-gray-50 border-gray-300"
-                  )}>
-                    {homeNursing && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Step 4: Review */}
-            {step === 4 && (
-              <motion.div key="step4" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="flex flex-col gap-4">
+              <motion.div key="step3" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="flex flex-col gap-4">
                 <div className="bg-surface p-4 rounded-2xl border border-border shadow-sm flex flex-col gap-3">
                   <h3 className="font-bold text-[#172033] border-b border-gray-50 pb-2 text-[15px]">Personal Info</h3>
                   <div className="grid grid-cols-[100px_1fr] gap-y-2 text-[14px]">
@@ -350,22 +303,6 @@ export function AddNurse() {
                     <span className="font-semibold text-[#172033]">{values.department}</span>
                   </div>
                 </div>
-                
-                <div className="bg-surface p-4 rounded-2xl border border-border shadow-sm flex flex-col gap-3">
-                  <h3 className="font-bold text-[#172033] border-b border-gray-50 pb-2 text-[15px]">Availability</h3>
-                  <div className="grid grid-cols-[100px_1fr] gap-y-2 text-[14px]">
-                    <span className="text-[#667085]">Shift</span>
-                    <span className="font-semibold text-[#172033]">{values.shiftType}</span>
-                    <span className="text-[#667085]">Home</span>
-                    <span className="font-semibold text-[#172033]">
-                      {homeNursing ? (
-                        <span className="text-success">Enabled</span>
-                      ) : (
-                        <span className="text-[#98A2B3]">Disabled</span>
-                      )}
-                    </span>
-                  </div>
-                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -373,8 +310,8 @@ export function AddNurse() {
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t border-border/50 pb-safe z-20">
             <div className="flex gap-3 max-w-md mx-auto">
               {step > 1 && (
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={prevStep}
                   disabled={isSubmitting}
                   className="flex-1 bg-surface hover:bg-gray-50 border border-border/60 text-[#172033] font-semibold py-3.5 rounded-xl transition-colors interactive-element shadow-sm"
@@ -382,18 +319,18 @@ export function AddNurse() {
                   Back
                 </button>
               )}
-              
-              {step < 4 ? (
-                <button 
-                  type="button" 
+
+              {step < 3 ? (
+                <button
+                  type="button"
                   onClick={nextStep}
                   className="flex-[2] bg-primary hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl transition-colors interactive-element shadow-sm"
                 >
                   Next
                 </button>
               ) : (
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={isSubmitting}
                   className="flex-[2] bg-success hover:bg-green-600 text-white font-semibold py-3.5 rounded-xl transition-colors interactive-element shadow-sm flex items-center justify-center gap-2 disabled:opacity-70"
                 >
@@ -406,7 +343,7 @@ export function AddNurse() {
         </form>
       </div>
 
-      <ConfirmationSheet 
+      <ConfirmationSheet
         isOpen={showExitConfirm}
         onClose={() => setShowExitConfirm(false)}
         title="Discard changes?"
