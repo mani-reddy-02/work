@@ -7,7 +7,7 @@ import {
   ExternalLink, AlertCircle, RefreshCw
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { cn } from "@/lib/utils"
+import { cn, formatPatientAddress } from "@/lib/utils"
 import { labApi } from "@/services/labApi"
 
 interface ReportItem {
@@ -87,7 +87,7 @@ export function LabReports() {
           type: b.bookingType === 'HOME_COLLECTION' ? 'Home Collection' : 'In-Person',
           specimen,
           totalAmount: b.totalAmount || 0,
-          address: b.collectionAddress || b.patient?.address || ''
+          address: formatPatientAddress(b.collectionAddress || b.patient?.address, '')
         }
       })
       setAllReports(items)

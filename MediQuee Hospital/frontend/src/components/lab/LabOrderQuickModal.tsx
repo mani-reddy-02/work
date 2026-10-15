@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { useState } from "react"
 import { labApi } from "@/services/labApi"
 import { useToast } from "@/context/ToastContext"
+import { formatPatientAddress } from "@/lib/utils"
 
 interface LabOrderQuickModalProps {
   order: any | null
@@ -237,10 +238,12 @@ export function LabOrderQuickModal({ order, isOpen, onClose, onOrderUpdated }: L
                   <span className="font-semibold text-[#172033]">{order.collectionTimeSlot}</span>
                 </div>
               )}
-              {order.collectionAddress && (
+              {(order.collectionAddress || order.patient?.address) && (
                 <div className="pt-2 border-t border-gray-100 flex items-start gap-2 text-[13px]">
                   <MapPin className="w-4 h-4 text-[#98A2B3] shrink-0 mt-0.5" />
-                  <span className="text-[#475467] leading-relaxed">{order.collectionAddress}</span>
+                  <span className="text-[#475467] leading-relaxed">
+                    {formatPatientAddress(order.collectionAddress || order.patient?.address)}
+                  </span>
                 </div>
               )}
               {order.phlebotomistName && (

@@ -8,7 +8,7 @@ import {
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { StatusBadge } from "@/components/lab/LabUI"
-import { cn } from "@/lib/utils"
+import { cn, formatPatientAddress } from "@/lib/utils"
 import { labApi } from "@/services/labApi"
 import { useToast } from "@/context/ToastContext"
 
@@ -224,7 +224,11 @@ export function LabOrderDetail() {
   const patientEmail = booking.patient?.email || ''
   const patientGender = booking.patient?.gender || 'Not specified'
   const patientDob = booking.patient?.dob
-  const patientAddress = booking.collectionAddress || booking.patient?.address || 'Clinic Walk-in'
+  const isHomeBooking = booking.bookingType === 'HOME_COLLECTION'
+  const patientAddress = formatPatientAddress(
+    booking.collectionAddress || booking.patient?.address,
+    isHomeBooking ? 'Home Address on file' : 'In-Person Lab / Clinic Walk-in'
+  )
 
   // Tests list
   const testsList = booking.items?.map((it: any) => ({
@@ -728,7 +732,7 @@ export function LabOrderDetail() {
                   <div className="flex flex-col gap-1">
                     <span className="text-xs font-bold text-muted uppercase">Sample Pickup Address</span>
                     <p className="text-sm font-semibold text-foreground p-3 rounded-xl bg-gray-50 border border-border">
-                      {booking.collectionAddress || 'Address on patient profile'}
+                      {formatPatientAddress(booking.collectionAddress || booking.patient?.address, 'Home address on patient profile')}
                     </p>
                   </div>
 

@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams, useLocation } from "react-router-dom"
 import { LabOrderQuickModal } from "@/components/lab/LabOrderQuickModal"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { EmptyState } from "@/components/ui/EmptyState"
-import { cn } from "@/lib/utils"
+import { cn, formatPatientAddress } from "@/lib/utils"
 import { labApi } from "@/services/labApi"
 import { useToast } from "@/context/ToastContext"
 
@@ -138,7 +138,7 @@ export function LabOrders() {
         totalAmount: o.totalAmount ?? 0,
         rawStatus,
         statusLabel,
-        collectionAddress: o.collectionAddress,
+        collectionAddress: formatPatientAddress(o.collectionAddress || o.patient?.address, ''),
         collectionTimeSlot: o.collectionTimeSlot,
         phlebotomistName: o.phlebotomistName,
         phlebotomistPhone: o.phlebotomistPhone,

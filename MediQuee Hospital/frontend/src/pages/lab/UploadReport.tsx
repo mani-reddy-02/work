@@ -4,7 +4,7 @@ import { ArrowLeft, Search, CheckCircle2, Upload, X, FileText, Image, File, Load
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useToast } from "@/context/ToastContext"
 import { labApi } from "@/services/labApi"
-import { cn } from "@/lib/utils"
+import { cn, formatPatientAddress } from "@/lib/utils"
 import { ConditionLabel } from "@/components/shared/ConditionLabel"
 
 type UploadStep = 1 | 2 | 3 | 'success'
@@ -50,7 +50,7 @@ export function UploadReport() {
           phone: b.patient?.phone || '',
           email: b.patient?.email || '',
           gender: b.patient?.gender || 'Not specified',
-          address: b.collectionAddress || b.patient?.address || 'Clinic Walk-in',
+          address: formatPatientAddress(b.collectionAddress || b.patient?.address, 'In-Person Lab / Clinic Walk-in'),
           test: b.items?.map((it: any) => it.labTest?.platformTest?.name).join(', ') || 'Diagnostic Test',
           date: new Date(b.createdAt).toLocaleDateString(),
           status: b.status,

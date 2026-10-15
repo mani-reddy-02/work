@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { ArrowLeft, Plus, MapPin, Clock, User, Home, Loader2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { StatusBadge } from "@/components/lab/LabUI"
-import { cn } from "@/lib/utils"
+import { cn, formatPatientAddress } from "@/lib/utils"
 import { labApi } from "@/services/labApi"
 
 const filters = ['All', 'Pending', 'Collected', 'Completed']
@@ -30,7 +30,7 @@ export function HomeCollection() {
             id: b.id,
             patient: b.patient?.name || 'Home Collection Patient',
             test: b.items?.map((it: any) => it.labTest?.platformTest?.name).join(', ') || 'Diagnostic Test',
-            address: b.collectionAddress || 'Address on file',
+            address: formatPatientAddress(b.collectionAddress || b.patient?.address, 'Home Address on file'),
             date: b.collectionDate ? new Date(b.collectionDate).toLocaleDateString() : new Date(b.createdAt).toLocaleDateString(),
             time: b.collectionTimeSlot || 'Standard Slot',
             status: st,
