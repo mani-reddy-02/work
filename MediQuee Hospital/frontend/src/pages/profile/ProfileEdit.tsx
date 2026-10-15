@@ -103,6 +103,22 @@ function parseRawAddress(raw: any): ParsedAddress {
   const [addressType, setAddressType] = useState<string>('Home');
   const [addressId, setAddressId] = useState<string | undefined>(undefined);
 
+  // Address memory for seamless Home <-> Clinic switching
+  const [homeAddress, setHomeAddress] = useState<ParsedAddress>({
+    type: 'Home',
+    street: '',
+    city: '',
+    state: '',
+    pincode: '',
+  });
+  const [clinicAddress, setClinicAddress] = useState<ParsedAddress>({
+    type: 'Clinic',
+    street: '',
+    city: '',
+    state: '',
+    pincode: '',
+  });
+
   const [designation, setDesignation] = useState<string>('');
   const [bio, setBio] = useState<string>('');
 
@@ -122,22 +138,72 @@ function parseRawAddress(raw: any): ParsedAddress {
       setName(data.name || '');
       setPhone(data.phone || '');
       setGender(data.gender || '');
-      setDob(data.dob || '');
 
-      // Parse structured address
+      // Format Date of Birth (YYYY-MM-DD for input[type="date"])
+      let formattedDob = data.dob || '';
+      if (formattedDob.includes('T')) {
+        formattedDob = formattedDob.split('T')[0];
+      }
+      setDob(formattedDob);
+
+      // Hospital facility clinic address
+      const hospitalStreet = [
+        data.hospital?.addressLine1,
+        data.hospital?.area,
+      ].filter(Boolean).join(', ');
+
+      const defaultClinic: ParsedAddress = {
+        type: 'Clinic',
+        street: data.hospitalFacilityAddress?.street || hospitalStreet || '',
+        city: data.hospitalFacilityAddress?.city || data.hospital?.city || '',
+        state: data.hospitalFacilityAddress?.state || data.hospital?.state || '',
+        pincode: data.hospitalFacilityAddress?.pincode || data.hospital?.pincode || '',
+      };
+      setClinicAddress(defaultClinic);
+
+      // Parse user address
       const addr = parseRawAddress(data.address);
-      setAddressStreet(addr.street);
-      setAddressCity(addr.city);
-      setAddressState(addr.state);
-      setAddressPincode(addr.pincode);
-      setAddressType(addr.type || 'Home');
-      setAddressId(addr.id);
+      if (addr.type?.toLowerCase().includes('clinic') || addr.type?.toLowerCase().includes('work')) {
+        const effectiveClinic: ParsedAddress = {
+          type: 'Clinic',
+          street: addr.street || defaultClinic.street,
+          city: addr.city || defaultClinic.city,
+          state: addr.state || defaultClinic.state,
+          pincode: addr.pincode || defaultClinic.pincode,
+          id: addr.id,
+        };
+        setClinicAddress(effectiveClinic);
+        setAddressStreet(effectiveClinic.street);
+        setAddressCity(effectiveClinic.city);
+        setAddressState(effectiveClinic.state);
+        setAddressPincode(effectiveClinic.pincode);
+        setAddressType('Clinic');
+        setAddressId(effectiveClinic.id);
+      } else {
+        setHomeAddress(addr);
+        const hasHomeAddress = Boolean(addr.street || addr.city || addr.state || addr.pincode);
+        if (hasHomeAddress) {
+          setAddressStreet(addr.street);
+          setAddressCity(addr.city);
+          setAddressState(addr.state);
+          setAddressPincode(addr.pincode);
+          setAddressType('Home');
+          setAddressId(addr.id);
+        } else if (defaultClinic.street || defaultClinic.city) {
+          // Pre-fill with clinic/work address by default if home address is empty
+          setAddressStreet(defaultClinic.street);
+          setAddressCity(defaultClinic.city);
+          setAddressState(defaultClinic.state);
+          setAddressPincode(defaultClinic.pincode);
+          setAddressType('Clinic');
+        }
+      }
 
-      setDesignation(data.designation || '');
+      setDesignation(data.designation || (isDoctor && data.department?.name ? `Consultant - ${data.department.name}` : ''));
       setBio(data.bio || '');
       setLicenseNumber(data.licenseNumber || '');
-      setSpecialization(data.specialization || '');
-      setQualification(data.qualification || '');
+      setSpecialization(data.specialization || data.department?.name || '');
+      setQualification(data.qualification || (isDoctor ? 'MBBS, MD' : ''));
       setExperience(data.experienceYears !== null && data.experienceYears !== undefined ? String(data.experienceYears) : '');
       setConsultationFee(data.consultationFee !== null && data.consultationFee !== undefined ? String(data.consultationFee) : '');
     } catch (err: any) {
@@ -146,11 +212,58 @@ function parseRawAddress(raw: any): ParsedAddress {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isDoctor]);
 
   useEffect(() => {
     fetchUserProfile();
   }, [fetchUserProfile]);
+
+  const handleSwitchToHome = () => {
+    if (addressType === 'Clinic') {
+      setClinicAddress({
+        type: 'Clinic',
+        street: addressStreet,
+        city: addressCity,
+        state: addressState,
+        pincode: addressPincode,
+        id: addressId,
+      });
+    }
+    setAddressType('Home');
+    setAddressStreet(homeAddress.street);
+    setAddressCity(homeAddress.city);
+    setAddressState(homeAddress.state);
+    setAddressPincode(homeAddress.pincode);
+    setAddressId(homeAddress.id);
+  };
+
+  const handleSwitchToClinic = () => {
+    if (addressType === 'Home') {
+      setHomeAddress({
+        type: 'Home',
+        street: addressStreet,
+        city: addressCity,
+        state: addressState,
+        pincode: addressPincode,
+        id: addressId,
+      });
+    }
+    setAddressType('Clinic');
+    const targetClinic = (clinicAddress.street || clinicAddress.city)
+      ? clinicAddress
+      : {
+          type: 'Clinic',
+          street: [profile?.hospital?.addressLine1, profile?.hospital?.area].filter(Boolean).join(', '),
+          city: profile?.hospital?.city || '',
+          state: profile?.hospital?.state || '',
+          pincode: profile?.hospital?.pincode || '',
+        };
+    setAddressStreet(targetClinic.street);
+    setAddressCity(targetClinic.city);
+    setAddressState(targetClinic.state);
+    setAddressPincode(targetClinic.pincode);
+    setAddressId(targetClinic.id);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,7 +313,12 @@ function parseRawAddress(raw: any): ParsedAddress {
       setName(updated.name || '');
       setPhone(updated.phone || '');
       setGender(updated.gender || '');
-      setDob(updated.dob || '');
+
+      let formattedDob = updated.dob || '';
+      if (formattedDob.includes('T')) {
+        formattedDob = formattedDob.split('T')[0];
+      }
+      setDob(formattedDob);
 
       const updatedAddr = parseRawAddress(updated.address);
       setAddressStreet(updatedAddr.street);
@@ -406,7 +524,7 @@ function parseRawAddress(raw: any): ParsedAddress {
                     <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg border border-border/60">
                       <button
                         type="button"
-                        onClick={() => setAddressType('Home')}
+                        onClick={handleSwitchToHome}
                         className={cn(
                           "px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer",
                           addressType === 'Home' 
@@ -418,7 +536,7 @@ function parseRawAddress(raw: any): ParsedAddress {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setAddressType('Clinic')}
+                        onClick={handleSwitchToClinic}
                         className={cn(
                           "px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer",
                           addressType === 'Clinic' 

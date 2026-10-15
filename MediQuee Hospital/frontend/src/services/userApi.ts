@@ -28,6 +28,14 @@ export interface UserProfile {
   hospitalId?: string | null;
   departmentId?: string | null;
   createdAt?: string;
+  updatedAt?: string;
+  hospitalFacilityAddress?: {
+    type: string;
+    street: string;
+    city: string;
+    state: string;
+    pincode: string;
+  } | null;
   hospital?: {
     id: string;
     name: string;

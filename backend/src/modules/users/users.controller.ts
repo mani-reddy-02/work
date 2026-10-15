@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import bcrypt from 'bcryptjs';
+import { Role } from '@prisma/client';
 
 export const getMe = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -60,7 +61,52 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } });
     }
 
-    res.json({ success: true, data: user });
+    const isDoctor = user.role === Role.DOCTOR;
+    
+    // Resolve specialization: prefer user.specialization, fallback to department.name
+    const resolvedSpecialization = user.specialization || user.department?.name || null;
+    
+    // Resolve designation: prefer user.designation, fallback to 'Consultant - <dept>' or 'Consultant Physician'
+    const resolvedDesignation = user.designation || (isDoctor && user.department?.name ? `Consultant - ${user.department.name}` : (isDoctor ? 'Consultant Physician' : user.designation));
+
+    // Resolve consultationFee: if null, check doctor's actual bookings in DB
+    let resolvedConsultationFee = user.consultationFee;
+    if (resolvedConsultationFee === null || resolvedConsultationFee === undefined) {
+      const latestBooking = await prisma.oPBooking.findFirst({
+        where: { doctorId: user.id },
+        orderBy: { createdAt: 'desc' },
+        select: { fee: true },
+      });
+      if (latestBooking?.fee) {
+        resolvedConsultationFee = latestBooking.fee;
+      }
+    }
+
+    // Build facility clinic address from hospital
+    const hospitalFacilityAddress = user.hospital ? {
+      type: 'Clinic / Work',
+      street: [user.hospital.addressLine1, user.hospital.area].filter(Boolean).join(', '),
+      city: user.hospital.city || '',
+      state: user.hospital.state || '',
+      pincode: user.hospital.pincode || '',
+    } : null;
+
+    // Resolve address: if user has no personal address set, fallback to hospital facility address
+    let resolvedAddress = user.address;
+    if (!resolvedAddress && hospitalFacilityAddress && (hospitalFacilityAddress.street || hospitalFacilityAddress.city)) {
+      resolvedAddress = JSON.stringify([hospitalFacilityAddress]);
+    }
+
+    const mergedData = {
+      ...user,
+      specialization: resolvedSpecialization,
+      designation: resolvedDesignation,
+      consultationFee: resolvedConsultationFee,
+      address: resolvedAddress,
+      hospitalFacilityAddress,
+    };
+
+    res.json({ success: true, data: mergedData });
   } catch (error) {
     next(error);
   }
@@ -184,9 +230,26 @@ export const updateMe = async (req: Request, res: Response, next: NextFunction) 
       },
     });
 
+    const isDoctor = updatedUser.role === Role.DOCTOR;
+    const resolvedSpecialization = updatedUser.specialization || updatedUser.department?.name || null;
+    const resolvedDesignation = updatedUser.designation || (isDoctor && updatedUser.department?.name ? `Consultant - ${updatedUser.department.name}` : updatedUser.designation);
+
+    const hospitalFacilityAddress = updatedUser.hospital ? {
+      type: 'Clinic / Work',
+      street: [updatedUser.hospital.addressLine1, updatedUser.hospital.area].filter(Boolean).join(', '),
+      city: updatedUser.hospital.city || '',
+      state: updatedUser.hospital.state || '',
+      pincode: updatedUser.hospital.pincode || '',
+    } : null;
+
     res.json({
       success: true,
-      data: updatedUser,
+      data: {
+        ...updatedUser,
+        specialization: resolvedSpecialization,
+        designation: resolvedDesignation,
+        hospitalFacilityAddress,
+      },
       message: 'Profile updated successfully',
     });
   } catch (error) {

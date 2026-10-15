@@ -27,6 +27,16 @@ export const getStaff = async (req: Request, res: Response, next: NextFunction) 
         role: true,
         designation: true,
         active: true,
+        avatar: true,
+        gender: true,
+        dob: true,
+        address: true,
+        bio: true,
+        specialization: true,
+        qualification: true,
+        experienceYears: true,
+        consultationFee: true,
+        licenseNumber: true,
         createdAt: true,
         updatedAt: true,
         department: { select: { id: true, name: true, code: true } }
@@ -48,7 +58,11 @@ export const createStaff = async (req: Request, res: Response, next: NextFunctio
       return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'User does not belong to a hospital' } });
     }
 
-    const { name, email, password, role, phone, designation, avatar, departmentId } = req.body;
+    const { 
+      name, email, password, role, phone, designation, avatar, departmentId,
+      experienceYears, licenseNumber, consultationFee, qualification, specialization,
+      bio, gender, dob, address
+    } = req.body;
 
     // Verify role is in the allowlist (double-check beyond Zod)
     if (!STAFF_ROLES.includes(role as Role)) {
@@ -56,11 +70,13 @@ export const createStaff = async (req: Request, res: Response, next: NextFunctio
     }
 
     // If departmentId is supplied, verify it belongs to this hospital
+    let deptName: string | null = null;
     if (departmentId) {
       const dept = await prisma.department.findUnique({ where: { id: departmentId } });
       if (!dept || dept.hospitalId !== hospitalId) {
         return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Department does not belong to this hospital' } });
       }
+      deptName = dept.name;
     }
 
     // Check for duplicate email
@@ -86,10 +102,19 @@ export const createStaff = async (req: Request, res: Response, next: NextFunctio
         phone: phone || null,
         passwordHash,
         role: role as Role,
-        designation: designation || null,
+        designation: designation || (role === 'DOCTOR' && deptName ? `Consultant - ${deptName}` : null),
         avatar: avatar || null,
         hospitalId, // ALWAYS from the authenticated admin, NEVER from the request
         departmentId: departmentId || null,
+        experienceYears: experienceYears !== undefined && experienceYears !== null ? Number(experienceYears) : null,
+        licenseNumber: licenseNumber || null,
+        consultationFee: consultationFee !== undefined && consultationFee !== null ? Number(consultationFee) : null,
+        qualification: qualification || (role === 'DOCTOR' ? 'MBBS, MD' : null),
+        specialization: specialization || (role === 'DOCTOR' && deptName ? deptName : null),
+        bio: bio || null,
+        gender: gender || null,
+        dob: dob || null,
+        address: address || null,
       },
       select: {
         id: true,
@@ -100,6 +125,11 @@ export const createStaff = async (req: Request, res: Response, next: NextFunctio
         designation: true,
         active: true,
         createdAt: true,
+        specialization: true,
+        qualification: true,
+        experienceYears: true,
+        consultationFee: true,
+        licenseNumber: true,
         department: { select: { id: true, name: true, code: true } }
       },
     });
@@ -120,7 +150,11 @@ export const updateStaff = async (req: Request, res: Response, next: NextFunctio
     }
 
     const { id } = req.params;
-    const { name, phone, designation, departmentId, active } = req.body;
+    const { 
+      name, phone, designation, departmentId, active,
+      experienceYears, licenseNumber, consultationFee, qualification, specialization,
+      bio, gender, dob, address, avatar
+    } = req.body;
 
     // Find target user
     const targetUser = await prisma.user.findUnique({ where: { id: id as string } });
@@ -153,7 +187,17 @@ export const updateStaff = async (req: Request, res: Response, next: NextFunctio
         ...(phone !== undefined && { phone }),
         ...(designation !== undefined && { designation }),
         ...(active !== undefined && { active }),
-        // Role is intentionally NOT updatable
+        ...(avatar !== undefined && { avatar }),
+        ...(departmentId !== undefined && { departmentId: departmentId || null }),
+        ...(experienceYears !== undefined && { experienceYears: experienceYears === null ? null : Number(experienceYears) }),
+        ...(licenseNumber !== undefined && { licenseNumber }),
+        ...(consultationFee !== undefined && { consultationFee: consultationFee === null ? null : Number(consultationFee) }),
+        ...(qualification !== undefined && { qualification }),
+        ...(specialization !== undefined && { specialization }),
+        ...(bio !== undefined && { bio }),
+        ...(gender !== undefined && { gender }),
+        ...(dob !== undefined && { dob }),
+        ...(address !== undefined && { address }),
       },
       select: {
         id: true,
@@ -164,6 +208,12 @@ export const updateStaff = async (req: Request, res: Response, next: NextFunctio
         designation: true,
         active: true,
         updatedAt: true,
+        specialization: true,
+        qualification: true,
+        experienceYears: true,
+        consultationFee: true,
+        licenseNumber: true,
+        department: { select: { id: true, name: true, code: true } }
       },
     });
 

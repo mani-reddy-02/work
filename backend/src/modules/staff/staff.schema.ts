@@ -15,6 +15,15 @@ export const createStaffSchema = z.object({
     designation: z.string().optional().nullable(),
     avatar: z.string().optional().nullable(),
     departmentId: z.string().optional().nullable(),
+    experienceYears: z.union([z.number(), z.string().transform(v => v.trim() === '' ? null : Number(v))]).optional().nullable(),
+    licenseNumber: z.string().optional().nullable(),
+    consultationFee: z.union([z.number(), z.string().transform(v => v.trim() === '' ? null : Number(v))]).optional().nullable(),
+    qualification: z.string().optional().nullable(),
+    specialization: z.string().optional().nullable(),
+    bio: z.string().optional().nullable(),
+    gender: z.string().optional().nullable(),
+    dob: z.string().optional().nullable(),
+    address: z.string().optional().nullable(),
   }).refine((data) => {
     if (data.role === 'DOCTOR' && !data.departmentId) {
       return false;
@@ -33,7 +42,15 @@ export const updateStaffSchema = z.object({
     designation: z.string().optional().nullable(),
     departmentId: z.string().optional().nullable(),
     active: z.boolean().optional(),
-    // Role is intentionally NOT included — role is immutable in Step 3
-    // Password is intentionally NOT included — separate flow
+    experienceYears: z.union([z.number(), z.string().transform(v => v.trim() === '' ? null : Number(v))]).optional().nullable(),
+    licenseNumber: z.string().optional().nullable(),
+    consultationFee: z.union([z.number(), z.string().transform(v => v.trim() === '' ? null : Number(v))]).optional().nullable(),
+    qualification: z.string().optional().nullable(),
+    specialization: z.string().optional().nullable(),
+    bio: z.string().optional().nullable(),
+    gender: z.string().optional().nullable(),
+    dob: z.string().optional().nullable(),
+    address: z.string().optional().nullable(),
+    avatar: z.string().optional().nullable(),
   }),
 });

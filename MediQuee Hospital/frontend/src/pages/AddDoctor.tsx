@@ -85,7 +85,13 @@ export function AddDoctor() {
         phone: data.mobile,
         avatar: photoPreview || undefined,
         role: 'DOCTOR',
-        departmentId: data.departmentId
+        departmentId: data.departmentId,
+        experienceYears: Number(data.experience) || undefined,
+        licenseNumber: data.licenseNumber || undefined,
+        consultationFee: Number(data.consultationFee) || undefined,
+        specialization: selectedDept?.name || undefined,
+        designation: selectedDept?.name ? `Consultant - ${selectedDept.name}` : 'Consultant Physician',
+        qualification: 'MBBS, MD',
       });
       setShowSuccess(true);
     } catch (error) {
