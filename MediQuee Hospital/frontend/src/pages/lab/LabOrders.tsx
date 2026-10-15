@@ -231,7 +231,7 @@ export function LabOrders() {
       case 'blood': return 'Blood Test Orders'
       case 'pathology': return 'Pathology Test Orders'
       case 'routine': return 'Routine Diagnostic Orders'
-      default: return 'Appointments & Consultations'
+      default: return 'Orders'
     }
   }
 
@@ -297,7 +297,7 @@ export function LabOrders() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex-1">
-            <h1 className="text-[22px] font-black text-foreground tracking-tight">Appointments</h1>
+            <h1 className="text-[22px] font-black text-foreground tracking-tight">Orders</h1>
           </div>
           <button 
             onClick={() => navigate('/lab/create-order')}
@@ -465,7 +465,7 @@ export function LabOrders() {
               {getSectionHeading()}
             </h3>
             <span className="text-primary text-[13px] font-bold">
-              {filteredAppointments.length} Bookings
+              {filteredAppointments.length} Orders
             </span>
           </div>
 
@@ -550,9 +550,9 @@ export function LabOrders() {
           )}
         </div>
 
-        {/* ── 3. Appointment List (Matching Pic 1 Card Layout) ─────────────── */}
+        {/* ── 3. Order List (Matching Pic 1 Card Layout) ─────────────── */}
         <div className="flex flex-col gap-4">
-          <h2 className="font-bold text-foreground text-[17px] px-1">Appointment List</h2>
+          <h2 className="font-bold text-foreground text-[17px] px-1">Order List</h2>
 
           <div className="flex flex-col relative gap-3">
             <AnimatePresence mode="wait">
@@ -773,7 +773,7 @@ export function LabOrders() {
               ) : (
                 <EmptyState 
                   icon={Calendar}
-                  title="No Appointments Found" 
+                  title="No Orders Found" 
                   description="No laboratory orders match your selected category, status or date range."
                   actionLabel="Register New Order"
                   onAction={() => navigate('/lab/create-order')}
@@ -804,7 +804,7 @@ export function LabOrders() {
               <div className="flex items-center justify-between pb-3 border-b border-border">
                 <div className="flex items-center gap-2">
                   <SlidersHorizontal className="w-4 h-4 text-primary" />
-                  <h3 className="text-base font-bold text-foreground">Filter Orders & Appointments</h3>
+                  <h3 className="text-base font-bold text-foreground">Filter Orders</h3>
                 </div>
                 <button 
                   onClick={() => setIsFilterModalOpen(false)}
