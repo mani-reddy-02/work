@@ -1,9 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
-import { AuthProvider, useAuth } from "./context/AuthContext"
-import { ThemeProvider } from "./context/ThemeContext"
-import { ToastProvider } from "./context/ToastContext"
-import { NotificationProvider } from "./context/NotificationContext"
+import { AuthProvider, useAuth } from "@/context/AuthContext"
+import { ThemeProvider } from "@/context/ThemeContext"
+import { ToastProvider } from "@/context/ToastContext"
+import { NotificationProvider } from "@/context/NotificationContext"
 import "./i18n"
 
 // Role Dashboards

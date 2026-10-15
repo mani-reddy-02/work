@@ -28,7 +28,7 @@ import { useNavigate } from "react-router-dom"
 import { PromoCarousel } from "../components/PromoCarousel"
 import { EmptyState } from "../components/ui/EmptyState"
 import { Skeleton } from "../components/ui/Skeleton"
-import { useAuth } from "../context/AuthContext"
+import { useAuth } from "@/context/AuthContext"
 import { useTranslation } from "react-i18next"
 import { 
   dashboardApi, 

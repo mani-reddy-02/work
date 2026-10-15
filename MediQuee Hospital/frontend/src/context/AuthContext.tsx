@@ -78,7 +78,7 @@ export type User = {
   } | null;
 };
 
-type AuthContextType = {
+export type AuthContextType = {
   isAuthenticated: boolean;
   role: Role | null;
   token: string | null;
@@ -90,7 +90,24 @@ type AuthContextType = {
   refreshUser: () => Promise<void>;
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const defaultAuthContext: AuthContextType = {
+  isAuthenticated: false,
+  role: null,
+  token: null,
+  user: null,
+  isLoading: true,
+  login: () => {},
+  logout: () => {},
+  updateUser: () => {},
+  refreshUser: async () => {},
+};
+
+// Singleton context to guarantee stability across Vite Hot Module Reloading (HMR)
+const AuthContext =
+  ((globalThis as unknown as Record<string, unknown>).__MEDIQUEE_AUTH_CONTEXT__ as React.Context<AuthContextType>) ||
+  createContext<AuthContextType>(defaultAuthContext);
+
+(globalThis as unknown as Record<string, unknown>).__MEDIQUEE_AUTH_CONTEXT__ = AuthContext;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -168,10 +185,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return context ?? defaultAuthContext;
 }
+

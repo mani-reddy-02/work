@@ -1,14 +1,24 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
-type Theme = "dark" | "light";
+export type Theme = "dark" | "light";
 
-type ThemeContextType = {
+export type ThemeContextType = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
 };
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+export const defaultThemeContext: ThemeContextType = {
+  theme: "light",
+  setTheme: () => {},
+  toggleTheme: () => {},
+};
+
+const ThemeContext =
+  ((globalThis as unknown as Record<string, unknown>).__MEDIQUEE_THEME_CONTEXT__ as React.Context<ThemeContextType>) ||
+  createContext<ThemeContextType>(defaultThemeContext);
+
+(globalThis as unknown as Record<string, unknown>).__MEDIQUEE_THEME_CONTEXT__ = ThemeContext;
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
@@ -35,10 +45,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useTheme() {
+export function useTheme(): ThemeContextType {
   const context = useContext(ThemeContext);
-  if (context === undefined) {
-    throw new Error("useTheme must be used within a ThemeProvider");
-  }
-  return context;
+  return context ?? defaultThemeContext;
 }

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { adminApi } from '../services/adminApi';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 function normalizeToBackendRole(frontendRole: string): string {
   const mapping: Record<string, string> = {

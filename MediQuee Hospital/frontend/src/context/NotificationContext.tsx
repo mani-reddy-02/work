@@ -8,10 +8,10 @@ import {
   playNotificationChime,
   showDesktopNotification
 } from '../services/notificationService';
-import { useAuth } from './AuthContext';
-import { useToast } from './ToastContext';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 
-interface NotificationContextType {
+export interface NotificationContextType {
   notifications: AppNotification[];
   unreadCount: number;
   isLoading: boolean;
@@ -23,10 +23,27 @@ interface NotificationContextType {
   playChime: () => void;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+export const defaultNotificationContext: NotificationContextType = {
+  notifications: [],
+  unreadCount: 0,
+  isLoading: false,
+  pushEnabled: false,
+  togglePushNotifications: async () => false,
+  markAsRead: async () => {},
+  markAllAsRead: async () => {},
+  refreshNotifications: async () => {},
+  playChime: () => {},
+};
+
+const NotificationContext =
+  ((globalThis as unknown as Record<string, unknown>).__MEDIQUEE_NOTIFICATION_CONTEXT__ as React.Context<NotificationContextType>) ||
+  createContext<NotificationContextType>(defaultNotificationContext);
+
+(globalThis as unknown as Record<string, unknown>).__MEDIQUEE_NOTIFICATION_CONTEXT__ = NotificationContext;
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const auth = useAuth();
+  const isAuthenticated = Boolean(auth?.isAuthenticated);
   const { toast } = useToast();
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -153,10 +170,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   );
 };
 
-export const useNotifications = () => {
+export const useNotifications = (): NotificationContextType => {
   const context = useContext(NotificationContext);
-  if (!context) {
-    throw new Error('useNotifications must be used within a NotificationProvider');
-  }
-  return context;
+  return context ?? defaultNotificationContext;
 };

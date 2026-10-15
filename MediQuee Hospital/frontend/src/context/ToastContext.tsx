@@ -11,11 +11,19 @@ interface Toast {
   type: ToastType;
 }
 
-interface ToastContextType {
+export interface ToastContextType {
   toast: (message: string, type: ToastType) => void;
 }
 
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
+export const defaultToastContext: ToastContextType = {
+  toast: () => {},
+};
+
+const ToastContext =
+  ((globalThis as unknown as Record<string, unknown>).__MEDIQUEE_TOAST_CONTEXT__ as React.Context<ToastContextType>) ||
+  createContext<ToastContextType>(defaultToastContext);
+
+(globalThis as unknown as Record<string, unknown>).__MEDIQUEE_TOAST_CONTEXT__ = ToastContext;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -76,10 +84,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export const useToast = () => {
+export const useToast = (): ToastContextType => {
   const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error('useToast must be used within a ToastProvider');
-  }
-  return context;
+  return context ?? defaultToastContext;
 };
