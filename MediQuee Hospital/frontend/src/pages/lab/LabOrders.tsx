@@ -40,9 +40,6 @@ export function LabOrders() {
     { id: 'all', label: 'All' },
     { id: 'in_person', label: 'Walk-in Lab' },
     { id: 'home_sample', label: 'Home Sample Collection' },
-    { id: 'blood', label: 'Blood Tests' },
-    { id: 'pathology', label: 'Pathology & Biopsy' },
-    { id: 'routine', label: 'Routine Diagnostics' },
   ]
 
   // Dynamic 14-day date strip starting from today
@@ -171,17 +168,6 @@ export function LabOrders() {
       if (selectedFilter !== 'all') {
         if (selectedFilter === 'in_person' && apt.isHome) return false
         if (selectedFilter === 'home_sample' && !apt.isHome) return false
-
-        const fullTestText = `${apt.testsSummary} ${apt.specimen}`.toLowerCase()
-        if (selectedFilter === 'blood' && !/blood|serum|plasma|cbc|esr|sugar|glucose|lipid|lft|kft|hemoglobin|thyroid/i.test(fullTestText)) {
-          return false
-        }
-        if (selectedFilter === 'pathology' && !/path|biopsy|urine|stool|tissue|culture|histology|cytology/i.test(fullTestText)) {
-          return false
-        }
-        if (selectedFilter === 'routine' && /special|biopsy|genetic|imaging|ct|mri/i.test(fullTestText)) {
-          return false
-        }
       }
 
       return true
@@ -228,9 +214,6 @@ export function LabOrders() {
     switch (filterId) {
       case 'in_person': return 'Walk-in Lab Orders'
       case 'home_sample': return 'Home Sample Collections'
-      case 'blood': return 'Blood Test Orders'
-      case 'pathology': return 'Pathology Test Orders'
-      case 'routine': return 'Routine Diagnostic Orders'
       default: return 'Orders'
     }
   }
