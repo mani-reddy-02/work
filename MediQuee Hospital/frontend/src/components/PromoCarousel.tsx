@@ -109,7 +109,7 @@ const slideVariants: Variants = {
   })
 };
 
-export function PromoCarousel() {
+export function PromoCarousel({ module }: { module?: string } = {}) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [[page, direction], setPage] = useState<[number, number]>([0, 0]);
@@ -120,9 +120,11 @@ export function PromoCarousel() {
   const [slides, setSlides] = useState<any[]>(DEFAULT_SLIDES);
 
   useEffect(() => {
-    let moduleName = 'HOSPITAL';
-    if (user?.role === 'doctor') moduleName = 'DOCTOR';
-    else if (user?.role === 'lab') moduleName = 'LABS';
+    let moduleName = module || 'HOSPITAL';
+    if (!module) {
+      if (user?.role === 'doctor') moduleName = 'DOCTOR';
+      else if (user?.role === 'lab') moduleName = 'LABS';
+    }
 
     fetch(`${API_BASE_URL}/home-posters?module=${moduleName}`)
       .then(res => res.json())
@@ -135,7 +137,7 @@ export function PromoCarousel() {
         }
       })
       .catch(console.error);
-  }, [user?.role]);
+  }, [user?.role, module]);
 
   const activeIndex = slides.length > 0 ? (page % slides.length + slides.length) % slides.length : 0;
 

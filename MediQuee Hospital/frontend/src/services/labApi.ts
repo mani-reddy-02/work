@@ -140,8 +140,13 @@ export const labApi = {
     return data;
   },
 
-  async getLabDashboard() {
-    const res = await fetch(`${API_BASE}/lab-bookings/hospital/dashboard`, {
+  async getLabDashboard(params?: { range?: string; startDate?: string; endDate?: string }) {
+    const q = new URLSearchParams();
+    if (params?.range) q.set('range', params.range);
+    if (params?.startDate) q.set('startDate', params.startDate);
+    if (params?.endDate) q.set('endDate', params.endDate);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    const res = await fetch(`${API_BASE}/lab-bookings/hospital/dashboard${qs}`, {
       headers: getAuthHeaders()
     });
     const data = await res.json();

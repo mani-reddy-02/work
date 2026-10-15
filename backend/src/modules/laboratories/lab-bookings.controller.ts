@@ -283,6 +283,7 @@ export const getHospitalLabDashboard = async (req: Request, res: Response, next:
     let todayRevenue = 0;
     let weekRevenue = 0;
     let monthRevenue = 0;
+    let totalRevenue = 0;
 
     const todayBuckets: Record<string, number> = {
       '08:00': 0,
@@ -329,6 +330,8 @@ export const getHospitalLabDashboard = async (req: Request, res: Response, next:
       }
 
       if (isNotCancelled) {
+        totalRevenue += b.totalAmount;
+
         if (bTime >= startOfToday) {
           todayRevenue += b.totalAmount;
           const hour = bTime.getHours();
@@ -365,6 +368,37 @@ export const getHospitalLabDashboard = async (req: Request, res: Response, next:
     const todaySeries = Object.entries(todayBuckets).map(([t, v]) => ({ t, v }));
     const weekSeries = weekDaysList.map(item => ({ t: item.label, v: weekDaysMap[item.key] || 0 }));
     const monthSeries = monthBuckets.map(item => ({ t: item.label, v: item.v }));
+
+    let customSeries: { t: string; v: number; date?: string }[] = [];
+    let customRevenue = 0;
+    if (req.query.startDate && req.query.endDate) {
+      const qStart = new Date(req.query.startDate as string);
+      qStart.setHours(0, 0, 0, 0);
+      const qEnd = new Date(req.query.endDate as string);
+      qEnd.setHours(23, 59, 59, 999);
+      const diffDays = Math.max(1, Math.ceil((qEnd.getTime() - qStart.getTime()) / (1000 * 60 * 60 * 24)));
+      const customDaysMap: Record<string, number> = {};
+      const customDaysList: { key: string; label: string }[] = [];
+      const capped = Math.min(diffDays, 60);
+      for (let i = 0; i < capped; i++) {
+        const d = new Date(qStart.getFullYear(), qStart.getMonth(), qStart.getDate() + i);
+        const k = d.toISOString().split('T')[0];
+        const lbl = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        customDaysMap[k] = 0;
+        customDaysList.push({ key: k, label: lbl });
+      }
+      for (const b of allBookings) {
+        if (b.status !== 'CANCELLED') {
+          const bTime = new Date(b.createdAt);
+          if (bTime >= qStart && bTime <= qEnd) {
+            customRevenue += b.totalAmount;
+            const k = bTime.toISOString().split('T')[0];
+            if (customDaysMap[k] !== undefined) customDaysMap[k] += b.totalAmount;
+          }
+        }
+      }
+      customSeries = customDaysList.map(item => ({ t: item.label, v: customDaysMap[item.key] || 0, date: item.key }));
+    }
 
     const formatBookingItem = (b: any) => {
       const tests = b.items.map((it: any) => it.labTest.platformTest.name).join(', ') || 'Diagnostic Test';
@@ -405,10 +439,12 @@ export const getHospitalLabDashboard = async (req: Request, res: Response, next:
         kpis: {
           totalOrders,
           pendingTests,
+          completedTests: reportsReady,
           reportsReady,
           todayRevenue,
           weekRevenue,
-          monthRevenue
+          monthRevenue,
+          totalRevenue
         },
         testStatus: {
           pending: pendingTests,
@@ -420,8 +456,12 @@ export const getHospitalLabDashboard = async (req: Request, res: Response, next:
         revenueSeries: {
           today: todaySeries,
           week: weekSeries,
-          month: monthSeries
+          month: monthSeries,
+          custom: customSeries
         },
+        customRevenue,
+        hospitalSharePercentage: 80,
+        platformFeePercentage: 20,
         todayOrders
       }
     });

@@ -213,6 +213,7 @@ function AnimatedRoutes() {
           <Route path="/lab/orders" element={<LabOrders />} />
           <Route path="/lab/order/:id" element={<LabOrderDetail />} />
           <Route path="/lab/reports" element={<LabReports />} />
+          <Route path="/lab/payouts" element={<Payouts />} />
           <Route path="/lab/manage-slots" element={<LabAvailability />} />
           <Route path="/lab/upload-report" element={<UploadReport />} />
           <Route path="/lab/report/:id" element={<ReportView />} />
