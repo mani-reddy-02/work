@@ -584,6 +584,52 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
     // Latest vitals across current booking or most recent past visit
     const latestVitals = booking.vitals || (pastBookings as any[]).find(b => b.vitals)?.vitals || null;
 
+    // Calculate live queue position if waiting or in consultation
+    let activeInConsultation: { id: string; token: string; patientName: string } | null = null;
+    let queuePosition = 1;
+    let totalWaitingInQueue = 0;
+
+    const startOfAppt = new Date(booking.appointmentDate);
+    startOfAppt.setHours(0, 0, 0, 0);
+    const endOfAppt = new Date(booking.appointmentDate);
+    endOfAppt.setHours(23, 59, 59, 999);
+
+    const activeBooking = await prisma.oPBooking.findFirst({
+      where: {
+        doctorId: booking.doctorId,
+        appointmentDate: { gte: startOfAppt, lte: endOfAppt },
+        status: 'IN_CONSULTATION'
+      },
+      select: { id: true, patientName: true }
+    });
+    if (activeBooking) {
+      activeInConsultation = {
+        id: activeBooking.id,
+        token: `OP-${activeBooking.id.substring(0, 6).toUpperCase()}`,
+        patientName: activeBooking.patientName
+      };
+    }
+
+    if (booking.status === 'WAITING') {
+      const earlierWaiting = await prisma.oPBooking.count({
+        where: {
+          doctorId: booking.doctorId,
+          appointmentDate: { gte: startOfAppt, lte: endOfAppt },
+          status: 'WAITING',
+          createdAt: { lt: booking.createdAt }
+        }
+      });
+      queuePosition = earlierWaiting + 1;
+
+      totalWaitingInQueue = await prisma.oPBooking.count({
+        where: {
+          doctorId: booking.doctorId,
+          appointmentDate: { gte: startOfAppt, lte: endOfAppt },
+          status: 'WAITING'
+        }
+      });
+    }
+
     res.json({
       success: true,
       data: {
@@ -611,6 +657,9 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
         timeSlot: booking.timeSlot || booking.slotTime,
         slotTime: booking.slotTime || booking.timeSlot,
         status: booking.status,
+        queuePosition,
+        totalWaitingInQueue,
+        activeInConsultation,
         opType: booking.opType,
         fee: booking.fee,
         reason: booking.reason,
@@ -657,7 +706,8 @@ export const updateAppointmentVitals = async (req: Request, res: Response, next:
       where: {
         OR: [
           { id: cleanId },
-          { id: { startsWith: cleanId } }
+          { id: { startsWith: cleanId } },
+          { id: rawId }
         ],
         ...(hospitalId ? { hospitalId } : {})
       }
@@ -723,13 +773,22 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
     const rawId = (req.params.id as string || '').trim();
     const cleanId = rawId.replace(/^OP-?/i, '');
     const hospitalId = req.user?.hospitalId;
-    const { status, reason, notes } = req.body;
+    let { status, reason, notes } = req.body;
+
+    // Normalize operational statuses to database BookingStatus enum
+    let normalizedStatus: string = status;
+    if (status === 'IN_PROGRESS') {
+      normalizedStatus = 'IN_CONSULTATION';
+    } else if (status === 'CONFIRMED' || status === 'ARRIVED' || status === 'CALLED') {
+      normalizedStatus = 'WAITING';
+    }
 
     const booking = await prisma.oPBooking.findFirst({
       where: {
         OR: [
           { id: cleanId },
-          { id: { startsWith: cleanId } }
+          { id: { startsWith: cleanId } },
+          { id: rawId }
         ],
         ...(hospitalId ? { hospitalId } : {})
       }
@@ -739,8 +798,22 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Appointment not found' } });
     }
 
+    // Business rule: Terminal states cannot be transitioned
+    if (booking.status === 'COMPLETED' && normalizedStatus !== 'COMPLETED') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_TRANSITION', message: 'Cannot modify an already completed appointment' }
+      });
+    }
+    if (booking.status === 'CANCELLED' && normalizedStatus !== 'CANCELLED') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_TRANSITION', message: 'Cannot modify a cancelled appointment' }
+      });
+    }
+
     const updateData: any = {};
-    if (status) updateData.status = status;
+    if (normalizedStatus) updateData.status = normalizedStatus;
     if (reason !== undefined) updateData.reason = reason;
     else if (notes !== undefined) updateData.reason = notes;
 
@@ -748,13 +821,72 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
       where: { id: booking.id },
       data: updateData,
       include: {
-        doctor: { select: { id: true, name: true, avatar: true } },
+        doctor: { select: { id: true, name: true, avatar: true, specialization: true } },
         department: { select: { id: true, name: true } },
+        hospital: { select: { id: true, name: true, city: true, contactPhone: true } },
         vitals: true
       }
     });
 
-    res.json({ success: true, data: updated });
+    // 1. Send live operational notification to staff
+    const staffTitle = updated.status === 'IN_CONSULTATION'
+      ? 'Consultation Started'
+      : updated.status === 'COMPLETED'
+      ? 'Consultation Completed'
+      : 'Appointment Status Changed';
+
+    sendNotification({
+      hospitalId: updated.hospitalId,
+      userId: updated.doctorId,
+      title: staffTitle,
+      message: `${updated.patientName}'s appointment is now ${updated.status.replace(/_/g, ' ')}`,
+      type: 'activity',
+      metadata: { 
+        bookingId: updated.id, 
+        status: updated.status, 
+        patientName: updated.patientName,
+        targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
+      },
+      targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
+    }).catch(console.error);
+
+    // 2. Real-time notification for Patient if registered user
+    if (updated.patientId) {
+      const patientTitle = updated.status === 'IN_CONSULTATION'
+        ? 'Consultation Started'
+        : updated.status === 'COMPLETED'
+        ? 'Consultation Completed'
+        : 'Appointment Status Updated';
+
+      const patientMessage = updated.status === 'IN_CONSULTATION'
+        ? `Your consultation with Dr. ${updated.doctor?.name || 'Doctor'} has started. Please proceed to ${updated.department?.name || 'the consultation room'}.`
+        : updated.status === 'COMPLETED'
+        ? `Your consultation with Dr. ${updated.doctor?.name || 'Doctor'} is complete. Thank you for visiting ${updated.hospital?.name || 'MediQuee Hospital'}.`
+        : `Your appointment is now ${updated.status.replace(/_/g, ' ')}.`;
+
+      sendNotification({
+        hospitalId: null,
+        userId: updated.patientId,
+        title: patientTitle,
+        message: patientMessage,
+        type: 'appointment',
+        metadata: {
+          bookingId: updated.id,
+          status: updated.status,
+          targetRoles: ['PATIENT']
+        },
+        targetRoles: ['PATIENT']
+      }).catch(console.error);
+    }
+
+    res.json({ 
+      success: true, 
+      data: {
+        ...updated,
+        updatedAt: updated.updatedAt
+      },
+      message: `Appointment status updated to ${updated.status}`
+    });
   } catch (error) {
     next(error);
   }

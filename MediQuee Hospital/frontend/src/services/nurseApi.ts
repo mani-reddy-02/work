@@ -112,6 +112,8 @@ export const nurseApi = {
    * Fetch all assigned home visits separated into upcoming and history tabs.
    */
   async getVisits(params?: { search?: string; date?: string }): Promise<{
+    today: NurseVisit[];
+    inProgress: NurseVisit[];
     upcoming: NurseVisit[];
     history: NurseVisit[];
     all: NurseVisit[];
@@ -258,6 +260,50 @@ export const nurseApi = {
     const json = await res.json();
     if (!res.ok || !json.success) {
       throw new Error(json.error?.message || 'Failed to update nursing service offering');
+    }
+
+    return json;
+  },
+
+  /**
+   * Hospital: Bulk save selected nursing service offerings
+   */
+  async saveOfferings(params: {
+    offerings?: Array<{
+      serviceId: string;
+      available?: boolean;
+      price?: number;
+      duration?: string;
+      serviceArea?: string;
+    }>;
+    selectedServiceIds?: string[];
+  }): Promise<{ success: boolean; count: number; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/home-nursing/hospital/offerings/save`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(params),
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      throw new Error(json.error?.message || 'Failed to save nursing service offerings');
+    }
+
+    return json;
+  },
+
+  /**
+   * Hospital: Delete / remove a nursing service offering
+   */
+  async deleteOffering(serviceId: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/home-nursing/hospital/offerings/${encodeURIComponent(serviceId)}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      throw new Error(json.error?.message || 'Failed to remove nursing service offering');
     }
 
     return json;

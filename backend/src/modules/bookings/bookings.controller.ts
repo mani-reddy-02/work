@@ -119,7 +119,7 @@ export const getTodayBookings = async (req: Request, res: Response, next: NextFu
       return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'User does not belong to a hospital' } });
     }
 
-    const { date, range, doctorId, departmentId, status } = req.query;
+    const { date, range, doctorId, departmentId, status, type, opType, excludeVideo, opOnly } = req.query;
 
     const whereClause: any = {
       hospitalId
@@ -141,6 +141,33 @@ export const getTodayBookings = async (req: Request, res: Response, next: NextFu
       } else {
         whereClause.status = status;
       }
+    }
+
+    // Explicit opType filter if provided
+    if (opType && typeof opType === 'string') {
+      whereClause.opType = opType;
+    }
+
+    // Filter OP vs Video Consultations:
+    // Receptionist in queue should strictly see only physical in-person OP bookings, NOT video consultations.
+    const isOpOnly = 
+      req.user!.role === 'RECEPTIONIST' || 
+      type === 'OP' || 
+      excludeVideo === 'true' || 
+      opOnly === 'true';
+
+    if (isOpOnly) {
+      whereClause.videoConsultation = null;
+      whereClause.NOT = [
+        ...(Array.isArray(whereClause.NOT) ? whereClause.NOT : whereClause.NOT ? [whereClause.NOT] : []),
+        { opType: { contains: 'video', mode: 'insensitive' } },
+        { opType: { contains: 'online', mode: 'insensitive' } }
+      ];
+    } else if (type === 'VIDEO' || req.query.videoOnly === 'true') {
+      whereClause.OR = [
+        { opType: { contains: 'video', mode: 'insensitive' } },
+        { videoConsultation: { isNot: null } }
+      ];
     }
 
     // Date filtering logic
@@ -187,7 +214,8 @@ export const getTodayBookings = async (req: Request, res: Response, next: NextFu
       include: {
         doctor: { select: { id: true, name: true, avatar: true } },
         department: { select: { id: true, name: true } },
-        condition: { select: { id: true, name: true } }
+        condition: { select: { id: true, name: true } },
+        videoConsultation: { select: { id: true, roomName: true, status: true } }
       },
       orderBy: [
         { appointmentDate: 'asc' },
@@ -208,10 +236,26 @@ export const updateBookingStatus = async (req: Request, res: Response, next: Nex
       return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'User does not belong to a hospital' } });
     }
 
-    const bookingId = req.params.id as string;
-    const { status, reason, notes } = req.body;
+    const rawId = (req.params.id as string || '').trim();
+    const cleanId = rawId.replace(/^OP-?/i, '');
+    let { status, reason, notes } = req.body;
 
-    const whereClause: any = { id: bookingId, hospitalId };
+    // Normalize operational statuses to database BookingStatus enum
+    let normalizedStatus: string = status;
+    if (status === 'IN_PROGRESS') {
+      normalizedStatus = 'IN_CONSULTATION';
+    } else if (status === 'CONFIRMED' || status === 'ARRIVED' || status === 'CALLED') {
+      normalizedStatus = 'WAITING';
+    }
+
+    const whereClause: any = {
+      hospitalId,
+      OR: [
+        { id: cleanId },
+        { id: { startsWith: cleanId } },
+        { id: rawId }
+      ]
+    };
     if (req.user!.role === 'DOCTOR') {
       whereClause.doctorId = req.user!.id;
     }
@@ -221,26 +265,48 @@ export const updateBookingStatus = async (req: Request, res: Response, next: Nex
     });
 
     if (!existing) {
-      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found or not assigned to this doctor' } });
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found or not accessible' } });
     }
 
-    const updateData: any = { status };
+    // Business rule: Terminal states cannot be transitioned
+    if (existing.status === 'COMPLETED' && normalizedStatus !== 'COMPLETED') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_TRANSITION', message: 'Cannot modify an already completed appointment' }
+      });
+    }
+    if (existing.status === 'CANCELLED' && normalizedStatus !== 'CANCELLED') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_TRANSITION', message: 'Cannot modify a cancelled appointment' }
+      });
+    }
+
+    const updateData: any = { status: normalizedStatus };
     if (reason !== undefined) updateData.reason = reason;
     else if (notes !== undefined) updateData.reason = notes;
 
     const updated = await prisma.oPBooking.update({
-      where: { id: bookingId },
+      where: { id: existing.id },
       data: updateData,
       include: {
-        doctor: { select: { id: true, name: true, avatar: true } },
-        department: { select: { id: true, name: true } }
+        doctor: { select: { id: true, name: true, avatar: true, specialization: true } },
+        department: { select: { id: true, name: true } },
+        hospital: { select: { id: true, name: true, city: true, contactPhone: true } }
       }
     });
+
+    // 1. Send live operational notification to hospital staff (Receptionist, Hospital Admin, Doctor)
+    const staffTitle = updated.status === 'IN_CONSULTATION'
+      ? 'Consultation Started'
+      : updated.status === 'COMPLETED'
+      ? 'Consultation Completed'
+      : 'Appointment Status Changed';
 
     sendNotification({
       hospitalId,
       userId: updated.doctorId,
-      title: 'Appointment Status Changed',
+      title: staffTitle,
       message: `${updated.patientName}'s appointment is now ${updated.status.replace(/_/g, ' ')}`,
       type: 'activity',
       metadata: { 
@@ -252,6 +318,35 @@ export const updateBookingStatus = async (req: Request, res: Response, next: Nex
       targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
     }).catch(console.error);
 
+    // 2. Real-time notification for Patient if registered user
+    if (updated.patientId) {
+      const patientTitle = updated.status === 'IN_CONSULTATION'
+        ? 'Consultation Started'
+        : updated.status === 'COMPLETED'
+        ? 'Consultation Completed'
+        : 'Appointment Status Updated';
+
+      const patientMessage = updated.status === 'IN_CONSULTATION'
+        ? `Your consultation with Dr. ${updated.doctor?.name || 'Doctor'} has started. Please proceed to ${updated.department?.name || 'the consultation room'}.`
+        : updated.status === 'COMPLETED'
+        ? `Your consultation with Dr. ${updated.doctor?.name || 'Doctor'} is complete. Thank you for visiting ${updated.hospital?.name || 'MediQuee Hospital'}.`
+        : `Your appointment is now ${updated.status.replace(/_/g, ' ')}.`;
+
+      sendNotification({
+        hospitalId: null,
+        userId: updated.patientId,
+        title: patientTitle,
+        message: patientMessage,
+        type: 'appointment',
+        metadata: {
+          bookingId: updated.id,
+          status: updated.status,
+          targetRoles: ['PATIENT']
+        },
+        targetRoles: ['PATIENT']
+      }).catch(console.error);
+    }
+
     // If cancelled, trigger Meta WhatsApp cancellation notification
     if (updated.status === 'CANCELLED') {
       import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
@@ -259,7 +354,14 @@ export const updateBookingStatus = async (req: Request, res: Response, next: Nex
       }).catch(console.error);
     }
 
-    res.json({ success: true, data: updated });
+    res.json({ 
+      success: true, 
+      data: {
+        ...updated,
+        updatedAt: updated.updatedAt
+      },
+      message: `Appointment status updated to ${updated.status}`
+    });
   } catch (error) {
     next(error);
   }

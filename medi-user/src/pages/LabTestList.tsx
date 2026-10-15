@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Activity,
@@ -155,12 +155,36 @@ const LabTestList = () => {
     address: 'Madhapur, Hyderabad, 500081',
   });
 
+  // Standard 7-day booking horizon independent from slot availability
+  const getStandardBookingDates = (count = 7): { label: string; date: string }[] => {
+    const dates = [];
+    const now = new Date();
+    for (let i = 0; i < count; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+      const isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      let label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      if (i === 0) label = 'Today';
+      else if (i === 1) label = 'Tomorrow';
+
+      dates.push({
+        label,
+        date: isoDate
+      });
+    }
+    return dates;
+  };
+
   // Date & Time availability
-  const [availableDates, setAvailableDates] = useState<{ label: string; date: string }[]>([]);
+  const [availableDates, setAvailableDates] = useState<{ label: string; date: string }[]>(() => getStandardBookingDates(7));
   const [availableSlots, setAvailableSlots] = useState<{ slot: string; available: boolean }[]>([]);
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
-  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const d = getStandardBookingDates(7);
+    return d.length > 0 ? d[0].date : '';
+  });
+  const [selectedTime, setSelectedTime] = useState<string>('');
+  const [isLoadingSlots, setIsLoadingSlots] = useState<boolean>(false);
+  const [slotError, setSlotError] = useState<string | null>(null);
+  const slotRequestSeqRef = useRef<number>(0);
 
   // Booking & payment state
   const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'COD'>('ONLINE');
@@ -282,22 +306,43 @@ const LabTestList = () => {
     }
   };
 
-  // Load slots when lab or date changes
-  const loadSlots = async (labId: string, dateStr?: string) => {
+  // Load slots dynamically when lab or date changes
+  const loadSlots = async (labId: string, dateStr: string) => {
+    const reqSeq = ++slotRequestSeqRef.current;
     setIsLoadingSlots(true);
+    setSlotError(null);
     try {
       const res = await labTestApi.getLaboratoryAvailability(labId, dateStr);
-      if (res.success && res.data) {
-        setAvailableDates(res.data.availableDates || []);
-        setAvailableSlots(res.data.slots || []);
-        if (!selectedDate && res.data.availableDates && res.data.availableDates.length > 0) {
-          setSelectedDate(res.data.availableDates[0].date);
-        }
+      if (reqSeq !== slotRequestSeqRef.current) {
+        return; // Discard stale response
       }
-    } catch {
-      // Fallback
+      if (res.success && res.data) {
+        setAvailableSlots(res.data.slots || []);
+        if (res.data.availableDates && res.data.availableDates.length >= 7) {
+          setAvailableDates(res.data.availableDates);
+        }
+      } else {
+        setAvailableSlots([]);
+        setSlotError(res.error || 'Failed to load time slots');
+      }
+    } catch (err: any) {
+      if (reqSeq === slotRequestSeqRef.current) {
+        setAvailableSlots([]);
+        setSlotError(err.message || 'Unable to connect to laboratory service');
+      }
     } finally {
-      setIsLoadingSlots(false);
+      if (reqSeq === slotRequestSeqRef.current) {
+        setIsLoadingSlots(false);
+      }
+    }
+  };
+
+  const handleDateChange = (newDate: string) => {
+    if (newDate === selectedDate) return;
+    setSelectedDate(newDate);
+    setSelectedTime(''); // Clear slot when date changes
+    if (selectedLab) {
+      loadSlots(selectedLab.id, newDate);
     }
   };
 
@@ -335,6 +380,7 @@ const LabTestList = () => {
 
   const handleSelectTest = (item: any) => {
     setSelectedItem(item);
+    setSelectedTime('');
     setViewState('TEST_DETAIL');
   };
 
@@ -358,8 +404,13 @@ const LabTestList = () => {
       alert('Please provide patient name and phone number.');
       return;
     }
-    if (selectedLab) {
-      loadSlots(selectedLab.id, selectedDate);
+    const targetDate = selectedDate || availableDates[0]?.date || '';
+    if (!selectedDate && targetDate) {
+      setSelectedDate(targetDate);
+    }
+    setSelectedTime('');
+    if (selectedLab && targetDate) {
+      loadSlots(selectedLab.id, targetDate);
     }
     setViewState('DATE_TIME');
   };
@@ -1051,7 +1102,10 @@ const LabTestList = () => {
                       return (
                         <div
                           key={lab.id}
-                          onClick={() => setSelectedLab(lab)}
+                          onClick={() => {
+                            setSelectedLab(lab);
+                            setSelectedTime('');
+                          }}
                           className={`bg-white p-4 rounded-2xl border-2 transition-all cursor-pointer relative ${
                             isSelected
                               ? 'border-[#0055ff] shadow-md shadow-blue-500/10'
@@ -1248,10 +1302,7 @@ const LabTestList = () => {
                       <button
                         key={d.date}
                         type="button"
-                        onClick={() => {
-                          setSelectedDate(d.date);
-                          if (selectedLab) loadSlots(selectedLab.id, d.date);
-                        }}
+                        onClick={() => handleDateChange(d.date)}
                         className={`shrink-0 min-w-[84px] h-[92px] px-2.5 py-2 rounded-2xl flex flex-col items-center justify-between border transition-all duration-200 snap-center select-none shadow-sm ${
                           isSelected
                             ? 'bg-[#0055ff] border-[#0055ff] text-white shadow-lg shadow-blue-500/25 scale-105 ring-2 ring-blue-400/30'
@@ -1296,9 +1347,24 @@ const LabTestList = () => {
                   <h3 className="text-[13px] font-bold text-slate-800">Available Time Slots</h3>
                 </div>
                 {isLoadingSlots ? (
-                  <div className="bg-white rounded-2xl border border-slate-100 p-8 flex flex-col items-center justify-center shadow-sm">
-                    <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
-                    <p className="text-xs text-slate-500 font-medium">Fetching accurate slots...</p>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="h-11 rounded-xl bg-slate-100 animate-pulse border border-slate-200/50" />
+                      ))}
+                    </div>
+                  </div>
+                ) : slotError ? (
+                  <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5 text-center shadow-sm">
+                    <AlertCircle className="w-6 h-6 text-rose-500 mx-auto mb-2" />
+                    <p className="text-xs font-bold text-rose-800">{slotError}</p>
+                    <button
+                      type="button"
+                      onClick={() => selectedLab && loadSlots(selectedLab.id, selectedDate)}
+                      className="mt-3 px-4 py-1.5 bg-rose-600 text-white text-xs font-bold rounded-lg hover:bg-rose-700 transition-colors shadow-sm"
+                    >
+                      Retry
+                    </button>
                   </div>
                 ) : (
                   <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
@@ -1323,12 +1389,13 @@ const LabTestList = () => {
                         })}
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center text-center py-6">
-                        <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-2">
-                          <span className="text-slate-400 text-xl">🕒</span>
+                      <div className="flex flex-col items-center justify-center text-center py-8 px-4 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
+                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-2.5 shadow-sm border border-slate-100">
+                          <Clock className="w-5 h-5 text-slate-400" />
                         </div>
-                        <p className="text-slate-600 font-semibold text-sm">No slots available</p>
-                        <p className="text-slate-400 text-xs mt-1">Please select another date</p>
+                        <p className="text-slate-800 font-bold text-sm">
+                          No available time slots for this date. Please select another date.
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1346,7 +1413,7 @@ const LabTestList = () => {
 
               <div className="space-y-3 mt-4">
                 <button
-                  disabled={!selectedDate || !selectedTime}
+                  disabled={!selectedDate || !selectedTime || isLoadingSlots}
                   onClick={handleProceedToReview}
                   className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[13px] font-bold transition-all duration-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed bg-[#0055ff] text-white hover:bg-blue-600 shadow-lg shadow-blue-500/30 disabled:shadow-none"
                 >

@@ -19,9 +19,9 @@ export function ProfileEdit() {
   const isDoctor = role === 'doctor';
   const isNurse = role === 'nurse';
   const isReceptionist = role === 'receptionist';
-  const primaryColor = (isDoctor || isNurse || isReceptionist) ? "bg-[#1B5DF1] hover:bg-[#1B5DF1]/90" : "bg-[#1769E0] hover:bg-[#1255b8]";
-  const primaryText = (isDoctor || isNurse || isReceptionist) ? "text-[#1B5DF1]" : "text-[#1769E0]";
-  const primaryBgSoft = (isDoctor || isNurse || isReceptionist) ? "bg-[#1B5DF1]/10" : "bg-[#1769E0]/10";
+  const primaryColor = "bg-[#1769E0] hover:bg-blue-700";
+  const primaryText = "text-[#1769E0]";
+  const primaryBgSoft = "bg-blue-50";
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);

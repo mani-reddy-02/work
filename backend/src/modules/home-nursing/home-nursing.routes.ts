@@ -23,6 +23,8 @@ import {
   deleteAdminNursingService,
   getHospitalServiceOfferings,
   toggleHospitalServiceOffering,
+  saveHospitalServiceOfferings,
+  deleteHospitalServiceOffering,
 } from './home-nursing.controller';
 import { authenticate, requireRole } from '../../middleware/auth';
 import { Role } from '@prisma/client';
@@ -41,6 +43,8 @@ router.get('/hospital/offerings', authenticate, requireRole([Role.HOSPITAL_ADMIN
 router.get('/hospital/services-offered', authenticate, requireRole([Role.HOSPITAL_ADMIN, Role.SUPER_ADMIN]), getHospitalServiceOfferings);
 router.post('/hospital/offerings/toggle', authenticate, requireRole([Role.HOSPITAL_ADMIN, Role.SUPER_ADMIN]), toggleHospitalServiceOffering);
 router.post('/hospital/services-offered/toggle', authenticate, requireRole([Role.HOSPITAL_ADMIN, Role.SUPER_ADMIN]), toggleHospitalServiceOffering);
+router.post('/hospital/offerings/save', authenticate, requireRole([Role.HOSPITAL_ADMIN, Role.SUPER_ADMIN]), saveHospitalServiceOfferings);
+router.delete('/hospital/offerings/:serviceId', authenticate, requireRole([Role.HOSPITAL_ADMIN, Role.SUPER_ADMIN]), deleteHospitalServiceOffering);
 
 // Public discovery endpoints
 router.get('/services', getNursingServices);

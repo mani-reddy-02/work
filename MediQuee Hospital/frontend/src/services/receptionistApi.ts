@@ -7,6 +7,9 @@ export interface QueueEntry {
   token: string;
   patientId: string;
   patientName: string;
+  patientPhone?: string;
+  patientAge?: number;
+  patientGender?: string;
   departmentId: string;
   departmentName: string;
   doctorId?: string;
@@ -15,6 +18,8 @@ export interface QueueEntry {
   status: QueueStatus;
   slotTime?: string;
   timeSlot?: string;
+  opType?: string;
+  reason?: string;
 }
 
 export interface Patient {
@@ -147,6 +152,8 @@ export const receptionistApi = {
     if (filters?.date) params.append('date', filters.date);
     if (filters?.range) params.append('range', filters.range);
     if (filters?.status && filters.status.length > 0) params.append('status', filters.status.join(','));
+    params.append('type', 'OP');
+    params.append('excludeVideo', 'true');
 
     const qs = params.toString();
     const url = `${API_URL}/api/v1/hospital/bookings${qs ? `?${qs}` : ''}`;
@@ -159,12 +166,28 @@ export const receptionistApi = {
       throw new Error(error.error?.message || 'Failed to fetch queue');
     }
     const data = await res.json();
+    
+    // Receptionist Queue strictly displays OP consultations, excluding video consultations
+    const isVideoBooking = (b: any) => {
+      const op = (b.opType || '').toLowerCase();
+      return (
+        op.includes('video') ||
+        op.includes('online') ||
+        Boolean(b.videoConsultation)
+      );
+    };
+
     // Map OPBooking to QueueEntry format
-    return (data.data || []).map((b: any) => ({
+    return (data.data || [])
+      .filter((b: any) => !isVideoBooking(b))
+      .map((b: any) => ({
       id: b.id,
       token: `OP-${b.id.substring(0, 6).toUpperCase()}`,
-      patientId: b.id,
+      patientId: b.patientId || b.id,
       patientName: b.patientName,
+      patientPhone: b.patientPhone,
+      patientAge: b.patientAge,
+      patientGender: b.patientGender,
       departmentId: b.departmentId,
       departmentName: b.department?.name || '',
       doctorId: b.doctorId,
@@ -172,6 +195,8 @@ export const receptionistApi = {
       arrivalTime: b.appointmentDate,
       slotTime: b.slotTime || b.timeSlot,
       timeSlot: b.timeSlot || b.slotTime,
+      opType: b.opType || 'OP Walk-In',
+      reason: b.reason || b.condition?.name,
       status: b.status as QueueStatus,
     }));
   },
@@ -195,13 +220,20 @@ export const receptionistApi = {
     return {
       id: b.id,
       token: `OP-${b.id.substring(0, 6).toUpperCase()}`,
-      patientId: b.id,
+      patientId: b.patientId || b.id,
       patientName: b.patientName,
+      patientPhone: b.patientPhone,
+      patientAge: b.patientAge,
+      patientGender: b.patientGender,
       departmentId: b.departmentId,
       departmentName: b.department?.name || '',
       doctorId: b.doctorId,
       doctorName: b.doctor?.name || '',
       arrivalTime: b.appointmentDate,
+      slotTime: b.slotTime || b.timeSlot,
+      timeSlot: b.timeSlot || b.slotTime,
+      opType: b.opType || 'OP Walk-In',
+      reason: b.reason || b.condition?.name,
       status: b.status as QueueStatus,
     };
   },

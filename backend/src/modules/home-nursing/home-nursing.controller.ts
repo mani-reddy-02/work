@@ -12,6 +12,23 @@ const generateBookingNumber = (): string => {
 };
 
 /**
+ * Format a Date/timestamp into 'YYYY-MM-DD' in Indian Standard Time (IST / Asia/Kolkata).
+ * This prevents the timezone offset bug where UTC conversion of midnight IST (18:30 UTC previous day)
+ * resulted in dates displaying 1 day earlier.
+ */
+export const formatServiceDateToIST = (date: Date | string | null | undefined): string => {
+  if (!date) return '';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+};
+
+/**
  * GET /api/v1/home-nursing/services
  * Returns active nursing services with search, category, and hospital filters.
  */
@@ -334,8 +351,7 @@ export const getNursingAvailability = async (req: Request, res: Response, next: 
     const todayStr = getCalendarDateString(new Date());
     const targetDateStr = (date && typeof date === 'string') ? date : todayStr;
 
-    const [year, month, day] = targetDateStr.split('-').map(Number);
-    const selectedDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const selectedDate = new Date(`${targetDateStr}T00:00:00.000+05:30`);
 
     // Standard nursing time slots based on duration
     const isShift = service.duration.includes('12') || service.duration.includes('24');
@@ -354,8 +370,7 @@ export const getNursingAvailability = async (req: Request, res: Response, next: 
         ];
 
     // Find existing bookings on that date
-    const nextDay = new Date(selectedDate);
-    nextDay.setDate(nextDay.getDate() + 1);
+    const nextDay = new Date(selectedDate.getTime() + 24 * 60 * 60 * 1000);
 
     const bookingWhere: any = {
       hospitalId,
@@ -539,8 +554,7 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
       });
     }
 
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const bookingDay = new Date(y, m - 1, d, 0, 0, 0, 0);
+    const bookingDay = new Date(`${dateStr}T00:00:00.000+05:30`);
 
     const trustedTotalAmount = offering.price;
     const bookingNumber = generateBookingNumber();
@@ -573,8 +587,7 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
     // 6. Execute in transaction to prevent race conditions and duplicate bookings
     const newBooking = await prisma.$transaction(async (tx) => {
       // Check for slot conflict
-      const nextDay = new Date(bookingDay);
-      nextDay.setDate(nextDay.getDate() + 1);
+      const nextDay = new Date(bookingDay.getTime() + 24 * 60 * 60 * 1000);
 
       const conflict = await tx.homeNursingBooking.findFirst({
         where: {
@@ -633,7 +646,7 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
     });
 
     // Fire notification to patient
-    const displayDate = new Date(newBooking.serviceDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+    const displayDate = new Date(newBooking.serviceDate).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' });
     sendNotification({
       hospitalId: null, // Patient notification
       userId: userId,
@@ -670,7 +683,7 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
         bookingNumber: newBooking.bookingNumber,
         serviceName: service.name,
         hospitalName: hospital.name,
-        date: newBooking.serviceDate.toISOString().split('T')[0],
+        date: formatServiceDateToIST(newBooking.serviceDate),
         timeSlot: newBooking.timeSlot,
         duration: newBooking.duration,
         patientName: newBooking.patientName,
@@ -758,7 +771,7 @@ export const getMyNursingBookings = async (req: Request, res: Response, next: Ne
         patientEmail: b.patientEmail,
         patientAge: b.patientAge,
         patientGender: b.patientGender,
-        date: b.serviceDate.toISOString().split('T')[0],
+        date: formatServiceDateToIST(b.serviceDate),
         timeSlot: b.timeSlot,
         duration: b.duration || b.service.duration,
         address: b.address,
@@ -853,7 +866,7 @@ export const getNursingBookingById = async (req: Request, res: Response, next: N
         patientEmail: booking.patientEmail,
         patientAge: booking.patientAge,
         patientGender: booking.patientGender,
-        date: booking.serviceDate.toISOString().split('T')[0],
+        date: formatServiceDateToIST(booking.serviceDate),
         timeSlot: booking.timeSlot,
         duration: booking.duration || booking.service.duration,
         address: booking.address,
@@ -980,20 +993,14 @@ export const getNurseDashboard = async (req: Request, res: Response, next: NextF
     });
 
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-
-    // Helper to check if a date is today
-    const isToday = (d: Date) => {
-      const date = new Date(d);
-      return (
-        date.getFullYear() === now.getFullYear() &&
-        date.getMonth() === now.getMonth() &&
-        date.getDate() === now.getDate()
-      );
-    };
+    const todayIST = formatServiceDateToIST(now);
 
     // Calculate real stats from DB
-    const visitsTodayList = allAssigned.filter(b => isToday(b.serviceDate) && b.status !== 'CANCELLED');
+    // A visit belongs to today if its serviceDate formatted to IST equals todayIST OR if it is currently IN_PROGRESS
+    const visitsTodayList = allAssigned.filter(b => 
+      (formatServiceDateToIST(b.serviceDate) === todayIST || b.status === 'IN_PROGRESS') && 
+      b.status !== 'CANCELLED'
+    );
     const visitsToday = visitsTodayList.length;
     const inProgressList = allAssigned.filter(b => b.status === 'IN_PROGRESS');
     const inProgress = inProgressList.length;
@@ -1002,8 +1009,8 @@ export const getNurseDashboard = async (req: Request, res: Response, next: NextF
     
     // Upcoming: future visits (or today not yet completed/cancelled)
     const upcomingList = allAssigned.filter(b => 
-      (new Date(b.serviceDate) >= startOfToday) && 
-      ['CONFIRMED', 'ASSIGNED'].includes(b.status)
+      ['CONFIRMED', 'ASSIGNED'].includes(b.status) &&
+      formatServiceDateToIST(b.serviceDate) >= todayIST
     );
     const upcoming = upcomingList.length;
 
@@ -1023,7 +1030,7 @@ export const getNurseDashboard = async (req: Request, res: Response, next: NextF
       service: b.service?.name || 'Home Nursing',
       serviceCategory: b.service?.category,
       time: b.timeSlot,
-      date: b.serviceDate.toISOString().split('T')[0],
+      date: formatServiceDateToIST(b.serviceDate),
       address: b.address,
       city: b.city,
       pincode: b.pincode,
@@ -1107,7 +1114,7 @@ export const getNurseVisits = async (req: Request, res: Response, next: NextFunc
       service: b.service?.name || 'Home Nursing',
       serviceCategory: b.service?.category,
       time: b.timeSlot,
-      date: b.serviceDate.toISOString().split('T')[0],
+      date: formatServiceDateToIST(b.serviceDate),
       address: b.address,
       city: b.city,
       pincode: b.pincode,
@@ -1130,12 +1137,19 @@ export const getNurseVisits = async (req: Request, res: Response, next: NextFunc
         )
       : formatted;
 
+    const now = new Date();
+    const todayIST = formatServiceDateToIST(now);
+
+    const today = filtered.filter(v => (v.date === todayIST || v.rawStatus === 'IN_PROGRESS') && v.status !== 'Cancelled');
+    const inProgress = filtered.filter(v => v.rawStatus === 'IN_PROGRESS');
     const upcoming = filtered.filter(v => ['Upcoming', 'In Progress', 'Assigned'].includes(v.status));
     const history = filtered.filter(v => ['Completed', 'Cancelled'].includes(v.status));
 
     res.json({
       success: true,
       data: {
+        today,
+        inProgress,
         upcoming,
         history,
         all: filtered,
@@ -1330,7 +1344,7 @@ export const getHospitalNursingBookings = async (req: Request, res: Response, ne
       patientEmail: b.patientEmail,
       serviceName: b.service.name,
       serviceCategory: b.service.category,
-      serviceDate: b.serviceDate.toISOString().split('T')[0],
+      serviceDate: formatServiceDateToIST(b.serviceDate),
       timeSlot: b.timeSlot,
       duration: b.duration,
       address: b.address,
@@ -1440,7 +1454,7 @@ export const assignNurseToBooking = async (req: Request, res: Response, next: Ne
       userId: nurse.id,
       hospitalId: updated.hospitalId,
       title: 'New Home Visit Assigned',
-      message: `You have been assigned to ${updated.service.name} for ${updated.patientName} on ${updated.serviceDate.toISOString().split('T')[0]} (${updated.timeSlot}).`,
+      message: `You have been assigned to ${updated.service.name} for ${updated.patientName} on ${formatServiceDateToIST(updated.serviceDate)} (${updated.timeSlot}).`,
       type: 'appointment',
       metadata: { bookingId: updated.id, nurseId: nurse.id, targetRoles: ['NURSE'] },
       targetRoles: ['NURSE']
@@ -1451,7 +1465,7 @@ export const assignNurseToBooking = async (req: Request, res: Response, next: Ne
       userId: updated.userId,
       hospitalId: null,
       title: 'Nurse Assigned to Your Booking',
-      message: `${nurse.name} has been assigned for your ${updated.service.name} on ${updated.serviceDate.toISOString().split('T')[0]}. Contact: ${nurse.phone || 'Available via App'}.`,
+      message: `${nurse.name} has been assigned for your ${updated.service.name} on ${formatServiceDateToIST(updated.serviceDate)}. Contact: ${nurse.phone || 'Available via App'}.`,
       type: 'appointment',
       metadata: { bookingId: updated.id, nurseId: nurse.id, targetRoles: ['PATIENT'] },
       targetRoles: ['PATIENT']
@@ -1964,6 +1978,18 @@ export const toggleHospitalServiceOffering = async (req: Request, res: Response,
         });
       }
 
+      // Ensure hospital has 'home_nursing' in services array
+      const hospital = await prisma.hospital.findUnique({
+        where: { id: effectiveHospitalId },
+        select: { services: true },
+      });
+      if (hospital && !hospital.services.includes('home_nursing')) {
+        await prisma.hospital.update({
+          where: { id: effectiveHospitalId },
+          data: { services: { push: 'home_nursing' } },
+        });
+      }
+
       const offering = await prisma.nursingServiceOffering.upsert({
         where: {
           hospitalId_serviceId: {
@@ -2014,4 +2040,172 @@ export const toggleHospitalServiceOffering = async (req: Request, res: Response,
     next(error);
   }
 };
+
+/**
+ * POST /api/v1/home-nursing/hospital/offerings/save
+ * Bulk save or update nursing service offerings for the authenticated hospital.
+ */
+export const saveHospitalServiceOfferings = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = req.user?.hospitalId;
+    if (!hospitalId && req.user?.role !== Role.SUPER_ADMIN) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Hospital identification required' },
+      });
+    }
+
+    const effectiveHospitalId = hospitalId || req.body.hospitalId;
+    if (!effectiveHospitalId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'hospitalId is required' },
+      });
+    }
+
+    const { offerings, selectedServiceIds } = req.body;
+
+    let itemsToProcess: Array<{ serviceId: string; available?: boolean; price?: number; duration?: string; serviceArea?: string }> = [];
+
+    if (Array.isArray(offerings)) {
+      itemsToProcess = offerings;
+    } else if (Array.isArray(selectedServiceIds)) {
+      itemsToProcess = selectedServiceIds.map((id: string) => ({ serviceId: id, available: true }));
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'offerings array or selectedServiceIds array is required' },
+      });
+    }
+
+    // Ensure hospital has 'home_nursing' in services array
+    const hospital = await prisma.hospital.findUnique({
+      where: { id: effectiveHospitalId },
+      select: { services: true },
+    });
+    if (hospital && !hospital.services.includes('home_nursing')) {
+      await prisma.hospital.update({
+        where: { id: effectiveHospitalId },
+        data: { services: { push: 'home_nursing' } },
+      });
+    }
+
+    // Fetch central services to validate and get default prices
+    const centralServices = await prisma.nursingService.findMany({
+      where: { active: true },
+    });
+    const centralMap = new Map(centralServices.map((s) => [s.id, s]));
+
+    const results = [];
+    for (const item of itemsToProcess) {
+      const central = centralMap.get(item.serviceId);
+      if (!central) continue;
+
+      const isAvail = item.available !== false;
+      const offering = await prisma.nursingServiceOffering.upsert({
+        where: {
+          hospitalId_serviceId: {
+            hospitalId: effectiveHospitalId,
+            serviceId: item.serviceId,
+          },
+        },
+        create: {
+          hospitalId: effectiveHospitalId,
+          serviceId: item.serviceId,
+          price: typeof item.price === 'number' && item.price > 0 ? item.price : central.basePrice,
+          duration: item.duration || central.duration,
+          serviceArea: item.serviceArea || null,
+          available: isAvail,
+        },
+        update: {
+          available: isAvail,
+          ...(item.price !== undefined ? { price: typeof item.price === 'number' && item.price > 0 ? item.price : central.basePrice } : {}),
+          ...(item.duration !== undefined ? { duration: item.duration } : {}),
+          ...(item.serviceArea !== undefined ? { serviceArea: item.serviceArea } : {}),
+        },
+      });
+      results.push(offering);
+    }
+
+    res.json({
+      success: true,
+      data: results,
+      count: results.length,
+      message: `Successfully saved ${results.length} nursing service offering(s).`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * DELETE /api/v1/home-nursing/hospital/offerings/:serviceId
+ * Remove/delete a nursing service offering from the authenticated hospital.
+ */
+export const deleteHospitalServiceOffering = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = req.user?.hospitalId;
+    if (!hospitalId && req.user?.role !== Role.SUPER_ADMIN) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Hospital identification required' },
+      });
+    }
+
+    const serviceId = req.params.serviceId as string;
+    const effectiveHospitalId = hospitalId || (req.query.hospitalId as string);
+
+    if (!serviceId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'serviceId parameter is required' },
+      });
+    }
+
+    if (!effectiveHospitalId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'hospitalId is required' },
+      });
+    }
+
+    // Check if the offering exists
+    const existing = await prisma.nursingServiceOffering.findUnique({
+      where: {
+        hospitalId_serviceId: {
+          hospitalId: effectiveHospitalId,
+          serviceId,
+        },
+      },
+      include: {
+        service: true,
+      },
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Hospital nursing service offering not found' },
+      });
+    }
+
+    // Delete the offering record
+    await prisma.nursingServiceOffering.delete({
+      where: {
+        hospitalId_serviceId: {
+          hospitalId: effectiveHospitalId,
+          serviceId,
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      message: `"${existing.service.name}" has been removed from your hospital's nursing services.`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 

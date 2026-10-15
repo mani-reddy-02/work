@@ -34,6 +34,7 @@ import { EditDepartment } from "./pages/EditDepartment"
 import { AddDoctor } from "./pages/AddDoctor"
 import { AddLab } from "./pages/AddLab"
 import { AddNurse } from "./pages/AddNurse"
+import { AddNursingServices } from "./pages/AddNursingServices"
 import { AddReceptionist } from "./pages/AddReceptionist"
 import { PatientDetail } from "./pages/PatientDetail"
 import { Settings } from "./pages/Settings"
@@ -47,6 +48,7 @@ import { StaffList } from "./pages/profile/StaffList"
 import { EditStaff } from "./pages/profile/EditStaff"
 import { AddLabStaff } from "./pages/AddLabStaff"
 import { DepartmentsList } from "./pages/profile/DepartmentsList"
+import { NursingServicesList } from "./pages/profile/NursingServicesList"
 import { PermissionsList } from "./pages/profile/PermissionsList"
 import { HelpSupport } from "./pages/profile/HelpSupport"
 import { ContactSupport } from "./pages/profile/ContactSupport"
@@ -146,6 +148,7 @@ function AnimatedRoutes() {
             <Route path="/add-doctor" element={<AddDoctor />} />
             <Route path="/add-lab" element={<AddLab />} />
             <Route path="/add-nurse" element={<AddNurse />} />
+            <Route path="/add-nursing-services" element={<AddNursingServices />} />
             <Route path="/add-receptionist" element={<AddReceptionist />} />
             <Route path="/edit-staff/:id" element={<EditStaff />} />
           </Route>
@@ -193,6 +196,7 @@ function AnimatedRoutes() {
           <Route path="/profile/staff/add-lab" element={<AddLabStaff />} />
           <Route path="/profile/staff/:type" element={<StaffList />} />
           <Route path="/profile/departments" element={<DepartmentsList />} />
+          <Route path="/profile/nursing-services" element={<NursingServicesList />} />
           <Route path="/profile/permissions" element={<Navigate to="/profile" replace />} />
           <Route path="/profile/personal" element={<PersonalInformation />} />
           <Route path="/profile/erx" element={<EPrescriptionSettings />} />

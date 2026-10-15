@@ -102,10 +102,26 @@ export function Dashboard() {
 
   useEffect(() => {
     fetchOverview();
+    // Live 4-second polling for real-time synchronization
     const interval = setInterval(() => {
       fetchOverview(false);
-    }, 30000);
-    return () => clearInterval(interval);
+    }, 4000);
+
+    const handleFocus = () => fetchOverview(false);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchOverview(false);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [fetchOverview]);
 
   useEffect(() => {

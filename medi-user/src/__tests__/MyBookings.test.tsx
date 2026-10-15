@@ -83,7 +83,7 @@ describe('MyBookings Page (Real Database Workflow)', () => {
     expect(screen.getByText('Chest Pain')).toBeDefined();
     expect(screen.getByText('10:30 AM')).toBeDefined();
     expect(screen.getByText('2026-11-20')).toBeDefined();
-    expect(screen.getByText('Confirmed')).toBeDefined();
+    expect(screen.getByText('Waiting in Queue')).toBeDefined();
   });
 
   it('filters past appointments into the Past tab', async () => {

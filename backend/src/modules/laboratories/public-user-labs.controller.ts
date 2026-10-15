@@ -280,40 +280,35 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
       include: { schedules: true }
     });
 
-    const activeDays = new Set(
-      lab?.schedules?.filter(s => s.isAvailable).map(s => s.dayOfWeek.toLowerCase()) || []
-    );
-
+    // Generate all dates in the 7-day booking horizon regardless of individual date availability
     const dates = [];
-    const today = new Date();
-    let daysAdded = 0;
-    let dayOffset = 0;
+    const now = new Date();
+    const kolkataDateStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(now);
+    const [kYear, kMonth, kDay] = kolkataDateStr.split('-').map(Number);
+    const todayDate = new Date(kYear, kMonth - 1, kDay);
 
-    // Look ahead up to 30 days to find 7 available dates
-    while (daysAdded < 7 && dayOffset < 30) {
-      const d = new Date(today);
-      d.setDate(d.getDate() + dayOffset);
-      const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-      
-      if (activeDays.has(dayName) || (lab?.schedules?.length === 0)) {
-        // If there are no schedules configured at all, we fallback to showing dates but slots will be empty.
-        // It's better to show no dates, but let's be safe. Wait, if we want to show no dates, then activeDays.has(dayName) is false.
-        // But if we want no dates, we just don't add them.
-        let label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        if (dayOffset === 0) label = 'Today';
-        else if (dayOffset === 1) label = 'Tomorrow';
+    for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+      const d = new Date(todayDate);
+      d.setDate(todayDate.getDate() + dayOffset);
+      const isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      let label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      if (dayOffset === 0) label = 'Today';
+      else if (dayOffset === 1) label = 'Tomorrow';
 
-        dates.push({
-          label,
-          date: d.toISOString().split('T')[0]
-        });
-        daysAdded++;
-      }
-      dayOffset++;
+      dates.push({
+        label,
+        date: isoDate
+      });
     }
 
-    const targetDateStr = dateStr || (dates.length > 0 ? dates[0].date : today.toISOString().split('T')[0]);
-    const targetDateObj = new Date(targetDateStr);
+    const targetDateStr = dateStr || (dates.length > 0 ? dates[0].date : kolkataDateStr);
+    const [tYear, tMonth, tDay] = targetDateStr.split('-').map(Number);
+    const targetDateObj = new Date(tYear, tMonth - 1, tDay);
     const dayName = targetDateObj.toLocaleDateString('en-US', { weekday: 'long' });
 
     let baseSlots: { slot: string, available: boolean }[] = [];
@@ -347,8 +342,7 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
         currentMinutes += duration;
       }
     }
-    const now = new Date();
-    const isToday = targetDateStr === now.toISOString().split('T')[0];
+    const isToday = targetDateStr === kolkataDateStr;
     let currentKolkataTimeInMinutes = 0;
     
     if (isToday) {
@@ -363,15 +357,15 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
     }
 
     // Fetch existing bookings for this hospital on the target date
-    const nextDay = new Date(targetDateObj);
-    nextDay.setDate(nextDay.getDate() + 1);
+    const startOfTargetDate = new Date(`${targetDateStr}T00:00:00.000Z`);
+    const endOfTargetDate = new Date(`${targetDateStr}T23:59:59.999Z`);
 
     const existingBookings = await prisma.labBooking.findMany({
       where: {
         hospitalId: String(laboratoryId),
         collectionDate: {
-          gte: targetDateObj,
-          lt: nextDay,
+          gte: startOfTargetDate,
+          lte: endOfTargetDate,
         },
         status: { notIn: ['CANCELLED'] }
       },

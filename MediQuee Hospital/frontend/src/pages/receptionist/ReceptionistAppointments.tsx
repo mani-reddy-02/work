@@ -44,8 +44,12 @@ export function ReceptionistAppointments() {
         receptionistApi.getDepartments().catch(() => []),
         receptionistApi.getQueue(filters).catch(() => [])
       ]);
+      const opOnly = (queueData || []).filter(q => {
+        const type = (q.opType || '').toLowerCase();
+        return !type.includes('video') && !type.includes('online');
+      });
       setDepartmentsList(depts);
-      setQueue(queueData);
+      setQueue(opOnly);
     } catch (err) {
       console.error("Error loading appointments:", err);
     } finally {

@@ -27,7 +27,7 @@ export const getNearestUpcomingBooking = async (req: Request, res: Response, nex
     const labBookings = await prisma.labBooking.findMany({
       where: {
         patientId: userId,
-        status: { notIn: ['CANCELLED'] }
+        status: { notIn: ['CANCELLED', 'COMPLETED'] }
       },
       include: {
         hospital: { select: { name: true } },

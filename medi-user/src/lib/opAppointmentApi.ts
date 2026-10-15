@@ -138,6 +138,9 @@ export interface OpBookingRecord {
   hospitalPhone?: string;
   prescription?: PrescriptionRecord | null;
   vitals?: any | null;
+  queuePosition?: number;
+  totalWaitingInQueue?: number;
+  activeInConsultation?: { id: string; token: string; patientName: string } | null;
 }
 
 function getAuthHeaders(): Record<string, string> {

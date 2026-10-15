@@ -31,96 +31,103 @@ export function QueueScreen() {
     refreshQueue();
   }, [selectedDeptId]);
 
-  return (
-    <div className="flex flex-col bg-gray-50/30 min-h-screen pb-[100px]">
-      {/* Top Header with Back Button, Menu Toggle, and Navigation Tabs */}
-      <ReceptionistNavHeader 
-        title={`${selectedDeptId === 'all' ? 'All Depts' : departments.find(d => d.id === selectedDeptId)?.name || 'All Depts'} Queue`}
-        subtitle="OP Department Live Calling Screen"
-        backTo="/receptionist"
-      />
+    const isOp = (q: any) => {
+      const type = (q.opType || '').toLowerCase();
+      return !type.includes('video') && !type.includes('online');
+    };
 
-      {/* Sticky Department Filter and Tabs */}
-      <div className="sticky top-14 z-20 bg-surface/95 backdrop-blur-xl border-b border-border shadow-[0_4px_24px_rgba(0,0,0,0.02)] pt-3 pb-2 px-4 flex flex-col gap-4">
-        {/* Department Tiles */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4">
-          <button
-            onClick={() => setSelectedDeptId('all')}
-            className={cn(
-              "px-4 py-1.5 rounded-full text-[13px] font-bold whitespace-nowrap transition-colors border",
-              selectedDeptId === 'all'
-                ? "bg-[#0A1A3D] text-white border-[#0A1A3D]" 
-                : "bg-surface text-muted border-border hover:bg-gray-50"
-            )}
-          >
-            All Depts
-          </button>
-          {departments.map((dept) => (
+    const opOnlyQueue = queue.filter(isOp);
+
+    return (
+      <div className="flex flex-col bg-gray-50/30 min-h-screen pb-[100px]">
+        {/* Top Header with Back Button, Menu Toggle, and Navigation Tabs */}
+        <ReceptionistNavHeader 
+          title={`${selectedDeptId === 'all' ? 'All Depts' : departments.find(d => d.id === selectedDeptId)?.name || 'All Depts'} Queue`}
+          subtitle="OP Department Live Calling Screen"
+          backTo="/receptionist"
+        />
+
+        {/* Sticky Department Filter and Tabs */}
+        <div className="sticky top-14 z-20 bg-surface/95 backdrop-blur-xl border-b border-border shadow-[0_4px_24px_rgba(0,0,0,0.02)] pt-3 pb-2 px-4 flex flex-col gap-4">
+          {/* Department Tiles */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4">
             <button
-              key={dept.id}
-              onClick={() => setSelectedDeptId(dept.id)}
+              onClick={() => setSelectedDeptId('all')}
               className={cn(
                 "px-4 py-1.5 rounded-full text-[13px] font-bold whitespace-nowrap transition-colors border",
-                selectedDeptId === dept.id 
+                selectedDeptId === 'all'
                   ? "bg-[#0A1A3D] text-white border-[#0A1A3D]" 
                   : "bg-surface text-muted border-border hover:bg-gray-50"
               )}
             >
-              {dept.name}
+              All Depts
             </button>
-          ))}
-        </div>
-        {/* Tabs */}
-        <div className="flex bg-gray-100/80 p-1 rounded-xl">
-          <button 
-            onClick={() => setActiveTab('WAITING')}
-            className={cn("flex-1 py-2 text-[13px] font-bold rounded-lg transition-all", activeTab === 'WAITING' ? "bg-surface text-orange-600 shadow-sm" : "text-[#667085] hover:text-[#172033]")}
-          >
-            Waiting
-          </button>
-          <button 
-            onClick={() => setActiveTab('IN_CONSULTATION')}
-            className={cn("flex-1 py-2 text-[13px] font-bold rounded-lg transition-all", activeTab === 'IN_CONSULTATION' ? "bg-surface text-[#1B5DF1] shadow-sm" : "text-[#667085] hover:text-[#172033]")}
-          >
-            In Consult
-          </button>
-          <button 
-            onClick={() => setActiveTab('COMPLETED')}
-            className={cn("flex-1 py-2 text-[13px] font-bold rounded-lg transition-all", activeTab === 'COMPLETED' ? "bg-surface text-emerald-600 shadow-sm" : "text-[#667085] hover:text-[#172033]")}
-          >
-            Completed
-          </button>
-        </div>
-      </div>
-
-      <div className="p-4 flex flex-col gap-4">
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-[14px] font-bold text-[#0A1A3D]">
-            {queue.filter(q => {
-              if (activeTab === 'WAITING') return q.status === 'WAITING' || q.status === 'ARRIVED';
-              if (activeTab === 'IN_CONSULTATION') return q.status === 'IN_CONSULTATION' || q.status === 'CALLED';
-              if (activeTab === 'COMPLETED') return q.status === 'COMPLETED';
-              return false;
-            }).length} Patients
-          </span>
-          <div className="flex gap-2">
-            <button className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center text-muted">
-              <Search className="w-4 h-4" />
+            {departments.map((dept) => (
+              <button
+                key={dept.id}
+                onClick={() => setSelectedDeptId(dept.id)}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-[13px] font-bold whitespace-nowrap transition-colors border",
+                  selectedDeptId === dept.id 
+                    ? "bg-[#0A1A3D] text-white border-[#0A1A3D]" 
+                    : "bg-surface text-muted border-border hover:bg-gray-50"
+                )}
+              >
+                {dept.name}
+              </button>
+            ))}
+          </div>
+          {/* Tabs */}
+          <div className="flex bg-gray-100/80 p-1 rounded-xl">
+            <button 
+              onClick={() => setActiveTab('WAITING')}
+              className={cn("flex-1 py-2 text-[13px] font-bold rounded-lg transition-all", activeTab === 'WAITING' ? "bg-surface text-orange-600 shadow-sm" : "text-[#667085] hover:text-[#172033]")}
+            >
+              Waiting
             </button>
-            <button className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center text-muted">
-              <Filter className="w-4 h-4" />
+            <button 
+              onClick={() => setActiveTab('IN_CONSULTATION')}
+              className={cn("flex-1 py-2 text-[13px] font-bold rounded-lg transition-all", activeTab === 'IN_CONSULTATION' ? "bg-surface text-[#1B5DF1] shadow-sm" : "text-[#667085] hover:text-[#172033]")}
+            >
+              In Consult
+            </button>
+            <button 
+              onClick={() => setActiveTab('COMPLETED')}
+              className={cn("flex-1 py-2 text-[13px] font-bold rounded-lg transition-all", activeTab === 'COMPLETED' ? "bg-surface text-emerald-600 shadow-sm" : "text-[#667085] hover:text-[#172033]")}
+            >
+              Completed
             </button>
           </div>
         </div>
 
-        <AnimatePresence mode="popLayout">
-          {(() => {
-            const filteredQueue = queue.filter(q => {
-              if (activeTab === 'WAITING') return q.status === 'WAITING' || q.status === 'ARRIVED';
-              if (activeTab === 'IN_CONSULTATION') return q.status === 'IN_CONSULTATION' || q.status === 'CALLED';
-              if (activeTab === 'COMPLETED') return q.status === 'COMPLETED';
-              return false;
-            });
+        <div className="p-4 flex flex-col gap-4">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[14px] font-bold text-[#0A1A3D]">
+              {opOnlyQueue.filter(q => {
+                if (activeTab === 'WAITING') return q.status === 'WAITING' || q.status === 'ARRIVED';
+                if (activeTab === 'IN_CONSULTATION') return q.status === 'IN_CONSULTATION' || q.status === 'CALLED';
+                if (activeTab === 'COMPLETED') return q.status === 'COMPLETED';
+                return false;
+              }).length} Patients
+            </span>
+            <div className="flex gap-2">
+              <button className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center text-muted">
+                <Search className="w-4 h-4" />
+              </button>
+              <button className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center text-muted">
+                <Filter className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <AnimatePresence mode="popLayout">
+            {(() => {
+              const filteredQueue = opOnlyQueue.filter(q => {
+                if (activeTab === 'WAITING') return q.status === 'WAITING' || q.status === 'ARRIVED';
+                if (activeTab === 'IN_CONSULTATION') return q.status === 'IN_CONSULTATION' || q.status === 'CALLED';
+                if (activeTab === 'COMPLETED') return q.status === 'COMPLETED';
+                return false;
+              });
             return filteredQueue.length > 0 ? filteredQueue.map((item, i) => (
             <motion.div 
               layout

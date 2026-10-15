@@ -205,6 +205,27 @@ export function Appointments() {
 
   useEffect(() => {
     fetchBookings(selectedDate);
+
+    // Live 4-second polling for real-time synchronization with Receptionist and Doctor
+    const timer = setInterval(() => {
+      fetchBookings(selectedDate);
+    }, 4000);
+
+    const handleFocus = () => fetchBookings(selectedDate);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchBookings(selectedDate);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [selectedDate, fetchBookings]);
 
   const uniqueDoctors = Array.from(new Set(appointmentsList.map(a => a.doctor).filter(Boolean)));

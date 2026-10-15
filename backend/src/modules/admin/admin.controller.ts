@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Role } from '@prisma/client';
 import { VideoService } from '../video/video.service';
+import { sendNotification } from '../notifications/notifications.service';
 
 export const getStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -1309,21 +1310,101 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
 
 export const updateAppointmentStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const id = req.params.id as string;
-    const { status } = req.body;
+    const rawId = (req.params.id as string || '').trim();
+    const cleanId = rawId.replace(/^OP-?/i, '');
+    const { status, reason, notes } = req.body;
     
-    // Validate status transition (simple validation for now)
-    const validStatuses = ['PENDING', 'WAITING', 'IN_CONSULTATION', 'COMPLETED', 'CANCELLED', 'NO_SHOW', 'CONFIRMED'];
+    const validStatuses = ['PENDING', 'WAITING', 'IN_CONSULTATION', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW', 'CONFIRMED', 'ARRIVED', 'CALLED'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
     }
 
-    const updated = await prisma.oPBooking.update({
-      where: { id },
-      data: { status }
+    let normalizedStatus: string = status;
+    if (status === 'IN_PROGRESS') {
+      normalizedStatus = 'IN_CONSULTATION';
+    } else if (status === 'CONFIRMED' || status === 'ARRIVED' || status === 'CALLED') {
+      normalizedStatus = 'WAITING';
+    } else if (status === 'NO_SHOW') {
+      normalizedStatus = 'CANCELLED';
+    }
+
+    const existing = await prisma.oPBooking.findFirst({
+      where: {
+        OR: [
+          { id: cleanId },
+          { id: { startsWith: cleanId } },
+          { id: rawId }
+        ]
+      }
     });
 
-    res.json({ success: true, data: updated, message: 'Status updated successfully' });
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Appointment not found' });
+    }
+
+    // Terminal state validation
+    if (existing.status === 'COMPLETED' && normalizedStatus !== 'COMPLETED') {
+      return res.status(400).json({ success: false, message: 'Cannot modify an already completed appointment' });
+    }
+    if (existing.status === 'CANCELLED' && normalizedStatus !== 'CANCELLED') {
+      return res.status(400).json({ success: false, message: 'Cannot modify a cancelled appointment' });
+    }
+
+    const updateData: any = { status: normalizedStatus };
+    if (reason !== undefined) updateData.reason = reason;
+    else if (notes !== undefined) updateData.reason = notes;
+
+    const updated = await prisma.oPBooking.update({
+      where: { id: existing.id },
+      data: updateData,
+      include: {
+        doctor: { select: { id: true, name: true, avatar: true } },
+        department: { select: { id: true, name: true } },
+        hospital: { select: { id: true, name: true, contactPhone: true } }
+      }
+    });
+
+    // Notify doctor & staff
+    sendNotification({
+      hospitalId: updated.hospitalId,
+      userId: updated.doctorId,
+      title: 'Appointment Status Changed',
+      message: `${updated.patientName}'s appointment is now ${updated.status.replace(/_/g, ' ')}`,
+      type: 'activity',
+      metadata: { 
+        bookingId: updated.id, 
+        status: updated.status, 
+        patientName: updated.patientName,
+        targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
+      },
+      targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
+    }).catch(console.error);
+
+    // Notify patient
+    if (updated.patientId) {
+      sendNotification({
+        hospitalId: null,
+        userId: updated.patientId,
+        title: 'Appointment Status Updated',
+        message: `Your appointment status has been updated to ${updated.status.replace(/_/g, ' ')}.`,
+        type: 'appointment',
+        metadata: {
+          bookingId: updated.id,
+          status: updated.status,
+          targetRoles: ['PATIENT']
+        },
+        targetRoles: ['PATIENT']
+      }).catch(console.error);
+    }
+
+    res.json({ 
+      success: true, 
+      data: {
+        ...updated,
+        updatedAt: updated.updatedAt
+      }, 
+      message: 'Status updated successfully' 
+    });
   } catch (error) {
     next(error);
   }

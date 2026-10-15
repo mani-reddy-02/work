@@ -64,6 +64,10 @@ export function AddNurse() {
         phone: data.mobile.trim(),
         avatar: photoPreview || undefined,
         role: 'NURSE',
+        qualification: data.qualification?.trim(),
+        specialization: data.department?.trim(),
+        experienceYears: data.experience ? Number(data.experience) : undefined,
+        licenseNumber: data.licenseNumber?.trim() || undefined,
         designation: data.qualification ? `${data.qualification}${data.department ? ` (${data.department})` : ''}` : undefined
       });
       setShowSuccess(true);

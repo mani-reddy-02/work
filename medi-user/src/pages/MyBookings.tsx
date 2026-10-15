@@ -37,32 +37,88 @@ interface UnifiedBooking {
 
 const formatDate = (dateString: string) => {
   if (!dateString) return '';
+  // Avoid UTC midnight shift for date-only format (e.g. 2026-10-17)
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateString)) {
+    const [y, m, d] = dateString.split('T')[0].split('-').map(Number);
+    const localDate = new Date(y, m - 1, d);
+    return new Intl.DateTimeFormat('en-IN', {
+      day: 'numeric',
+      month: 'short',
+    }).format(localDate);
+  }
   const d = new Date(dateString);
   if (isNaN(d.getTime())) return dateString;
   return new Intl.DateTimeFormat('en-IN', {
     day: 'numeric',
-    month: 'short'
+    month: 'short',
   }).format(d);
 };
 
-const getStatusConfig = (status: string) => {
-  const s = (status || '').toUpperCase();
+export const getStatusConfig = (status: string) => {
+  const s = (status || '').toUpperCase().trim();
   switch (s) {
-    case 'WAITING':
-    case 'CONFIRMED':
     case 'IN_CONSULTATION':
-      return { label: 'Confirmed', classes: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    case 'IN_PROGRESS':
+      return { 
+        label: 'In Consultation', 
+        classes: 'bg-indigo-50 text-indigo-700 border-indigo-200 font-extrabold' 
+      };
+    case 'WAITING':
+      return { 
+        label: 'Waiting in Queue', 
+        classes: 'bg-amber-50 text-amber-700 border-amber-200 font-extrabold' 
+      };
+    case 'CONFIRMED':
+      return { 
+        label: 'Confirmed', 
+        classes: 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+      };
+    case 'CALLED':
+      return { 
+        label: 'Called (Proceed In)', 
+        classes: 'bg-orange-50 text-orange-700 border-orange-200 font-extrabold' 
+      };
     case 'PENDING':
     case 'REQUESTED':
-      return { label: 'Requested', classes: 'bg-amber-50 text-amber-700 border-amber-200' };
-    case 'COMPLETED':
-      return { label: 'Completed', classes: 'bg-blue-50 text-blue-700 border-blue-200' };
-    case 'CANCELLED':
-      return { label: 'Cancelled', classes: 'bg-red-50 text-red-700 border-red-200' };
+      return { 
+        label: 'Requested', 
+        classes: 'bg-amber-50 text-amber-700 border-amber-200' 
+      };
+    case 'SAMPLE_COLLECTED':
+      return { 
+        label: 'Sample Collected', 
+        classes: 'bg-cyan-50 text-cyan-700 border-cyan-200 font-bold' 
+      };
+    case 'IN_LAB_PROCESSING':
+      return { 
+        label: 'In Lab Processing', 
+        classes: 'bg-blue-50 text-blue-700 border-blue-200 font-bold' 
+      };
     case 'REPORT_READY':
-      return { label: 'Report Ready', classes: 'bg-purple-50 text-purple-700 border-purple-200' };
+      return { 
+        label: 'Report Ready', 
+        classes: 'bg-purple-50 text-purple-700 border-purple-200 font-extrabold' 
+      };
+    case 'COMPLETED':
+      return { 
+        label: 'Completed', 
+        classes: 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold' 
+      };
+    case 'CANCELLED':
+      return { 
+        label: 'Cancelled', 
+        classes: 'bg-rose-50 text-rose-700 border-rose-200 font-bold' 
+      };
+    case 'ASSIGNED':
+      return { 
+        label: 'Assigned', 
+        classes: 'bg-teal-50 text-teal-700 border-teal-200 font-bold' 
+      };
     default:
-      return { label: status, classes: 'bg-slate-50 text-slate-700 border-slate-200' };
+      return { 
+        label: status ? status.replace(/_/g, ' ') : 'Confirmed', 
+        classes: 'bg-slate-50 text-slate-700 border-slate-200' 
+      };
   }
 };
 
@@ -75,8 +131,8 @@ const MyBookings = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadBookings = async () => {
-    setIsLoading(true);
+  const loadBookings = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     setError(null);
     try {
       const [opRes, labRes, nursingRes] = await Promise.all([
@@ -95,40 +151,58 @@ const MyBookings = () => {
         setNursingBookings(nursingRes.data);
       }
 
-      if (!opRes.success) {
-        setError(opRes.error || 'Unable to load your appointments.');
-      } else if (!labRes.success) {
-        setError(labRes.error || 'Unable to load your lab bookings.');
+      if (!silent) {
+        if (!opRes.success) {
+          setError(opRes.error || 'Unable to load your appointments.');
+        } else if (!labRes.success) {
+          setError(labRes.error || 'Unable to load your lab bookings.');
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'Unable to connect to the server.');
+      if (!silent) setError(err.message || 'Unable to connect to the server.');
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
   useEffect(() => {
     loadBookings();
+
+    // Fast 3.5-second live polling for immediate cross-portal synchronisation
+    const timer = setInterval(() => {
+      loadBookings(true);
+    }, 3500);
+
+    const handleFocus = () => loadBookings(true);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadBookings(true);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   const { upcomingList, pastList } = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     const upcoming: UnifiedBooking[] = [];
     const past: UnifiedBooking[] = [];
 
-    // Map OP Bookings
+    // Map OP Bookings: Terminal states (COMPLETED, CANCELLED) move to Past, active stay in Upcoming
     opBookings.forEach((b) => {
       const isStatusPast = b.status === 'COMPLETED' || b.status === 'CANCELLED';
-      const apptDate = new Date(b.date);
-      const isDatePast = !isNaN(apptDate.getTime()) && apptDate < today;
 
       const unified: UnifiedBooking = {
         id: b.id,
         displayId: b.id,
         type: 'OP',
-        serviceTypeLabel: b.opType === 'Video Consultation' ? 'Video Consultation' : 'OP Consultation',
+        serviceTypeLabel: (b.opType || '').toLowerCase().includes('video') ? 'Video Consultation' : 'OP Consultation',
         title: `Dr. ${b.doctorName.replace(/^Dr\.\s*/i, '')}`,
         subtitle: b.hospitalName || 'Hospital Visit',
         date: formatDate(b.date),
@@ -139,15 +213,13 @@ const MyBookings = () => {
         opRecord: b,
       };
 
-      if (isStatusPast || isDatePast) past.push(unified);
+      if (isStatusPast) past.push(unified);
       else upcoming.push(unified);
     });
 
-    // Map Lab Bookings
+    // Map Lab Bookings: COMPLETED and CANCELLED move to Past, pending/in-progress stay in Upcoming
     labBookings.forEach((l) => {
       const isStatusPast = l.status === 'COMPLETED' || l.status === 'CANCELLED';
-      const apptDate = new Date(l.date || l.bookingDate);
-      const isDatePast = !isNaN(apptDate.getTime()) && apptDate < today;
 
       const unified: UnifiedBooking = {
         id: l.id,
@@ -163,15 +235,13 @@ const MyBookings = () => {
         labRecord: l,
       };
 
-      if (isStatusPast || isDatePast) past.push(unified);
+      if (isStatusPast) past.push(unified);
       else upcoming.push(unified);
     });
 
     // Map Home Nursing Bookings
     nursingBookings.forEach((n) => {
       const isStatusPast = n.status === 'COMPLETED' || n.status === 'CANCELLED';
-      const serviceDate = new Date(n.date);
-      const isDatePast = !isNaN(serviceDate.getTime()) && serviceDate < today;
 
       const unified: UnifiedBooking = {
         id: n.id,
@@ -187,7 +257,7 @@ const MyBookings = () => {
         nursingRecord: n,
       };
 
-      if (isStatusPast || isDatePast) past.push(unified);
+      if (isStatusPast) past.push(unified);
       else upcoming.push(unified);
     });
 

@@ -545,23 +545,17 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
     for (let i = 0; i < 14; i++) {
       const d = new Date(now);
       d.setDate(now.getDate() + i);
-      const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+      const dateStr = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
       
-      const scheduleForDay = schedules.find(s => s.dayOfWeek.toLowerCase() === dayName.toLowerCase());
+      let label = '';
+      if (i === 0) label = `Today, ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      else if (i === 1) label = `Tomorrow, ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      else label = `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`;
       
-      if (scheduleForDay && scheduleForDay.isAvailable) {
-        const dateStr = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
-        
-        let label = '';
-        if (i === 0) label = `Today, ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-        else if (i === 1) label = `Tomorrow, ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-        else label = `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`;
-        
-        availableDates.push({ date: dateStr, label });
-        
-        if (!targetDate && availableDates.length === 1) {
-           targetDate = new Date(d); // default to first available
-        }
+      availableDates.push({ date: dateStr, label });
+      
+      if (!targetDate && availableDates.length === 1) {
+         targetDate = new Date(d); // default to first date
       }
     }
 

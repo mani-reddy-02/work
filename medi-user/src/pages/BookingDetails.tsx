@@ -28,6 +28,7 @@ import { homeNursingApi, type HomeNursingBookingRecord } from '../lib/homeNursin
 import { cn } from '../lib/utils';
 import { getDiseaseIconUrl } from '../utils/diseaseIcons';
 import { getTestIcon } from '../lib/optimizedTestIcons';
+import { getStatusConfig } from './MyBookings';
 
 const BookingDetails = () => {
   const navigate = useNavigate();
@@ -44,17 +45,15 @@ const BookingDetails = () => {
   useEffect(() => {
     if (!id) return;
 
-
-
-    const loadDetails = async () => {
-      setIsLoading(true);
+    const loadDetails = async (silent = false) => {
+      if (!silent) setIsLoading(true);
       setError(null);
       try {
         // 1. Try fetching as an OP appointment
         const opRes = await opAppointmentApi.fetchAppointmentDetails(id);
         if (opRes.success && opRes.data) {
           setAppointment(opRes.data);
-          setIsLoading(false);
+          if (!silent) setIsLoading(false);
           return;
         }
 
@@ -62,7 +61,7 @@ const BookingDetails = () => {
         const labRes = await labBookingApi.getLabBookingById(id);
         if (labRes.success && labRes.data) {
           setLabBooking(labRes.data);
-          setIsLoading(false);
+          if (!silent) setIsLoading(false);
           return;
         }
 
@@ -70,19 +69,40 @@ const BookingDetails = () => {
         const nursingRes = await homeNursingApi.getBookingById(id);
         if (nursingRes.success && nursingRes.data) {
           setNursingBooking(nursingRes.data);
-          setIsLoading(false);
+          if (!silent) setIsLoading(false);
           return;
         }
 
-        setError(opRes.error || labRes.error || nursingRes.error || 'Booking not found');
+        if (!silent) setError(opRes.error || labRes.error || nursingRes.error || 'Booking not found');
       } catch (err: any) {
-        setError(err.message || 'Booking not found');
+        if (!silent) setError(err.message || 'Booking not found');
       } finally {
-        setIsLoading(false);
+        if (!silent) setIsLoading(false);
       }
     };
 
     loadDetails();
+
+    // Live 4-second polling for real-time consultation status updates (WAITING -> IN_CONSULTATION -> COMPLETED)
+    const timer = setInterval(() => {
+      loadDetails(true);
+    }, 4000);
+
+    const handleFocus = () => loadDetails(true);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadDetails(true);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [id]);
 
 
@@ -154,9 +174,24 @@ const BookingDetails = () => {
                         {labBooking.laboratoryName}
                       </p>
                     </div>
-                    <span className="px-2.5 py-1 rounded-md text-[10px] font-bold border shrink-0 bg-green-50 text-green-700 border-green-200">
-                      {labBooking.status || 'CONFIRMED'}
-                    </span>
+                    {(() => {
+                      const cfg = getStatusConfig(labBooking.status);
+                      return (
+                        <span className={cn('px-2.5 py-1 rounded-md text-[10px] border shrink-0 flex items-center gap-1.5', cfg.classes)}>
+                          <span
+                            className={cn(
+                              'w-1.5 h-1.5 rounded-full',
+                              labBooking.status === 'REPORT_READY' || labBooking.status === 'COMPLETED'
+                                ? 'bg-emerald-500'
+                                : labBooking.status === 'CANCELLED'
+                                ? 'bg-rose-500'
+                                : 'bg-amber-500 animate-pulse'
+                            )}
+                          />
+                          {cfg.label}
+                        </span>
+                      );
+                    })()}
                   </div>
                   <div className="mt-2 flex items-center gap-2">
                     <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100">
@@ -168,6 +203,101 @@ const BookingDetails = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Dynamic Diagnostic Order Progress Tracker */}
+              {(() => {
+                const s = (labBooking.status || '').toUpperCase();
+                const isCancelled = s === 'CANCELLED';
+                const steps = [
+                  { key: 'CONFIRMED', label: 'Order Confirmed', done: true },
+                  { key: 'SAMPLE_COLLECTED', label: 'Sample Collected', done: ['SAMPLE_COLLECTED', 'IN_LAB_PROCESSING', 'PROCESSING', 'REPORT_READY', 'COMPLETED'].includes(s) },
+                  { key: 'IN_LAB_PROCESSING', label: 'In Lab Processing', done: ['IN_LAB_PROCESSING', 'PROCESSING', 'REPORT_READY', 'COMPLETED'].includes(s) },
+                  { key: 'REPORT_READY', label: 'Report Ready', done: ['REPORT_READY', 'COMPLETED'].includes(s) },
+                ];
+
+                return (
+                  <div className="bg-white p-5 rounded-2xl shadow-soft border border-slate-100 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold text-slate-800 text-sm">Order Progress</h3>
+                      <span className={cn('px-2.5 py-0.5 rounded-full text-[10px] border font-bold', getStatusConfig(labBooking.status).classes)}>
+                        {getStatusConfig(labBooking.status).label}
+                      </span>
+                    </div>
+
+                    {isCancelled ? (
+                      <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs">
+                        This lab investigation has been cancelled.
+                      </div>
+                    ) : (
+                      <div className="relative pt-2 pb-1">
+                        <div className="flex items-center justify-between relative z-10">
+                          {steps.map((st, idx) => {
+                            const isCurrent = (
+                              (st.key === 'CONFIRMED' && (s === 'PENDING' || s === 'CONFIRMED' || s === 'REQUESTED')) ||
+                              (st.key === 'SAMPLE_COLLECTED' && s === 'SAMPLE_COLLECTED') ||
+                              (st.key === 'IN_LAB_PROCESSING' && (s === 'IN_LAB_PROCESSING' || s === 'PROCESSING')) ||
+                              (st.key === 'REPORT_READY' && (s === 'REPORT_READY' || s === 'COMPLETED'))
+                            );
+                            return (
+                              <div key={idx} className="flex flex-col items-center flex-1 text-center">
+                                <div
+                                  className={cn(
+                                    'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-sm',
+                                    st.done
+                                      ? 'bg-emerald-500 text-white'
+                                      : isCurrent
+                                      ? 'bg-blue-600 text-white ring-4 ring-blue-100'
+                                      : 'bg-slate-100 text-slate-400 border border-slate-200'
+                                  )}
+                                >
+                                  {st.done ? '✓' : idx + 1}
+                                </div>
+                                <span
+                                  className={cn(
+                                    'text-[10px] mt-2 font-semibold max-w-[70px] leading-tight',
+                                    isCurrent
+                                      ? 'text-blue-700 font-extrabold'
+                                      : st.done
+                                      ? 'text-slate-800'
+                                      : 'text-slate-400'
+                                  )}
+                                >
+                                  {st.label}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Track line behind steps */}
+                        <div className="absolute top-5.5 left-8 right-8 h-0.5 bg-slate-200 -z-0">
+                          <div
+                            className="h-full bg-emerald-500 transition-all duration-500"
+                            style={{
+                              width:
+                                s === 'COMPLETED' || s === 'REPORT_READY'
+                                  ? '100%'
+                                  : s === 'IN_LAB_PROCESSING' || s === 'PROCESSING'
+                                  ? '66%'
+                                  : s === 'SAMPLE_COLLECTED'
+                                  ? '33%'
+                                  : '0%'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {(s === 'REPORT_READY' || s === 'COMPLETED') && (
+                      <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className="font-semibold">Lab results have been verified and published!</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Lab & Test Specific Info Card */}
               <div className="bg-white p-5 rounded-2xl shadow-soft border border-slate-100 space-y-4">
@@ -332,20 +462,24 @@ const BookingDetails = () => {
                         {nursingBooking.serviceCategory || 'Home Healthcare'}
                       </p>
                     </div>
-                    <span
-                      className={cn(
-                        'px-2.5 py-1 rounded-md text-[10px] font-semibold border',
-                        nursingBooking.status === 'CONFIRMED' || nursingBooking.status === 'Confirmed'
-                          ? 'bg-green-50 text-green-700 border-green-200'
-                          : nursingBooking.status === 'COMPLETED'
-                          ? 'bg-blue-50 text-blue-700 border-blue-200'
-                          : nursingBooking.status === 'CANCELLED'
-                          ? 'bg-red-50 text-red-700 border-red-200'
-                          : 'bg-amber-50 text-amber-700 border-amber-200'
-                      )}
-                    >
-                      {nursingBooking.status === 'CONFIRMED' ? 'Confirmed' : nursingBooking.status}
-                    </span>
+                    {(() => {
+                      const cfg = getStatusConfig(nursingBooking.status);
+                      return (
+                        <span className={cn('px-2.5 py-1 rounded-md text-[10px] border shrink-0 flex items-center gap-1.5', cfg.classes)}>
+                          <span
+                            className={cn(
+                              'w-1.5 h-1.5 rounded-full',
+                              nursingBooking.status === 'COMPLETED'
+                                ? 'bg-emerald-500'
+                                : nursingBooking.status === 'CANCELLED'
+                                ? 'bg-rose-500'
+                                : 'bg-amber-500 animate-pulse'
+                            )}
+                          />
+                          {cfg.label}
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   <div className="mt-2 flex items-center gap-2">
@@ -366,7 +500,16 @@ const BookingDetails = () => {
                     <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-0.5">
                       Service Date
                     </p>
-                    <p className="font-semibold text-slate-800">{nursingBooking.date}</p>
+                    <p className="font-semibold text-slate-800">
+                      {(() => {
+                        if (!nursingBooking.date) return '—';
+                        if (/^\d{4}-\d{2}-\d{2}/.test(nursingBooking.date)) {
+                          const [y, m, d] = nursingBooking.date.split('T')[0].split('-').map(Number);
+                          return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(y, m - 1, d));
+                        }
+                        return nursingBooking.date;
+                      })()}
+                    </p>
                   </div>
                 </div>
 
@@ -554,30 +697,31 @@ const BookingDetails = () => {
                       <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
                         Primary Health Concern
                       </span>
-                      <span
-                        className={cn(
-                          'px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0 uppercase tracking-wide flex items-center gap-1.5',
-                          appointment.status === 'COMPLETED'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : appointment.status === 'CANCELLED'
-                            ? 'bg-rose-50 text-rose-700 border-rose-200'
-                            : appointment.status === 'IN_CONSULTATION'
-                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                            : 'bg-amber-50 text-amber-700 border-amber-200'
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'w-1.5 h-1.5 rounded-full',
-                            appointment.status === 'COMPLETED'
-                              ? 'bg-emerald-500'
-                              : appointment.status === 'CANCELLED'
-                              ? 'bg-rose-500'
-                              : 'bg-amber-500 animate-pulse'
-                          )}
-                        />
-                        {appointment.status || 'WAITING'}
-                      </span>
+                      {(() => {
+                        const cfg = getStatusConfig(appointment.status);
+                        return (
+                          <span
+                            className={cn(
+                              'px-2.5 py-0.5 rounded-full text-[10px] border shrink-0 uppercase tracking-wide flex items-center gap-1.5',
+                              cfg.classes
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'w-1.5 h-1.5 rounded-full',
+                                appointment.status === 'COMPLETED'
+                                  ? 'bg-emerald-500'
+                                  : appointment.status === 'CANCELLED'
+                                  ? 'bg-rose-500'
+                                  : appointment.status === 'IN_CONSULTATION'
+                                  ? 'bg-indigo-500 animate-ping'
+                                  : 'bg-amber-500 animate-pulse'
+                              )}
+                            />
+                            {cfg.label}
+                          </span>
+                        );
+                      })()}
                     </div>
 
                     <h2 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight capitalize truncate">
@@ -615,6 +759,132 @@ const BookingDetails = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Dynamic Live Status & Queue Banner Tile */}
+              {(() => {
+                const s = (appointment.status || '').toUpperCase().trim();
+                const token = `OP-${(appointment.id || appointment.appointmentId || '').substring(0, 6).toUpperCase()}`;
+
+                if (s === 'IN_CONSULTATION' || s === 'IN_PROGRESS') {
+                  return (
+                    <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-3xl p-5 text-white shadow-xl shadow-indigo-600/20 relative overflow-hidden">
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                          <span className="text-[11px] font-black uppercase tracking-wider text-indigo-100">
+                            Active Live Consultation
+                          </span>
+                        </div>
+                        <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono font-black text-white border border-white/20">
+                          {token}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-black text-white leading-tight">
+                        In Consultation with Dr. {appointment.doctorName.replace(/^Dr\.\s*/i, '')}
+                      </h3>
+                      <p className="text-xs text-indigo-100 mt-1 leading-relaxed">
+                        The doctor has admitted your token. If you are in the hospital OPD, please proceed inside the consultation room.
+                      </p>
+                    </div>
+                  );
+                }
+
+                if (s === 'CALLED') {
+                  return (
+                    <div className="bg-gradient-to-r from-orange-500 to-amber-600 rounded-3xl p-5 text-white shadow-xl shadow-orange-500/20 relative overflow-hidden">
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-amber-100">
+                          Token Called — Proceed Inside
+                        </span>
+                        <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono font-black text-white border border-white/20">
+                          {token}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-black text-white leading-tight">
+                        Dr. {appointment.doctorName.replace(/^Dr\.\s*/i, '')} is ready for you
+                      </h3>
+                      <p className="text-xs text-amber-100 mt-1 leading-relaxed">
+                        Please proceed immediately to the doctor's consultation room.
+                      </p>
+                    </div>
+                  );
+                }
+
+                if (s === 'WAITING' || s === 'CONFIRMED') {
+                  return (
+                    <div className="bg-white rounded-3xl p-5 shadow-soft border border-slate-100 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Live Queue Status
+                          </span>
+                        </div>
+                        <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-mono font-black border border-blue-100">
+                          {token}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                            Queue Position
+                          </span>
+                          <span className="text-2xl font-black text-slate-900 mt-0.5 block">
+                            #{appointment.queuePosition || 1}
+                          </span>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                            Waiting Ahead
+                          </span>
+                          <span className="text-2xl font-black text-primary mt-0.5 block">
+                            {Math.max(0, (appointment.queuePosition || 1) - 1)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-slate-500 text-center leading-relaxed">
+                        Please remain in the OPD waiting area. Your screen updates automatically when the receptionist calls your token.
+                      </p>
+                    </div>
+                  );
+                }
+
+                if (s === 'COMPLETED') {
+                  return (
+                    <div className="bg-emerald-50 rounded-3xl p-4 border border-emerald-200 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                        <CheckCircle2 className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-xs font-extrabold text-emerald-900">Consultation Completed</h4>
+                        <p className="text-[11px] text-emerald-700 mt-0.5 leading-snug">
+                          Your appointment with Dr. {appointment.doctorName} has concluded. Your digital prescription is saved below.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (s === 'CANCELLED') {
+                  return (
+                    <div className="bg-rose-50 rounded-3xl p-4 border border-rose-200 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                        <AlertCircle className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-xs font-extrabold text-rose-900">Appointment Cancelled</h4>
+                        <p className="text-[11px] text-rose-700 mt-0.5 leading-snug">
+                          This appointment was cancelled. Please book another appointment if you require medical care.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return null;
+              })()}
 
               {/* 2. DOCTOR PROFILE CARD */}
               <div className="bg-white rounded-3xl p-5 shadow-soft border border-slate-100 flex items-start gap-4">

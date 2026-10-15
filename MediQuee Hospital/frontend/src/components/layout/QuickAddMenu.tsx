@@ -1,4 +1,4 @@
-import { Building2, UserPlus, FlaskConical, Stethoscope, UserCog, ChevronRight, Calendar } from "lucide-react"
+import { Building2, UserPlus, FlaskConical, Stethoscope, UserCog, ChevronRight, Calendar, HeartHandshake } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { BottomSheet } from "../ui/BottomSheet"
 import { useAuth } from "@/context/AuthContext"
@@ -53,6 +53,13 @@ export function QuickAddMenu({ isOpen, onClose }: QuickAddMenuProps) {
         icon: Stethoscope,
         path: "/add-nurse",
         color: "text-orange-600 bg-orange-50/50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800/30"
+      },
+      {
+        title: t('add_nursing_services', 'Add Nursing Services'),
+        description: "Select and offer nursing services provided by your hospital",
+        icon: HeartHandshake,
+        path: "/add-nursing-services",
+        color: "text-teal-600 bg-teal-50/50 dark:bg-teal-900/20 border-teal-100 dark:border-teal-800/30"
       },
       {
         title: t('add_receptionist'),
