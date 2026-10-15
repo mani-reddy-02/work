@@ -912,3 +912,18 @@ model Faq {
   @@map("faqs")
 }
 
+model Insurance {
+  id             String   @id @default(uuid())
+  title          String
+  icon           String?
+  description    String
+  successRate    Float
+  applicationUrl String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("insurances")
+}
+
+

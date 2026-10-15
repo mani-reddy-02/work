@@ -7,6 +7,7 @@ import {
   Building2, FlaskConical, 
   Stethoscope, 
   CalendarCheck, 
+  Shield,
   ShieldCheck, 
   BarChart3, 
   Bell, 
@@ -64,7 +65,8 @@ export const navGroups = [
       { name: 'Video Consults', path: '/admin/services/video-consultation', icon: Video },
       { name: 'Lab Tests', path: '/admin/services/lab-tests', icon: TestTube },
       { name: 'Home Sample', path: '/admin/services/home-sample-collection', icon: Home },
-      { name: 'Home Nursing', path: '/admin/services/home-nursing', icon: HeartHandshake }
+      { name: 'Home Nursing', path: '/admin/services/home-nursing', icon: HeartHandshake },
+      { name: 'Insurance', path: '/admin/insurance', icon: Shield }
     ]
   },
   {

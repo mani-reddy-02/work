@@ -31,6 +31,7 @@ import faqsRoutes from '../modules/faqs/faqs.routes';
 import whatsappRoutes from '../modules/whatsapp/whatsapp.routes';
 import healthAiRoutes from '../modules/health-ai/health-ai.routes';
 import videoRoutes from '../modules/video/video.routes';
+import insuranceRoutes from '../modules/insurance/insurance.routes';
 import { prisma } from '../config/prisma';
 import { authenticate, requireRole } from '../middleware/auth';
 
@@ -90,5 +91,7 @@ router.use('/faqs', faqsRoutes);
 router.use('/whatsapp', whatsappRoutes);
 router.use('/health-ai', healthAiRoutes);
 router.use('/video', videoRoutes);
+router.use('/insurance', insuranceRoutes);
+router.use('/insurances', insuranceRoutes);
 
 export default router;

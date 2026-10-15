@@ -125,6 +125,7 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
       allTimeVideoConsultations,
       labBookingTypeCounts,
       allTimeHomeNursingRequests,
+      totalInsurances,
     ] = await Promise.all([
       prisma.marketingRequest.count({ where: { status: 'PENDING' } }).catch(() => 0),
       prisma.medicalCampRequest.count({ where: { status: 'PENDING' } }).catch(() => 0),
@@ -150,6 +151,7 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
       }).catch(() => 0),
       prisma.labBooking.groupBy({ by: ['bookingType'], _count: { id: true } }).catch(() => []),
       prisma.homeNursingBooking.count().catch(() => 0),
+      prisma.insurance.count().catch(() => 0),
     ]);
 
     let allTimeLabOrders = 0;
@@ -588,7 +590,7 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
           totalHomeNursingRequests: allTimeHomeNursingRequests,
           totalNurses,
           totalReceptionists,
-          totalInsurances: 0,
+          totalInsurances,
           pendingHospitalVerifications,
           pendingLabVerifications,
         },
