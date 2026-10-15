@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom"
-import { LayoutGrid, Calendar, IndianRupee, User, Plus, Video, Home, Users, Activity, X, Stethoscope, CalendarClock, Megaphone, UserPlus } from "lucide-react"
+import { LayoutGrid, Calendar, IndianRupee, User, Plus, Video, Home, Users, Activity, X, Stethoscope, CalendarClock, Megaphone, UserPlus, HeartHandshake } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
@@ -66,6 +66,7 @@ export function SideNav({
         return [
           { to: '/dashboard', icon: LayoutGrid, label: t('dashboard') },
           { to: '/appointments', icon: Calendar, label: t('appointments') },
+          { to: '/home-nursing', icon: HeartHandshake, label: 'Home Nursing' },
           { to: '/payouts', icon: IndianRupee, label: t('payout') },
           { to: '/requests', icon: Megaphone, label: 'My Requests' },
           { to: '/profile', icon: User, label: t('profile') },

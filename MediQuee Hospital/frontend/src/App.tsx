@@ -26,6 +26,7 @@ import { RoleProtectedRoute } from "./components/auth/RoleProtectedRoute"
 import { Dashboard } from "./pages/Dashboard"
 import { Appointments } from "./pages/Appointments"
 import { Payouts } from "./pages/Payouts"
+import { HomeNursingServices } from "./pages/HomeNursingServices"
 import { Patients } from "./pages/Patients"
 import { Profile } from "./pages/Profile"
 import { AddDepartment } from "./pages/AddDepartment"
@@ -138,6 +139,8 @@ function AnimatedRoutes() {
           <Route element={<RoleProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/payouts" element={<Payouts />} />
+            <Route path="/home-nursing" element={<HomeNursingServices />} />
+            <Route path="/services/home-nursing" element={<HomeNursingServices />} />
             <Route path="/add-department" element={<AddDepartment />} />
             <Route path="/edit-department/:id" element={<EditDepartment />} />
             <Route path="/add-doctor" element={<AddDoctor />} />

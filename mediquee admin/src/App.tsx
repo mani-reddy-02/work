@@ -32,6 +32,7 @@ import Settings from './pages/Settings';
 import HomePosters from './pages/HomePosters';
 import Faqs from './pages/Faqs';
 import Insurance from './pages/Insurance';
+import NursingServices from './pages/NursingServices';
 
 // Advanced Pages
 import Transactions from './pages/Transactions';
@@ -88,6 +89,7 @@ function App() {
               <Route path="lab-departments/:id" element={<LabDepartmentDetails />} />
               <Route path="labs" element={<Labs />} />
               <Route path="labs/:id" element={<LabDetails />} />
+              <Route path="nursing-services" element={<NursingServices />} />
               <Route path="doctors" element={<Doctors />} />
               <Route path="doctors/:id" element={<DoctorDetails />} />
               

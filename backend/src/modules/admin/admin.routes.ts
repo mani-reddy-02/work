@@ -96,6 +96,21 @@ router.patch('/lab-tests/:testId', updateAdminLabTest);
 router.delete('/lab-tests/:testId', deleteAdminLabTest);
 
 
+import {
+  getAdminNursingStats,
+  getAdminNursingServices,
+  createAdminNursingService,
+  updateAdminNursingService,
+  deleteAdminNursingService,
+} from '../home-nursing/home-nursing.controller';
+
+// Nursing Services Management Routes
+router.get('/nursing-services/stats', getAdminNursingStats);
+router.get('/nursing-services', getAdminNursingServices);
+router.post('/nursing-services', createAdminNursingService);
+router.patch('/nursing-services/:id', updateAdminNursingService);
+router.delete('/nursing-services/:id', deleteAdminNursingService);
+
 // Verifications
 router.get('/verifications/pending', getPendingVerifications);
 router.patch('/verifications/:type/:id', updateVerificationStatus);

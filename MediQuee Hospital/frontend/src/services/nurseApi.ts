@@ -214,4 +214,68 @@ export const nurseApi = {
 
     return json.data;
   },
+
+  /**
+   * Hospital: Fetch all active central nursing services with current offering selection status
+   */
+  async getHospitalOfferings(): Promise<{
+    services: HospitalNursingOfferingItem[];
+    totalCount: number;
+    offeredCount: number;
+  }> {
+    const res = await fetch(`${API_BASE_URL}/home-nursing/hospital/offerings`, {
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      throw new Error(json.error?.message || 'Failed to fetch hospital nursing offerings');
+    }
+
+    return {
+      services: json.data || [],
+      totalCount: json.totalCount ?? json.data?.length ?? 0,
+      offeredCount: json.offeredCount ?? json.data?.filter((d: any) => d.isOffered).length ?? 0,
+    };
+  },
+
+  /**
+   * Hospital: Toggle or update a nursing service offering (select or deselect)
+   */
+  async toggleOffering(params: {
+    serviceId: string;
+    available: boolean;
+    price?: number;
+    duration?: string;
+    serviceArea?: string;
+  }): Promise<{ serviceId: string; available: boolean; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/home-nursing/hospital/offerings/toggle`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(params),
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      throw new Error(json.error?.message || 'Failed to update nursing service offering');
+    }
+
+    return json;
+  },
 };
+
+export interface HospitalNursingOfferingItem {
+  id: string;
+  name: string;
+  code: string;
+  category: string;
+  description: string;
+  duration?: string;
+  basePrice: number;
+  iconUrl?: string | null;
+  isOffered: boolean;
+  offeringId?: string | null;
+  price: number;
+  customDuration?: string | null;
+  serviceArea?: string | null;
+}

@@ -16,10 +16,31 @@ import {
   getHospitalNursingBookings,
   assignNurseToBooking,
   getHospitalNursesList,
+  getAdminNursingStats,
+  getAdminNursingServices,
+  createAdminNursingService,
+  updateAdminNursingService,
+  deleteAdminNursingService,
+  getHospitalServiceOfferings,
+  toggleHospitalServiceOffering,
 } from './home-nursing.controller';
-import { authenticate } from '../../middleware/auth';
+import { authenticate, requireRole } from '../../middleware/auth';
+import { Role } from '@prisma/client';
 
 const router = Router();
+
+// Admin Management endpoints (Authenticated & Super Admin)
+router.get('/admin/stats', authenticate, requireRole([Role.SUPER_ADMIN]), getAdminNursingStats);
+router.get('/admin/services', authenticate, requireRole([Role.SUPER_ADMIN]), getAdminNursingServices);
+router.post('/admin/services', authenticate, requireRole([Role.SUPER_ADMIN]), createAdminNursingService);
+router.patch('/admin/services/:id', authenticate, requireRole([Role.SUPER_ADMIN]), updateAdminNursingService);
+router.delete('/admin/services/:id', authenticate, requireRole([Role.SUPER_ADMIN]), deleteAdminNursingService);
+
+// Hospital Offerings endpoints (Authenticated Hospital Admin & Super Admin)
+router.get('/hospital/offerings', authenticate, requireRole([Role.HOSPITAL_ADMIN, Role.SUPER_ADMIN]), getHospitalServiceOfferings);
+router.get('/hospital/services-offered', authenticate, requireRole([Role.HOSPITAL_ADMIN, Role.SUPER_ADMIN]), getHospitalServiceOfferings);
+router.post('/hospital/offerings/toggle', authenticate, requireRole([Role.HOSPITAL_ADMIN, Role.SUPER_ADMIN]), toggleHospitalServiceOffering);
+router.post('/hospital/services-offered/toggle', authenticate, requireRole([Role.HOSPITAL_ADMIN, Role.SUPER_ADMIN]), toggleHospitalServiceOffering);
 
 // Public discovery endpoints
 router.get('/services', getNursingServices);

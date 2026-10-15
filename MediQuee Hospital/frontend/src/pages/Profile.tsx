@@ -1,4 +1,4 @@
-import { ArrowLeft, User, Bell, Shield, Settings, LogOut, ChevronRight, Building2, Users, LayoutGrid, FileSignature, Calendar, History, Stethoscope, Send, Headphones } from "lucide-react"
+import { ArrowLeft, User, Bell, Shield, Settings, LogOut, ChevronRight, Building2, Users, LayoutGrid, FileSignature, Calendar, History, Stethoscope, Send, Headphones, HeartHandshake } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import { useAuth } from "@/context/AuthContext"
@@ -60,6 +60,7 @@ export function Profile() {
   const operationLinks = ((role as string) === 'admin' || (role as string) === 'superadmin') ? [
     { icon: Users, label: t('staff_management', 'Staff Management'), path: "/profile/staff", subtitle: "Manage doctors, nurses, reception & lab" },
     { icon: LayoutGrid, label: t('departments_list', 'Departments'), path: "/profile/departments", subtitle: "Clinical specialties and units" },
+    { icon: HeartHandshake, label: 'Home Nursing Services', path: "/home-nursing", subtitle: "Select and configure offered nursing services" },
   ] : [];
 
   const isDoctor = role === 'doctor';

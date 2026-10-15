@@ -1518,3 +1518,516 @@ export const getHospitalNursesList = async (req: Request, res: Response, next: N
     next(error);
   }
 };
+
+/**
+ * GET /api/v1/home-nursing/admin/stats
+ * (Also available at /api/v1/admin/nursing-services/stats)
+ * Returns Total Nursing Services and Total Nurses from the real database.
+ */
+export const getAdminNursingStats = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const [totalServices, totalNurses, activeServices] = await Promise.all([
+      prisma.nursingService.count(),
+      prisma.user.count({ where: { role: Role.NURSE } }),
+      prisma.nursingService.count({ where: { active: true } }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        totalNursingServices: totalServices,
+        totalServices,
+        totalNurses,
+        activeServices,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/home-nursing/admin/services
+ * (Also available at /api/v1/admin/nursing-services)
+ * Centrally defined nursing services with search, pagination (20 max), and hospital offerings count.
+ */
+export const getAdminNursingServices = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const page = Math.max(1, parseInt((req.query.page as string) || '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt((req.query.limit as string) || '20', 10)));
+    const search = (req.query.search as string)?.trim();
+    const status = (req.query.status as string)?.trim().toUpperCase();
+
+    const where: Prisma.NursingServiceWhereInput = {};
+
+    if (status === 'ACTIVE') {
+      where.active = true;
+    } else if (status === 'INACTIVE') {
+      where.active = false;
+    }
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { code: { contains: search, mode: 'insensitive' } },
+        { category: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [total, services] = await Promise.all([
+      prisma.nursingService.count({ where }),
+      prisma.nursingService.findMany({
+        where,
+        include: {
+          _count: {
+            select: {
+              offerings: { where: { available: true } },
+              bookings: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
+
+    const data = services.map((s) => ({
+      id: s.id,
+      name: s.name,
+      code: s.code,
+      category: s.category,
+      description: s.description,
+      duration: s.duration,
+      basePrice: s.basePrice,
+      requirements: s.requirements,
+      iconUrl: s.iconUrl,
+      active: s.active,
+      hospitalOfferingsCount: s._count.offerings,
+      bookingsCount: s._count.bookings,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    }));
+
+    res.json({
+      success: true,
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/v1/home-nursing/admin/services
+ * (Also available at /api/v1/admin/nursing-services)
+ * Create a new centrally defined nursing service.
+ */
+export const createAdminNursingService = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { name, description, iconUrl, active = true, category = 'Home Nursing', duration = 'Per Visit', basePrice = 0, requirements } = req.body;
+
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Service Name is required' },
+      });
+    }
+
+    if (!description || typeof description !== 'string' || !description.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Description is required' },
+      });
+    }
+
+    const trimmedName = name.trim();
+    const existing = await prisma.nursingService.findUnique({
+      where: { name: trimmedName },
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'DUPLICATE_SERVICE', message: `A nursing service named "${trimmedName}" already exists.` },
+      });
+    }
+
+    // Generate unique code if not provided
+    const baseCode = trimmedName
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .slice(0, 10);
+    const uniqueSuffix = Date.now().toString(36).toUpperCase().slice(-4);
+    const code = `NS_${baseCode || 'SRV'}_${uniqueSuffix}`;
+
+    const newService = await prisma.nursingService.create({
+      data: {
+        name: trimmedName,
+        code,
+        category: category?.trim() || 'Home Nursing',
+        description: description.trim(),
+        duration: duration || 'Per Visit',
+        basePrice: typeof basePrice === 'number' ? basePrice : parseFloat(basePrice) || 0,
+        requirements: requirements?.trim() || null,
+        iconUrl: iconUrl?.trim() || null,
+        active: Boolean(active),
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        ...newService,
+        hospitalOfferingsCount: 0,
+        bookingsCount: 0,
+      },
+      message: 'Nursing service created successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/v1/home-nursing/admin/services/:id
+ * (Also available at /api/v1/admin/nursing-services/:id)
+ * Update an existing nursing service.
+ */
+export const updateAdminNursingService = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const { name, description, iconUrl, active, category, duration, basePrice, requirements } = req.body;
+
+    const existing = await prisma.nursingService.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Nursing service not found' },
+      });
+    }
+
+    const data: Prisma.NursingServiceUpdateInput = {};
+
+    if (name !== undefined) {
+      const trimmedName = String(name).trim();
+      if (!trimmedName) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: 'Service Name cannot be empty' },
+        });
+      }
+
+      // Check duplicate name
+      const duplicate = await prisma.nursingService.findFirst({
+        where: {
+          name: trimmedName,
+          id: { not: id },
+        },
+      });
+
+      if (duplicate) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'DUPLICATE_SERVICE', message: `Another nursing service with name "${trimmedName}" already exists.` },
+        });
+      }
+
+      data.name = trimmedName;
+    }
+
+    if (description !== undefined) {
+      const trimmedDesc = String(description).trim();
+      if (!trimmedDesc) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: 'Description cannot be empty' },
+        });
+      }
+      data.description = trimmedDesc;
+    }
+
+    if (iconUrl !== undefined) {
+      data.iconUrl = iconUrl ? String(iconUrl).trim() : null;
+    }
+
+    if (active !== undefined) {
+      data.active = Boolean(active);
+    }
+
+    if (category !== undefined) {
+      data.category = String(category).trim() || existing.category;
+    }
+
+    if (duration !== undefined) {
+      data.duration = String(duration).trim() || existing.duration;
+    }
+
+    if (basePrice !== undefined) {
+      data.basePrice = typeof basePrice === 'number' ? basePrice : parseFloat(basePrice) || 0;
+    }
+
+    if (requirements !== undefined) {
+      data.requirements = requirements ? String(requirements).trim() : null;
+    }
+
+    const [updated, hospitalOfferingsCount, bookingsCount] = await Promise.all([
+      prisma.nursingService.update({
+        where: { id },
+        data,
+      }),
+      prisma.nursingServiceOffering.count({ where: { serviceId: id, available: true } }),
+      prisma.homeNursingBooking.count({ where: { serviceId: id } }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        ...updated,
+        hospitalOfferingsCount,
+        bookingsCount,
+      },
+      message: 'Nursing service updated successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * DELETE /api/v1/home-nursing/admin/services/:id
+ * (Also available at /api/v1/admin/nursing-services/:id)
+ * Safe removal or deactivation respecting hospital offerings and historical bookings.
+ */
+export const deleteAdminNursingService = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+
+    const existing = await prisma.nursingService.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            offerings: true,
+            bookings: true,
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Nursing service not found' },
+      });
+    }
+
+    // If there are existing bookings or offerings, preserve historical data integrity!
+    if (existing._count.bookings > 0 || existing._count.offerings > 0) {
+      const updated = await prisma.nursingService.update({
+        where: { id },
+        data: { active: false },
+      });
+
+      return res.json({
+        success: true,
+        deactivated: true,
+        data: updated,
+        message: `Service "${existing.name}" is linked to existing bookings or hospital offerings. It has been deactivated to preserve data integrity without breaking historical records.`,
+      });
+    }
+
+    // If completely unlinked, delete safely
+    await prisma.nursingService.delete({
+      where: { id },
+    });
+
+    res.json({
+      success: true,
+      deleted: true,
+      message: `Nursing service "${existing.name}" removed successfully.`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/home-nursing/hospital/offerings
+ * Returns all active centrally defined services with the authenticated hospital's selection state.
+ */
+export const getHospitalServiceOfferings = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = req.user?.hospitalId;
+    if (!hospitalId && req.user?.role !== Role.SUPER_ADMIN) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Hospital identification required' },
+      });
+    }
+
+    const effectiveHospitalId = hospitalId || (req.query.hospitalId as string);
+    if (!effectiveHospitalId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'hospitalId is required' },
+      });
+    }
+
+    // Only active central services should be available for new selection
+    const services = await prisma.nursingService.findMany({
+      where: { active: true },
+      include: {
+        offerings: {
+          where: { hospitalId: effectiveHospitalId },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    const data = services.map((s) => {
+      const offering = s.offerings[0] || null;
+      return {
+        id: s.id,
+        name: s.name,
+        code: s.code,
+        category: s.category,
+        description: s.description,
+        duration: s.duration,
+        basePrice: s.basePrice,
+        iconUrl: s.iconUrl,
+        isOffered: offering ? offering.available : false,
+        offeringId: offering?.id || null,
+        price: offering?.price ?? s.basePrice,
+        customDuration: offering?.duration ?? s.duration,
+        serviceArea: offering?.serviceArea ?? null,
+      };
+    });
+
+    res.json({
+      success: true,
+      data,
+      totalCount: data.length,
+      offeredCount: data.filter((d) => d.isOffered).length,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/v1/home-nursing/hospital/offerings/toggle
+ * Select or deselect a nursing service offering for the authenticated hospital.
+ */
+export const toggleHospitalServiceOffering = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = req.user?.hospitalId;
+    if (!hospitalId && req.user?.role !== Role.SUPER_ADMIN) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Hospital identification required' },
+      });
+    }
+
+    const { serviceId, available, price, duration, serviceArea } = req.body;
+    const effectiveHospitalId = hospitalId || req.body.hospitalId;
+
+    if (!serviceId || typeof serviceId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'serviceId is required' },
+      });
+    }
+
+    if (!effectiveHospitalId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'hospitalId is required' },
+      });
+    }
+
+    // Verify service exists
+    const centralService = await prisma.nursingService.findUnique({
+      where: { id: serviceId },
+    });
+
+    if (!centralService) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Nursing service not found' },
+      });
+    }
+
+    const isAvailable = Boolean(available);
+
+    if (isAvailable) {
+      // Must be active centrally to select
+      if (!centralService.active) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'SERVICE_INACTIVE', message: 'This service is currently deactivated centrally by Admin and cannot be offered.' },
+        });
+      }
+
+      const offering = await prisma.nursingServiceOffering.upsert({
+        where: {
+          hospitalId_serviceId: {
+            hospitalId: effectiveHospitalId,
+            serviceId,
+          },
+        },
+        create: {
+          hospitalId: effectiveHospitalId,
+          serviceId,
+          price: typeof price === 'number' ? price : centralService.basePrice,
+          duration: duration || centralService.duration,
+          serviceArea: serviceArea || null,
+          available: true,
+        },
+        update: {
+          available: true,
+          ...(price !== undefined ? { price: typeof price === 'number' ? price : centralService.basePrice } : {}),
+          ...(duration !== undefined ? { duration } : {}),
+          ...(serviceArea !== undefined ? { serviceArea } : {}),
+        },
+      });
+
+      return res.json({
+        success: true,
+        data: offering,
+        message: `"${centralService.name}" is now offered by your hospital.`,
+      });
+    } else {
+      // Deselect: deactivate offering, preserving historical records
+      await prisma.nursingServiceOffering.updateMany({
+        where: {
+          hospitalId: effectiveHospitalId,
+          serviceId,
+        },
+        data: {
+          available: false,
+        },
+      });
+
+      return res.json({
+        success: true,
+        data: { serviceId, hospitalId: effectiveHospitalId, available: false },
+        message: `"${centralService.name}" has been deselected and is no longer offered by your hospital. Existing bookings remain intact.`,
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
