@@ -152,6 +152,7 @@ function AnimatedRoutes() {
           <Route path="/book-camp" element={<BookMedicalCamp />} />
           <Route path="/book-marketing" element={<BookMarketing />} />
           <Route path="/requests" element={<Requests />} />
+          <Route path="/profile/requests" element={<Requests />} />
 
           {/* Doctor Routes */}
           <Route element={<RoleProtectedRoute allowedRoles={['doctor']} />}>
@@ -189,7 +190,7 @@ function AnimatedRoutes() {
           <Route path="/profile/staff/add-lab" element={<AddLabStaff />} />
           <Route path="/profile/staff/:type" element={<StaffList />} />
           <Route path="/profile/departments" element={<DepartmentsList />} />
-          <Route path="/profile/permissions" element={<PermissionsList />} />
+          <Route path="/profile/permissions" element={<Navigate to="/profile" replace />} />
           <Route path="/profile/personal" element={<PersonalInformation />} />
           <Route path="/profile/erx" element={<EPrescriptionSettings />} />
           <Route path="/profile/schedule" element={<ClinicSchedule />} />
@@ -199,7 +200,7 @@ function AnimatedRoutes() {
           <Route path="/security" element={<Security />} />
           <Route path="/security/change-password" element={<ChangePassword />} />
           <Route path="/security/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/support" element={<HelpSupport />} />
+          <Route path="/support" element={<Navigate to="/contact" replace />} />
           <Route path="/contact" element={<ContactSupport />} />
         </Route>
 

@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 
 const departmentSchema = z.object({
   specialtyId: z.string().min(1, "Please select a specialty"),
+  name: z.string().optional(),
   description: z.string().optional(),
   status: z.enum(["active", "inactive"]),
 });
@@ -53,17 +54,37 @@ export function AddDepartment() {
     fetchData();
   }, []);
 
-  const { register, handleSubmit, setValue, formState: { errors, isDirty } } = useForm<DepartmentFormValues>({
+  const { register, handleSubmit, setValue, watch, formState: { errors, isDirty } } = useForm<DepartmentFormValues>({
     resolver: zodResolver(departmentSchema),
     defaultValues: {
+      name: "",
+      specialtyId: "",
+      description: "",
       status: "active"
     }
   });
 
+  const selectedSpecialtyId = watch("specialtyId");
+  const selectedSpecialty = specialties.find(s => s.id === selectedSpecialtyId);
+
   const onSubmit = async (data: DepartmentFormValues) => {
     setIsSubmitting(true);
     try {
-      await adminApi.createDepartment(data);
+      const activeSpecialty = specialties.find(s => s.id === data.specialtyId);
+      const deptName = (data.name && data.name.trim()) ? data.name.trim() : (activeSpecialty?.name || '');
+      
+      if (!deptName) {
+        toast('Please select a platform specialty or enter a department name', 'error');
+        setIsSubmitting(false);
+        return;
+      }
+
+      await adminApi.createDepartment({
+        ...data,
+        name: deptName,
+        specialtyId: data.specialtyId,
+        isActive: data.status === 'active'
+      });
       toast('Department created successfully', 'success');
       navigate(-1);
     } catch (error) {
@@ -113,12 +134,10 @@ export function AddDepartment() {
                 if (!isLoadingSpecialties && !specialtiesError) setIsDropdownOpen(!isDropdownOpen);
               }}
             >
-              <span className={cn("text-[15px] truncate", !isDirty && !specialties.find(s => s.id === register("specialtyId").name) ? "text-[#98A2B3]" : "text-[#172033]")}>
+              <span className={cn("text-[15px] truncate", !selectedSpecialty ? "text-[#98A2B3]" : "text-[#172033] font-medium")}>
                 {isLoadingSpecialties ? "Loading specialties..." : 
                  specialtiesError ? "Failed to load specialties" :
-                 (specialties.find(s => s.id === document.getElementsByName("specialtyId")[0]?.getAttribute("value"))?.name || 
-                  specialties.find(s => s.id === (register("specialtyId") as any).value)?.name || // For initial render before selection
-                  "Search and select a specialty...")}
+                 (selectedSpecialty?.name || "Search and select a specialty...")}
               </span>
               {isLoadingSpecialties ? <Loader2 className="w-5 h-5 animate-spin text-[#98A2B3]" /> : <ChevronDown className="w-5 h-5 text-[#98A2B3]" />}
             </div>
@@ -166,7 +185,11 @@ export function AddDepartment() {
                               return;
                             }
                             setValue('specialtyId', s.id, { shouldValidate: true, shouldDirty: true });
-                            document.getElementsByName("specialtyId")[0]?.setAttribute("value", s.id);
+                            setValue('name', s.name, { shouldValidate: true, shouldDirty: true });
+                            const currentDesc = watch('description');
+                            if (!currentDesc && s.description) {
+                              setValue('description', s.description, { shouldDirty: true });
+                            }
                             setIsDropdownOpen(false);
                             setSearchQuery("");
                           }}
@@ -194,6 +217,22 @@ export function AddDepartment() {
             )}
 
             {errors.specialtyId && !specialtiesError && <span className="text-destructive text-[12px] font-medium mt-0.5">{errors.specialtyId.message}</span>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[13px] font-semibold text-[#172033]">
+              Department Name <span className="text-destructive">*</span>
+            </label>
+            <input 
+              type="text"
+              {...register("name")}
+              placeholder="e.g. Andrology, Cardiology" 
+              className={cn(
+                "px-4 py-3 bg-surface border rounded-xl outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm text-[#172033]",
+                errors.name ? 'border-destructive focus:ring-destructive/20' : 'border-border/60 hover:border-gray-300'
+              )}
+            />
+            {errors.name && <span className="text-destructive text-[12px] font-medium mt-0.5">{errors.name.message}</span>}
           </div>
 
           <div className="flex flex-col gap-1.5">

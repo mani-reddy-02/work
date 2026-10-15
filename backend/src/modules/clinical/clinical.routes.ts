@@ -15,8 +15,8 @@ import { validateRequest } from '../../middleware/validate';
 
 const router = Router();
 
-// Require authenticated DOCTOR or SUPER_ADMIN for all clinical consultation endpoints
-router.use(authenticate, requireRole(['DOCTOR', 'SUPER_ADMIN']));
+// Require authenticated DOCTOR, HOSPITAL_ADMIN, RECEPTIONIST, or SUPER_ADMIN for clinical consultation endpoints
+router.use(authenticate, requireRole(['DOCTOR', 'HOSPITAL_ADMIN', 'RECEPTIONIST', 'SUPER_ADMIN']));
 
 // 1. Consultation Recording & Completion
 router.post('/consultations/:bookingId/record', validateRequest(recordConsultationSchema), recordConsultation);

@@ -213,12 +213,29 @@ export const getPatientHistory = async (req: Request, res: Response, next: NextF
       });
     }
 
-    const whereConditions: Array<{ patientId: string } | { patientPhone: string }> = [];
+    const whereConditions: Array<{ patientId?: string } | { patientPhone?: string }> = [];
     if (patientId) {
       whereConditions.push({ patientId });
     }
     if (phone) {
       whereConditions.push({ patientPhone: phone });
+      const cleanPhone = phone.replace(/^(\+91|91)/, '').replace(/\D/g, '');
+      if (cleanPhone && cleanPhone !== phone) {
+        whereConditions.push({ patientPhone: cleanPhone });
+        whereConditions.push({ patientPhone: `+91${cleanPhone}` });
+      }
+      const user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { phone },
+            ...(cleanPhone ? [{ phone: cleanPhone }, { phone: `+91${cleanPhone}` }] : [])
+          ]
+        },
+        select: { id: true }
+      });
+      if (user && !whereConditions.some((w: any) => w.patientId === user.id)) {
+        whereConditions.push({ patientId: user.id });
+      }
     }
 
     const bookings = await prisma.oPBooking.findMany({
@@ -228,7 +245,7 @@ export const getPatientHistory = async (req: Request, res: Response, next: NextF
       },
       include: {
         doctor: {
-          select: { id: true, name: true, designation: true, avatar: true }
+          select: { id: true, name: true, designation: true, avatar: true, specialization: true }
         },
         department: {
           select: { id: true, name: true }
@@ -262,6 +279,7 @@ export const getPatientHistory = async (req: Request, res: Response, next: NextF
       status: b.status,
       chiefComplaint: b.reason, // Original patient complaint preserved!
       opType: b.opType,
+      fee: b.fee,
       doctor: b.doctor,
       department: b.department,
       condition: b.condition?.name,
@@ -274,7 +292,15 @@ export const getPatientHistory = async (req: Request, res: Response, next: NextF
         followUpDate: b.prescription.followUpDate,
         createdAt: b.prescription.createdAt,
         items: b.prescription.items
-      } : null
+      } : null,
+      labOrders: (b.labOrders || []).map((lo: any) => ({
+        id: lo.id,
+        testId: lo.testId,
+        testName: lo.test?.platformTest?.name || 'Diagnostic Lab Test',
+        category: lo.test?.platformTest?.specimenType || 'General Lab',
+        sampleType: lo.test?.platformTest?.specimenType || 'Specimen',
+        createdAt: lo.createdAt
+      }))
     }));
 
     res.json({

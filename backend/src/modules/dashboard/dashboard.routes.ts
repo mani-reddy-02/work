@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, requireRole } from '../../middleware/auth';
-import { getHospitalDashboardOverview } from './dashboard.controller';
+import { getHospitalDashboardOverview, getHospitalRevenueAnalytics } from './dashboard.controller';
 
 const router = Router();
 
@@ -11,4 +11,8 @@ router.use(requireRole(['HOSPITAL_ADMIN', 'RECEPTIONIST', 'DOCTOR', 'NURSE', 'SU
 // GET /api/v1/hospital/dashboard/overview
 router.get('/overview', getHospitalDashboardOverview);
 
+// GET /api/v1/hospital/dashboard/revenue-analytics
+router.get('/revenue-analytics', getHospitalRevenueAnalytics);
+
 export default router;
+

@@ -11,6 +11,17 @@ export interface HospitalVerificationDoc {
   createdAt: string;
 }
 
+export interface HospitalRegulatoryDoc {
+  id: string;
+  documentType: string;
+  licenseNumber: string;
+  category?: string;
+  status: 'VERIFIED' | 'UPLOADED' | string;
+  fileUrl?: string | null;
+  validUntil?: string | null;
+  createdAt?: string;
+}
+
 export interface HospitalProfile {
   id: string;
   name: string;
@@ -36,6 +47,7 @@ export interface HospitalProfile {
   services?: string[];
   verificationStatus?: 'VERIFIED' | 'PENDING' | string;
   verifications?: HospitalVerificationDoc[];
+  documents?: HospitalRegulatoryDoc[];
   departmentsCount?: number;
   staffCount?: number;
   totalBookingsCount?: number;

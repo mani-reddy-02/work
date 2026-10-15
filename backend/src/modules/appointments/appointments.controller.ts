@@ -472,23 +472,117 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
       });
     }
 
-    // Retrieve past visits / consultations for this patient
+    // Resolve patient age and gender with fallback across previous bookings or user profile
+    let resolvedAge = booking.patientAge;
+    let resolvedGender = booking.patientGender;
+
+    if (!resolvedAge || !resolvedGender) {
+      const otherBookingWithDemographics = await prisma.oPBooking.findFirst({
+        where: {
+          hospitalId: booking.hospitalId,
+          id: { not: booking.id },
+          AND: [
+            {
+              OR: [
+                ...(booking.patientId ? [{ patientId: booking.patientId }] : []),
+                ...(booking.patientPhone ? [{ patientPhone: booking.patientPhone }] : []),
+                { patientName: { equals: booking.patientName, mode: 'insensitive' } }
+              ]
+            },
+            {
+              OR: [
+                { patientAge: { not: null } },
+                { patientGender: { not: null } }
+              ]
+            }
+          ]
+        },
+        select: { patientAge: true, patientGender: true },
+        orderBy: { appointmentDate: 'desc' }
+      });
+
+      if (!resolvedAge && otherBookingWithDemographics?.patientAge) {
+        resolvedAge = otherBookingWithDemographics.patientAge;
+      }
+      if (!resolvedGender && otherBookingWithDemographics?.patientGender) {
+        resolvedGender = otherBookingWithDemographics.patientGender;
+      }
+
+      if (!resolvedGender && booking.patient?.gender) {
+        resolvedGender = booking.patient.gender;
+      }
+      if (!resolvedAge && booking.patient?.dob) {
+        const d = new Date(booking.patient.dob);
+        if (!isNaN(d.getTime())) {
+          const calculatedAge = new Date().getFullYear() - d.getFullYear();
+          if (calculatedAge > 0 && calculatedAge < 125) {
+            resolvedAge = calculatedAge;
+          }
+        }
+      }
+    }
+
+    // Retrieve all past visits / consultations for this patient
     const pastBookings = await prisma.oPBooking.findMany({
       where: {
         hospitalId: booking.hospitalId,
         OR: [
           ...(booking.patientId ? [{ patientId: booking.patientId }] : []),
           ...(booking.patientPhone ? [{ patientPhone: booking.patientPhone }] : []),
-          { patientName: booking.patientName }
+          { patientName: { equals: booking.patientName, mode: 'insensitive' } }
         ]
       },
       include: {
-        doctor: { select: { name: true } },
-        condition: { select: { name: true } }
+        doctor: { select: { id: true, name: true, designation: true, avatar: true, specialization: true } },
+        department: { select: { id: true, name: true } },
+        condition: { select: { id: true, name: true } },
+        vitals: true,
+        prescription: {
+          include: { items: true }
+        },
+        labOrders: {
+          include: {
+            test: {
+              include: {
+                platformTest: true
+              }
+            }
+          }
+        }
       },
-      orderBy: { appointmentDate: 'desc' },
-      take: 10
+      orderBy: { appointmentDate: 'desc' }
     });
+
+    // Collect all authentic prescriptions from history
+    const prescriptions = pastBookings
+      .filter((b: any) => b.prescription)
+      .map((b: any) => ({
+        id: b.prescription.id,
+        bookingId: b.id,
+        date: b.appointmentDate.toISOString().split('T')[0],
+        doctor: b.doctor?.name || 'Doctor',
+        diagnosis: b.prescription.diagnosis,
+        clinicalNotes: b.prescription.clinicalNotes,
+        generalAdvice: b.prescription.generalAdvice,
+        followUpDate: b.prescription.followUpDate,
+        items: b.prescription.items || []
+      }));
+
+    // Collect all doctor-ordered lab tests from history
+    const doctorLabOrders = pastBookings.flatMap((b: any) => (b.labOrders || []).map((lo: any) => ({
+      id: lo.id,
+      bookingId: b.id,
+      bookingDate: b.appointmentDate.toISOString().split('T')[0],
+      doctorName: b.doctor?.name || 'Doctor',
+      testId: lo.testId,
+      testName: lo.test?.platformTest?.name || 'Diagnostic Lab Investigation',
+      category: lo.test?.platformTest?.specimenType || 'General Lab',
+      price: lo.test?.price || 0,
+      createdAt: lo.createdAt
+    })));
+
+    // Latest vitals across current booking or most recent past visit
+    const latestVitals = booking.vitals || (pastBookings as any[]).find(b => b.vitals)?.vitals || null;
 
     res.json({
       success: true,
@@ -502,6 +596,7 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
         doctorId: booking.doctorId,
         doctorName: booking.doctor.name,
         doctorDesignation: booking.doctor.designation,
+        doctorSpecialization: booking.doctor?.specialization || null,
         doctorAvatar: booking.doctor.avatar,
         departmentId: booking.departmentId,
         departmentName: booking.department.name,
@@ -510,8 +605,8 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
         patientId: booking.patientId,
         patientName: booking.patientName,
         patientPhone: booking.patientPhone,
-        patientAge: booking.patientAge,
-        patientGender: booking.patientGender,
+        patientAge: resolvedAge,
+        patientGender: resolvedGender,
         date: booking.appointmentDate.toISOString().split('T')[0],
         timeSlot: booking.timeSlot || booking.slotTime,
         slotTime: booking.slotTime || booking.timeSlot,
@@ -522,21 +617,144 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
         createdAt: booking.createdAt,
         prescription: booking.prescription || null,
         vitals: booking.vitals || null,
+        latestVitals,
+        prescriptions,
+        doctorLabOrders,
         doctorLicenseNumber: booking.doctor?.licenseNumber || null,
-        doctorSpecialization: booking.doctor?.specialization || null,
         doctorQualification: booking.doctor?.qualification || null,
         doctorDigitalSignature: booking.doctor?.digitalSignature || null,
         hospitalRegNumber: booking.hospital?.registrationNumber || null,
-        pastVisits: pastBookings.map(v => ({
+        pastVisits: (pastBookings as any[]).map(v => ({
           id: v.id,
           date: v.appointmentDate.toISOString().split('T')[0],
           time: v.slotTime || v.timeSlot || '10:00 AM',
           doctor: v.doctor?.name || 'Doctor',
-          diagnosis: v.condition?.name || v.opType || 'General Consultation',
-          status: v.status
+          department: v.department?.name || 'General Medicine',
+          diagnosis: v.prescription?.diagnosis || v.condition?.name || v.opType || 'General Consultation',
+          reason: v.reason || undefined,
+          opType: v.opType || 'OP Visit',
+          status: v.status,
+          fee: v.fee,
+          hasVitals: !!v.vitals,
+          vitals: v.vitals || null,
+          hasPrescription: !!v.prescription,
+          prescription: v.prescription || null
         }))
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateAppointmentVitals = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const rawId = (req.params.id as string || '').trim();
+    const cleanId = rawId.replace(/^OP-?/i, '');
+    const hospitalId = req.user?.hospitalId;
+
+    const booking = await prisma.oPBooking.findFirst({
+      where: {
+        OR: [
+          { id: cleanId },
+          { id: { startsWith: cleanId } }
+        ],
+        ...(hospitalId ? { hospitalId } : {})
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Appointment not found' } });
+    }
+
+    const {
+      systolicBp,
+      diastolicBp,
+      pulseRate,
+      bodyTemperature,
+      respiratoryRate,
+      spo2,
+      weightKg,
+      heightCm
+    } = req.body;
+
+    const parseNum = (val: any) => {
+      if (val === null || val === undefined || val === '') return null;
+      const n = Number(val);
+      return isNaN(n) ? null : n;
+    };
+
+    const vitals = await prisma.patientVitals.upsert({
+      where: { bookingId: booking.id },
+      create: {
+        bookingId: booking.id,
+        patientId: booking.patientId,
+        systolicBp: parseNum(systolicBp),
+        diastolicBp: parseNum(diastolicBp),
+        pulseRate: parseNum(pulseRate),
+        bodyTemperature: parseNum(bodyTemperature),
+        respiratoryRate: parseNum(respiratoryRate),
+        spo2: parseNum(spo2),
+        weightKg: parseNum(weightKg),
+        heightCm: parseNum(heightCm),
+        recordedAt: new Date()
+      },
+      update: {
+        systolicBp: systolicBp !== undefined ? parseNum(systolicBp) : undefined,
+        diastolicBp: diastolicBp !== undefined ? parseNum(diastolicBp) : undefined,
+        pulseRate: pulseRate !== undefined ? parseNum(pulseRate) : undefined,
+        bodyTemperature: bodyTemperature !== undefined ? parseNum(bodyTemperature) : undefined,
+        respiratoryRate: respiratoryRate !== undefined ? parseNum(respiratoryRate) : undefined,
+        spo2: spo2 !== undefined ? parseNum(spo2) : undefined,
+        weightKg: weightKg !== undefined ? parseNum(weightKg) : undefined,
+        heightCm: heightCm !== undefined ? parseNum(heightCm) : undefined,
+        recordedAt: new Date()
+      }
+    });
+
+    res.json({ success: true, data: vitals });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateAppointmentStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const rawId = (req.params.id as string || '').trim();
+    const cleanId = rawId.replace(/^OP-?/i, '');
+    const hospitalId = req.user?.hospitalId;
+    const { status, reason, notes } = req.body;
+
+    const booking = await prisma.oPBooking.findFirst({
+      where: {
+        OR: [
+          { id: cleanId },
+          { id: { startsWith: cleanId } }
+        ],
+        ...(hospitalId ? { hospitalId } : {})
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Appointment not found' } });
+    }
+
+    const updateData: any = {};
+    if (status) updateData.status = status;
+    if (reason !== undefined) updateData.reason = reason;
+    else if (notes !== undefined) updateData.reason = notes;
+
+    const updated = await prisma.oPBooking.update({
+      where: { id: booking.id },
+      data: updateData,
+      include: {
+        doctor: { select: { id: true, name: true, avatar: true } },
+        department: { select: { id: true, name: true } },
+        vitals: true
+      }
+    });
+
+    res.json({ success: true, data: updated });
   } catch (error) {
     next(error);
   }

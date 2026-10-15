@@ -28,12 +28,81 @@ export function ProfileEdit() {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
+interface ParsedAddress {
+  type: string;
+  street: string;
+  city: string;
+  state: string;
+  pincode: string;
+  id?: string;
+}
+
+function parseRawAddress(raw: any): ParsedAddress {
+  const defaultAddress: ParsedAddress = {
+    type: 'Home',
+    street: '',
+    city: '',
+    state: '',
+    pincode: '',
+  };
+
+  if (!raw) return defaultAddress;
+
+  if (typeof raw === 'object' && raw !== null) {
+    if (Array.isArray(raw)) {
+      const first = raw[0] || {};
+      return {
+        type: first.type || 'Home',
+        street: first.street || '',
+        city: first.city || '',
+        state: first.state || '',
+        pincode: first.pincode || '',
+        id: first.id,
+      };
+    }
+    return {
+      type: raw.type || 'Home',
+      street: raw.street || '',
+      city: raw.city || '',
+      state: raw.state || '',
+      pincode: raw.pincode || '',
+      id: raw.id,
+    };
+  }
+
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return parseRawAddress(parsed);
+      } catch {
+        // Fallback to plain string if parse fails
+      }
+    }
+    return {
+      ...defaultAddress,
+      street: trimmed,
+    };
+  }
+
+  return defaultAddress;
+}
+
   // Form states
   const [name, setName] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [gender, setGender] = useState<string>('');
   const [dob, setDob] = useState<string>('');
-  const [address, setAddress] = useState<string>('');
+
+  // Structured Address States
+  const [addressStreet, setAddressStreet] = useState<string>('');
+  const [addressCity, setAddressCity] = useState<string>('');
+  const [addressState, setAddressState] = useState<string>('');
+  const [addressPincode, setAddressPincode] = useState<string>('');
+  const [addressType, setAddressType] = useState<string>('Home');
+  const [addressId, setAddressId] = useState<string | undefined>(undefined);
+
   const [designation, setDesignation] = useState<string>('');
   const [bio, setBio] = useState<string>('');
 
@@ -54,7 +123,16 @@ export function ProfileEdit() {
       setPhone(data.phone || '');
       setGender(data.gender || '');
       setDob(data.dob || '');
-      setAddress(data.address || '');
+
+      // Parse structured address
+      const addr = parseRawAddress(data.address);
+      setAddressStreet(addr.street);
+      setAddressCity(addr.city);
+      setAddressState(addr.state);
+      setAddressPincode(addr.pincode);
+      setAddressType(addr.type || 'Home');
+      setAddressId(addr.id);
+
       setDesignation(data.designation || '');
       setBio(data.bio || '');
       setLicenseNumber(data.licenseNumber || '');
@@ -83,12 +161,28 @@ export function ProfileEdit() {
 
     setIsSaving(true);
     try {
+      // Serialize structured address into the JSON format expected by backend ecosystem
+      const hasAnyAddress = addressStreet.trim() || addressCity.trim() || addressState.trim() || addressPincode.trim();
+      let serializedAddress: string | null = null;
+      if (hasAnyAddress) {
+        serializedAddress = JSON.stringify([
+          {
+            type: addressType || 'Home',
+            street: addressStreet.trim(),
+            city: addressCity.trim(),
+            state: addressState.trim(),
+            pincode: addressPincode.trim(),
+            id: addressId || Date.now().toString(),
+          }
+        ]);
+      }
+
       const payload = {
         name: name.trim(),
         phone: phone.trim() || undefined,
         gender: gender || null,
         dob: dob || null,
-        address: address.trim() || null,
+        address: serializedAddress,
         designation: designation.trim() || null,
         bio: bio.trim() || null,
         ...(isDoctor || isNurse ? {
@@ -107,7 +201,15 @@ export function ProfileEdit() {
       setPhone(updated.phone || '');
       setGender(updated.gender || '');
       setDob(updated.dob || '');
-      setAddress(updated.address || '');
+
+      const updatedAddr = parseRawAddress(updated.address);
+      setAddressStreet(updatedAddr.street);
+      setAddressCity(updatedAddr.city);
+      setAddressState(updatedAddr.state);
+      setAddressPincode(updatedAddr.pincode);
+      setAddressType(updatedAddr.type || 'Home');
+      setAddressId(updatedAddr.id);
+
       setDesignation(updated.designation || '');
       setBio(updated.bio || '');
       setLicenseNumber(updated.licenseNumber || '');
@@ -294,17 +396,97 @@ export function ProfileEdit() {
                   />
                 </div>
 
-                <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-muted" /> Clinic / Residential Address
-                  </label>
-                  <input 
-                    type="text" 
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="e.g. Suite 402, MediQuee Hospital, Road No. 2, Banjara Hills" 
-                    className="bg-background border border-border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#1B5DF1] focus:ring-2 focus:ring-[#1B5DF1]/20 transition-all font-medium" 
-                  />
+                {/* Structured Address Fields */}
+                <div className="flex flex-col gap-3 md:col-span-2 pt-3 border-t border-border/70">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#1B5DF1]" />
+                      Clinic / Residential Address
+                    </label>
+                    <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg border border-border/60">
+                      <button
+                        type="button"
+                        onClick={() => setAddressType('Home')}
+                        className={cn(
+                          "px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer",
+                          addressType === 'Home' 
+                            ? "bg-surface text-[#1B5DF1] shadow-xs font-bold" 
+                            : "text-muted hover:text-foreground"
+                        )}
+                      >
+                        Home
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAddressType('Clinic')}
+                        className={cn(
+                          "px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer",
+                          addressType === 'Clinic' 
+                            ? "bg-surface text-[#1B5DF1] shadow-xs font-bold" 
+                            : "text-muted hover:text-foreground"
+                        )}
+                      >
+                        Clinic / Work
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1 md:col-span-2">
+                      <label className="text-[11px] font-semibold text-muted">Street / Building / Plot No.</label>
+                      <input 
+                        type="text" 
+                        value={addressStreet}
+                        onChange={(e) => setAddressStreet(e.target.value)}
+                        placeholder="e.g. Plot No. 42, Health City, Road No. 1" 
+                        className="bg-background border border-border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#1B5DF1] focus:ring-2 focus:ring-[#1B5DF1]/20 transition-all font-medium" 
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] font-semibold text-muted">City / Town</label>
+                      <input 
+                        type="text" 
+                        value={addressCity}
+                        onChange={(e) => setAddressCity(e.target.value)}
+                        placeholder="e.g. Hyderabad / Adoni" 
+                        className="bg-background border border-border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#1B5DF1] focus:ring-2 focus:ring-[#1B5DF1]/20 transition-all font-medium" 
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] font-semibold text-muted">State</label>
+                      <input 
+                        type="text" 
+                        value={addressState}
+                        onChange={(e) => setAddressState(e.target.value)}
+                        placeholder="e.g. Telangana / Andhra Pradesh" 
+                        className="bg-background border border-border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#1B5DF1] focus:ring-2 focus:ring-[#1B5DF1]/20 transition-all font-medium" 
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] font-semibold text-muted">PIN Code</label>
+                      <input 
+                        type="text" 
+                        value={addressPincode}
+                        onChange={(e) => setAddressPincode(e.target.value)}
+                        placeholder="e.g. 500034" 
+                        maxLength={10}
+                        className="bg-background border border-border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#1B5DF1] focus:ring-2 focus:ring-[#1B5DF1]/20 transition-all font-medium font-mono" 
+                      />
+                    </div>
+
+                    {/* Clean Human-Readable Address Preview */}
+                    {(addressStreet || addressCity || addressState || addressPincode) && (
+                      <div className="flex flex-col gap-1 justify-center">
+                        <label className="text-[11px] font-semibold text-muted">Formatted Address</label>
+                        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-border/80 text-xs text-foreground font-medium truncate">
+                          {[addressStreet, addressCity, addressState, addressPincode].filter(Boolean).join(', ')}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

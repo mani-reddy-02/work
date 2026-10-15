@@ -206,15 +206,15 @@ export function PromoCarousel() {
 
   return (
     <div 
-      className="relative w-full rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(23,105,224,0.18)] mb-3 select-none touch-pan-y"
+      className={`relative w-full rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(23,105,224,0.18)] select-none touch-pan-y bg-gradient-to-r ${currentSlideData.accentBg || 'from-blue-600 via-indigo-600 to-indigo-800'}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <div className="relative w-full overflow-hidden min-h-[148px] sm:min-h-[155px]">
-        <AnimatePresence initial={false} custom={direction} mode="popLayout">
+      <div className="relative w-full overflow-hidden">
+        <AnimatePresence initial={false} custom={direction} mode="wait">
           <motion.div
             key={page}
             custom={direction}
@@ -242,10 +242,10 @@ export function PromoCarousel() {
               }, 150);
             }}
             onClick={handleCardClick}
-            className={`w-full h-full bg-gradient-to-r ${currentSlideData.accentBg || 'from-slate-100 to-slate-200'} p-0 sm:p-0 flex items-center justify-between cursor-pointer text-white relative`}
+            className={`w-full bg-gradient-to-r ${currentSlideData.accentBg || 'from-blue-600 via-indigo-600 to-indigo-800'} text-white relative`}
           >
             {currentSlideData.isCustom ? (
-              <div className="w-full h-full relative">
+              <div className="w-full h-full min-h-[148px] sm:min-h-[155px] relative">
                 {currentSlideData.imageUrl ? (
                   <img src={currentSlideData.imageUrl} alt={currentSlideData.title} className="w-full h-full object-cover" />
                 ) : (
@@ -253,7 +253,8 @@ export function PromoCarousel() {
                 )}
               </div>
             ) : (
-              <div className={`w-full h-full bg-gradient-to-r ${currentSlideData.accentBg} p-3.5 sm:p-4.5 flex items-center justify-between gap-3 sm:gap-5 cursor-pointer text-white relative`}>
+              <div className={`w-full bg-gradient-to-r ${currentSlideData.accentBg} p-4 sm:p-5 pb-7 sm:pb-8 flex items-center justify-between gap-3 sm:gap-5 cursor-pointer text-white relative`}>
+
                 {/* Background Pattern Accent */}
                 <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-surface/5 skew-x-[-15deg] pointer-events-none" />
 

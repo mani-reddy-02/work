@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 import { useNavigate, useLocation, Navigate } from "react-router-dom"
 import { adminApi } from "@/services/adminApi"
 import { nurseApi } from "@/services/nurseApi"
+import { labApi } from "@/services/labApi"
 import { AssignNurseModal } from "../components/appointments/AssignNurseModal"
 import { useTranslation } from "react-i18next"
 
@@ -35,7 +36,7 @@ export function Appointments() {
   const locationState = location.state as { date?: string; status?: string; filter?: string } | undefined;
 
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
-  const [selectedFilter, setSelectedFilter] = useState(() => locationState?.filter || 'ops');
+  const [selectedFilter, setSelectedFilter] = useState(() => locationState?.filter || 'all');
   const [selectedDate, setSelectedDate] = useState(() => locationState?.date || 'upcoming');
   const [selectedStatus, setSelectedStatus] = useState<string>(() => locationState?.status || 'ALL');
   const [selectedDoctor, setSelectedDoctor] = useState<string>('ALL');
@@ -50,6 +51,7 @@ export function Appointments() {
   const navigate = useNavigate();
 
   const filterTypes = [
+    { id: 'all', label: 'All' },
     { id: 'ops', label: 'OPs' },
     { id: 'video', label: 'Video Consultation' },
     { id: 'lab', label: 'Lab' },
@@ -75,6 +77,7 @@ export function Appointments() {
     date: string; type: string; doctor: string; status: string; avatar: string;
     isNursing?: boolean; nurseId?: string | null; nurseName?: string | null;
     bookingNumber?: string; serviceName?: string; address?: string;
+    category: 'ops' | 'video' | 'lab' | 'home_sample' | 'home_nursing';
   };
   const [appointmentsList, setAppointmentsList] = useState<Appointment[]>([]);
   const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
@@ -92,14 +95,16 @@ export function Appointments() {
         filters.date = targetDate;
       }
 
-      const [data, nursingData] = await Promise.all([
+      const [data, nursingData, labRes] = await Promise.all([
         adminApi.getBookings(filters).catch(() => []),
         nurseApi.getHospitalBookings({ date: targetDate }).catch(() => []),
+        labApi.getLabBookings().catch(() => ({ data: [] })),
       ]);
 
-      const mappedOps = (data || []).map((b: any) => {
+      const mappedOps: Appointment[] = (data || []).map((b: any) => {
         const timeStr = b.timeSlot || b.slotTime || new Date(b.appointmentDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const parts = timeStr.trim().split(' ');
+        const isVideo = (b.opType || '').toLowerCase().includes('video');
         return {
           id: b.id,
           mqId: `OP-${b.id.substring(0, 6).toUpperCase()}`,
@@ -113,10 +118,11 @@ export function Appointments() {
           status: b.status || 'WAITING',
           avatar: b.doctor?.avatar || '',
           isNursing: false,
+          category: isVideo ? 'video' : 'ops',
         };
       });
 
-      const mappedNursing = (nursingData || []).map((b: any) => {
+      const mappedNursing: Appointment[] = (nursingData || []).map((b: any) => {
         const timeParts = (b.timeSlot || '08:00 AM').trim().split(' ');
         return {
           id: b.id,
@@ -125,8 +131,8 @@ export function Appointments() {
           patientPhone: b.patientPhone,
           time: timeParts[0] || '08:00',
           period: timeParts[1] || 'AM',
-          date: b.serviceDate,
-          type: `Home Nursing · ${b.serviceName}`,
+          date: b.serviceDate ? b.serviceDate.split('T')[0] : '',
+          type: `Home Nursing · ${b.serviceName || 'Care'}`,
           doctor: b.nurse?.name ? `Nurse: ${b.nurse.name}` : 'Unassigned Nurse',
           status: b.status || 'CONFIRMED',
           avatar: b.nurse?.avatar || '',
@@ -136,16 +142,57 @@ export function Appointments() {
           bookingNumber: b.bookingNumber,
           serviceName: b.serviceName,
           address: b.address,
+          category: 'home_nursing',
         };
       });
 
-      setAppointmentsList([...mappedOps, ...mappedNursing]);
+      const mappedLab: Appointment[] = (labRes?.data || []).map((b: any) => {
+        const isHome = b.bookingType === 'HOME_COLLECTION';
+        const testName = b.items?.[0]?.labTest?.platformTest?.name || (isHome ? 'Home Sample Collection' : 'Diagnostic Lab Test');
+        const dateStr = b.collectionDate ? b.collectionDate.split('T')[0] : b.createdAt.split('T')[0];
+        const timeSlot = b.collectionTimeSlot || '10:00 AM';
+        const timeParts = timeSlot.trim().split(' ');
+
+        let normalizedStatus = 'WAITING';
+        if (b.status === 'REPORT_READY' || b.status === 'COMPLETED') {
+          normalizedStatus = 'COMPLETED';
+        } else if (b.status === 'SAMPLE_COLLECTED' || b.status === 'IN_LAB_PROCESSING' || b.status === 'ASSIGNED') {
+          normalizedStatus = 'IN_CONSULTATION';
+        } else if (b.status === 'CANCELLED') {
+          normalizedStatus = 'CANCELLED';
+        }
+
+        return {
+          id: b.id,
+          mqId: `LB-${b.id.substring(0, 6).toUpperCase()}`,
+          patientName: b.patient?.name || 'Patient',
+          patientPhone: b.patient?.phone,
+          time: timeParts[0] || '10:00',
+          period: timeParts[1] || 'AM',
+          date: dateStr,
+          type: isHome ? `Home Sample · ${testName}` : `Lab · ${testName}`,
+          doctor: testName,
+          status: normalizedStatus,
+          avatar: '',
+          isNursing: false,
+          category: isHome ? ('home_sample' as const) : ('lab' as const),
+          address: b.collectionAddress || undefined,
+        };
+      }).filter((b: Appointment) => {
+        if (targetDate === 'upcoming') {
+          return b.date >= todayIso && b.status !== 'CANCELLED';
+        }
+        if (targetDate === 'all') return true;
+        return b.date === targetDate;
+      });
+
+      setAppointmentsList([...mappedOps, ...mappedNursing, ...mappedLab]);
     } catch (err) {
       console.error('Failed to fetch bookings:', err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [todayIso]);
 
   useEffect(() => {
     if (location.state) {
@@ -163,50 +210,70 @@ export function Appointments() {
   const uniqueDoctors = Array.from(new Set(appointmentsList.map(a => a.doctor).filter(Boolean)));
 
   const activeFiltersCount = 
-    (selectedFilter !== 'ops' ? 1 : 0) +
+    (selectedFilter !== 'all' ? 1 : 0) +
     (selectedStatus !== 'ALL' ? 1 : 0) +
     (selectedDoctor !== 'ALL' ? 1 : 0) +
     (searchQuery.trim() ? 1 : 0);
 
-  const filteredAppointments = appointmentsList
+  // Status mapping helpers
+  const isWaitingStatus = (status: string) => 
+    status === 'WAITING' || status === 'PENDING' || status === 'CONFIRMED' || status === 'REQUESTED';
+
+  const isInConsultStatus = (status: string) =>
+    status === 'IN_CONSULTATION' || status === 'IN_PROGRESS' || status === 'ASSIGNED' || status === 'SAMPLE_COLLECTED' || status === 'IN_LAB_PROCESSING';
+
+  const isCompletedStatus = (status: string) =>
+    status === 'COMPLETED' || status === 'REPORT_READY';
+
+  const isCancelledStatus = (status: string) =>
+    status === 'CANCELLED';
+
+  // Base list filtered strictly by Active Service Category + Doctor + Search query (for the active date)
+  const baseFilteredAppointments = appointmentsList.filter(apt => {
+    const matchesSearch =
+      apt.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      apt.mqId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (apt.patientPhone && apt.patientPhone.includes(searchQuery));
+    
+    if (!matchesSearch) return false;
+
+    // Filter by doctor
+    if (selectedDoctor !== 'ALL') {
+      if (apt.doctor !== selectedDoctor) return false;
+    }
+
+    // Filter by service category
+    if (selectedFilter !== 'all') {
+      if (apt.category) {
+        if (apt.category !== selectedFilter) return false;
+      } else {
+        if (selectedFilter === 'video' && !apt.type.toLowerCase().includes('video')) return false;
+        if (selectedFilter === 'lab' && !apt.type.toLowerCase().includes('lab')) return false;
+        if (selectedFilter === 'home_sample' && !apt.type.toLowerCase().includes('sample')) return false;
+        if (selectedFilter === 'home_nursing' && (!apt.isNursing && !apt.type.toLowerCase().includes('nurs'))) return false;
+        if (selectedFilter === 'ops' && (apt.isNursing || apt.type.toLowerCase().includes('video') || apt.type.toLowerCase().includes('lab') || apt.type.toLowerCase().includes('sample') || apt.type.toLowerCase().includes('nurs'))) return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Dynamic summary counters strictly synchronized with active category and active date
+  const summaryCounts = {
+    total: baseFilteredAppointments.length,
+    waiting: baseFilteredAppointments.filter(a => isWaitingStatus(a.status)).length,
+    inConsult: baseFilteredAppointments.filter(a => isInConsultStatus(a.status)).length,
+    completed: baseFilteredAppointments.filter(a => isCompletedStatus(a.status)).length,
+  };
+
+  // Final list further filtered by status sub-filter if selected
+  const filteredAppointments = baseFilteredAppointments
     .filter(apt => {
-      const matchesSearch =
-        apt.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        apt.mqId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (apt.patientPhone && apt.patientPhone.includes(searchQuery));
-      
-      if (!matchesSearch) return false;
-
-      // Filter by status if selected
-      if (selectedStatus === 'WAITING') {
-        if (apt.status !== 'WAITING' && apt.status !== 'PENDING' && apt.status !== 'CONFIRMED') return false;
-      } else if (selectedStatus === 'IN_CONSULTATION') {
-        if (apt.status !== 'IN_CONSULTATION' && apt.status !== 'IN_PROGRESS' && apt.status !== 'ASSIGNED') return false;
-      } else if (selectedStatus === 'COMPLETED') {
-        if (apt.status !== 'COMPLETED') return false;
-      } else if (selectedStatus === 'CANCELLED') {
-        if (apt.status !== 'CANCELLED') return false;
-      }
-
-      // Filter by doctor
-      if (selectedDoctor !== 'ALL') {
-        if (apt.doctor !== selectedDoctor) return false;
-      }
-
-      // Filter by service type if not default 'ops'
-      if (selectedFilter === 'video') {
-        if (!apt.type.toLowerCase().includes('video')) return false;
-      } else if (selectedFilter === 'lab') {
-        if (!apt.type.toLowerCase().includes('lab')) return false;
-      } else if (selectedFilter === 'home_sample') {
-        if (!apt.type.toLowerCase().includes('sample')) return false;
-      } else if (selectedFilter === 'home_nursing') {
-        if (!apt.isNursing && !apt.type.toLowerCase().includes('nurs')) return false;
-      } else if (selectedFilter === 'ops') {
-        if (apt.isNursing || apt.type.toLowerCase().includes('video') || apt.type.toLowerCase().includes('lab') || apt.type.toLowerCase().includes('sample') || apt.type.toLowerCase().includes('nurs')) return false;
-      }
-
-      return true;
+      if (selectedStatus === 'WAITING') return isWaitingStatus(apt.status);
+      if (selectedStatus === 'IN_CONSULTATION') return isInConsultStatus(apt.status);
+      if (selectedStatus === 'COMPLETED') return isCompletedStatus(apt.status);
+      if (selectedStatus === 'CANCELLED') return isCancelledStatus(apt.status);
+      return true; // 'ALL'
     })
     .sort((a, b) => {
       if (sortOrder === 'latest') {
@@ -215,6 +282,30 @@ export function Appointments() {
       return (a.time || '').localeCompare(b.time || '');
     });
 
+  const getCategoryLabel = (filterId: string) => {
+    switch (filterId) {
+      case 'ops': return 'OP Consultations';
+      case 'video': return 'Video Consultations';
+      case 'lab': return 'Lab Orders';
+      case 'home_sample': return 'Home Sample Collections';
+      case 'home_nursing': return 'Home Nursing Visits';
+      default: return 'Appointments & Consultations';
+    }
+  };
+
+  const getSectionHeading = () => {
+    const serviceText = getCategoryLabel(selectedFilter);
+    if (selectedDate === 'upcoming') {
+      return `Upcoming ${serviceText}`;
+    }
+    if (selectedDate === todayIso) {
+      return `Today's ${serviceText}`;
+    }
+    const dateObj = dates.find(d => d.iso === selectedDate);
+    const formattedDate = dateObj ? dateObj.date : selectedDate;
+    return `${serviceText} on ${formattedDate}`;
+  };
+
   const updateStatus = async (id: string, newStatus: string) => {
     try {
       const apt = appointmentsList.find(a => a.id === id);
@@ -222,6 +313,11 @@ export function Appointments() {
         if (newStatus === 'IN_PROGRESS' || newStatus === 'COMPLETED' || newStatus === 'ASSIGNED') {
           await nurseApi.updateVisitStatus(id, newStatus as any);
         }
+      } else if (apt?.category === 'lab' || apt?.category === 'home_sample') {
+        let labStatus = newStatus;
+        if (newStatus === 'COMPLETED') labStatus = 'REPORT_READY';
+        if (newStatus === 'IN_CONSULTATION') labStatus = 'SAMPLE_COLLECTED';
+        await labApi.updateLabBookingStatus(id, { status: labStatus }).catch(() => {});
       } else {
         await adminApi.updateBookingStatus(id, newStatus);
       }
@@ -415,11 +511,7 @@ export function Appointments() {
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-[15px] font-bold text-foreground">
-              {selectedDate === 'upcoming' 
-                ? 'Upcoming Consultations' 
-                : selectedDate === todayIso 
-                  ? "Today's Consultations" 
-                  : `Consultations on ${dates.find(d => d.iso === selectedDate)?.date || selectedDate}`}
+              {getSectionHeading()}
             </h3>
             <span className="text-primary text-[13px] font-bold">
               {filteredAppointments.length} Bookings
@@ -436,7 +528,7 @@ export function Appointments() {
               title="Show All Appointments"
             >
               <span className={cn("text-[20px] sm:text-[22px] font-black", selectedStatus === 'ALL' ? "text-[#1B5DF1]" : "text-[#0A1A3D]")}>
-                {appointmentsList.length}
+                {summaryCounts.total}
               </span>
               <span className="text-[11px] font-bold text-muted">Total</span>
             </button>
@@ -450,7 +542,7 @@ export function Appointments() {
               title="Show Waiting / Pending Appointments"
             >
               <span className={cn("text-[20px] sm:text-[22px] font-black", selectedStatus === 'WAITING' ? "text-amber-600" : "text-[#0A1A3D]")}>
-                {appointmentsList.filter(a => a.status === 'WAITING' || a.status === 'PENDING').length}
+                {summaryCounts.waiting}
               </span>
               <span className="text-[11px] font-bold text-muted">Waiting</span>
             </button>
@@ -464,7 +556,7 @@ export function Appointments() {
               title="Show In Consultation Appointments"
             >
               <span className={cn("text-[20px] sm:text-[22px] font-black", selectedStatus === 'IN_CONSULTATION' ? "text-blue-600" : "text-[#0A1A3D]")}>
-                {appointmentsList.filter(a => a.status === 'IN_CONSULTATION').length}
+                {summaryCounts.inConsult}
               </span>
               <span className="text-[11px] font-bold text-muted">In Consult</span>
             </button>
@@ -478,7 +570,7 @@ export function Appointments() {
               title="Show Completed Appointments"
             >
               <span className={cn("text-[20px] sm:text-[22px] font-black", selectedStatus === 'COMPLETED' ? "text-emerald-600" : "text-[#0A1A3D]")}>
-                {appointmentsList.filter(a => a.status === 'COMPLETED').length}
+                {summaryCounts.completed}
               </span>
               <span className="text-[11px] font-bold text-muted">Completed</span>
             </button>
@@ -550,6 +642,20 @@ export function Appointments() {
                                 <ChevronRight className="w-4 h-4 text-muted/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                               </div>
                               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                <span className={cn(
+                                  "text-[10px] font-bold px-2 py-0.5 rounded-md border tracking-tight",
+                                  apt.category === 'video' ? "bg-purple-50 text-purple-700 border-purple-200/80 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800" :
+                                  apt.category === 'lab' ? "bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" :
+                                  apt.category === 'home_sample' ? "bg-teal-50 text-teal-700 border-teal-200/80 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800" :
+                                  apt.category === 'home_nursing' ? "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800" :
+                                  "bg-blue-50 text-blue-700 border-blue-200/80 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
+                                )}>
+                                  {apt.category === 'video' ? 'Video' :
+                                   apt.category === 'lab' ? 'Lab Test' :
+                                   apt.category === 'home_sample' ? 'Home Sample' :
+                                   apt.category === 'home_nursing' ? 'Home Nursing' :
+                                   'OP'}
+                                </span>
                                 <span className="text-[12px] font-medium text-muted">ID: {apt.mqId}</span>
                                 <span className="w-1 h-1 rounded-full bg-muted/40"></span>
                                 <span className="text-[12px] font-medium text-muted">{apt.doctor}</span>
@@ -561,7 +667,7 @@ export function Appointments() {
                             <div className="relative" onClick={(e) => e.stopPropagation()}>
                               <button 
                                 onClick={(e) => { 
-                                  e.stopPropagation(); 
+                                   e.stopPropagation(); 
                                   setActiveDropdown(activeDropdown === apt.id ? null : apt.id); 
                                 }}
                                 className={cn(
@@ -595,7 +701,17 @@ export function Appointments() {
                           <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
                             <div className="flex items-center gap-1.5 text-muted text-[12px] font-semibold">
                               <FileText className="w-3.5 h-3.5" />
-                              <span>{apt.isNursing ? "Home Nursing Visit" : "Consultation"}</span>
+                              <span>
+                                {apt.category === 'home_nursing' 
+                                  ? "Home Nursing Visit" 
+                                  : apt.category === 'home_sample'
+                                    ? "Home Sample Collection"
+                                    : apt.category === 'lab'
+                                      ? "Diagnostic Lab Order"
+                                      : apt.category === 'video'
+                                        ? "Video Consultation"
+                                        : "Hospital Consultation"}
+                              </span>
                             </div>
                             
                             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -788,7 +904,7 @@ export function Appointments() {
               <div className="flex items-center justify-between pt-3 border-t border-border gap-3">
                 <button
                   onClick={() => {
-                    setSelectedFilter('ops');
+                    setSelectedFilter('all');
                     setSelectedStatus('ALL');
                     setSelectedDoctor('ALL');
                     setSortOrder('earliest');

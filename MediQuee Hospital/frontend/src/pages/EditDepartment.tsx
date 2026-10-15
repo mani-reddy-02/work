@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils"
 
 const departmentSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  code: z.string().min(2, "Code must be at least 2 characters"),
   description: z.string().optional(),
   status: z.enum(["active", "inactive"]),
 });
@@ -41,9 +40,8 @@ export function EditDepartment() {
         if (dept) {
           reset({
             name: dept.name,
-            code: dept.code || '',
             description: dept.description || '',
-            status: "active"
+            status: dept.isActive === false ? "inactive" : "active"
           });
         } else {
           toast('Department not found', 'error');
@@ -62,7 +60,12 @@ export function EditDepartment() {
   const onSubmit = async (data: DepartmentFormValues) => {
     setIsSubmitting(true);
     try {
-      await adminApi.updateDepartment(id!, data);
+      await adminApi.updateDepartment(id!, {
+        name: data.name.trim(),
+        description: data.description,
+        status: data.status,
+        isActive: data.status === 'active'
+      });
       toast('Department updated successfully', 'success');
       navigate(-1);
     } catch (error) {
@@ -118,20 +121,6 @@ export function EditDepartment() {
               )}
             />
             {errors.name && <span className="text-destructive text-[12px] font-medium mt-0.5">{errors.name.message}</span>}
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[13px] font-semibold text-[#172033]">Department Code <span className="text-destructive">*</span></label>
-            <input 
-              {...register("code")}
-              type="text" 
-              placeholder="e.g. CARD" 
-              className={cn(
-                "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm uppercase",
-                errors.code ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
-              )}
-            />
-            {errors.code && <span className="text-destructive text-[12px] font-medium mt-0.5">{errors.code.message}</span>}
           </div>
 
           <div className="flex flex-col gap-1.5">

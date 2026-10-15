@@ -70,20 +70,51 @@ export const createDepartment = async (req: Request, res: Response, next: NextFu
     const hospitalId = req.user!.hospitalId;
     if (!hospitalId) return res.status(403).json({ success: false, error: { message: 'Forbidden' } });
 
-    const { name, description, icon, isActive } = req.body;
-    if (!name) return res.status(400).json({ success: false, error: { message: 'Name is required' } });
+    let { name, description, icon, isActive, specialtyId, code, status } = req.body;
 
-    const existing = await prisma.department.findFirst({ where: { hospitalId, name: { equals: name, mode: 'insensitive' } } });
-    if (existing) return res.status(409).json({ success: false, error: { message: 'Department already exists' } });
+    // If name is not explicitly passed, derive it from platformSpecialty
+    if ((!name || !name.trim()) && specialtyId) {
+      const specialty = await prisma.platformSpecialty.findUnique({
+        where: { id: String(specialtyId) }
+      });
+      if (specialty) {
+        name = specialty.name;
+        if (!icon && specialty.icon) {
+          icon = specialty.icon;
+        }
+      }
+    }
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, error: { message: 'Department name is required' } });
+    }
+
+    const trimmedName = name.trim();
+
+    const existing = await prisma.department.findFirst({
+      where: {
+        hospitalId,
+        OR: [
+          { name: { equals: trimmedName, mode: 'insensitive' } },
+          ...(specialtyId ? [{ specialtyId: String(specialtyId) }] : [])
+        ]
+      }
+    });
+    if (existing) {
+      return res.status(409).json({ success: false, error: { message: `'${trimmedName}' department already exists for your hospital` } });
+    }
 
     const iconUrl = processIcon(icon);
+    const activeFlag = isActive !== undefined ? isActive : (status ? status === 'active' : true);
 
     const department = await prisma.department.create({
       data: {
-        name,
-        description,
-        icon: iconUrl,
-        isActive: isActive !== undefined ? isActive : true,
+        name: trimmedName,
+        code: code || trimmedName.slice(0, 4).toUpperCase(),
+        description: description || null,
+        icon: iconUrl || null,
+        specialtyId: specialtyId ? String(specialtyId) : null,
+        isActive: activeFlag,
         hospitalId
       }
     });
@@ -95,20 +126,21 @@ export const updateDepartment = async (req: Request, res: Response, next: NextFu
   try {
     const hospitalId = req.user!.hospitalId;
     const { id } = req.params;
-    const { name, description, icon, isActive } = req.body;
+    const { name, description, icon, isActive, status } = req.body;
 
     const department = await prisma.department.findUnique({ where: { id: String(id) } });
     if (!department || department.hospitalId !== hospitalId) return res.status(404).json({ success: false, error: { message: 'Not found' } });
 
     const iconUrl = processIcon(icon);
+    const activeFlag = isActive !== undefined ? isActive : (status ? status === 'active' : undefined);
 
     const updated = await prisma.department.update({
       where: { id: String(id) },
       data: {
-        name: name || undefined,
+        name: name ? name.trim() : undefined,
         description: description !== undefined ? description : undefined,
         icon: iconUrl || undefined,
-        isActive: isActive !== undefined ? isActive : undefined
+        isActive: activeFlag !== undefined ? activeFlag : undefined
       }
     });
     res.json({ success: true, data: updated });

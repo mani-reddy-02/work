@@ -1,4 +1,4 @@
-import { ArrowLeft, User, Bell, Shield, Settings, LogOut, ChevronRight, Building2, Users, LayoutGrid, Key, HelpCircle, MessageSquare, FileSignature, Calendar, History, Stethoscope } from "lucide-react"
+import { ArrowLeft, User, Bell, Shield, Settings, LogOut, ChevronRight, Building2, Users, LayoutGrid, FileSignature, Calendar, History, Stethoscope, Send, Headphones } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import { useAuth } from "@/context/AuthContext"
@@ -32,20 +32,21 @@ export function Profile() {
   };
 
   const appLinks = [
-    { icon: Bell, label: t('notifications', 'Notifications'), path: "/notifications" },
-    { icon: Shield, label: t('security', 'Security & Privacy'), path: "/security" },
-    { icon: Settings, label: t('app_settings', 'App Settings'), path: "/settings" },
+    { icon: Bell, label: t('notifications', 'Notifications'), path: "/notifications", subtitle: "Alerts & appointment updates" },
+    { icon: Shield, label: t('security', 'Security & Privacy'), path: "/security", subtitle: "Credentials & account safety" },
+    { icon: Settings, label: t('app_settings', 'App Settings'), path: "/settings", subtitle: "Preferences & preferences" },
   ];
 
   const supportLinks = [
-    { icon: HelpCircle, label: t('help_support', 'Help & Support'), path: "/support" },
-    { icon: MessageSquare, label: t('contact_support', 'Contact Support'), path: "/contact" },
+    { icon: Headphones, label: t('contact_support', 'Contact Support'), path: "/contact", subtitle: "Priority partner desk, phone, email & FAQs" },
   ];
 
   const accountLinks = (role === 'doctor' || role === 'nurse' || role === 'receptionist') ? [
-    { icon: User, label: t('personal_info', 'Personal Information'), path: "/profile/personal" },
+    { icon: User, label: t('personal_info', 'Personal Information'), path: "/profile/personal", subtitle: "Profile and contact details" },
+    { icon: Send, label: "My Requests", path: "/requests", subtitle: "Marketing campaigns & platform requests" },
   ] : [
-    { icon: Building2, label: t('hospital_info', 'Hospital Information'), path: "/profile/hospital" },
+    { icon: Building2, label: t('hospital_info', 'Hospital Information'), path: "/profile/hospital", subtitle: "Facility metadata, contacts & licenses" },
+    { icon: Send, label: "My Requests", path: "/requests", subtitle: "Marketing campaigns & platform requests" },
   ];
 
   const professionalLinks = role === 'doctor' ? [
@@ -55,9 +56,8 @@ export function Profile() {
   ] : [];
 
   const operationLinks = ((role as string) === 'admin' || (role as string) === 'superadmin') ? [
-    { icon: Users, label: t('staff_management', 'Staff Management'), path: "/profile/staff" },
-    { icon: LayoutGrid, label: t('departments_list', 'Departments'), path: "/profile/departments" },
-    { icon: Key, label: "Permissions", path: "/profile/permissions" },
+    { icon: Users, label: t('staff_management', 'Staff Management'), path: "/profile/staff", subtitle: "Manage doctors, nurses, reception & lab" },
+    { icon: LayoutGrid, label: t('departments_list', 'Departments'), path: "/profile/departments", subtitle: "Clinical specialties and units" },
   ] : [];
 
   const isDoctor = role === 'doctor';
@@ -71,15 +71,20 @@ export function Profile() {
             key={index}
             variants={item}
             onClick={() => navigate(link.path)} 
-            className="w-full flex items-center justify-between p-4 border-b border-gray-100 last:border-0 interactive-element active:bg-gray-50/50 transition-colors"
+            className="w-full flex items-center justify-between p-4 border-b border-gray-100 last:border-0 interactive-element active:bg-gray-50/50 transition-colors text-left"
           >
             <div className="flex items-center gap-3">
-              <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border", isDoctor ? "bg-blue-50/50 dark:bg-blue-900/20 text-primary border-blue-100 dark:border-blue-900/30" : "bg-gray-50 dark:bg-gray-800 text-muted border-border")}>
+              <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border", isDoctor ? "bg-blue-50/50 dark:bg-blue-900/20 text-primary border-blue-100 dark:border-blue-900/30" : "bg-gray-50 dark:bg-gray-800 text-muted border-border")}>
                 <link.icon className="w-4 h-4" />
               </div>
-              <span className="font-semibold text-[15px] text-foreground">{link.label}</span>
+              <div className="flex flex-col">
+                <span className="font-semibold text-[15px] text-foreground">{link.label}</span>
+                {link.subtitle && (
+                  <span className="text-[12px] text-muted font-normal mt-0.5">{link.subtitle}</span>
+                )}
+              </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-muted/70" />
+            <ChevronRight className="w-4 h-4 text-muted/70 shrink-0" />
           </motion.button>
         ))}
       </div>

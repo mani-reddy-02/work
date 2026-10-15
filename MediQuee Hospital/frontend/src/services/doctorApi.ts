@@ -345,4 +345,44 @@ export const doctorApi = {
     const json = await res.json();
     return json.data || [];
   },
+
+  /**
+   * PATCH /api/v1/appointments/:id/vitals
+   * Updates or records baseline vitals for a patient consultation.
+   */
+  async updateVitals(bookingId: string, vitals: ConsultationVitals): Promise<any> {
+    const res = await fetch(`${API_URL}/api/v1/appointments/${bookingId}/vitals`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(vitals),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || err.message || 'Failed to update vitals');
+    }
+
+    const json = await res.json();
+    return json.data;
+  },
+
+  /**
+   * PATCH /api/v1/appointments/:id/status
+   * Updates the consultation status (e.g., WAITING, IN_CONSULTATION, COMPLETED).
+   */
+  async updateStatus(bookingId: string, status: string, notes?: string): Promise<any> {
+    const res = await fetch(`${API_URL}/api/v1/appointments/${bookingId}/status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status, notes }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || err.message || 'Failed to update appointment status');
+    }
+
+    const json = await res.json();
+    return json.data;
+  },
 };

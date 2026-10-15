@@ -8,8 +8,9 @@ const router = Router();
 router.use(authenticate);
 router.use(requireRole(['HOSPITAL_ADMIN', 'LAB_ADMIN', 'SUPER_ADMIN']));
 
-// GET /api/v1/hospital/payouts
+// GET /api/v1/hospital/payouts & /api/v1/hospital/payouts/analytics
 router.get('/', getHospitalPayouts);
+router.get('/analytics', getHospitalPayouts);
 
 // Partner Settlements
 router.get('/settlements', getPartnerSettlements);

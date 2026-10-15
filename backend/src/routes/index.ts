@@ -62,6 +62,7 @@ router.use('/public', publicRoutes);
 router.use('/reference', referenceRoutes);
 router.use('/hospital/bookings', bookingRoutes);
 router.use('/hospital/dashboard', dashboardRoutes);
+router.use('/hospital/analytics', dashboardRoutes);
 router.use('/hospital/payouts', payoutsRoutes);
 router.use('/hospital/profile', hospitalProfileRoutes);
 router.use('/hospital/lab-tests', authenticate, requireRole(['HOSPITAL_ADMIN', 'LAB_ADMIN', 'SUPER_ADMIN']), labTestsRoutes);
