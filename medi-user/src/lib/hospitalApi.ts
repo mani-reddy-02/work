@@ -49,6 +49,17 @@ export interface DoctorRecord {
   consultInfo?: string;
   fees: string;
   rating: number;
+  bio?: string;
+  licenseNumber?: string;
+  consultationFee?: number;
+  doctorSchedules?: Array<{
+    dayOfWeek: string;
+    isAvailable: boolean;
+    startTime: string;
+    endTime: string;
+    videoStartTime?: string;
+    videoEndTime?: string;
+  }>;
 }
 
 export interface DepartmentRecord {

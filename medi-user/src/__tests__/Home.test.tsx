@@ -37,9 +37,15 @@ describe('Home Component', () => {
   test('renders Consult Top Specialists section', () => {
     renderHome();
     expect(screen.getByText('Consult Top Specialists')).toBeInTheDocument();
-    expect(screen.getByText('Cardiologist')).toBeInTheDocument();
-    expect(screen.getByText('Dermatologist')).toBeInTheDocument();
-    expect(screen.getByText('Pediatrician')).toBeInTheDocument();
+    expect(screen.getByText('Cardiology')).toBeInTheDocument();
+    expect(screen.getByText('Dermatology')).toBeInTheDocument();
+    expect(screen.getByText('Pediatrics')).toBeInTheDocument();
+
+    const viewAllLink = screen.getByText(/View All/i).closest('a');
+    expect(viewAllLink).toHaveAttribute('href', '/specialties?type=doctor');
+
+    const cardioLink = screen.getByText('Cardiology').closest('a');
+    expect(cardioLink).toHaveAttribute('href', '/specialties?type=doctor&category=Cardiology');
   });
 
   test('toggles FAQ items', () => {

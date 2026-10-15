@@ -69,8 +69,8 @@ describe('Specialties Component - OP Appointment', () => {
     const timeSlot = screen.getByText('10:00 AM');
     fireEvent.click(timeSlot);
 
-    const continueBtn = screen.getByText('Continue');
-    fireEvent.click(continueBtn);
+    const confirmBtn = screen.getByText(/Confirm Appointment/i);
+    expect(confirmBtn).toBeInTheDocument();
     
     // Back navigation (just verify it renders, we went deep enough to prove flow works)
     const backBtn = screen.getAllByRole('button')[0];
@@ -128,17 +128,12 @@ describe('Specialties Component - OP Appointment', () => {
 
     const timeSlot = screen.getByText('10:00 AM');
     fireEvent.click(timeSlot);
-    fireEvent.click(screen.getByText('Continue'));
 
-    // Enter reason
+    // Enter optional reason directly on slot screen
     const textarea = screen.getByPlaceholderText(/Describe the reason for your visit/i);
     fireEvent.change(textarea, { target: { value: 'High fever and headache since yesterday' } });
-    fireEvent.click(screen.getByText('Review Details'));
 
-    // Review screen displays patient & doctor summary
-    expect(screen.getByText(/High fever and headache since yesterday/i)).toBeInTheDocument();
-
-    // Click confirm
+    // Click confirm directly from slot screen
     const confirmBtn = screen.getByText(/Confirm Appointment/i);
     fireEvent.click(confirmBtn);
 
@@ -176,15 +171,13 @@ describe('Specialties Component - OP Appointment', () => {
     fireEvent.click(screen.getByText(/Book Appointment/i));
 
     fireEvent.click(screen.getByText('10:00 AM'));
-    fireEvent.click(screen.getByText('Continue'));
 
     const textarea = screen.getByPlaceholderText(/Describe the reason for your visit/i);
     fireEvent.change(textarea, { target: { value: 'Consultation slot conflict check' } });
-    fireEvent.click(screen.getByText('Review Details'));
 
     fireEvent.click(screen.getByText(/Confirm Appointment/i));
 
-    // Error alert should be displayed
+    // Error alert should be displayed right on slot screen
     const errorAlerts = await screen.findAllByText(/This appointment slot is no longer available/i);
     expect(errorAlerts.length).toBeGreaterThanOrEqual(1);
 
@@ -209,5 +202,12 @@ describe('Specialties Component - Video Consultation', () => {
     // Selecting a condition continues into the workflow
     fireEvent.click(screen.getByText('Hypertension / High BP'));
     expect(screen.getByText(/Hospitals for Hypertension \/ High BP/i)).toBeInTheDocument();
+  });
+
+  test('deep link with type=doctor and category opens categorical disease directly', () => {
+    render(<Specialties />, { initialEntries: ['/specialties?type=doctor&category=Cardiology'] });
+    expect(screen.getAllByText('Cardiology').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Video Consultation')).toBeInTheDocument();
+    expect(screen.getByText('Hypertension / High BP')).toBeInTheDocument();
   });
 });

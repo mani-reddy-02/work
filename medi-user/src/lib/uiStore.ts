@@ -4,7 +4,7 @@ const getStoredLocation = () => localStorage.getItem('mediquee_location') || 'Se
 
 let listeners = new Set<() => void>();
 let isMobileMenuOpen = false;
-let isDesktopSidebarOpen = true;
+let isDesktopSidebarOpen = false;
 
 const notifyListeners = () => {
   listeners.forEach((listener) => listener());

@@ -8,7 +8,8 @@ import {
   getNotifications as fetchNotifications, 
   getUnreadCount as fetchUnreadCount,
   markAsRead as updateMarkAsRead,
-  markAllAsRead as updateMarkAllAsRead
+  markAllAsRead as updateMarkAllAsRead,
+  deleteAllNotifications as clearAllNotificationsService
 } from './notifications.service';
 
 /**
@@ -190,3 +191,27 @@ export const markAllAsRead = async (req: Request, res: Response, next: NextFunct
     next(error);
   }
 };
+
+/**
+ * DELETE /api/v1/notifications
+ * Clears/deletes all notifications for the authenticated user's role and hospital.
+ */
+export const clearAllNotifications = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = req.user!;
+
+    await clearAllNotificationsService({
+      role: user.role,
+      userId: user.id,
+      hospitalId: user.hospitalId
+    });
+
+    res.json({
+      success: true,
+      message: 'All notifications cleared successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

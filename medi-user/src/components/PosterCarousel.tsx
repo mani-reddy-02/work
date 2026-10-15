@@ -9,9 +9,60 @@ interface PosterCarouselProps {
   module: string;
 }
 
+const DEFAULT_POSTERS = [
+  {
+    title: 'Book Now',
+    subtitle: 'Doctor Appointments & Hospital Visits',
+    description: 'Find verified doctors, book clinic visits & hospital appointments',
+    cta: 'Book Now',
+    color: 'bg-gradient-to-r from-[#0062e6] via-[#0070f3] to-[#70a6ff]', 
+    icon: Hospital, 
+    icon2: Hospital,
+    hasDoctorImage: true,
+    path: '/specialties?type=hospital-op',
+    isCustom: false
+  },
+  { 
+    title: 'Book Video Consultation',
+    subtitle: 'Instant Online Care with Top Doctors',
+    description: 'Connect with certified specialists within 15 mins from home',
+    cta: 'Consult Now',
+    color: 'bg-gradient-to-r from-[#0055d4] via-[#0284c7] to-[#0ea5e9]', 
+    icon: Video, 
+    icon2: Sparkles,
+    hasDoctorImage: false,
+    path: '/specialties?type=doctor',
+    isCustom: false
+  },
+  { 
+    title: 'Book Lab Test',
+    subtitle: 'Flat 20% OFF on Diagnostic Tests',
+    description: 'Certified diagnostic packages with fast digital test reports',
+    cta: 'Explore Tests',
+    color: 'bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#38bdf8]', 
+    icon: TestTube, 
+    icon2: ShieldCheck,
+    hasDoctorImage: false,
+    path: '/services/lab-tests',
+    isCustom: false
+  },
+  { 
+    title: 'Book Home Sample Collection',
+    subtitle: 'Hassle-free Sample Pickup at Home',
+    description: 'Safe & hygienic diagnostic sample collection at your doorstep',
+    cta: 'Book Collection',
+    color: 'bg-gradient-to-r from-[#0369a1] via-[#0284c7] to-[#14b8a6]', 
+    icon: Activity, 
+    icon2: HomeIcon,
+    hasDoctorImage: false,
+    path: '/services/home-sample',
+    isCustom: false
+  }
+];
+
 const PosterCarousel: React.FC<PosterCarouselProps> = ({ module }) => {
   const navigate = useNavigate();
-  const [posters, setPosters] = useState<any[]>([]);
+  const [posters, setPosters] = useState<any[]>(module === 'HOME' ? DEFAULT_POSTERS : []);
   const [activeSlide, setActiveSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -25,7 +76,7 @@ const PosterCarousel: React.FC<PosterCarouselProps> = ({ module }) => {
     fetch(`${API_BASE_URL}/home-posters?module=${module}`)
       .then(res => res.json())
       .then(res => {
-        if (res.success && res.data) {
+        if (res.success && res.data && res.data.length > 0) {
            const DEFAULT_TEMPLATES: any = {
              'Book Now': {
                 title: 'Book Now',
@@ -88,7 +139,11 @@ const PosterCarousel: React.FC<PosterCarouselProps> = ({ module }) => {
            setPosters(mappedPosters);
         }
       })
-      .catch(console.error);
+      .catch(() => {
+        if (module === 'HOME') {
+          setPosters(DEFAULT_POSTERS);
+        }
+      });
   }, [module]);
 
   useEffect(() => {

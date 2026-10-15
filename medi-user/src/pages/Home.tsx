@@ -14,6 +14,18 @@ import PosterCarousel from '../components/PosterCarousel';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
+const FALLBACK_SPECIALISTS = [
+  { id: '1', name: 'General Physician', icon: 'Stethoscope', image: '/optimized/Fever.webp' },
+  { id: '2', name: 'Pediatrics', icon: 'Smile', image: '/optimized/Pediatrics.webp' },
+  { id: '3', name: 'Cardiology', icon: 'Heart', image: '/optimized/Cardiology.webp' },
+  { id: '4', name: 'Dermatology', icon: 'Sparkles', image: '/optimized/Dermatology.webp' },
+  { id: '5', name: 'Neurology', icon: 'Activity', image: '/optimized/Neurology.webp' },
+  { id: '6', name: 'Orthopedics', icon: 'Shield', image: '/optimized/Orthopedics.webp' }
+].map((s, idx) => ({
+  ...s,
+  bg: ['bg-red-50', 'bg-yellow-50', 'bg-blue-50', 'bg-green-50', 'bg-purple-50', 'bg-orange-50'][idx % 6]
+}));
+
 const Home = () => {
   const navigate = useNavigate();
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
@@ -25,26 +37,13 @@ const Home = () => {
   const [bookingData, setBookingData] = useState<any>(null);
   const [hasUpcomingBooking, setHasUpcomingBooking] = useState(false);
 
-  const [topSpecialists, setTopSpecialists] = useState<any[]>([]);
+  const [topSpecialists, setTopSpecialists] = useState<any[]>(FALLBACK_SPECIALISTS);
   const [commonDiseases, setCommonDiseases] = useState<any[]>([]);
-  const [isSpecialistsLoading, setIsSpecialistsLoading] = useState(true);
+  const [isSpecialistsLoading, setIsSpecialistsLoading] = useState(false);
   const [specialistsError, setSpecialistsError] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    setIsSpecialistsLoading(true);
-
-    const fallbackSpecialists = [
-      { id: '1', name: 'General Physician', icon: 'Stethoscope', image: '/optimized/Fever.webp' },
-      { id: '2', name: 'Pediatrics', icon: 'Smile', image: '/optimized/Pediatrics.webp' },
-      { id: '3', name: 'Cardiology', icon: 'Heart', image: '/optimized/Cardiology.webp' },
-      { id: '4', name: 'Dermatology', icon: 'Sparkles', image: '/optimized/Dermatology.webp' },
-      { id: '5', name: 'Neurology', icon: 'Activity', image: '/optimized/Neurology.webp' },
-      { id: '6', name: 'Orthopedics', icon: 'Shield', image: '/optimized/Orthopedics.webp' }
-    ].map((s, idx) => ({
-      ...s,
-      bg: ['bg-red-50', 'bg-yellow-50', 'bg-blue-50', 'bg-green-50', 'bg-purple-50', 'bg-orange-50'][idx % 6]
-    }));
 
     opAppointmentApi.fetchDiseases().then((res) => {
       if (mounted) {
@@ -57,7 +56,7 @@ const Home = () => {
             }));
             setTopSpecialists(categorical);
           } else {
-            setTopSpecialists(fallbackSpecialists);
+            setTopSpecialists(FALLBACK_SPECIALISTS);
           }
           
           if (res.data.general && res.data.general.length > 0) {
@@ -70,14 +69,14 @@ const Home = () => {
           }
           setSpecialistsError(false);
         } else {
-          setTopSpecialists(fallbackSpecialists);
+          setTopSpecialists(FALLBACK_SPECIALISTS);
           setSpecialistsError(false);
         }
         setIsSpecialistsLoading(false);
       }
     }).catch(() => {
       if (mounted) {
-        setTopSpecialists(fallbackSpecialists);
+        setTopSpecialists(FALLBACK_SPECIALISTS);
         setSpecialistsError(false);
         setIsSpecialistsLoading(false);
       }
@@ -171,11 +170,32 @@ const Home = () => {
   // Poster logic moved to PosterCarousel
 
 
-  const FAQ_ITEMS = [
+  const FALLBACK_FAQS = [
     { q: 'How do I book a video consultation?', a: 'Choose Video Consultation, select a doctor, choose an available slot and confirm your consultation.' },
     { q: 'Are lab samples collected from home?', a: 'Home sample collection can be selected where the service is available.' },
     { q: 'How does cashless insurance work?', a: 'Cashless treatment is available at eligible network hospitals according to the applicable insurance policy terms.' }
   ];
+
+  const [faqs, setFaqs] = useState<{ q: string; a: string }[]>(FALLBACK_FAQS);
+
+  useEffect(() => {
+    let active = true;
+    fetch(`${API_BASE_URL}/faqs`)
+      .then(res => res.json())
+      .then(data => {
+        if (active && data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setFaqs(data.data.slice(0, 5).map((item: any) => ({
+            q: item.question,
+            a: item.answer
+          })));
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load dynamic FAQs, using fallbacks:', err);
+      });
+    return () => { active = false; };
+  }, []);
+
 
   return (
     <div className={`p-4 md:p-6 lg:p-8 space-y-5 md:space-y-6 overflow-x-hidden relative transition-all max-w-5xl md:mx-auto ${hasUpcomingBooking ? 'pb-32' : 'pb-8'}`}>
@@ -321,7 +341,7 @@ const Home = () => {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[15px] md:text-[18px] lg:text-[20px] font-bold text-slate-800">Consult Top Specialists</h2>
           <Link 
-            to="/specialties?type=video" 
+            to="/specialties?type=doctor" 
             className="text-[11px] text-blue-600 font-semibold cursor-pointer hover:underline flex items-center gap-0.5"
           >
             View All <ChevronRight className="w-3.5 h-3.5" />
@@ -346,7 +366,7 @@ const Home = () => {
             {topSpecialists.map((specialist, idx) => (
               <Link 
                 key={specialist.id} 
-                to={`/specialties?type=video&category=${encodeURIComponent(specialist.name)}`} 
+                to={`/specialties?type=doctor&category=${encodeURIComponent(specialist.name)}`} 
                 className={`bg-white rounded-xl border border-slate-100 p-3 flex flex-col items-center text-center shadow-sm hover:shadow-md hover:border-blue-100 transition-all ${idx >= 3 ? 'hidden md:flex' : ''}`}
               >
                   <div className={`w-10 h-10 rounded-full ${specialist.bg} flex items-center justify-center mb-2 overflow-hidden p-1`}>
@@ -371,50 +391,6 @@ const Home = () => {
         )}
       </section>
 
-      {/* Common Diseases for Video Consultation */}
-      {!isSpecialistsLoading && commonDiseases.length > 0 && (
-        <section className="mt-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[15px] md:text-[18px] lg:text-[20px] font-bold text-slate-800">Common Health Issues</h2>
-            <Link 
-              to="/specialties?type=video" 
-              className="text-[11px] text-blue-600 font-semibold cursor-pointer hover:underline flex items-center gap-0.5"
-            >
-              View All <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-4 md:grid-cols-8 gap-2 md:gap-3">
-            {commonDiseases.map((disease, idx) => (
-              <Link 
-                key={disease.id || idx} 
-                to={`/specialties?type=video&disease=${encodeURIComponent(disease.name)}`} 
-                className={`bg-white rounded-xl border border-slate-100 p-2 flex flex-col items-center text-center shadow-sm hover:shadow-md hover:border-blue-100 transition-all ${idx >= 4 ? 'hidden md:flex' : ''}`}
-              >
-                  <div className={`w-12 h-12 rounded-full ${disease.bg} flex items-center justify-center mb-1 overflow-hidden p-2`}>
-                      {disease.image ? (
-                          <img 
-                            src={disease.image} 
-                            alt={disease.name} 
-                            className="w-full h-full object-contain mix-blend-multiply" 
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/optimized/Fever.webp';
-                            }}
-                          />
-                      ) : (
-                          <Activity className="w-5 h-5 text-slate-400" />
-                      )}
-                  </div>
-                  <h4 className="text-[9px] md:text-[10px] font-bold text-slate-700 leading-tight line-clamp-2">{disease.name}</h4>
-                  <div className="flex items-center gap-0.5 mt-0.5 text-blue-500">
-                    <Video className="w-2 h-2" />
-                    <span className="text-[8px] font-bold">Consult</span>
-                  </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* MediAI Assistant */}
       <section className="mt-4 mb-2 cursor-pointer transition-transform active:scale-95" onClick={() => navigate('/ai')}>
         <div className="bg-[#1a1f2e] rounded-2xl p-4 flex items-center gap-3 shadow-md hover:shadow-lg transition-shadow">
@@ -432,7 +408,7 @@ const Home = () => {
       <section className="mt-2">
         <h2 className="text-[15px] font-bold mb-3 text-slate-800">Frequently Asked Questions</h2>
         <div className="space-y-2">
-            {FAQ_ITEMS.map((item, i) => (
+            {faqs.map((item, i) => (
                 <div key={i} className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-100">
                     <div onClick={() => toggleFaq(i)} className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors">
                         <span className={`text-[12px] font-bold ${expandedFaq === i ? 'text-blue-600' : 'text-slate-700'}`}>{item.q}</span>

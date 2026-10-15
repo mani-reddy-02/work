@@ -23,7 +23,8 @@ import {
   Landmark,
   ListTodo,
   Inbox,
-  Network
+  Network,
+  HelpCircle
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -99,7 +100,8 @@ export const navGroups = [
     title: 'System',
     items: [
       { name: 'Settings', path: '/admin/settings', icon: Settings },
-      { name: 'Home Posters', path: '/admin/home-posters', icon: LayoutDashboard }
+      { name: 'Home Posters', path: '/admin/home-posters', icon: LayoutDashboard },
+      { name: 'FAQs', path: '/admin/faqs', icon: HelpCircle }
     ]
   }
 ];

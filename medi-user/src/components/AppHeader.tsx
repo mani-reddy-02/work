@@ -26,14 +26,6 @@ const AppHeader = ({ className }: { className?: string }) => {
   const [showLocationModal, setShowLocationModal] = useState(false);
 
   const [locationSearch, setLocationSearch] = useState('');
-  const [desktopSearch, setDesktopSearch] = useState('');
-
-  const handleDesktopSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (desktopSearch.trim()) {
-      navigate(`/services?q=${encodeURIComponent(desktopSearch.trim())}`);
-    }
-  };
 
   const filteredLocations = LOCATIONS.filter(loc => 
     loc.toLowerCase().includes(locationSearch.toLowerCase().trim())
@@ -79,19 +71,6 @@ const AppHeader = ({ className }: { className?: string }) => {
               <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </button>
           )}
-
-          <form onSubmit={handleDesktopSearch} className="hidden md:flex relative w-64 lg:w-72">
-             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-slate-400" />
-             </div>
-             <input 
-               type="text" 
-               value={desktopSearch}
-               onChange={(e) => setDesktopSearch(e.target.value)}
-               className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-full leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-all" 
-               placeholder="Search services..." 
-             />
-          </form>
 
           {/* Language Toggle: EN | తెలుగు */}
           <div className="flex items-center bg-slate-100 p-0.5 rounded-full border border-slate-200/80 shadow-xs text-xs font-semibold">

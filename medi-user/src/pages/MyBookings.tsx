@@ -27,6 +27,7 @@ interface UnifiedBooking {
   subtitle: string;
   date: string;
   timeSlot: string;
+  rawDate?: string;
   location: string;
   status: string;
   opRecord?: OpBookingRecord;
@@ -48,12 +49,12 @@ const getStatusConfig = (status: string) => {
   const s = (status || '').toUpperCase();
   switch (s) {
     case 'WAITING':
-    case 'PENDING':
-    case 'REQUESTED':
-      return { label: 'Requested', classes: 'bg-amber-50 text-amber-700 border-amber-200' };
     case 'CONFIRMED':
     case 'IN_CONSULTATION':
       return { label: 'Confirmed', classes: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    case 'PENDING':
+    case 'REQUESTED':
+      return { label: 'Requested', classes: 'bg-amber-50 text-amber-700 border-amber-200' };
     case 'COMPLETED':
       return { label: 'Completed', classes: 'bg-blue-50 text-blue-700 border-blue-200' };
     case 'CANCELLED':
@@ -131,6 +132,7 @@ const MyBookings = () => {
         title: `Dr. ${b.doctorName.replace(/^Dr\.\s*/i, '')}`,
         subtitle: b.hospitalName || 'Hospital Visit',
         date: formatDate(b.date),
+        rawDate: b.date,
         timeSlot: b.timeSlot,
         location: b.hospitalAddress || b.hospitalName || 'Contact hospital for location',
         status: b.status,
@@ -325,6 +327,16 @@ const MyBookings = () => {
                   {/* Main Details */}
                   <div className="p-4 flex-1">
                     <h3 className="font-bold text-slate-900 text-sm leading-snug mb-1 truncate">{booking.title}</h3>
+                    {booking.opRecord?.doctorDesignation && (
+                      <p className="text-[11px] font-medium text-blue-600 mb-0.5 truncate">{booking.opRecord.doctorDesignation}</p>
+                    )}
+                    {booking.opRecord?.diseaseName && (
+                      <div className="mb-2">
+                        <span className="inline-block bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                          {booking.opRecord.diseaseName}
+                        </span>
+                      </div>
+                    )}
                     <p className="text-[12px] font-semibold text-slate-500 mb-4 truncate">{booking.subtitle}</p>
 
                     <div className="space-y-2.5">
@@ -335,6 +347,9 @@ const MyBookings = () => {
                         <div className="flex items-center text-[12px] font-semibold text-slate-700 gap-1.5 flex-wrap">
                           <span>Date:</span>
                           <span className="text-slate-900">{booking.date}</span>
+                          {booking.rawDate && booking.rawDate !== booking.date && (
+                            <span className="text-slate-400 text-[11px] font-normal">{booking.rawDate}</span>
+                          )}
                           <span className="text-slate-300 mx-1 hidden sm:inline">|</span>
                           <Clock className="w-3 h-3 text-slate-400 ml-2 sm:ml-0" />
                           <span>Time:</span>
@@ -365,7 +380,7 @@ const MyBookings = () => {
                       to={`/booking/${booking.id}`}
                       className="flex items-center gap-1 text-[12px] font-black text-[#0055ff] hover:text-blue-700 transition-colors"
                     >
-                      View Details
+                      {booking.serviceTypeLabel === 'Video Consultation' ? 'View Consultation' : 'View Details'}
                       <ChevronRight className="w-3 h-3" />
                     </Link>
                   </div>

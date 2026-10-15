@@ -95,6 +95,7 @@ function App() {
             <Route path="services/bmi" element={<CheckMyBMI />} />
             <Route path="services/:id" element={<ServiceDetails />} />
             <Route path="bookings" element={<MyBookings />} />
+            <Route path="my-bookings" element={<Navigate to="/bookings" replace />} />
             <Route path="booking/:id" element={<BookingDetails />} />
             <Route path="video-consultation/:bookingId" element={<VideoConsultationPage />} />
             <Route path="profile" element={<Profile />} />

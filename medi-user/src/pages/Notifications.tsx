@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCheck, BellRing, Calendar, Video, FlaskConical, Stethoscope, FileText } from 'lucide-react';
+import { ArrowLeft, CheckCheck, BellRing, Calendar, Video, FlaskConical, Stethoscope, FileText, Trash2 } from 'lucide-react';
 import { useNotifications, type AppNotification } from '../lib/notifications';
 import { cn } from '../lib/utils';
 
 export default function Notifications() {
   const navigate = useNavigate();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, clearAllNotifications } = useNotifications();
   const [tab, setTab] = useState<'all' | 'unread'>('all');
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   const filteredNotifications = tab === 'all' 
     ? notifications 
@@ -41,22 +43,35 @@ export default function Notifications() {
           <button 
             onClick={() => navigate(-1)} 
             className="p-1 -ml-1 text-slate-600 hover:text-primary transition-colors rounded-full hover:bg-slate-50"
+            aria-label="Go back"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Notifications</h1>
         </div>
         
-        {unreadCount > 0 && (
-          <button 
-            onClick={markAllAsRead}
-            className="text-sm font-medium text-primary hover:text-primary/80 flex items-center gap-1.5 transition-colors"
-          >
-            <CheckCheck className="w-4 h-4" />
-            <span className="hidden sm:inline">Mark all as read</span>
-            <span className="sm:hidden">Mark all read</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {unreadCount > 0 && (
+            <button 
+              onClick={markAllAsRead}
+              className="text-xs sm:text-sm font-semibold text-primary hover:text-primary/80 flex items-center gap-1.5 transition-colors px-2 py-1.5 rounded-lg hover:bg-blue-50"
+            >
+              <CheckCheck className="w-4 h-4" />
+              <span className="hidden sm:inline">Mark all as read</span>
+              <span className="sm:hidden">Mark read</span>
+            </button>
+          )}
+
+          {notifications.length > 0 && (
+            <button 
+              onClick={() => setShowClearModal(true)}
+              className="text-xs sm:text-sm font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1.5 transition-colors px-2 py-1.5 rounded-lg hover:bg-rose-50"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Clear all</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -157,6 +172,51 @@ export default function Notifications() {
           </div>
         )}
       </div>
+
+      {/* Clear All Confirmation Modal */}
+      {showClearModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 text-center space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto shadow-sm border border-rose-100">
+              <Trash2 className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-bold text-slate-900">Clear all notifications?</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Are you sure you want to delete all notifications? This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={isClearing}
+                onClick={() => setShowClearModal(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs sm:text-sm hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isClearing}
+                onClick={async () => {
+                  setIsClearing(true);
+                  try {
+                    await clearAllNotifications();
+                  } finally {
+                    setIsClearing(false);
+                    setShowClearModal(false);
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-rose-500/25 transition-all disabled:opacity-50"
+              >
+                {isClearing ? 'Clearing...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

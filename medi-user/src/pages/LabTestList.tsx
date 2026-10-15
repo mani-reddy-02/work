@@ -38,54 +38,7 @@ import {
 } from '../lib/labTestApi';
 import { profileApi } from '../lib/profileApi';
 import HowItWorks from '../components/HowItWorks';
-
-// Icon mapping: test name -> optimized medical illustration
-const testIconMap: Record<string, string> = {
-  'Complete Blood Count (CBC)': '/optimized/Blood Test.webp',
-  'Blood Sugar Test (Fasting)': '/optimized/Blood Sugar Test.webp',
-  'Lipid Profile': '/optimized/Cholesterol Test.webp',
-  'Liver Function Test': '/optimized/Liver Function Test.webp',
-  'Kidney Function Test': '/optimized/Kidney Function Test.webp',
-  'Thyroid Profile': '/optimized/Thyroid Disorder.webp',
-  'Vitamin B12': '/optimized/Vitamin B12 Test.webp',
-  'Vitamin D': '/optimized/Vitamin D Test.webp',
-  'HbA1c': '/optimized/Blood Sugar Test.webp',
-  'Iron Profile': '/optimized/Blood Test.webp',
-  'Post Meal Blood Sugar': '/optimized/Blood Sugar Test.webp',
-  'Glucose Tolerance Test': '/optimized/Blood Sugar Test.webp',
-  'Cardiac Risk Profile': '/optimized/Heart Disease.webp',
-  'Troponin Test': '/optimized/Heart Disease.webp',
-  'T3, T4, TSH': '/optimized/Thyroid Disorder.webp',
-  'Bilirubin': '/optimized/Liver Function Test.webp',
-  'SGOT & SGPT': '/optimized/Liver Function Test.webp',
-  'Creatinine': '/optimized/Kidney Function Test.webp',
-  'Urea': '/optimized/Kidney Function Test.webp',
-  'Folate': '/optimized/Vitamin Deficiency.webp',
-  'Master Health Checkup': '/optimized/Blood Test.webp',
-  'Comprehensive Full Body': '/optimized/Blood Test.webp',
-  'Thyroid Stimulating Hormone (TSH)': '/optimized/Thyroid Disorder.webp',
-  'Testosterone Total': '/optimized/Blood Test.webp',
-  'Widal Test': '/optimized/Typhoid Test.webp',
-  'Dengue NS1 Antigen': '/optimized/Dengue Test.webp',
-  'Urine Routine & Microscopy': '/optimized/Urine Test.webp',
-  'Urine Culture': '/optimized/Urine Test.webp',
-  'PSA (Prostate Specific Antigen)': '/optimized/Blood Test.webp',
-  'CA 125': '/optimized/Blood Test.webp',
-};
-
-const healthConcernIconMap: Record<string, string> = {
-  diabetes: '/optimized/Diabetes.webp',
-  heart: '/optimized/Heart Disease.webp',
-  thyroid: '/optimized/Thyroid Disorder.webp',
-  liver: '/optimized/Fatty Liver Disease.webp',
-  kidney: '/optimized/Kidney Disease.webp',
-  fever: '/optimized/Fever.webp',
-  vitamins: '/optimized/Vitamin Deficiency.webp',
-};
-
-const getTestIcon = (name: string): string | null => {
-  return testIconMap[name] || null;
-};
+import { getTestIcon, getHealthConcernIcon, parseDatePill } from '../lib/optimizedTestIcons';
 
 const homeSampleStepsData = [
   { id: '01', title: 'Select Test', desc: 'Choose the test you want to book.', icon: TestTube },
@@ -175,7 +128,15 @@ const LabTestList = () => {
     'Kidney',
     'Vitamins',
   ]);
-  const [dynamicHealthConcerns, setDynamicHealthConcerns] = useState<string[]>([]);
+  const [dynamicHealthConcerns, setDynamicHealthConcerns] = useState<string[]>([
+    'Diabetes',
+    'Heart',
+    'Thyroid',
+    'Liver',
+    'Kidney',
+    'Fever',
+    'Vitamins',
+  ]);
 
   // Laboratories for selected test
   const [laboratories, setLaboratories] = useState<LaboratoryRecord[]>([]);
@@ -384,9 +345,17 @@ const LabTestList = () => {
     setViewState('LAB_SELECT');
   };
 
-  const handleProceedToDateTime = () => {
+  const handleProceedToPatient = () => {
     if (!selectedLab) {
       alert('Please select a laboratory.');
+      return;
+    }
+    setViewState('PATIENT');
+  };
+
+  const handleProceedToDateTime = () => {
+    if (!patientDetails.name.trim() || !patientDetails.phone.trim()) {
+      alert('Please provide patient name and phone number.');
       return;
     }
     if (selectedLab) {
@@ -395,17 +364,9 @@ const LabTestList = () => {
     setViewState('DATE_TIME');
   };
 
-  const handleProceedToPatient = () => {
-    if (!selectedDate || !selectedTime) {
-      alert('Please select collection date and time slot.');
-      return;
-    }
-    setViewState('PATIENT');
-  };
-
   const handleProceedToReview = () => {
-    if (!patientDetails.name.trim() || !patientDetails.phone.trim()) {
-      alert('Please provide patient name and phone number.');
+    if (!selectedDate || !selectedTime) {
+      alert('Please select visit date and time slot.');
       return;
     }
     setViewState('REVIEW');
@@ -478,6 +439,7 @@ const LabTestList = () => {
         }
         break;
       case 'HOME_COLLECTION':
+      case 'LAB_SELECT':
         setViewState('TEST_DETAIL');
         break;
       case 'PATIENT':
@@ -595,25 +557,6 @@ const LabTestList = () => {
                       <>
                         {/* How it works Marquee */}
                         <HowItWorks title="How laboratory visit Works" steps={homeSampleStepsData} className="pt-6 pb-2 mb-2 shadow-sm" />
-
-                        {/* Category Tabs */}
-                        <div className="bg-white pt-5 shadow-sm border-b border-slate-100">
-                          <div className="flex gap-2 overflow-x-auto hide-scrollbar px-4 pb-4">
-                            {categoryTabs.map((tab) => (
-                              <button
-                                key={tab}
-                                onClick={() => setSelectedTab(tab)}
-                                className={`shrink-0 px-4 py-1.5 rounded-full text-[12px] font-bold transition-all ${
-                                  selectedTab === tab
-                                    ? 'bg-[#0055ff] text-white shadow-md shadow-blue-500/20'
-                                    : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
-                                }`}
-                              >
-                                {tab}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
                       </>
                     )}
 
@@ -698,9 +641,7 @@ const LabTestList = () => {
                               (c) => c.id.toLowerCase() === concernStr.toLowerCase() || c.name.toLowerCase() === concernStr.toLowerCase()
                             );
                             const bg = staticMatch?.bg || 'bg-blue-50';
-                            const Icon = staticMatch?.icon || Activity;
-                            const color = staticMatch?.color || 'text-blue-500';
-                            const iconUrl = healthConcernIconMap[concernStr.toLowerCase()] || (staticMatch ? healthConcernIconMap[staticMatch.id] : null);
+                            const iconUrl = getHealthConcernIcon(concernStr);
                             
                             return (
                               <div
@@ -714,15 +655,14 @@ const LabTestList = () => {
                                 <div
                                   className={`w-14 h-14 rounded-full ${bg} flex items-center justify-center mb-1.5 border border-slate-100 group-hover:shadow-lg group-hover:scale-110 transition-all duration-200 overflow-hidden`}
                                 >
-                                  {iconUrl ? (
-                                    <img
-                                      src={iconUrl}
-                                      alt={concernStr}
-                                      className="w-9 h-9 object-contain"
-                                    />
-                                  ) : (
-                                    <Icon className={`w-6 h-6 ${color}`} />
-                                  )}
+                                  <img
+                                    src={iconUrl}
+                                    alt={concernStr}
+                                    className="w-9 h-9 object-contain"
+                                    onError={(e) => {
+                                      (e.currentTarget as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                                    }}
+                                  />
                                 </div>
                                 <span className="text-[11px] font-bold text-center text-slate-700">
                                   {concernStr}
@@ -786,15 +726,16 @@ const LabTestList = () => {
                                     <div
                                       className={`w-10 h-10 rounded-xl ${
                                         (item as any).bg || 'bg-blue-50'
-                                      } ${
-                                        (item as any).color || 'text-blue-500'
-                                      } flex items-center justify-center shrink-0`}
+                                      } flex items-center justify-center shrink-0 overflow-hidden`}
                                     >
-                                      {item.icon ? (
-                                        <item.icon className="w-5 h-5" strokeWidth={2} />
-                                      ) : (
-                                        <Activity className="w-5 h-5" strokeWidth={2} />
-                                      )}
+                                      <img
+                                        src={getTestIcon(item.name, item.category || 'package')}
+                                        alt={item.name}
+                                        className="w-8 h-8 object-contain"
+                                        onError={(e) => {
+                                          (e.currentTarget as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                                        }}
+                                      />
                                     </div>
                                     <div>
                                       <h3 className="font-bold text-slate-900 text-[12px] leading-tight mb-0.5 whitespace-pre-line">
@@ -845,28 +786,38 @@ const LabTestList = () => {
         {viewState === 'CONCERN_RESULTS' && (
           <div className="bg-white p-4 py-5 shadow-sm min-h-screen">
             <div className="flex items-center gap-3 mb-6">
-              <div
-                className={`w-12 h-12 rounded-full ${
-                  healthConcerns.find((c) => c.id === selectedConcern)?.bg || 'bg-blue-100'
-                } flex items-center justify-center shrink-0`}
-              >
-                {(() => {
-                  const Icon = healthConcerns.find((c) => c.id === selectedConcern)?.icon || TestTube;
-                  return (
-                    <Icon
-                      className={`w-6 h-6 ${
-                        healthConcerns.find((c) => c.id === selectedConcern)?.color || 'text-blue-500'
-                      }`}
-                    />
-                  );
-                })()}
-              </div>
-              <div>
-                <h2 className="text-[18px] font-black text-slate-900">
-                  {healthConcerns.find((c) => c.id === selectedConcern)?.name || 'Tests'}
-                </h2>
-                <p className="text-[12px] text-slate-500 font-medium">Available tests and packages</p>
-              </div>
+              {(() => {
+                const currentConcern = healthConcerns.find(
+                  (c) =>
+                    c.id.toLowerCase() === (selectedConcern || '').toLowerCase() ||
+                    c.name.toLowerCase() === (selectedConcern || '').toLowerCase()
+                );
+                const concernTitle = currentConcern?.name || selectedConcern || 'Tests';
+                return (
+                  <>
+                    <div
+                      className={`w-12 h-12 rounded-full ${
+                        currentConcern?.bg || 'bg-blue-100'
+                      } flex items-center justify-center shrink-0 overflow-hidden`}
+                    >
+                      <img
+                        src={getHealthConcernIcon(selectedConcern || '')}
+                        alt={concernTitle}
+                        className="w-8 h-8 object-contain"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <h2 className="text-[18px] font-black text-slate-900">
+                        {concernTitle}
+                      </h2>
+                      <p className="text-[12px] text-slate-500 font-medium">Available tests and packages</p>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             <div className="relative max-w-md md:max-w-xl mx-auto mb-6">
@@ -878,7 +829,14 @@ const LabTestList = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={`Search ${
-                  selectedConcern ? healthConcerns.find((c) => c.id === selectedConcern)?.name || 'tests' : 'tests'
+                  (() => {
+                    const match = healthConcerns.find(
+                      (c) =>
+                        c.id.toLowerCase() === (selectedConcern || '').toLowerCase() ||
+                        c.name.toLowerCase() === (selectedConcern || '').toLowerCase()
+                    );
+                    return match?.name || selectedConcern || 'tests';
+                  })()
                 } tests...`}
                 className="block w-full pl-12 pr-4 py-3 rounded-2xl bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 shadow-sm text-[13px] border border-slate-200"
               />
@@ -896,17 +854,14 @@ const LabTestList = () => {
                         (item as any).bg || 'bg-orange-50'
                       } flex items-center justify-center shrink-0 overflow-hidden`}
                     >
-                      {getTestIcon(item.name) ? (
-                        <img
-                          src={getTestIcon(item.name)!}
-                          alt={item.name}
-                          className="w-9 h-9 object-contain"
-                        />
-                      ) : item.icon ? (
-                        <item.icon className={`w-6 h-6 ${(item as any).color || 'text-orange-500'}`} />
-                      ) : (
-                        <TestTube className="w-6 h-6 text-orange-500" />
-                      )}
+                      <img
+                        src={getTestIcon(item.name, item.category)}
+                        alt={item.name}
+                        className="w-9 h-9 object-contain"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                        }}
+                      />
                     </div>
                     <div className="flex-1">
                       <h3 className="font-bold text-slate-800 leading-tight mb-1">{item.name}</h3>
@@ -949,12 +904,13 @@ const LabTestList = () => {
 
         {/* BOOKING FLOW STEPS CONTAINER */}
         <div className="px-4 pt-4 max-w-md md:max-w-2xl mx-auto space-y-4">
-          {['TEST_DETAIL', 'HOME_COLLECTION', 'PATIENT', 'DATE_TIME', 'REVIEW'].includes(viewState) && (
+          {['TEST_DETAIL', 'LAB_SELECT', 'HOME_COLLECTION', 'PATIENT', 'DATE_TIME', 'REVIEW'].includes(viewState) && (
             <div className="flex items-center justify-between px-2 mb-2 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
               {['Test', 'Lab', 'Patient', 'Date & Time', 'Review', 'Confirm'].map((step, idx) => {
                 const isActive =
                   (viewState === 'TEST_DETAIL' && idx === 0) ||
                   (viewState === 'LAB_SELECT' && idx === 1) ||
+                  (viewState === 'HOME_COLLECTION' && idx === 1) ||
                   (viewState === 'PATIENT' && idx === 2) ||
                   (viewState === 'DATE_TIME' && idx === 3) ||
                   (viewState === 'REVIEW' && idx === 4) ||
@@ -994,17 +950,14 @@ const LabTestList = () => {
                       (selectedItem as any)?.bg || 'bg-blue-50'
                     } flex items-center justify-center shrink-0 overflow-hidden`}
                   >
-                    {getTestIcon(selectedItem.name) ? (
-                      <img
-                        src={getTestIcon(selectedItem.name)!}
-                        alt={selectedItem.name}
-                        className="w-10 h-10 object-contain"
-                      />
-                    ) : selectedItem.icon ? (
-                      <selectedItem.icon className="w-7 h-7 text-blue-500" />
-                    ) : (
-                      <TestTube className="w-7 h-7 text-blue-500" />
-                    )}
+                    <img
+                      src={getTestIcon(selectedItem.name, selectedItem.category)}
+                      alt={selectedItem.name}
+                      className="w-10 h-10 object-contain"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                      }}
+                    />
                   </div>
                   <div>
                     <h2 className="text-[18px] font-black text-slate-900 leading-tight mb-1">
@@ -1141,12 +1094,14 @@ const LabTestList = () => {
               <div className="space-y-3">
                 <button
                   disabled={!selectedLab || isLoadingLabs}
-                  onClick={handleProceedToDateTime}
-                  className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold disabled:opacity-50 hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
+                  onClick={handleProceedToPatient}
+                  className="w-full flex items-center justify-center gap-2 bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold disabled:opacity-50 hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
                 >
-                  Continue to Date & Time
+                  <span>Continue to Patient Details</span>
+                  <ChevronRight className="w-4 h-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => setViewState('TEST_DETAIL')}
                   className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
                 >
@@ -1165,7 +1120,7 @@ const LabTestList = () => {
               </p>
 
               <form
-                onSubmit={(e) => { e.preventDefault(); handleProceedToReview(); }}
+                onSubmit={(e) => { e.preventDefault(); handleProceedToDateTime(); }}
                 className="space-y-6"
               >
                 <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
@@ -1252,13 +1207,15 @@ const LabTestList = () => {
                 <div className="space-y-3 mt-4 pt-2">
                   <button
                     type="submit"
-                    className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/30"
+                    className="w-full flex items-center justify-center gap-2 bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/30"
                   >
-                    Continue to Date & Time
+                    <span>Continue to Date & Time</span>
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => setViewState('DATE_TIME')} className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-all"
+                    onClick={() => setViewState('LAB_SELECT')}
+                    className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-all"
                   >
                     Back
                   </button>
@@ -1270,9 +1227,10 @@ const LabTestList = () => {
           {/* VIEW: DATE_TIME */}
           {viewState === 'DATE_TIME' && (
             <section className="animate-in fade-in zoom-in-95 duration-300">
-              <h2 className="text-[18px] font-black text-slate-900 mb-1">Choose Collection Date & Slot</h2>
+              <h2 className="text-[18px] font-black text-slate-900 mb-1">Choose Visit Date & Slot</h2>
               <p className="text-[12px] text-slate-500 font-medium mb-6">
-                Select when our technician should arrive at your chosen laboratory.
+                Select your preferred date and time slot for your laboratory visit at{' '}
+                <span className="font-bold text-slate-700">{selectedLab?.name || 'your chosen laboratory'}</span>.
               </p>
 
               {/* Date selection */}
@@ -1284,26 +1242,47 @@ const LabTestList = () => {
                 <div className="flex gap-3 overflow-x-auto pb-4 hide-scrollbar snap-x">
                   {availableDates.map((d) => {
                     const isSelected = selectedDate === d.date;
-                    const parts = d.label.split(', ');
-                    const topLabel = parts.length > 1 ? parts[0] : '';
-                    const bottomLabel = parts.length > 1 ? parts[1] : d.label;
+                    const { tag, dayNumber, monthName, isToday, isTomorrow } = parseDatePill(d);
                     
                     return (
                       <button
                         key={d.date}
+                        type="button"
                         onClick={() => {
                           setSelectedDate(d.date);
                           if (selectedLab) loadSlots(selectedLab.id, d.date);
                         }}
-                        className={`shrink-0 w-[72px] h-[84px] rounded-2xl flex flex-col items-center justify-center border transition-all duration-200 snap-center ${
+                        className={`shrink-0 min-w-[84px] h-[92px] px-2.5 py-2 rounded-2xl flex flex-col items-center justify-between border transition-all duration-200 snap-center select-none shadow-sm ${
                           isSelected
-                            ? 'bg-[#0055ff] border-[#0055ff] text-white shadow-lg shadow-blue-500/30 scale-105'
+                            ? 'bg-[#0055ff] border-[#0055ff] text-white shadow-lg shadow-blue-500/25 scale-105 ring-2 ring-blue-400/30'
                             : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:shadow-md'
                         }`}
                       >
-                        <span className={`text-[10px] font-bold uppercase mb-1 ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>{topLabel}</span>
-                        <span className={`text-[16px] font-black leading-none ${isSelected ? 'text-white' : 'text-slate-800'}`}>{bottomLabel.split(' ')[0]}</span>
-                        <span className={`text-[11px] font-bold mt-1 ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>{bottomLabel.split(' ')[1]}</span>
+                        <span
+                          className={`text-[10px] font-extrabold uppercase tracking-tight truncate max-w-full px-1 ${
+                            isSelected
+                              ? 'text-blue-100'
+                              : isToday || isTomorrow
+                              ? 'text-blue-600'
+                              : 'text-slate-500'
+                          }`}
+                        >
+                          {tag}
+                        </span>
+                        <span
+                          className={`text-[20px] font-black leading-none my-0.5 ${
+                            isSelected ? 'text-white' : 'text-slate-900'
+                          }`}
+                        >
+                          {dayNumber}
+                        </span>
+                        <span
+                          className={`text-[11px] font-bold uppercase tracking-wider ${
+                            isSelected ? 'text-blue-100' : 'text-slate-400'
+                          }`}
+                        >
+                          {monthName}
+                        </span>
                       </button>
                     );
                   })}
@@ -1311,7 +1290,7 @@ const LabTestList = () => {
               </div>
 
               {/* Slot selection */}
-              <div className="mb-8">
+              <div className="mb-6">
                 <div className="flex items-center gap-2 mb-3">
                   <Clock className="w-4 h-4 text-blue-600" />
                   <h3 className="text-[13px] font-bold text-slate-800">Available Time Slots</h3>
@@ -1324,16 +1303,17 @@ const LabTestList = () => {
                 ) : (
                   <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                     {availableSlots.filter(s => s.available).length > 0 ? (
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                         {availableSlots.filter(s => s.available).map((s) => {
                           const isSelected = selectedTime === s.slot;
                           return (
                             <button
                               key={s.slot}
+                              type="button"
                               onClick={() => setSelectedTime(s.slot)}
-                              className={`px-2 py-3 rounded-xl text-[12px] font-bold border transition-all duration-200 flex items-center justify-center ${
+                              className={`px-3 py-3 rounded-xl text-[12px] font-bold border transition-all duration-150 flex items-center justify-center text-center leading-tight shadow-sm ${
                                 isSelected
-                                  ? 'bg-blue-50 border-[#0055ff] text-[#0055ff] shadow-sm ring-1 ring-blue-600'
+                                  ? 'bg-blue-50 border-[#0055ff] text-[#0055ff] ring-2 ring-blue-500/20 shadow-blue-500/10'
                                   : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-slate-50'
                               }`}
                             >
@@ -1355,16 +1335,28 @@ const LabTestList = () => {
                 )}
               </div>
 
+              {selectedDate && selectedTime && (
+                <div className="flex items-center gap-2 p-3 bg-blue-50/70 border border-blue-200/60 rounded-xl text-[12px] font-bold text-blue-800 mb-6">
+                  <CheckCircle className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>
+                    Selected Slot: <span className="font-extrabold">{selectedDate}</span> at <span className="font-extrabold">{selectedTime}</span>
+                  </span>
+                </div>
+              )}
+
               <div className="space-y-3 mt-4">
                 <button
                   disabled={!selectedDate || !selectedTime}
-                  onClick={handleProceedToPatient}
-                  className="w-full flex items-center justify-center py-3.5 rounded-xl text-[13px] font-bold transition-all duration-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed bg-[#0055ff] text-white hover:bg-blue-600 shadow-lg shadow-blue-500/30 disabled:shadow-none"
+                  onClick={handleProceedToReview}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-[13px] font-bold transition-all duration-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed bg-[#0055ff] text-white hover:bg-blue-600 shadow-lg shadow-blue-500/30 disabled:shadow-none"
                 >
-                  Review Booking
+                  <span>Continue to Review</span>
+                  <ChevronRight className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => setViewState('DATE_TIME')} className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
+                  type="button"
+                  onClick={() => setViewState('PATIENT')}
+                  className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
                 >
                   Back
                 </button>
@@ -1386,8 +1378,15 @@ const LabTestList = () => {
 
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-5 overflow-hidden">
                 <div className="p-5 bg-slate-50/50 border-b border-slate-100 flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                    <TestTube className="w-5 h-5" />
+                  <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 overflow-hidden">
+                    <img
+                      src={getTestIcon(selectedItem?.name, selectedItem?.category)}
+                      alt={selectedItem?.name}
+                      className="w-9 h-9 object-contain"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                      }}
+                    />
                   </div>
                   <div>
                     <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Selected Test</p>

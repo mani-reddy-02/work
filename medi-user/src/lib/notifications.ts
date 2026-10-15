@@ -154,6 +154,24 @@ export const useNotifications = () => {
     }
   };
 
+  const clearAllNotifications = async () => {
+    globalNotifications = [];
+    backendUnreadCount = 0;
+    notifyListeners();
+
+    try {
+      await fetch(`${API_BASE_URL}/notifications`, {
+        method: 'DELETE',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        }
+      });
+    } catch (err) {
+      console.error('Failed to clear notifications', err);
+    }
+  };
+
   // Use backend unread count, fallback to local calculation if not yet loaded via SSE
   const unreadCount = backendUnreadCount > 0 
     ? backendUnreadCount 
@@ -163,6 +181,7 @@ export const useNotifications = () => {
     notifications,
     unreadCount,
     markAsRead,
-    markAllAsRead
+    markAllAsRead,
+    clearAllNotifications
   };
 };

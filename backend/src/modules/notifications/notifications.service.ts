@@ -432,3 +432,16 @@ export async function markAllAsRead(params: {
     data: { read: true }
   });
 }
+
+export async function deleteAllNotifications(params: {
+  role: Role;
+  userId: string;
+  hospitalId?: string | null;
+}) {
+  const { role, userId, hospitalId } = params;
+  const where = buildNotificationWhereClause({ role, userId, hospitalId });
+
+  return await prisma.notification.deleteMany({
+    where
+  });
+}

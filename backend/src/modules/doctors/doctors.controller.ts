@@ -86,6 +86,8 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
         avatar: true,
         dob: true,
         gender: true,
+        bio: true,
+        licenseNumber: true,
         hospitalId: true,
         departmentId: true,
         hospital: {
@@ -126,7 +128,10 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
         hospitalAddress: doc.hospital?.addressLine1 || doc.hospital?.city || 'Not specified',
         departmentId: doc.departmentId,
         department: doc.department?.name || 'Not assigned',
-        consultInfo: `Specialist in ${doc.department?.name || 'their field'} with extensive clinical experience in patient diagnostics and treatment.`,
+        bio: doc.bio || undefined,
+        licenseNumber: doc.licenseNumber || undefined,
+        consultationFee: doc.consultationFee ?? undefined,
+        consultInfo: doc.bio || `Specialist in ${doc.department?.name || 'their field'} with extensive clinical experience in patient diagnostics and treatment.`,
         fees: doc.consultationFee ? `₹${doc.consultationFee}` : 'Not specified',
         rating: 4.8
       }))
@@ -157,6 +162,8 @@ export const getDoctorById = async (req: Request, res: Response, next: NextFunct
         avatar: true,
         dob: true,
         gender: true,
+        bio: true,
+        licenseNumber: true,
         hospitalId: true,
         departmentId: true,
         hospital: {
@@ -176,6 +183,16 @@ export const getDoctorById = async (req: Request, res: Response, next: NextFunct
             specialty: {
               select: { id: true, name: true }
             }
+          }
+        },
+        doctorSchedules: {
+          select: {
+            dayOfWeek: true,
+            isAvailable: true,
+            startTime: true,
+            endTime: true,
+            videoStartTime: true,
+            videoEndTime: true
           }
         }
       }
@@ -203,7 +220,11 @@ export const getDoctorById = async (req: Request, res: Response, next: NextFunct
         hospitalAddress: doctor.hospital?.addressLine1 || doctor.hospital?.city || 'Not specified',
         departmentId: doctor.departmentId,
         department: doctor.department?.name || 'Not assigned',
-        consultInfo: `Specialist in ${doctor.department?.name || 'their field'} with extensive clinical experience in patient diagnostics and treatment.`,
+        bio: doctor.bio || undefined,
+        licenseNumber: doctor.licenseNumber || undefined,
+        consultationFee: doctor.consultationFee ?? undefined,
+        doctorSchedules: doctor.doctorSchedules,
+        consultInfo: doctor.bio || `Specialist in ${doctor.department?.name || 'their field'} with extensive clinical experience in patient diagnostics and treatment.`,
         fees: doctor.consultationFee ? `₹${doctor.consultationFee}` : 'Not specified',
         rating: 4.8
       }

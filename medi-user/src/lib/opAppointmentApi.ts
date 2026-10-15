@@ -59,6 +59,17 @@ export interface DoctorRecord {
   consultInfo?: string;
   fees: string;
   rating: number;
+  bio?: string;
+  licenseNumber?: string;
+  consultationFee?: number;
+  doctorSchedules?: Array<{
+    dayOfWeek: string;
+    isAvailable: boolean;
+    startTime: string;
+    endTime: string;
+    videoStartTime?: string;
+    videoEndTime?: string;
+  }>;
 }
 
 export interface CreateAppointmentPayload {
@@ -122,6 +133,9 @@ export interface OpBookingRecord {
   patientId?: string;
   patientName?: string;
   patientPhone?: string;
+  patientAge?: number;
+  patientGender?: string;
+  hospitalPhone?: string;
   prescription?: PrescriptionRecord | null;
   vitals?: any | null;
 }

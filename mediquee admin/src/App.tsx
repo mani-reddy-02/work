@@ -30,6 +30,7 @@ import Notifications from './pages/Notifications';
 import Requests from './pages/Requests';
 import Settings from './pages/Settings';
 import HomePosters from './pages/HomePosters';
+import Faqs from './pages/Faqs';
 
 // Advanced Pages
 import Transactions from './pages/Transactions';
@@ -111,6 +112,7 @@ function App() {
               <Route path="requests" element={<Requests />} />
               <Route path="activity" element={<ActivityLog />} />
               <Route path="home-posters" element={<HomePosters />} />
+              <Route path="faqs" element={<Faqs />} />
               <Route path="settings" element={<Settings />} />
             </Route>
 
