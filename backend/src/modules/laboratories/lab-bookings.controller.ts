@@ -524,7 +524,7 @@ export const getHospitalLabBookings = async (req: Request, res: Response, next: 
       where,
       include: {
         items: { include: { labTest: { include: { platformTest: { include: { department: true } } } } } },
-        patient: { select: { id: true, name: true, phone: true } }
+        patient: { select: { id: true, name: true, phone: true, email: true, gender: true, dob: true, address: true } }
       },
       orderBy: { createdAt: 'desc' }
     });

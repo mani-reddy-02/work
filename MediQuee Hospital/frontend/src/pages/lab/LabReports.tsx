@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   Upload, User, Eye, FileText, CheckCircle2, Clock, 
   Search, ArrowRight, ChevronRight, FlaskConical, 
   Calendar, Home, Phone, Filter, ShieldCheck, Download,
-  ExternalLink, AlertCircle
+  ExternalLink, AlertCircle, RefreshCw
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
@@ -15,9 +15,12 @@ interface ReportItem {
   idDisplay: string
   patient: string
   patientPhone?: string
+  patientEmail?: string
+  patientGender?: string
   test: string
   testsCount: number
   date: string
+  timeSlot?: string
   rawDate: Date
   rawStatus: string
   isUploaded: boolean
@@ -34,80 +37,92 @@ export function LabReports() {
   
   // Active Filters
   const [activeFilter, setActiveFilter] = useState<'All' | 'Pending' | 'Uploaded'>('All')
-  const [activeMainSection, setActiveMainSection] = useState<'All' | 'In-Person' | 'Home Collection'>('In-Person')
+  const [activeMainSection, setActiveMainSection] = useState<'All' | 'In-Person' | 'Home Collection'>('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [allReports, setAllReports] = useState<ReportItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function loadReports() {
-      try {
-        setIsLoading(true)
-        const res = await labApi.getLabBookings()
-        const items: ReportItem[] = (res?.data || []).map((b: any) => {
-          const rawSt = (b.status || 'REQUESTED').toUpperCase()
-          const hasReport = Boolean(b.reportUrl)
-          const isUploaded = rawSt === 'REPORT_READY' || rawSt === 'COMPLETED' || hasReport
-          const isPending = !isUploaded && rawSt !== 'CANCELLED'
+  const loadReports = useCallback(async (isManualRefresh = false) => {
+    try {
+      if (isManualRefresh) setIsRefreshing(true)
+      else setIsLoading(true)
+      setFetchError(null)
 
-          const tests = b.items?.map((it: any) => it.labTest?.platformTest?.name || 'Diagnostic Test') || ['Diagnostic Test']
-          const specimen = b.items?.[0]?.labTest?.platformTest?.specimenType || 'SAMPLE'
+      const res = await labApi.getLabBookings()
+      const items: ReportItem[] = (res?.data || []).map((b: any) => {
+        const rawSt = (b.status || 'REQUESTED').toUpperCase()
+        const hasReport = Boolean(b.reportUrl)
+        const isUploaded = rawSt === 'REPORT_READY' || rawSt === 'COMPLETED' || hasReport
+        const isPending = !isUploaded && rawSt !== 'CANCELLED'
 
-          return {
-            id: b.id,
-            idDisplay: b.id.slice(0, 8).toUpperCase(),
-            patient: b.patient?.name || (typeof b.patient === 'string' ? b.patient : 'Walk-in Patient'),
-            patientPhone: b.patient?.phone || b.phone || '',
-            test: tests.join(', '),
-            testsCount: tests.length,
-            date: b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Today',
-            rawDate: b.createdAt ? new Date(b.createdAt) : new Date(),
-            rawStatus: rawSt,
-            isUploaded,
-            isPending,
-            reportUrl: b.reportUrl,
-            type: b.bookingType === 'HOME_COLLECTION' ? 'Home Collection' : 'In-Person',
-            specimen,
-            totalAmount: b.totalAmount || 0,
-            address: b.collectionAddress
-          }
-        })
-        setAllReports(items)
-      } catch (err) {
-        console.error("Failed to load reports", err)
-      } finally {
-        setIsLoading(false)
-      }
+        const tests = b.items?.map((it: any) => it.labTest?.platformTest?.name || 'Diagnostic Test') || ['Diagnostic Test']
+        const specimen = b.items?.[0]?.labTest?.platformTest?.specimenType || 'SAMPLE'
+
+        // Scheduled appointment / collection date from live connection
+        const appointmentDate = b.collectionDate 
+          ? new Date(b.collectionDate) 
+          : (b.createdAt ? new Date(b.createdAt) : new Date())
+        
+        const formattedDate = appointmentDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+        const timeSlot = b.collectionTimeSlot || (b.createdAt ? new Date(b.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '')
+
+        return {
+          id: b.id,
+          idDisplay: b.id.slice(0, 8).toUpperCase(),
+          patient: b.patient?.name || (typeof b.patient === 'string' ? b.patient : 'Walk-in Patient'),
+          patientPhone: b.patient?.phone || b.phone || '',
+          patientEmail: b.patient?.email || '',
+          patientGender: b.patient?.gender || '',
+          test: tests.join(', '),
+          testsCount: tests.length,
+          date: formattedDate,
+          timeSlot,
+          rawDate: appointmentDate,
+          rawStatus: rawSt,
+          isUploaded,
+          isPending,
+          reportUrl: b.reportUrl,
+          type: b.bookingType === 'HOME_COLLECTION' ? 'Home Collection' : 'In-Person',
+          specimen,
+          totalAmount: b.totalAmount || 0,
+          address: b.collectionAddress || b.patient?.address || ''
+        }
+      })
+      setAllReports(items)
+    } catch (err: any) {
+      console.error("Failed to load reports from connection", err)
+      setFetchError(err.message || 'Unable to connect to diagnostic reports database')
+    } finally {
+      setIsLoading(false)
+      setIsRefreshing(false)
     }
-    loadReports()
   }, [])
 
-  // Calculate the 2 core counts: Pending and Uploaded
-  const pendingCount = useMemo(() => {
-    return allReports.filter(r => r.isPending).length
-  }, [allReports])
+  useEffect(() => {
+    loadReports()
+  }, [loadReports])
 
-  const uploadedCount = useMemo(() => {
-    return allReports.filter(r => r.isUploaded).length
-  }, [allReports])
+  // Filter reports according to selected mode (All Modes, In-Person, Home Collection)
+  const scopedReports = useMemo(() => {
+    if (activeMainSection === 'All') return allReports
+    return allReports.filter(r => r.type === activeMainSection)
+  }, [allReports, activeMainSection])
 
-  // Filter pipeline
+  // Core metrics synchronized with the active mode filter
+  const totalCount = scopedReports.length
+  const pendingCount = useMemo(() => scopedReports.filter(r => r.isPending).length, [scopedReports])
+  const uploadedCount = useMemo(() => scopedReports.filter(r => r.isUploaded).length, [scopedReports])
+
+  // Final filtered list matching status tile and search query
   const filteredReports = useMemo(() => {
-    return allReports.filter(r => {
-      // 1. Service mode filter
-      if (activeMainSection !== 'All' && r.type !== activeMainSection) {
-        return false
-      }
+    return scopedReports.filter(r => {
+      // Status tile filter (Pending vs Uploaded)
+      if (activeFilter === 'Pending' && !r.isPending) return false
+      if (activeFilter === 'Uploaded' && !r.isUploaded) return false
 
-      // 2. Status tile filter (Pending vs Uploaded)
-      if (activeFilter === 'Pending' && !r.isPending) {
-        return false
-      }
-      if (activeFilter === 'Uploaded' && !r.isUploaded) {
-        return false
-      }
-
-      // 3. Search query
+      // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim()
         const matchPatient = r.patient.toLowerCase().includes(q)
@@ -119,7 +134,7 @@ export function LabReports() {
 
       return true
     })
-  }, [allReports, activeMainSection, activeFilter, searchQuery])
+  }, [scopedReports, activeFilter, searchQuery])
 
   return (
     <div className="flex flex-col bg-background min-h-screen text-foreground pb-20">
@@ -128,18 +143,36 @@ export function LabReports() {
       <div className="sticky top-0 z-30 bg-surface/95 backdrop-blur-md border-b border-border shadow-xs px-4 md:px-8 pt-5 pb-4">
         <div className="flex items-center justify-between gap-4 mb-3">
           <div>
-            <h1 className="text-[22px] md:text-[26px] font-black text-foreground tracking-tight">Reports</h1>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-[22px] md:text-[26px] font-black text-foreground tracking-tight">Reports</h1>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live Connection
+              </span>
+            </div>
             <p className="text-xs text-muted mt-0.5">Manage diagnostic examination reports and verified patient test deliverables</p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate('/lab/upload-report')}
-            className="flex items-center gap-2 bg-primary text-white text-xs md:text-sm font-bold px-4 py-2.5 rounded-xl md:rounded-2xl shadow-sm hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
-          >
-            <Upload className="w-4 h-4" />
-            <span>Upload Report</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => loadReports(true)}
+              disabled={isLoading || isRefreshing}
+              className="p-2.5 rounded-xl md:rounded-2xl border border-border hover:bg-gray-100 text-muted hover:text-foreground transition-all cursor-pointer shadow-2xs"
+              title="Refresh latest data from database"
+            >
+              <RefreshCw className={cn("w-4 h-4", (isLoading || isRefreshing) && "animate-spin text-primary")} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/lab/upload-report')}
+              className="flex items-center gap-2 bg-primary text-white text-xs md:text-sm font-bold px-4 py-2.5 rounded-xl md:rounded-2xl shadow-sm hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Upload Report</span>
+            </button>
+          </div>
         </div>
         
         {/* Collection Type Selector Pills */}
@@ -199,6 +232,26 @@ export function LabReports() {
 
       <div className="max-w-7xl w-full mx-auto px-4 md:px-8 pt-6 flex flex-col gap-6">
 
+        {/* Connection Notice if backend network error occurs */}
+        {fetchError && (
+          <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide">Database Connection Issue</p>
+                <p className="text-xs text-red-700 mt-0.5">{fetchError}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => loadReports(true)}
+              className="px-3 py-1.5 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 transition-colors cursor-pointer shrink-0"
+            >
+              Retry Connection
+            </button>
+          </div>
+        )}
+
         {/* ── 2. The 3 Core Tiles: Total Orders, Pending, Uploaded (Headline with numbers only) ─ */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           
@@ -219,7 +272,7 @@ export function LabReports() {
                 Total Orders
               </span>
               <span className="text-3xl md:text-4xl font-black text-foreground">
-                {isLoading ? '...' : allReports.length}
+                {isLoading ? '...' : totalCount}
               </span>
             </div>
 
@@ -298,7 +351,7 @@ export function LabReports() {
                       : "bg-surface border-border text-foreground/80 hover:bg-gray-50"
                   )}
                 >
-                  {f === 'All' ? `All (${allReports.length})` : f === 'Pending' ? `Pending (${pendingCount})` : `Uploaded (${uploadedCount})`}
+                  {f === 'All' ? `All (${totalCount})` : f === 'Pending' ? `Pending (${pendingCount})` : `Uploaded (${uploadedCount})`}
                 </button>
               ))}
             </div>
@@ -429,16 +482,22 @@ export function LabReports() {
                         </div>
 
                         {/* Date & Location Note */}
-                        <div className="flex items-center gap-2 text-[11px] text-muted mt-1">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-primary" />
-                            {report.date}
+                        <div className="flex items-center gap-3 text-[11px] text-muted mt-1.5 flex-wrap">
+                          <span className="flex items-center gap-1.5 font-semibold text-foreground/85">
+                            <Calendar className="w-3.5 h-3.5 text-primary" />
+                            <span>{report.date}</span>
+                            {report.timeSlot && (
+                              <span className="text-muted font-medium bg-gray-100 px-1.5 py-0.5 rounded text-[10px]">
+                                {report.timeSlot}
+                              </span>
+                            )}
                           </span>
                           {report.address && (
                             <>
-                              <span>•</span>
-                              <span className="truncate max-w-[200px] md:max-w-sm">
-                                📍 {report.address}
+                              <span className="text-muted/60">•</span>
+                              <span className="truncate max-w-[200px] md:max-w-sm flex items-center gap-1">
+                                <span>📍</span>
+                                <span>{report.address}</span>
                               </span>
                             </>
                           )}
