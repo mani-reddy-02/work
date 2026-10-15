@@ -1808,7 +1808,7 @@ export const updateAdminNursingService = async (req: Request, res: Response, nex
 /**
  * DELETE /api/v1/home-nursing/admin/services/:id
  * (Also available at /api/v1/admin/nursing-services/:id)
- * Safe removal or deactivation respecting hospital offerings and historical bookings.
+ * Permanently deletes the nursing service.
  */
 export const deleteAdminNursingService = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -1816,14 +1816,6 @@ export const deleteAdminNursingService = async (req: Request, res: Response, nex
 
     const existing = await prisma.nursingService.findUnique({
       where: { id },
-      include: {
-        _count: {
-          select: {
-            offerings: true,
-            bookings: true,
-          },
-        },
-      },
     });
 
     if (!existing) {
@@ -1833,30 +1825,22 @@ export const deleteAdminNursingService = async (req: Request, res: Response, nex
       });
     }
 
-    // If there are existing bookings or offerings, preserve historical data integrity!
-    if (existing._count.bookings > 0 || existing._count.offerings > 0) {
-      const updated = await prisma.nursingService.update({
+    await prisma.$transaction(async (tx) => {
+      await tx.homeNursingBooking.deleteMany({
+        where: { serviceId: id },
+      });
+      await tx.nursingServiceOffering.deleteMany({
+        where: { serviceId: id },
+      });
+      await tx.nursingService.delete({
         where: { id },
-        data: { active: false },
       });
-
-      return res.json({
-        success: true,
-        deactivated: true,
-        data: updated,
-        message: `Service "${existing.name}" is linked to existing bookings or hospital offerings. It has been deactivated to preserve data integrity without breaking historical records.`,
-      });
-    }
-
-    // If completely unlinked, delete safely
-    await prisma.nursingService.delete({
-      where: { id },
     });
 
     res.json({
       success: true,
       deleted: true,
-      message: `Nursing service "${existing.name}" removed successfully.`,
+      message: `Nursing service "${existing.name}" deleted successfully.`,
     });
   } catch (error) {
     next(error);

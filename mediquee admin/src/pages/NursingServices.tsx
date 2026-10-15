@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAdminAuth } from '../contexts/AuthContext';
 import KpiCard from '../components/ui/KpiCard';
 import { IconImage } from '../components/IconImage';
-import IconPicker from '../components/IconPicker';
 import {
   HeartHandshake,
   Users,
@@ -77,15 +76,13 @@ const NursingServices: React.FC = () => {
   // Form State
   const [formName, setFormName] = useState<string>('');
   const [formDescription, setFormDescription] = useState<string>('');
-  const [formIconUrl, setFormIconUrl] = useState<string>('');
   const [formActive, setFormActive] = useState<boolean>(true);
   const [formCategory, setFormCategory] = useState<string>('Home Nursing');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Remove/Deactivate Confirmation State
+  // Delete Confirmation State
   const [actionTarget, setActionTarget] = useState<NursingServiceItem | null>(null);
-  const [actionType, setActionType] = useState<'delete' | 'toggle'>('delete');
   const [isProcessingAction, setIsProcessingAction] = useState<boolean>(false);
 
   // Debounce search query
@@ -178,7 +175,6 @@ const NursingServices: React.FC = () => {
     setSelectedService(null);
     setFormName('');
     setFormDescription('');
-    setFormIconUrl('');
     setFormActive(true);
     setFormCategory('Home Nursing');
     setFormErrors({});
@@ -191,7 +187,6 @@ const NursingServices: React.FC = () => {
     setSelectedService(service);
     setFormName(service.name);
     setFormDescription(service.description);
-    setFormIconUrl(service.iconUrl || '');
     setFormActive(service.active);
     setFormCategory(service.category || 'Home Nursing');
     setFormErrors({});
@@ -227,13 +222,15 @@ const NursingServices: React.FC = () => {
       setIsSubmitting(true);
       setFormErrors({});
 
-      const payload = {
+      const payload: Record<string, any> = {
         name: formName.trim(),
         description: formDescription.trim(),
-        iconUrl: formIconUrl.trim() || null,
         active: formActive,
         category: formCategory.trim() || 'Home Nursing',
       };
+      if (isEditing && selectedService) {
+        payload.iconUrl = selectedService.iconUrl || null;
+      }
 
       const url = isEditing && selectedService
         ? `${API_BASE_URL}/home-nursing/admin/services/${selectedService.id}`
@@ -612,14 +609,13 @@ const NursingServices: React.FC = () => {
                             <Edit2 size={15} />
                           </button>
 
-                          {/* Delete/Deactivate button */}
+                          {/* Delete button */}
                           <button
                             type="button"
                             onClick={() => {
                               setActionTarget(item);
-                              setActionType('delete');
                             }}
-                            title="Remove or Deactivate Service"
+                            title="Delete Service"
                             className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg transition-colors cursor-pointer"
                           >
                             <Trash2 size={15} />
@@ -810,17 +806,7 @@ const NursingServices: React.FC = () => {
                 )}
               </div>
 
-              {/* Icon Selection (Optional) */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Service Icon (Optional)
-                </label>
-                <IconPicker
-                  value={formIconUrl}
-                  onChange={(val) => setFormIconUrl(val)}
-                  folderType="tests"
-                />
-              </div>
+
 
               {/* Active Status */}
               <div className="pt-2">
@@ -867,27 +853,27 @@ const NursingServices: React.FC = () => {
         </div>
       )}
 
-      {/* Confirmation Dialog for Remove / Deactivate */}
+      {/* Confirmation Dialog for Permanent Delete */}
       {actionTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200">
-                <ShieldAlert className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-200">
+                <Trash2 className="w-5 h-5" />
               </div>
               <div className="flex-1">
                 <h3 className="text-base font-bold text-slate-900">
-                  Remove or Deactivate Service?
+                  Delete Nursing Service?
                 </h3>
                 <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
-                  Are you sure you want to remove <span className="font-semibold text-slate-800">"{actionTarget.name}"</span>?
+                  Are you sure you want to permanently delete <span className="font-semibold text-slate-900">"{actionTarget.name}"</span>?
                 </p>
-                <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 space-y-1">
-                  <p className="font-medium text-slate-700">Data Integrity Protection:</p>
+                <div className="mt-3 p-3 bg-rose-50/60 border border-rose-200/80 rounded-xl text-xs text-rose-800 space-y-1">
+                  <p className="font-semibold text-rose-900">Warning: Permanent Deletion</p>
                   <p>
-                    • If hospitals already offer this service or bookings exist, MediQuee will safely deactivate it instead of breaking historical records.
+                    • This will permanently delete the service, all associated hospital offerings, and related bookings.
                   </p>
-                  <p>• Completed orders, patient records, and history remain untouched.</p>
+                  <p>• This action cannot be undone.</p>
                 </div>
               </div>
             </div>
@@ -908,7 +894,7 @@ const NursingServices: React.FC = () => {
                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm disabled:opacity-50"
               >
                 {isProcessingAction && <RefreshCw size={14} className="animate-spin" />}
-                <span>Confirm</span>
+                <span>Delete Service</span>
               </button>
             </div>
           </div>

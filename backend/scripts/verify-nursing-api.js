@@ -130,24 +130,19 @@ async function run() {
   console.log('Service isOffered after deselection:', checkedDeselected?.isOffered);
   if (checkedDeselected?.isOffered !== false) throw new Error('Offering was not deselected');
 
-  console.log('--- 9. Testing Safe DELETE (should deactivate since offering exists) ---');
+  console.log('--- 9. Testing DELETE (permanently deletes service and offerings) ---');
   res = await fetch(`${BASE}/home-nursing/admin/services/${createdId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${adminToken}` }
   });
   json = await res.json();
-  console.log('Delete response:', json.success, 'deactivated:', json.deactivated, 'message:', json.message);
-  if (!json.success || !json.deactivated) throw new Error('Safe deactivation failed');
+  console.log('Delete response:', json.success, 'deleted:', json.deleted, 'message:', json.message);
+  if (!json.success || !json.deleted) throw new Error('Permanent delete failed');
 
-  // Clean up completely for tests: delete offering then delete service
-  await prisma.nursingServiceOffering.deleteMany({ where: { serviceId: createdId } });
-  res = await fetch(`${BASE}/home-nursing/admin/services/${createdId}`, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${adminToken}` }
-  });
-  json = await res.json();
-  console.log('Permanent delete response after unlinked:', json.success, 'deleted:', json.deleted);
-  if (!json.success || !json.deleted) throw new Error('Permanent delete of unlinked service failed');
+  // Verify it is no longer in DB
+  const checkDb = await prisma.nursingService.findUnique({ where: { id: createdId } });
+  console.log('Verified deleted from DB:', checkDb === null);
+  if (checkDb !== null) throw new Error('Service still exists in DB');
 
   console.log('\n>>> ALL 9 END-TO-END NURSING SERVICE API TESTS PASSED SUCCESSFULLY! <<<');
 }
