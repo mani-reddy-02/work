@@ -26,6 +26,7 @@ export function LabOrders() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
 
   // Assign Technician Modal State (for Home Collection)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
@@ -265,7 +266,7 @@ export function LabOrders() {
   }
 
   return (
-    <div className="flex flex-col bg-background min-h-full pb-16 transition-colors">
+    <div className="flex flex-col bg-background min-h-full pb-16 transition-colors" onClick={() => setActiveDropdown(null)}>
       
       {/* ── 1. Top Header Section (Aligned with Pic 1) ────────────────────── */}
       <div className="bg-surface pt-5 pb-3 px-4 flex flex-col gap-4 border-b border-border shadow-sm">
@@ -550,20 +551,16 @@ export function LabOrders() {
                   {filteredAppointments.map((apt) => (
                     <div 
                       key={apt.id} 
-                      onClick={() => {
-                        setSelectedOrder(apt.rawOrder)
-                        setIsDetailModalOpen(true)
-                      }}
+                      onClick={() => navigate(`/lab/order/${apt.id}`)}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
-                          setSelectedOrder(apt.rawOrder)
-                          setIsDetailModalOpen(true)
+                          navigate(`/lab/order/${apt.id}`)
                         }
                       }}
                       className="flex flex-col bg-surface border border-border hover:border-primary/40 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer group active:scale-[0.99]"
-                      title="Click to view detailed order info"
+                      title="Click to view full order details"
                     >
                       <div className="flex gap-4">
                         {/* Left Column: Time & Date (Matching Pic 1) */}
@@ -609,20 +606,52 @@ export function LabOrders() {
                               </div>
                             </div>
 
-                            {/* Status Badge */}
-                            <div className="flex flex-col items-end gap-2 shrink-0">
-                              <span className={cn(
-                                "text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider",
-                                apt.rawStatus === 'REPORT_READY' || apt.rawStatus === 'COMPLETED'
-                                  ? "bg-[#0A1A3D] text-white shadow-xs"
-                                  : apt.rawStatus === 'IN_LAB_PROCESSING' || apt.rawStatus === 'SAMPLE_COLLECTED'
-                                  ? "bg-blue-50 text-blue-600 border border-blue-200"
-                                  : apt.rawStatus === 'CANCELLED'
-                                  ? "bg-red-50 text-red-600 border border-red-200"
-                                  : "bg-amber-50 text-amber-600 border border-amber-200"
-                              )}>
-                                {apt.statusLabel}
-                              </span>
+                            {/* Status Badge & Interactive Dropdown */}
+                            <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setActiveDropdown(activeDropdown === apt.id ? null : apt.id)
+                                }}
+                                className={cn(
+                                  "text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider cursor-pointer active:scale-95 transition-all flex items-center gap-1",
+                                  apt.rawStatus === 'REPORT_READY' || apt.rawStatus === 'COMPLETED'
+                                    ? "bg-[#0A1A3D] text-white shadow-xs"
+                                    : apt.rawStatus === 'IN_LAB_PROCESSING' || apt.rawStatus === 'SAMPLE_COLLECTED'
+                                    ? "bg-blue-50 text-blue-600 border border-blue-200"
+                                    : apt.rawStatus === 'CANCELLED'
+                                    ? "bg-red-50 text-red-600 border border-red-200"
+                                    : "bg-amber-50 text-amber-600 border border-amber-200"
+                                )}
+                                title="Click to change order status"
+                              >
+                                <span>{apt.statusLabel}</span>
+                                <span className="text-[9px] opacity-70">▼</span>
+                              </button>
+
+                              {activeDropdown === apt.id && (
+                                <div className="absolute top-full right-0 mt-1 w-36 bg-surface rounded-xl shadow-xl border border-border py-1.5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                                  {[
+                                    { label: 'Waiting', value: 'REQUESTED' },
+                                    { label: 'In Consult', value: 'IN_LAB_PROCESSING' },
+                                    { label: 'Completed', value: 'REPORT_READY' },
+                                    { label: 'Cancelled', value: 'CANCELLED' },
+                                  ].map((item) => (
+                                    <button
+                                      key={item.value}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        updateStatus(apt.id, item.value)
+                                        setActiveDropdown(null)
+                                      }}
+                                      className="w-full text-left px-3.5 py-2 text-[11px] font-bold uppercase text-[#0A1A3D] hover:bg-[#EBF5FF] hover:text-[#1B5DF1] transition-colors cursor-pointer"
+                                    >
+                                      {item.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -651,21 +680,20 @@ export function LabOrders() {
                               <span className="font-bold text-primary ml-1">₹{apt.totalAmount}</span>
                             </div>
 
-                            {/* Action Buttons: Patient View & Workflow Action */}
+                            {/* Action Buttons: View Details & Workflow Action */}
                             <div className="flex items-center gap-2 ml-auto">
-                              {/* Patient View Button */}
+                              {/* View Details Button */}
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setSelectedOrder(apt.rawOrder)
-                                  setIsDetailModalOpen(true)
+                                  navigate(`/lab/order/${apt.id}`)
                                 }}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-surface hover:bg-gray-50 text-xs font-bold text-foreground transition-all active:scale-95 shadow-xs cursor-pointer"
-                                title="View Patient Order Details"
+                                title="View Complete Order Details & Reports"
                               >
                                 <User className="w-3.5 h-3.5 text-primary" />
-                                <span>Patient View</span>
+                                <span>View Details</span>
                               </button>
 
                               {/* Contextual Lab Actions */}

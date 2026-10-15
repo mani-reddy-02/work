@@ -546,12 +546,16 @@ export const updateLabBookingStatus = async (req: Request, res: Response, next: 
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } });
     }
 
-    const data: any = { status };
+    let mappedStatus = status;
+    if (status === 'WAITING' || status === 'PENDING') mappedStatus = 'REQUESTED';
+    if (status === 'IN_CONSULT' || status === 'IN_CONSULTATION') mappedStatus = 'IN_LAB_PROCESSING';
 
-    if (status === 'ASSIGNED') {
-      if (phlebotomistName) data.phlebotomistName = phlebotomistName;
-      if (phlebotomistPhone) data.phlebotomistPhone = phlebotomistPhone;
-    } else if (status === 'SAMPLE_COLLECTED') {
+    const data: any = { status: mappedStatus };
+
+    if (phlebotomistName !== undefined) data.phlebotomistName = phlebotomistName;
+    if (phlebotomistPhone !== undefined) data.phlebotomistPhone = phlebotomistPhone;
+
+    if (mappedStatus === 'SAMPLE_COLLECTED') {
       if (sampleCollectedAt) data.sampleCollectedAt = new Date(sampleCollectedAt);
       else data.sampleCollectedAt = new Date();
     }
@@ -562,7 +566,7 @@ export const updateLabBookingStatus = async (req: Request, res: Response, next: 
       include: { patient: true, hospital: true }
     });
 
-    if (status === 'REPORT_READY') {
+    if (mappedStatus === 'REPORT_READY') {
       if (req.body.reportData) {
         const matches = req.body.reportData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
         if (matches && matches.length === 3) {
@@ -642,7 +646,7 @@ export const getLabBookingById = async (req: Request, res: Response, next: NextF
       where: { id: id as string },
       include: {
         items: { include: { labTest: { include: { platformTest: true } } } },
-        patient: { select: { id: true, name: true, phone: true } },
+        patient: { select: { id: true, name: true, phone: true, email: true, gender: true, dob: true, address: true } },
         hospital: { select: { id: true, name: true } }
       }
     });
