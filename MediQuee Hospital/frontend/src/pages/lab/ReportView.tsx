@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, Download, Share2, User, FlaskConical, FileText, Upload, Printer, Loader2, CheckCircle2, Phone, AlertCircle } from "lucide-react"
+import { ArrowLeft, Download, Share2, User, FlaskConical, FileText, Upload, Printer, Loader2, CheckCircle2, Phone, AlertCircle, ExternalLink } from "lucide-react"
 import { motion } from "framer-motion"
 import { StatusBadge } from "@/components/lab/LabUI"
 import { labApi } from "@/services/labApi"
@@ -72,6 +72,11 @@ export function ReportView() {
   const sample = booking.items?.[0]?.labTest?.platformTest?.specimenType || 'SAMPLE'
   const reportDate = booking.updatedAt ? new Date(booking.updatedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Today'
   const bookingDate = booking.createdAt ? new Date(booking.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Today'
+
+  const reportFileUrl = booking.reportUrl
+    ? (booking.reportUrl.startsWith('http') ? booking.reportUrl : `http://localhost:5000${booking.reportUrl.startsWith('/') ? '' : '/'}${booking.reportUrl}`)
+    : null
+  const isPdf = reportFileUrl ? reportFileUrl.toLowerCase().includes('.pdf') : false
 
   const handlePrint = () => {
     window.print()
@@ -225,18 +230,78 @@ export function ReportView() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 self-start sm:self-auto">
+              <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                {reportFileUrl && (
+                  <>
+                    <a
+                      href={reportFileUrl}
+                      download={`Diagnostic_Report_${booking.id}.pdf`}
+                      className="px-3.5 py-2 rounded-xl bg-emerald-600 text-white font-semibold text-[13px] hover:bg-emerald-700 active:scale-95 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                      title="Download Certified PDF Report"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download</span>
+                    </a>
+                    <a
+                      href={reportFileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-[#667085] hover:text-[#172033] rounded-xl hover:bg-gray-100 transition-colors"
+                      title="Open full report in new window"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => navigate(`/lab/order/${booking.id}`)}
+                  className="px-3.5 py-2 rounded-xl border border-border bg-surface text-[#172033] font-semibold text-[13px] hover:bg-gray-50 active:scale-95 transition-all shadow-2xs"
+                  title="View complete order and patient profile"
+                >
+                  Order Details
+                </button>
                 <button 
                   type="button"
                   onClick={() => navigate(`/lab/upload-report?orderId=${booking.id}`)}
-                  className="px-3.5 py-2 rounded-xl bg-primary text-white font-semibold text-[13px] hover:bg-blue-700 active:scale-95 transition-all shadow-xs flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-xl bg-primary text-white font-semibold text-[13px] hover:bg-blue-700 active:scale-95 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                   title="Made a mistake? Re-upload report"
                 >
                   <Upload className="w-4 h-4" />
-                  <span>Re-upload / Change File</span>
+                  <span>Re-upload</span>
                 </button>
               </div>
             </motion.div>
+
+            {/* Embedded Document Viewer if file is attached */}
+            {reportFileUrl && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.16 }}
+                className="bg-surface rounded-2xl border border-border shadow-xs p-4 flex flex-col gap-3"
+              >
+                <div className="flex items-center justify-between text-xs font-bold text-[#667085] px-1">
+                  <span>Interactive Document Viewer</span>
+                  <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Certified Pathologist Copy
+                  </span>
+                </div>
+                <div className="w-full h-[620px] rounded-xl overflow-hidden border border-border bg-gray-50 shadow-inner">
+                  {isPdf ? (
+                    <iframe
+                      src={`${reportFileUrl}#toolbar=1`}
+                      className="w-full h-full border-none"
+                      title="Diagnostic Report Document Preview"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center p-4 overflow-auto">
+                      <img src={reportFileUrl} alt="Diagnostic Report" className="max-w-full max-h-full object-contain" />
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
 
             {/* Diagnostic Report Summary Preview */}
             <motion.div 
