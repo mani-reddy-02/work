@@ -6,8 +6,13 @@ import {
   getDoctorAvailableSlots 
 } from './doctor-schedule.controller';
 import { authenticate, requireRole } from '../../middleware/auth';
+import { getMe } from '../users/users.controller';
 
 const router = Router();
+
+// Profile alias endpoints
+router.get('/profile', authenticate, getMe);
+router.get('/me', authenticate, getMe);
 
 // Doctor schedule configuration routes (Protected for DOCTOR)
 router.get('/schedule', authenticate, requireRole(['DOCTOR', 'SUPER_ADMIN']), getMyDoctorSchedule);

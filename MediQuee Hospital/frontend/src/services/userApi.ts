@@ -29,6 +29,16 @@ export interface UserProfile {
   departmentId?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  dateOfBirth?: string | null;
+  registrationNumber?: string | null;
+  education?: string | null;
+  experience?: number | null;
+  opFee?: number | null;
+  hospitalName?: string | null;
+  departmentName?: string | null;
+  hospitalPhone?: string | null;
+  hospitalEmail?: string | null;
+  hospitalAddress?: string | null;
   hospitalFacilityAddress?: {
     type: string;
     street: string;
