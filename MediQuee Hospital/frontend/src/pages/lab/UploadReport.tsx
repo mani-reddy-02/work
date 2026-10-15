@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowLeft, Search, CheckCircle2, Upload, X, FileText, Image, File, Loader2, Check, Eye, AlertCircle } from "lucide-react"
+import { ArrowLeft, Search, CheckCircle2, Upload, X, FileText, Image, File, Loader2, Check, Eye, AlertCircle, User, Phone, Mail, MapPin, Calendar, CreditCard, FlaskConical } from "lucide-react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useToast } from "@/context/ToastContext"
 import { labApi } from "@/services/labApi"
@@ -9,7 +9,20 @@ import { ConditionLabel } from "@/components/shared/ConditionLabel"
 
 type UploadStep = 1 | 2 | 3 | 'success'
 
-interface SelectedOrder { id: string; patient: string; test: string; date: string; status?: string }
+interface SelectedOrder {
+  id: string
+  patient: string
+  phone?: string
+  email?: string
+  gender?: string
+  address?: string
+  test: string
+  date: string
+  status?: string
+  amount?: number
+  bookingType?: string
+  items?: any[]
+}
 interface SelectedFile { name: string; type: string; size: string; base64: string }
 
 export function UploadReport() {
@@ -34,9 +47,16 @@ export function UploadReport() {
         const orders = (res?.data || []).map((b: any) => ({
           id: b.id,
           patient: b.patient?.name || 'Walk-in Patient',
+          phone: b.patient?.phone || '',
+          email: b.patient?.email || '',
+          gender: b.patient?.gender || 'Not specified',
+          address: b.collectionAddress || b.patient?.address || 'Clinic Walk-in',
           test: b.items?.map((it: any) => it.labTest?.platformTest?.name).join(', ') || 'Diagnostic Test',
           date: new Date(b.createdAt).toLocaleDateString(),
-          status: b.status
+          status: b.status,
+          amount: b.totalAmount || 0,
+          bookingType: b.bookingType || 'IN_PERSON',
+          items: b.items || []
         }))
         setSearchableOrders(orders)
 
@@ -197,14 +217,76 @@ export function UploadReport() {
 
         {/* STEP 2: Upload File */}
         {step === 2 && selectedOrder && (
-          <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col gap-4 md:gap-6 px-4 md:px-6 pt-6 md:pt-10 pb-28 w-full max-w-2xl mx-auto">
-            {/* Selected Order Summary */}
-            <div className="bg-primary/5 border border-primary/15 rounded-2xl px-4 py-3 md:px-5 md:py-4">
-              <p className="text-[12px] md:text-[13px] font-semibold text-primary mb-1">Selected Order</p>
-              <p className="text-[15px] md:text-[18px] font-bold text-[#172033]">{selectedOrder.patient}</p>
-              <div className="flex items-center gap-1.5 mt-1">
-                <ConditionLabel name={selectedOrder.test} textClassName="text-[13px] md:text-[15px] text-[#667085]" iconClassName="w-4 h-4" />
-                <span className="text-[#667085]">· {selectedOrder.id}</span>
+          <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col gap-4 md:gap-5 px-4 md:px-6 pt-6 md:pt-8 pb-28 w-full max-w-2xl mx-auto">
+            
+            {/* 1. Patient Details Card */}
+            <div className="bg-surface border border-border rounded-2xl p-4 md:p-5 shadow-xs flex flex-col gap-3">
+              <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted">Patient Details</span>
+                </div>
+                <span className="text-xs px-2 py-0.5 rounded-md bg-blue-50 text-primary font-bold">
+                  {selectedOrder.gender}
+                </span>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col">
+                  <h3 className="text-base md:text-lg font-bold text-foreground">{selectedOrder.patient}</h3>
+                  <div className="flex items-center gap-3 text-xs text-muted mt-1 flex-wrap">
+                    {selectedOrder.phone && (
+                      <span className="flex items-center gap-1 font-semibold text-primary">
+                        <Phone className="w-3.5 h-3.5" />
+                        {selectedOrder.phone}
+                      </span>
+                    )}
+                    {selectedOrder.email && (
+                      <span className="flex items-center gap-1">
+                        <Mail className="w-3.5 h-3.5" />
+                        {selectedOrder.email}
+                      </span>
+                    )}
+                  </div>
+                  {selectedOrder.address && (
+                    <p className="text-xs text-muted flex items-start gap-1 mt-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                      <span>{selectedOrder.address}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Order Details Card */}
+            <div className="bg-surface border border-border rounded-2xl p-4 md:p-5 shadow-xs flex flex-col gap-3">
+              <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <FlaskConical className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted">Order Details</span>
+                </div>
+                <span className="text-xs font-mono font-bold text-muted">ID: {selectedOrder.id}</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted">Diagnostic Test:</span>
+                  <span className="text-xs font-bold text-foreground text-right">{selectedOrder.test}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted">Booking Type:</span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-gray-100 text-foreground">
+                    {selectedOrder.bookingType === 'HOME_COLLECTION' ? 'Home Sample Collection' : 'In-Person Lab Visit'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted">Booking Date:</span>
+                  <span className="text-xs font-semibold text-foreground">{selectedOrder.date}</span>
+                </div>
+                {selectedOrder.amount ? (
+                  <div className="flex items-center justify-between pt-2 border-t border-border/60">
+                    <span className="text-xs font-bold text-foreground">Total Bill Amount:</span>
+                    <span className="text-sm font-black text-primary">₹{selectedOrder.amount}</span>
+                  </div>
+                ) : null}
               </div>
             </div>
 

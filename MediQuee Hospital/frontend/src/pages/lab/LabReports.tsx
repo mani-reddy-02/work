@@ -199,70 +199,84 @@ export function LabReports() {
 
       <div className="max-w-7xl w-full mx-auto px-4 md:px-8 pt-6 flex flex-col gap-6">
 
-        {/* ── 2. The 2 Core Tiles: Pending & Uploaded (Exact User Requirement) ─ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* ── 2. The 3 Core Tiles: Total Orders, Pending, Uploaded (Headline with numbers only) ─ */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           
-          {/* Tile 1: Pending */}
+          {/* Tile 1: Total Orders */}
+          <motion.div
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.99 }}
+            onClick={() => setActiveFilter('All')}
+            className={cn(
+              "rounded-2xl border p-4 md:p-5 flex items-center justify-between transition-all cursor-pointer shadow-xs",
+              activeFilter === 'All'
+                ? "bg-blue-50 border-blue-400 ring-2 ring-blue-400/30 shadow-md"
+                : "bg-surface border-border hover:bg-gray-50/80 hover:border-gray-300"
+            )}
+          >
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-black uppercase tracking-wider text-muted">
+                Total Orders
+              </span>
+              <span className="text-3xl md:text-4xl font-black text-foreground">
+                {isLoading ? '...' : allReports.length}
+              </span>
+            </div>
+
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-primary flex items-center justify-center shrink-0 border border-blue-100 shadow-2xs">
+              <FileText className="w-6 h-6" />
+            </div>
+          </motion.div>
+
+          {/* Tile 2: Pending */}
           <motion.div
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.99 }}
             onClick={() => setActiveFilter(activeFilter === 'Pending' ? 'All' : 'Pending')}
             className={cn(
-              "rounded-2xl border p-5 flex items-center justify-between transition-all cursor-pointer shadow-xs",
+              "rounded-2xl border p-4 md:p-5 flex items-center justify-between transition-all cursor-pointer shadow-xs",
               activeFilter === 'Pending'
                 ? "bg-amber-100/70 border-amber-400 ring-2 ring-amber-400/30 shadow-md"
                 : "bg-amber-50/60 border-amber-200/80 hover:bg-amber-50 hover:border-amber-300"
             )}
           >
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1.5">
               <span className="text-xs font-black uppercase tracking-wider text-amber-700">
                 Pending Reports
               </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl md:text-4xl font-black text-amber-800">
-                  {isLoading ? '...' : pendingCount}
-                </span>
-                <span className="text-xs font-semibold text-amber-700">Orders Awaiting Upload</span>
-              </div>
-              <p className="text-[11px] text-amber-700/80 mt-0.5">
-                Specimens collected and testing in progress · Click to filter
-              </p>
+              <span className="text-3xl md:text-4xl font-black text-amber-800">
+                {isLoading ? '...' : pendingCount}
+              </span>
             </div>
 
-            <div className="w-13 h-13 rounded-2xl bg-amber-200/60 text-amber-800 flex items-center justify-center shrink-0 border border-amber-300/50 shadow-2xs">
-              <Clock className="w-7 h-7" />
+            <div className="w-12 h-12 rounded-2xl bg-amber-200/60 text-amber-800 flex items-center justify-center shrink-0 border border-amber-300/50 shadow-2xs">
+              <Clock className="w-6 h-6" />
             </div>
           </motion.div>
 
-          {/* Tile 2: Uploaded */}
+          {/* Tile 3: Uploaded */}
           <motion.div
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.99 }}
             onClick={() => setActiveFilter(activeFilter === 'Uploaded' ? 'All' : 'Uploaded')}
             className={cn(
-              "rounded-2xl border p-5 flex items-center justify-between transition-all cursor-pointer shadow-xs",
+              "rounded-2xl border p-4 md:p-5 flex items-center justify-between transition-all cursor-pointer shadow-xs",
               activeFilter === 'Uploaded'
                 ? "bg-emerald-100/70 border-emerald-400 ring-2 ring-emerald-400/30 shadow-md"
                 : "bg-emerald-50/60 border-emerald-200/80 hover:bg-emerald-50 hover:border-emerald-300"
             )}
           >
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1.5">
               <span className="text-xs font-black uppercase tracking-wider text-emerald-700">
                 Uploaded Reports
               </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl md:text-4xl font-black text-emerald-800">
-                  {isLoading ? '...' : uploadedCount}
-                </span>
-                <span className="text-xs font-semibold text-emerald-700">Completed & Ready</span>
-              </div>
-              <p className="text-[11px] text-emerald-700/80 mt-0.5">
-                Certified diagnostic reports delivered to patient · Click to filter
-              </p>
+              <span className="text-3xl md:text-4xl font-black text-emerald-800">
+                {isLoading ? '...' : uploadedCount}
+              </span>
             </div>
 
-            <div className="w-13 h-13 rounded-2xl bg-emerald-200/60 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-300/50 shadow-2xs">
-              <CheckCircle2 className="w-7 h-7" />
+            <div className="w-12 h-12 rounded-2xl bg-emerald-200/60 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-300/50 shadow-2xs">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
           </motion.div>
         </div>
@@ -470,13 +484,13 @@ export function LabReports() {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation()
-                              navigate(`/lab/upload-report?orderId=${report.id}`)
+                              navigate(`/lab/order/${report.id}`)
                             }}
                             className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold hover:bg-amber-100 active:scale-95 transition-all shadow-2xs cursor-pointer"
-                            title="Upload Diagnostic Report"
+                            title="Upload Diagnostic Report with Order & Patient Details"
                           >
                             <Upload className="w-3.5 h-3.5" />
-                            <span>Upload</span>
+                            <span>Upload Report</span>
                           </button>
                         )}
 

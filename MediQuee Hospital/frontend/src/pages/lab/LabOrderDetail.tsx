@@ -891,30 +891,79 @@ export function LabOrderDetail() {
                     </button>
                   </div>
                 ) : (
-                  /* No report uploaded: Direct inline dropzone & prompt */
-                  <div className="flex flex-col gap-4 text-center py-4">
-                    <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
-                      <Upload className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-foreground">No Diagnostic Report Attached</h4>
-                      <p className="text-xs text-muted max-w-xs mx-auto mt-1">
-                        Upload the verified PDF or image diagnostic report to complete this order and release it to the patient.
-                      </p>
+                  /* Pending report: Show inline file upload dropzone directly with order & patient details */
+                  <div className="flex flex-col gap-4">
+                    <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 flex items-start gap-3">
+                      <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wide">Report Upload Pending</h4>
+                        <p className="text-xs text-amber-800 mt-0.5">
+                          Order and patient information verified. Upload the finalized diagnostic report (PDF / Image) below to complete and deliver to patient.
+                        </p>
+                      </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setUploadModalOpen(true)}
-                      className="w-full py-3 px-4 bg-primary text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer mt-2"
-                    >
-                      <Upload className="w-4 h-4" />
-                      <span>Upload Diagnostic Report (PDF / Image)</span>
-                    </button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileSelect}
+                      accept=".pdf,image/png,image/jpeg"
+                      className="hidden"
+                    />
 
-                    <div className="text-[11px] text-muted flex items-center justify-center gap-1">
+                    {!selectedFile ? (
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border-2 border-dashed border-primary/40 hover:border-primary rounded-2xl p-6 md:p-8 flex flex-col items-center justify-center gap-3 bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer group"
+                      >
+                        <div className="w-13 h-13 rounded-2xl bg-white shadow-xs flex items-center justify-center text-primary group-hover:scale-105 transition-transform">
+                          <Upload className="w-6 h-6" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-bold text-foreground">Click to Browse or Drop File</p>
+                          <p className="text-xs text-muted mt-1">Supports PDF, JPG, PNG (Max 15MB)</p>
+                        </div>
+                        <span className="mt-1 px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl shadow-xs pointer-events-none">
+                          Select Report File
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-white shadow-xs flex items-center justify-center text-primary shrink-0">
+                              <FileText className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-foreground truncate">{selectedFile.name}</p>
+                              <p className="text-[11px] text-muted">{selectedFile.size} · Ready to submit</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedFile(null)}
+                            className="p-1.5 text-muted hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                            title="Remove file"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={isUploadingReport}
+                          onClick={handleUploadReport}
+                          className="w-full py-3 px-4 bg-primary text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          {isUploadingReport && <Loader2 className="w-4 h-4 animate-spin" />}
+                          <span>Upload & Mark Report Completed</span>
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="text-[11px] text-muted flex items-center justify-center gap-1.5 pt-1">
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Report is automatically shared with patient upon upload</span>
+                      <span>Certified report is automatically attached to patient records upon upload</span>
                     </div>
                   </div>
                 )}
