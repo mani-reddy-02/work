@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import { Hospital } from '../types';
-import { Building2, Plus, Filter, X, RefreshCw } from 'lucide-react';
+import { Building2, Clock, ShieldCheck, X, RefreshCw } from 'lucide-react';
 import { useAdminAuth } from '../contexts/AuthContext';
-import { hospitalService } from '../services/hospitalService';
 import KpiCard from '../components/ui/KpiCard';
 
 const Hospitals: React.FC = () => {
@@ -13,7 +12,6 @@ const Hospitals: React.FC = () => {
   const navigate = useNavigate();
   
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [totalCount, setTotalCount] = useState(0); 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -22,6 +20,13 @@ const Hospitals: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
   const limit = 20;
+
+  // Summary counts for hospitals only
+  const [summaryStats, setSummaryStats] = useState({
+    total: 0,
+    approved: 0,
+    pending: 0
+  });
 
   // Location & Verification filters
   const [locationFilter, setLocationFilter] = useState('all');
@@ -32,22 +37,6 @@ const Hospitals: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Add Hospital Modal
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
-  const [addForm, setAddForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    businessType: 'HOSPITAL',
-    facilityType: 'GENERAL',
-    registrationNumber: ''
-  });
-  const [addError, setAddError] = useState('');
 
   // Debounce search
   useEffect(() => {
@@ -93,12 +82,17 @@ const Hospitals: React.FC = () => {
         if (data.pagination) {
           setTotalPages(data.pagination.totalPages);
           setTotalResults(data.pagination.total);
-          if (locationFilter === 'all' && verificationFilter === 'all' && !debouncedSearch) {
-             setTotalCount(data.pagination.total);
-          }
         } else {
           setTotalResults(data.data.length);
           setTotalPages(1);
+        }
+
+        if (data.summary) {
+          setSummaryStats({
+            total: data.summary.total,
+            approved: data.summary.approved,
+            pending: data.summary.pending
+          });
         }
 
         // Dynamically extract locations
@@ -128,51 +122,6 @@ const Hospitals: React.FC = () => {
   useEffect(() => {
     setPage(1);
   }, [locationFilter, verificationFilter]);
-
-  const handleAddHospital = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAddError('');
-
-    if (!addForm.name || !addForm.email || !addForm.phone || !addForm.address || !addForm.city || !addForm.state) {
-      setAddError('Please fill in all required fields.');
-      return;
-    }
-
-    // Basic email and phone validation
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addForm.email)) {
-      setAddError('Invalid email format.');
-      return;
-    }
-    if (addForm.phone.length < 10) {
-      setAddError('Phone number must be at least 10 digits.');
-      return;
-    }
-
-    setIsAdding(true);
-    try {
-      const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
-      const res = await fetch(`${API_URL}/admin/hospitals`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
-        },
-        body: JSON.stringify(addForm)
-      });
-      const data = await res.json();
-      if (data.success) {
-        setIsAddModalOpen(false);
-        setAddForm({ name: '', email: '', phone: '', address: '', city: '', state: '', businessType: 'HOSPITAL', facilityType: 'GENERAL', registrationNumber: '' });
-        fetchHospitals(); // Refresh the list
-      } else {
-        setAddError(data.message || 'Failed to add hospital.');
-      }
-    } catch (err) {
-      setAddError('Network error occurred.');
-    } finally {
-      setIsAdding(false);
-    }
-  };
 
   const columns: Column<any>[] = [
     {
@@ -270,17 +219,20 @@ const Hospitals: React.FC = () => {
           <select 
             className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2"
             value={verificationFilter}
-            onChange={(e) => setVerificationFilter(e.target.value)}
+            onChange={(e) => {
+              setVerificationFilter(e.target.value);
+              setPage(1);
+            }}
           >
             <option value="all">All Verification Statuses</option>
-            <option value="VERIFIED">Verified</option>
+            <option value="APPROVED">Approved</option>
             <option value="PENDING">Pending</option>
           </select>
         </div>
 
         <div className="flex gap-2 pt-2 border-t border-slate-100">
           <button 
-            onClick={() => { setLocationFilter('all'); setVerificationFilter('all'); setShowFilters(false); }}
+            onClick={() => { setLocationFilter('all'); setVerificationFilter('all'); setPage(1); setShowFilters(false); }}
             className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50"
           >
             Clear
@@ -303,18 +255,96 @@ const Hospitals: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Hospital Management</h2>
           <p className="text-sm text-slate-500">Manage hospitals, locations, and view complete profiles.</p>
         </div>
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+        <button
+          onClick={fetchHospitals}
+          disabled={loading}
+          className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-xs disabled:opacity-50"
         >
-          <Plus size={16} />
-          Add Hospital
+          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+          Refresh
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard title="Total Hospitals" value={totalCount || totalResults} icon={Building2} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <KpiCard 
+          title="Total Hospitals" 
+          value={summaryStats.total} 
+          icon={Building2}
+          iconColor="text-blue-600"
+          iconBg="bg-blue-50"
+          onClick={() => {
+            setVerificationFilter('all');
+            setPage(1);
+          }}
+          className={`transition-all ${verificationFilter === 'all' ? 'ring-2 ring-blue-500/20' : ''}`}
+        />
+        <KpiCard 
+          title="Pending Verification" 
+          value={summaryStats.pending} 
+          icon={Clock}
+          iconColor="text-amber-600"
+          iconBg="bg-amber-50"
+          onClick={() => {
+            setVerificationFilter(prev => prev === 'PENDING' ? 'all' : 'PENDING');
+            setPage(1);
+          }}
+          className={`transition-all ${verificationFilter === 'PENDING' ? 'ring-2 ring-amber-500 shadow-md' : ''}`}
+        />
+        <KpiCard 
+          title="Approved Hospitals" 
+          value={summaryStats.approved} 
+          icon={ShieldCheck}
+          iconColor="text-emerald-600"
+          iconBg="bg-emerald-50"
+          onClick={() => {
+            setVerificationFilter(prev => prev === 'APPROVED' ? 'all' : 'APPROVED');
+            setPage(1);
+          }}
+          className={`transition-all ${verificationFilter === 'APPROVED' ? 'ring-2 ring-emerald-500 shadow-md' : ''}`}
+        />
       </div>
+
+      {(verificationFilter !== 'all' || locationFilter !== 'all') && (
+        <div className="flex items-center gap-2 flex-wrap text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+          <span className="font-semibold text-slate-700">Active Filters:</span>
+          {verificationFilter !== 'all' && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white text-slate-800 font-medium border border-slate-200 shadow-xs">
+              Status: {verificationFilter === 'APPROVED' ? 'Approved' : 'Pending'}
+              <button 
+                onClick={() => { setVerificationFilter('all'); setPage(1); }} 
+                className="hover:text-red-600 ml-0.5 text-slate-400"
+                title="Remove filter"
+              >
+                <X size={12} />
+              </button>
+            </span>
+          )}
+          {locationFilter !== 'all' && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white text-slate-800 font-medium border border-slate-200 shadow-xs">
+              Location: {locationFilter}
+              <button 
+                onClick={() => { setLocationFilter('all'); setPage(1); }} 
+                className="hover:text-red-600 ml-0.5 text-slate-400"
+                title="Remove filter"
+              >
+                <X size={12} />
+              </button>
+            </span>
+          )}
+          <button 
+            onClick={() => { setLocationFilter('all'); setVerificationFilter('all'); setPage(1); }} 
+            className="text-blue-600 hover:underline font-medium text-xs ml-auto"
+          >
+            Clear all filters
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
+          {error}
+        </div>
+      )}
 
       <div className="relative">
         {loading && (
@@ -346,91 +376,6 @@ const Hospitals: React.FC = () => {
           />
         </div>
       </div>
-
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden my-8">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-bold text-slate-800">Add New Hospital</h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleAddHospital} className="p-6 space-y-6">
-              {addError && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">{addError}</div>}
-              
-              <div>
-                <h4 className="text-sm font-semibold text-slate-900 mb-3 border-b pb-2">Basic Information</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Hospital Name *</label>
-                    <input type="text" value={addForm.name} onChange={e => setAddForm({...addForm, name: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg text-sm" required />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Registration / License No.</label>
-                    <input type="text" value={addForm.registrationNumber} onChange={e => setAddForm({...addForm, registrationNumber: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Business Type</label>
-                    <select value={addForm.businessType} onChange={e => setAddForm({...addForm, businessType: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg text-sm">
-                      <option value="HOSPITAL">Hospital</option>
-                      <option value="LABORATORY">Standalone Laboratory</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Facility Type</label>
-                    <select value={addForm.facilityType} onChange={e => setAddForm({...addForm, facilityType: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg text-sm">
-                      <option value="GENERAL">General</option>
-                      <option value="SPECIALTY">Specialty</option>
-                      <option value="MULTI_SPECIALTY">Multi-Specialty</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-semibold text-slate-900 mb-3 border-b pb-2">Contact Information</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Email *</label>
-                    <input type="email" value={addForm.email} onChange={e => setAddForm({...addForm, email: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg text-sm" required />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Phone *</label>
-                    <input type="tel" value={addForm.phone} onChange={e => setAddForm({...addForm, phone: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg text-sm" required />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-semibold text-slate-900 mb-3 border-b pb-2">Location</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Complete Address *</label>
-                    <input type="text" value={addForm.address} onChange={e => setAddForm({...addForm, address: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg text-sm" required />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">City *</label>
-                    <input type="text" value={addForm.city} onChange={e => setAddForm({...addForm, city: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg text-sm" required />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">State *</label>
-                    <input type="text" value={addForm.state} onChange={e => setAddForm({...addForm, state: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg text-sm" required />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors" disabled={isAdding}>Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50" disabled={isAdding}>
-                  {isAdding ? 'Saving...' : 'Add Hospital'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

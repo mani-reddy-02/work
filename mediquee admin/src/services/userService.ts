@@ -12,6 +12,10 @@ export const userService = {
         if (filters.city) params.append('city', filters.city);
         if (filters.hospitalId) params.append('hospitalId', filters.hospitalId);
         if (filters.search) params.append('search', filters.search);
+        if (filters.specialization) params.append('specialization', filters.specialization);
+        if (filters.experienceMin) params.append('experienceMin', filters.experienceMin);
+        if (filters.experienceMax) params.append('experienceMax', filters.experienceMax);
+        if (filters.status) params.append('status', filters.status);
         if (filters.page) params.append('page', filters.page.toString());
         if (filters.limit) params.append('limit', filters.limit.toString());
       }
@@ -45,6 +49,28 @@ export const userService = {
     } catch (e) {
       console.error(e);
       return { success: false, data: { cities: [], hospitals: [] } };
+    }
+  },
+  getNurseFilters: async (token: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/nurses/filters`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return await res.json();
+    } catch (e) {
+      console.error(e);
+      return { success: false, data: { hospitals: [] } };
+    }
+  },
+  getReceptionistFilters: async (token: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/receptionists/filters`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return await res.json();
+    } catch (e) {
+      console.error(e);
+      return { success: false, data: { hospitals: [] } };
     }
   }
 };

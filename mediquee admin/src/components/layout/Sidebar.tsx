@@ -46,7 +46,9 @@ export const navGroups = [
     title: 'People',
     items: [
       { name: 'Patients', path: '/admin/patients', icon: UserCircle },
-      { name: 'Doctors', path: '/admin/doctors', icon: Stethoscope }
+      { name: 'Doctors', path: '/admin/doctors', icon: Stethoscope },
+      { name: 'Nurses', path: '/admin/nurses', icon: HeartHandshake },
+      { name: 'Receptionists', path: '/admin/receptionists', icon: Users }
     ]
   },
   {

@@ -297,9 +297,8 @@ const HospitalDetails: React.FC = () => {
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-slate-900">
             {hospital.name}
-            <StatusBadge status={hospital.verifications?.length ? 'VERIFIED' : 'PENDING'} />
           </h1>
           <p className="text-sm text-slate-500">{hospital.city}, {hospital.state}</p>
         </div>

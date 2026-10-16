@@ -20,6 +20,10 @@ import LabDepartments from './pages/LabDepartments';
 import LabDepartmentDetails from './pages/LabDepartmentDetails';
 import Doctors from './pages/Doctors';
 import DoctorDetails from './pages/DoctorDetails';
+import Nurses from './pages/Nurses';
+import NurseDetails from './pages/NurseDetails';
+import Receptionists from './pages/Receptionists';
+import ReceptionistDetails from './pages/ReceptionistDetails';
 import Appointments from './pages/Appointments';
 import AppointmentDetails from './pages/AppointmentDetails';
 import OPBookings from './pages/OPBookings';
@@ -92,6 +96,10 @@ function App() {
               <Route path="nursing-services" element={<NursingServices />} />
               <Route path="doctors" element={<Doctors />} />
               <Route path="doctors/:id" element={<DoctorDetails />} />
+              <Route path="nurses" element={<Nurses />} />
+              <Route path="nurses/:id" element={<NurseDetails />} />
+              <Route path="receptionists" element={<Receptionists />} />
+              <Route path="receptionists/:id" element={<ReceptionistDetails />} />
               
               <Route path="op-bookings" element={<OPBookings />} />
               <Route path="op-bookings/:id" element={<AppointmentDetails />} />

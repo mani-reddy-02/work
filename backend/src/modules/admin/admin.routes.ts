@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate, requireRole } from '../../middleware/auth';
 import { Role } from '@prisma/client';
-import { getStats, getHospitals, createHospital, updateHospital, getUsers, getAppointments, updateHospitalRevenueShare, getUserById, getHospitalById, getAppointmentById, updateAppointmentStatus, getLabBookings, getLabOrdersAnalytics, getLabBookingById, updateLabBookingStatus, uploadLabReport, getHomeNursingBookings, getHomeNursingBookingById, updateHomeNursingBookingStatus, getPatientFilters, getPendingVerifications, updateVerificationStatus, getVideoConsultations, getVideoConsultationById, updateVideoConsultationStatus } from './admin.controller';
+import { getStats, getHospitals, createHospital, updateHospital, getUsers, getAppointments, updateHospitalRevenueShare, getUserById, getHospitalById, getAppointmentById, updateAppointmentStatus, getLabBookings, getLabOrdersAnalytics, getLabBookingById, updateLabBookingStatus, uploadLabReport, getHomeNursingBookings, getHomeNursingBookingById, updateHomeNursingBookingStatus, getPatientFilters, getNurseFilters, getReceptionistFilters, getPendingVerifications, updateVerificationStatus, getVideoConsultations, getVideoConsultationById, updateVideoConsultationStatus } from './admin.controller';
 import {
   getAllHospitalRequests,
   updateRequestStatus,
@@ -45,6 +45,8 @@ router.patch('/hospitals/:id', updateHospital);
 router.get('/hospitals/:id', getHospitalById);
 router.patch('/hospitals/:hospitalId/revenue-share', updateHospitalRevenueShare);
 router.get('/patients/filters', getPatientFilters);
+router.get('/nurses/filters', getNurseFilters);
+router.get('/receptionists/filters', getReceptionistFilters);
 router.get('/users', getUsers);
 router.get('/users/:id', getUserById);
 router.get('/appointments', getAppointments);

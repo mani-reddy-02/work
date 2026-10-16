@@ -97,7 +97,11 @@ export const getStats = async (req: Request, res: Response, next: NextFunction) 
 
     // 2. Hospital & Lab grouped counts
     const [hospitalStatusCounts, labStatusCounts, totalDepartments] = await Promise.all([
-      prisma.hospital.groupBy({ by: ['verificationStatus'], _count: { id: true } }).catch(() => []),
+      prisma.hospital.groupBy({ 
+        by: ['verificationStatus'], 
+        where: { businessType: 'HOSPITAL' },
+        _count: { id: true } 
+      }).catch(() => []),
       prisma.lab.groupBy({ by: ['verificationStatus'], _count: { id: true } }).catch(() => []),
       prisma.department.count().catch(() => 0),
     ]);
@@ -719,7 +723,10 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
     const limit = parseInt(req.query.limit as string) || 20;
     const { search, location, verificationStatus, status } = req.query;
 
-    const andConditions: any[] = [];
+    const andConditions: any[] = [
+      { businessType: 'HOSPITAL' }
+    ];
+
     if (search && (search as string).trim() !== '') {
       const s = (search as string).trim();
       andConditions.push({
@@ -746,25 +753,44 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
       });
     }
     if (verificationStatus && verificationStatus !== 'all') {
-      andConditions.push({
-        verificationStatus: { equals: verificationStatus as string, mode: 'insensitive' }
-      });
+      const vStatus = (verificationStatus as string).toUpperCase();
+      if (vStatus === 'APPROVED' || vStatus === 'VERIFIED') {
+        andConditions.push({
+          verificationStatus: { in: ['APPROVED', 'VERIFIED'] }
+        });
+      } else if (vStatus === 'PENDING') {
+        andConditions.push({
+          verificationStatus: { equals: 'PENDING', mode: 'insensitive' }
+        });
+      } else if (vStatus === 'CANCELLED' || vStatus === 'REJECTED') {
+        andConditions.push({
+          verificationStatus: { in: ['CANCELLED', 'REJECTED'] }
+        });
+      } else {
+        andConditions.push({
+          verificationStatus: { equals: verificationStatus as string, mode: 'insensitive' }
+        });
+      }
     }
 
     const whereClause: any = andConditions.length > 0 ? { AND: andConditions } : {};
 
-    const total = await prisma.hospital.count({ where: whereClause });
-
-    const hospitals = await prisma.hospital.findMany({
-      where: whereClause,
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
-      include: {
-        _count: { select: { departments: true, users: true } },
-        verifications: true,
-      },
-    });
+    const [total, hospitals, totalHospitalsCount, approvedHospitalsCount, pendingHospitalsCount] = await Promise.all([
+      prisma.hospital.count({ where: whereClause }),
+      prisma.hospital.findMany({
+        where: whereClause,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          _count: { select: { departments: true, users: true } },
+          verifications: true,
+        },
+      }),
+      prisma.hospital.count({ where: { businessType: 'HOSPITAL' } }),
+      prisma.hospital.count({ where: { businessType: 'HOSPITAL', verificationStatus: { in: ['APPROVED', 'VERIFIED'] } } }),
+      prisma.hospital.count({ where: { businessType: 'HOSPITAL', verificationStatus: 'PENDING' } })
+    ]);
 
     const formatted = hospitals.map((h) => ({
       id: h.id,
@@ -777,7 +803,7 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
       address: [h.addressLine1, h.area, h.city].filter(Boolean).join(', '),
       city: h.city || 'N/A',
       state: h.state || 'N/A',
-      verificationStatus: h.verificationStatus || (h.verifications.length > 0 ? 'VERIFIED' : 'PENDING'),
+      verificationStatus: h.verificationStatus || (h.verifications.length > 0 ? 'APPROVED' : 'PENDING'),
       status: 'ACTIVE',
       departmentCount: h._count.departments,
       doctorCount: h._count.users,
@@ -790,7 +816,12 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
     res.json({
       success: true,
       data: formatted,
-      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      summary: {
+        total: totalHospitalsCount,
+        approved: approvedHospitalsCount,
+        pending: pendingHospitalsCount
+      }
     });
   } catch (error) {
     next(error);
@@ -883,8 +914,19 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction) 
             { doctorBookings: { some: { hospitalId: hospitalId as string } } }
           ]
         });
-      } else {
+      } else if (role === 'NURSE') {
+        whereClause.AND.push({
+          OR: [
+            { hospitalId: hospitalId as string },
+            { assignedNursingBookings: { some: { hospitalId: hospitalId as string } } }
+          ]
+        });
+      } else if (role === 'RECEPTIONIST') {
+        whereClause.hospitalId = hospitalId as string;
+      } else if (role === 'PATIENT') {
         whereClause.patientBookings = { some: { hospitalId: hospitalId as string } };
+      } else {
+        whereClause.hospitalId = hospitalId as string;
       }
     }
 
@@ -913,14 +955,18 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction) 
         { id: { contains: s, mode: 'insensitive' } },
         { address: { contains: s, mode: 'insensitive' } },
       ];
-      if (role === 'DOCTOR' || !role) {
+      if (role === 'DOCTOR' || role === 'NURSE' || role === 'RECEPTIONIST' || !role) {
+        searchOR.push(
+          { designation: { contains: s, mode: 'insensitive' } },
+          { hospital: { name: { contains: s, mode: 'insensitive' } } },
+          { department: { name: { contains: s, mode: 'insensitive' } } }
+        );
+      }
+      if (role === 'DOCTOR' || role === 'NURSE') {
         searchOR.push(
           { specialization: { contains: s, mode: 'insensitive' } },
           { licenseNumber: { contains: s, mode: 'insensitive' } },
-          { qualification: { contains: s, mode: 'insensitive' } },
-          { designation: { contains: s, mode: 'insensitive' } },
-          { department: { name: { contains: s, mode: 'insensitive' } } },
-          { hospital: { name: { contains: s, mode: 'insensitive' } } }
+          { qualification: { contains: s, mode: 'insensitive' } }
         );
       }
       whereClause.AND.push({ OR: searchOR });
@@ -947,17 +993,21 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction) 
         qualification: true,
         specialization: true,
         experienceYears: true,
+        licenseNumber: true,
         dob: true,
         gender: true,
         address: true,
         hospital: {
-          select: { id: true, name: true },
+          select: { id: true, name: true, city: true, state: true },
         },
         department: {
           select: { id: true, name: true },
         },
         _count: {
-          select: { patientBookings: true }
+          select: {
+            patientBookings: true,
+            assignedNursingBookings: true
+          }
         },
         patientBookings: {
           select: {
@@ -1004,9 +1054,11 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction) 
         status: u.active ? 'ACTIVE' : 'INACTIVE',
         hospitalName: u.role === 'PATIENT' ? primaryHospital : (u.hospital?.name || 'N/A'),
         departmentName: u.department?.name || 'N/A',
+        designation: u.designation || (u.role === 'NURSE' ? 'Staff Nurse' : u.role === 'RECEPTIONIST' ? 'Front Desk / Receptionist' : 'N/A'),
         qualification: u.qualification || 'N/A',
         specialization: u.department?.name || u.specialization || u.designation || 'Not specified',
         experienceYears: u.experienceYears || 0,
+        licenseNumber: u.licenseNumber || 'N/A',
         verificationStatus: u.active ? 'VERIFIED' : 'PENDING',
         createdAt: u.createdAt.toISOString(),
         updatedAt: u.updatedAt.toISOString(),
@@ -1015,7 +1067,11 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction) 
         gender: u.gender || 'Not specified',
         address: u.address,
         city: extractCity,
+        hospitalId: u.hospital?.id || null,
+        hospitalCity: u.hospital?.city || 'N/A',
+        hospitalState: u.hospital?.state || 'N/A',
         appointmentsCount: u._count?.patientBookings || 0,
+        assignedNursingBookingsCount: (u as any)._count?.assignedNursingBookings || 0,
         hospitals: hospitals
       };
     });
@@ -1221,8 +1277,23 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
     const user = await prisma.user.findUnique({
       where: { id },
       include: {
-        hospital: { select: { id: true, name: true, city: true, state: true } },
-        department: { select: { id: true, name: true } },
+        hospital: {
+          select: {
+            id: true,
+            name: true,
+            city: true,
+            state: true,
+            facilityType: true,
+            contactPhone: true,
+            contactEmail: true,
+            addressLine1: true,
+            addressLine2: true,
+            area: true,
+            pincode: true,
+            verificationStatus: true
+          }
+        },
+        department: { select: { id: true, name: true, description: true } },
         patientBookings: {
           orderBy: { appointmentDate: 'desc' },
           include: {
@@ -1239,6 +1310,13 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
             department: { select: { id: true, name: true } },
           }
         },
+        assignedNursingBookings: {
+          orderBy: { serviceDate: 'desc' },
+          include: {
+            hospital: { select: { id: true, name: true, city: true, state: true } },
+            service: { select: { id: true, name: true, basePrice: true, duration: true } }
+          }
+        }
       }
     });
 
@@ -2193,6 +2271,77 @@ export const getPatientFilters = async (req: Request, res: Response, next: NextF
   }
 };
 
+export const getNurseFilters = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const nurses = await prisma.user.findMany({
+      where: { role: Role.NURSE },
+      select: {
+        hospital: { select: { id: true, name: true } },
+        assignedNursingBookings: {
+          select: {
+            hospital: { select: { id: true, name: true } }
+          }
+        }
+      }
+    });
+
+    const hospitalsMap = new Map<string, string>();
+    nurses.forEach(n => {
+      if (n.hospital) hospitalsMap.set(n.hospital.id, n.hospital.name);
+      n.assignedNursingBookings?.forEach((b: any) => {
+        if (b.hospital) hospitalsMap.set(b.hospital.id, b.hospital.name);
+      });
+    });
+
+    if (hospitalsMap.size === 0) {
+      const allHospitals = await prisma.hospital.findMany({ select: { id: true, name: true } });
+      allHospitals.forEach(h => hospitalsMap.set(h.id, h.name));
+    }
+
+    const hospitals = Array.from(hospitalsMap.entries()).map(([id, name]) => ({ id, name }));
+
+    res.json({
+      success: true,
+      data: {
+        hospitals: hospitals.sort((a, b) => a.name.localeCompare(b.name))
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getReceptionistFilters = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const recs = await prisma.user.findMany({
+      where: { role: Role.RECEPTIONIST },
+      select: {
+        hospital: { select: { id: true, name: true } }
+      }
+    });
+
+    const hospitalsMap = new Map<string, string>();
+    recs.forEach(r => {
+      if (r.hospital) hospitalsMap.set(r.hospital.id, r.hospital.name);
+    });
+
+    if (hospitalsMap.size === 0) {
+      const allHospitals = await prisma.hospital.findMany({ select: { id: true, name: true } });
+      allHospitals.forEach(h => hospitalsMap.set(h.id, h.name));
+    }
+
+    const hospitals = Array.from(hospitalsMap.entries()).map(([id, name]) => ({ id, name }));
+
+    res.json({
+      success: true,
+      data: {
+        hospitals: hospitals.sort((a, b) => a.name.localeCompare(b.name))
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const getPendingVerifications = async (req: Request, res: Response, next: NextFunction) => {
   try {

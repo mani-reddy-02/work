@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
-import StatusBadge from '../components/ui/StatusBadge';
 import { Doctor } from '../types';
 import { Stethoscope, Filter, X, RefreshCw } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
@@ -29,7 +28,6 @@ const Doctors: React.FC = () => {
 
   const [showFilters, setShowFilters] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
-  const [statusFilter, setStatusFilter] = useState('all');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +89,6 @@ const Doctors: React.FC = () => {
       
       if (debouncedSearch) filters.search = debouncedSearch;
       if (specialization !== 'all') filters.specialization = specialization;
-      if (statusFilter !== 'all') filters.status = statusFilter;
       
       if (experienceRange !== 'all') {
         if (experienceRange === '16+') {
@@ -110,7 +107,7 @@ const Doctors: React.FC = () => {
           setTotalPages(res.pagination.totalPages);
           setTotalResults(res.pagination.total);
           // Update KPI if no filters applied
-          if (specialization === 'all' && experienceRange === 'all' && statusFilter === 'all' && !debouncedSearch) {
+          if (specialization === 'all' && experienceRange === 'all' && !debouncedSearch) {
              setTotalDoctorsCount(res.pagination.total);
           }
           
@@ -138,17 +135,16 @@ const Doctors: React.FC = () => {
 
   useEffect(() => {
     fetchDoctors();
-  }, [token, debouncedSearch, page, specialization, experienceRange, statusFilter]);
+  }, [token, debouncedSearch, page, specialization, experienceRange]);
 
   // Reset pagination when a filter changes
   useEffect(() => {
     setPage(1);
-  }, [specialization, experienceRange, statusFilter]);
+  }, [specialization, experienceRange]);
 
   const handleClearFilters = () => {
     setSpecialization('all');
     setExperienceRange('all');
-    setStatusFilter('all');
     setShowFilters(false);
   };
 
@@ -184,10 +180,6 @@ const Doctors: React.FC = () => {
     {
       header: 'Experience',
       accessor: (d) => <span className="text-sm text-slate-700">{d.experienceYears || 0} Years</span>,
-    },
-    {
-      header: 'Verification',
-      accessor: (d) => <StatusBadge status={d.verificationStatus} />,
     }
   ];
 
@@ -248,19 +240,6 @@ const Doctors: React.FC = () => {
             <option value="6-10">6–10 Years</option>
             <option value="11-15">11–15 Years</option>
             <option value="16+">16+ Years</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Status / Verification</label>
-          <select 
-            className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">All Statuses</option>
-            <option value="ACTIVE">Active / Verified</option>
-            <option value="INACTIVE">Inactive / Pending</option>
           </select>
         </div>
 
