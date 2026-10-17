@@ -16,87 +16,222 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
     const location = (typeof req.query.location === 'string' && req.query.location.trim() !== '' && req.query.location !== 'ALL')
       ? req.query.location.trim()
       : ((typeof req.query.place === 'string' && req.query.place.trim() !== '' && req.query.place !== 'ALL') ? req.query.place.trim() : '');
+    const verificationStatus = req.query.verificationStatus as string;
 
-    const whereClause: any = {};
-    if (type === 'STANDALONE') {
-      whereClause.businessType = BusinessType.LABORATORY;
-    } else if (type === 'HOSPITAL_BASED') {
-      whereClause.businessType = { not: BusinessType.LABORATORY };
-      whereClause.services = { hasSome: ['lab_tests', 'lab', 'laboratory', 'diagnostics'] };
-    } else {
-      whereClause.OR = [
-        { businessType: BusinessType.LABORATORY },
-        { services: { hasSome: ['lab_tests', 'lab', 'laboratory', 'diagnostics'] } }
-      ];
-    }
+    // Fetch authoritative counts for summary tiles (laboratories only, no hospitals or unrelated users)
+    const [
+      standaloneApprovedCount,
+      standalonePendingCount,
+      standaloneTotalCount,
+      hospitalBasedApprovedCount,
+      hospitalBasedPendingCount,
+      hospitalBasedTotalCount
+    ] = await Promise.all([
+      prisma.hospital.count({ where: { businessType: BusinessType.LABORATORY, verificationStatus: { in: ['APPROVED', 'VERIFIED'] } } }),
+      prisma.hospital.count({ where: { businessType: BusinessType.LABORATORY, verificationStatus: 'PENDING' } }),
+      prisma.hospital.count({ where: { businessType: BusinessType.LABORATORY } }),
+      prisma.lab.count({ where: { type: 'HOSPITAL_BASED', verificationStatus: { in: ['APPROVED', 'VERIFIED'] } } }),
+      prisma.lab.count({ where: { type: 'HOSPITAL_BASED', verificationStatus: 'PENDING' } }),
+      prisma.lab.count({ where: { type: 'HOSPITAL_BASED' } })
+    ]);
 
-    if (hospitalId && hospitalId !== 'ALL') {
-      whereClause.id = hospitalId;
-    }
+    const totalLabCount = standaloneTotalCount + hospitalBasedTotalCount;
+    const approvedLabCount = standaloneApprovedCount + hospitalBasedApprovedCount;
+    const pendingLabCount = standalonePendingCount + hospitalBasedPendingCount;
 
-    if (search) {
-      whereClause.AND = [
-        ...(whereClause.AND || []),
-        {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { id: { contains: search, mode: 'insensitive' } },
-            { city: { contains: search, mode: 'insensitive' } },
-            { area: { contains: search, mode: 'insensitive' } },
-            { state: { contains: search, mode: 'insensitive' } },
-            { addressLine1: { contains: search, mode: 'insensitive' } },
-            { contactPhone: { contains: search, mode: 'insensitive' } },
-            { contactEmail: { contains: search, mode: 'insensitive' } },
-          ]
+    let items: any[] = [];
+
+    // 1. Fetch Standalone Labs (stored in Hospital table with businessType = LABORATORY)
+    if (!type || type === 'ALL' || type === 'STANDALONE') {
+      const hospWhere: any = { businessType: BusinessType.LABORATORY };
+
+      if (verificationStatus && verificationStatus !== 'ALL') {
+        const vStatus = verificationStatus.toUpperCase();
+        if (vStatus === 'APPROVED' || vStatus === 'VERIFIED') {
+          hospWhere.verificationStatus = { in: ['APPROVED', 'VERIFIED'] };
+        } else if (vStatus === 'PENDING') {
+          hospWhere.verificationStatus = { equals: 'PENDING', mode: 'insensitive' };
+        } else {
+          hospWhere.verificationStatus = { equals: verificationStatus, mode: 'insensitive' };
         }
-      ];
+      }
+
+      if (hospitalId && hospitalId !== 'ALL') {
+        hospWhere.id = hospitalId;
+      }
+
+      if (location) {
+        hospWhere.OR = [
+          { city: { contains: location, mode: 'insensitive' } },
+          { area: { contains: location, mode: 'insensitive' } },
+          { state: { contains: location, mode: 'insensitive' } },
+          { addressLine1: { contains: location, mode: 'insensitive' } }
+        ];
+      }
+
+      if (search) {
+        hospWhere.AND = [
+          ...(hospWhere.AND || []),
+          {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { id: { contains: search, mode: 'insensitive' } },
+              { city: { contains: search, mode: 'insensitive' } },
+              { area: { contains: search, mode: 'insensitive' } },
+              { state: { contains: search, mode: 'insensitive' } },
+              { addressLine1: { contains: search, mode: 'insensitive' } },
+              { contactPhone: { contains: search, mode: 'insensitive' } },
+              { contactEmail: { contains: search, mode: 'insensitive' } }
+            ]
+          }
+        ];
+      }
+
+      const standaloneHospitals = await prisma.hospital.findMany({
+        where: hospWhere,
+        select: {
+          id: true,
+          name: true,
+          businessType: true,
+          facilityType: true,
+          logoUrl: true,
+          contactPhone: true,
+          contactEmail: true,
+          addressLine1: true,
+          addressLine2: true,
+          area: true,
+          city: true,
+          state: true,
+          pincode: true,
+          services: true,
+          hospitalShare: true,
+          verificationStatus: true,
+          createdAt: true,
+          updatedAt: true
+        },
+        orderBy: { name: 'asc' }
+      });
+
+      items.push(...standaloneHospitals.map(lab => ({
+        id: lab.id,
+        name: lab.name,
+        businessType: lab.businessType,
+        facilityType: lab.facilityType || 'Standalone Laboratory',
+        type: 'STANDALONE',
+        logoUrl: lab.logoUrl,
+        contactPhone: lab.contactPhone,
+        contactEmail: lab.contactEmail,
+        addressLine1: lab.addressLine1,
+        area: lab.area,
+        city: lab.city,
+        state: lab.state,
+        pincode: lab.pincode,
+        location: [lab.area, lab.city, lab.state].filter(Boolean).join(', ') || lab.city || 'India',
+        address: [lab.addressLine1, lab.area, lab.city].filter(Boolean).join(', ') || lab.city || 'India',
+        services: lab.services,
+        hospitalShare: lab.hospitalShare ?? null,
+        verificationStatus: lab.verificationStatus || 'APPROVED',
+        createdAt: lab.createdAt.toISOString(),
+        updatedAt: lab.updatedAt.toISOString(),
+        hospitalName: null,
+        hospitalId: null,
+        rating: 4.8,
+        time: 'Within 24 Hours'
+      })));
     }
 
-    if (location) {
-      whereClause.AND = [
-        ...(whereClause.AND || []),
-        {
-          OR: [
-            { city: { contains: location, mode: 'insensitive' } },
-            { area: { contains: location, mode: 'insensitive' } },
-            { state: { contains: location, mode: 'insensitive' } },
-            { addressLine1: { contains: location, mode: 'insensitive' } }
-          ]
+    // 2. Fetch Hospital-Based Labs (stored in Lab model with type = HOSPITAL_BASED)
+    if (!type || type === 'ALL' || type === 'HOSPITAL_BASED') {
+      const labWhere: any = { type: 'HOSPITAL_BASED' };
+
+      if (verificationStatus && verificationStatus !== 'ALL') {
+        const vStatus = verificationStatus.toUpperCase();
+        if (vStatus === 'APPROVED' || vStatus === 'VERIFIED') {
+          labWhere.verificationStatus = { in: ['APPROVED', 'VERIFIED'] };
+        } else if (vStatus === 'PENDING') {
+          labWhere.verificationStatus = { equals: 'PENDING', mode: 'insensitive' };
+        } else {
+          labWhere.verificationStatus = { equals: verificationStatus, mode: 'insensitive' };
         }
-      ];
+      }
+
+      if (hospitalId && hospitalId !== 'ALL') {
+        labWhere.hospitalId = hospitalId;
+      }
+
+      if (location) {
+        labWhere.OR = [
+          { city: { contains: location, mode: 'insensitive' } },
+          { state: { contains: location, mode: 'insensitive' } },
+          { address: { contains: location, mode: 'insensitive' } }
+        ];
+      }
+
+      if (search) {
+        labWhere.AND = [
+          ...(labWhere.AND || []),
+          {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { id: { contains: search, mode: 'insensitive' } },
+              { city: { contains: search, mode: 'insensitive' } },
+              { state: { contains: search, mode: 'insensitive' } },
+              { address: { contains: search, mode: 'insensitive' } },
+              { contactPhone: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } },
+              { hospital: { name: { contains: search, mode: 'insensitive' } } }
+            ]
+          }
+        ];
+      }
+
+      const hospBasedLabs = await prisma.lab.findMany({
+        where: labWhere,
+        include: {
+          hospital: {
+            select: { id: true, name: true, city: true, state: true, addressLine1: true, contactPhone: true, contactEmail: true, hospitalShare: true }
+          }
+        },
+        orderBy: { name: 'asc' }
+      });
+
+      items.push(...hospBasedLabs.map(lab => ({
+        id: lab.id,
+        name: lab.name,
+        businessType: 'HOSPITAL',
+        facilityType: 'Hospital-Based Laboratory',
+        type: 'HOSPITAL_BASED',
+        logoUrl: null,
+        contactPhone: lab.contactPhone || lab.hospital?.contactPhone || null,
+        contactEmail: lab.email || lab.hospital?.contactEmail || null,
+        addressLine1: lab.address || lab.hospital?.addressLine1 || null,
+        area: null,
+        city: lab.city || lab.hospital?.city || null,
+        state: lab.state || lab.hospital?.state || null,
+        pincode: lab.pinCode || null,
+        location: [lab.city || lab.hospital?.city, lab.state || lab.hospital?.state].filter(Boolean).join(', ') || 'India',
+        address: [lab.address || lab.hospital?.addressLine1, lab.city || lab.hospital?.city].filter(Boolean).join(', ') || 'India',
+        services: ['lab_tests', 'diagnostics'],
+        hospitalShare: lab.hospital?.hospitalShare ?? null,
+        verificationStatus: lab.verificationStatus || 'APPROVED',
+        createdAt: lab.createdAt.toISOString(),
+        updatedAt: lab.updatedAt.toISOString(),
+        hospitalName: lab.hospital?.name || null,
+        hospitalId: lab.hospital?.id || null,
+        hospital: lab.hospital,
+        rating: 4.8,
+        time: 'Within 24 Hours'
+      })));
     }
-
-    const totalCount = await prisma.hospital.count({ where: whereClause });
-    const labs = await prisma.hospital.findMany({
-      skip: (page - 1) * limit,
-      take: limit,
-      where: whereClause,
-      select: {
-        id: true,
-        name: true,
-        businessType: true,
-        facilityType: true,
-        logoUrl: true,
-        contactPhone: true,
-        contactEmail: true,
-        addressLine1: true,
-        addressLine2: true,
-        area: true,
-        city: true,
-        state: true,
-        pincode: true,
-        services: true,
-        hospitalShare: true
-      },
-      orderBy: { name: 'asc' }
-    });
-
-    const labIds = labs.map(l => l.id);
 
     // Fetch minimum test prices and test counts for each lab
+    const labIds = items.map(l => l.id);
+    const parentHospitalIds = items.map(l => l.hospitalId).filter(Boolean);
+    const allQueryIds = Array.from(new Set([...labIds, ...parentHospitalIds]));
+
     const offerings = await prisma.labTest.findMany({
       where: {
-        hospitalId: { in: labIds },
+        hospitalId: { in: allQueryIds },
         isActive: true,
       },
       select: {
@@ -116,42 +251,35 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
       }
     }
 
-    const formatted = labs.map(lab => {
-      const stats = labStatsMap.get(lab.id);
+    const formatted = items.map(lab => {
+      const stats = labStatsMap.get(lab.id) || (lab.hospitalId ? labStatsMap.get(lab.hospitalId) : undefined);
       const minPrice = stats?.minPrice ? `₹${Math.round(stats.minPrice)}` : '₹149';
 
       return {
-        id: lab.id,
-        name: lab.name,
-        businessType: lab.businessType,
-        facilityType: lab.facilityType,
-        logoUrl: lab.logoUrl,
-        contactPhone: lab.contactPhone,
-        contactEmail: lab.contactEmail,
-        addressLine1: lab.addressLine1,
-        area: lab.area,
-        city: lab.city,
-        state: lab.state,
-        pincode: lab.pincode,
-        location: [lab.area, lab.city, lab.state].filter(Boolean).join(', ') || lab.city || 'India',
-        address: [lab.addressLine1, lab.area, lab.city].filter(Boolean).join(', ') || lab.city || 'India',
-        services: lab.services,
-        hospitalShare: lab.hospitalShare ?? null,
-        rating: 4.8,
-        time: 'Within 24 Hours',
+        ...lab,
         price: minPrice,
         testCount: stats?.count || 0
       };
     });
 
+    // Pagination
+    const totalItems = formatted.length;
+    const startIndex = (page - 1) * limit;
+    const paginatedResults = formatted.slice(startIndex, startIndex + limit);
+
     res.json({
       success: true,
-      data: formatted,
+      data: paginatedResults,
       pagination: {
-        total: totalCount,
+        total: totalItems,
         page,
         limit,
-        totalPages: Math.ceil(totalCount / limit)
+        totalPages: Math.ceil(totalItems / limit) || 1
+      },
+      summary: {
+        total: totalLabCount,
+        approved: approvedLabCount,
+        pending: pendingLabCount
       }
     });
   } catch (error) {
@@ -162,7 +290,9 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
 export const getLaboratoryById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const lab = await prisma.hospital.findFirst({
+    
+    // First try finding in Hospital table
+    let hospitalLab = await prisma.hospital.findFirst({
       where: {
         id,
         OR: [
@@ -170,35 +300,97 @@ export const getLaboratoryById = async (req: Request, res: Response, next: NextF
           { services: { hasSome: ['lab_tests', 'lab', 'laboratory', 'diagnostics'] } }
         ]
       },
-      select: {
-        id: true,
-        name: true,
-        businessType: true,
-        facilityType: true,
-        logoUrl: true,
-        contactPhone: true,
-        contactEmail: true,
-        addressLine1: true,
-        addressLine2: true,
-        area: true,
-        city: true,
-        state: true,
-        pincode: true,
-        services: true,
-        hospitalShare: true
+      include: {
+        verifications: true,
+        labs: {
+          include: {
+            schedules: true,
+            platformDepartment: true
+          }
+        }
       }
     });
 
-    if (!lab) {
-      return res.status(404).json({
-        success: false,
-        error: { code: 'NOT_FOUND', message: 'Laboratory not found' }
+    let labRecord: any = null;
+    let associatedHospital: any = null;
+    let schedules: any[] = [];
+    let verifications: any[] = [];
+    let isStandalone = true;
+    let labLicenseNumber = null;
+    let labLicenseDocumentUrl = null;
+    let licenseValidUntil: any = null;
+
+    if (hospitalLab) {
+      isStandalone = hospitalLab.businessType === BusinessType.LABORATORY;
+      verifications = hospitalLab.verifications || [];
+      if (hospitalLab.labs && hospitalLab.labs.length > 0) {
+        schedules = hospitalLab.labs[0].schedules || [];
+        labLicenseNumber = hospitalLab.labs[0].labLicenseNumber;
+        labLicenseDocumentUrl = hospitalLab.labs[0].labLicenseDocumentUrl;
+        licenseValidUntil = hospitalLab.labs[0].licenseValidUntil;
+      }
+      if (!isStandalone) {
+        associatedHospital = {
+          id: hospitalLab.id,
+          name: hospitalLab.name,
+          city: hospitalLab.city,
+          state: hospitalLab.state,
+          address: hospitalLab.addressLine1,
+          phone: hospitalLab.contactPhone,
+          email: hospitalLab.contactEmail
+        };
+      }
+    } else {
+      // Try finding in Lab table
+      labRecord = await prisma.lab.findUnique({
+        where: { id },
+        include: {
+          hospital: {
+            include: {
+              verifications: true
+            }
+          },
+          schedules: true,
+          platformDepartment: true
+        }
       });
+
+      if (!labRecord) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Laboratory not found' }
+        });
+      }
+
+      isStandalone = labRecord.type === 'STANDALONE';
+      schedules = labRecord.schedules || [];
+      labLicenseNumber = labRecord.labLicenseNumber;
+      labLicenseDocumentUrl = labRecord.labLicenseDocumentUrl;
+      licenseValidUntil = labRecord.licenseValidUntil;
+      verifications = labRecord.hospital?.verifications || [];
+      if (labRecord.hospital) {
+        associatedHospital = {
+          id: labRecord.hospital.id,
+          name: labRecord.hospital.name,
+          city: labRecord.hospital.city,
+          state: labRecord.hospital.state,
+          address: labRecord.hospital.addressLine1,
+          phone: labRecord.hospital.contactPhone,
+          email: labRecord.hospital.contactEmail
+        };
+      }
     }
+
+    const targetHospitalId = hospitalLab ? hospitalLab.id : (labRecord?.hospitalId || id);
 
     // Get offerings for this lab
     const offerings = await prisma.labTest.findMany({
-      where: { hospitalId: id, isActive: true },
+      where: {
+        OR: [
+          { hospitalId: targetHospitalId, isActive: true },
+          { hospitalId: id, isActive: true }
+        ]
+      },
       include: {
         platformTest: true
       },
@@ -209,41 +401,74 @@ export const getLaboratoryById = async (req: Request, res: Response, next: NextF
       ? Math.min(...offerings.map(o => o.price))
       : 149;
 
+    const baseRecord: any = hospitalLab || labRecord;
+
+    const formattedData = {
+      id: baseRecord.id,
+      name: baseRecord.name,
+      businessType: hospitalLab ? hospitalLab.businessType : (isStandalone ? 'LABORATORY' : 'HOSPITAL'),
+      facilityType: hospitalLab?.facilityType || (isStandalone ? 'Standalone Laboratory' : 'Hospital Laboratory Department'),
+      type: isStandalone ? 'STANDALONE' : 'HOSPITAL_BASED',
+      logoUrl: hospitalLab?.logoUrl || null,
+      status: hospitalLab ? 'Active' : (labRecord?.status || 'Active'),
+      verificationStatus: baseRecord.verificationStatus || 'APPROVED',
+      cancellationReason: baseRecord.cancellationReason || null,
+      cancelledAt: baseRecord.cancelledAt ? baseRecord.cancelledAt.toISOString() : null,
+      registrationNumber: hospitalLab?.registrationNumber || null,
+      establishedYear: hospitalLab?.establishedYear || null,
+      labLicenseNumber: labLicenseNumber || hospitalLab?.registrationNumber || null,
+      labLicenseDocumentUrl: labLicenseDocumentUrl || null,
+      licenseValidUntil: licenseValidUntil ? licenseValidUntil.toISOString() : null,
+      contactPhone: baseRecord.contactPhone || hospitalLab?.contactPhone || '—',
+      contactEmail: hospitalLab?.contactEmail || labRecord?.email || '—',
+      email: hospitalLab?.contactEmail || labRecord?.email || '—',
+      website: hospitalLab?.website || null,
+      emergencyContact: hospitalLab?.emergencyContact || null,
+      addressLine1: hospitalLab?.addressLine1 || labRecord?.address || '—',
+      addressLine2: hospitalLab?.addressLine2 || null,
+      area: hospitalLab?.area || null,
+      city: hospitalLab?.city || labRecord?.city || '—',
+      state: hospitalLab?.state || labRecord?.state || '—',
+      pincode: hospitalLab?.pincode || labRecord?.pinCode || null,
+      pinCode: hospitalLab?.pincode || labRecord?.pinCode || null,
+      country: hospitalLab?.country || 'India',
+      location: [hospitalLab?.area, hospitalLab?.city || labRecord?.city, hospitalLab?.state || labRecord?.state].filter(Boolean).join(', ') || 'India',
+      address: [hospitalLab?.addressLine1 || labRecord?.address, hospitalLab?.city || labRecord?.city].filter(Boolean).join(', ') || 'India',
+      services: hospitalLab?.services || ['lab_tests', 'diagnostics'],
+      hospitalShare: hospitalLab?.hospitalShare ?? (labRecord?.hospital?.hospitalShare ?? 80),
+      createdAt: baseRecord.createdAt ? baseRecord.createdAt.toISOString() : new Date().toISOString(),
+      updatedAt: baseRecord.updatedAt ? baseRecord.updatedAt.toISOString() : new Date().toISOString(),
+      rating: 4.8,
+      time: 'Within 24 Hours',
+      price: `₹${Math.round(minPrice)}`,
+      availableTestsCount: offerings.length,
+      hospital: associatedHospital,
+      schedules: schedules.sort((a, b) => {
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        return days.indexOf(a.dayOfWeek) - days.indexOf(b.dayOfWeek);
+      }),
+      verifications: verifications.map(v => ({
+        id: v.id,
+        documentType: v.documentType,
+        fileUrl: v.fileUrl,
+        createdAt: v.createdAt.toISOString()
+      })),
+      tests: offerings.map((o: any) => ({
+        id: o.platformTest?.id || o.id,
+        name: o.platformTest?.name || 'Diagnostic Test',
+        category: o.platformTest?.departmentId || 'General',
+        sampleType: o.platformTest?.sampleType || 'Blood',
+        price: `₹${Math.round(o.price)}`,
+        numericPrice: o.price,
+        time: o.tatHours ? `${o.tatHours} Hours` : '12 Hours',
+        homeCollectionAvailable: o.isHomeCollectionAvailable ?? true,
+        homeCollectionFee: o.homeCollectionFee ?? 0,
+      }))
+    };
+
     res.json({
       success: true,
-      data: {
-        id: lab.id,
-        name: lab.name,
-        businessType: lab.businessType,
-        facilityType: lab.facilityType,
-        logoUrl: lab.logoUrl,
-        contactPhone: lab.contactPhone,
-        contactEmail: lab.contactEmail,
-        addressLine1: lab.addressLine1,
-        area: lab.area,
-        city: lab.city,
-        state: lab.state,
-        pincode: lab.pincode,
-        location: [lab.area, lab.city, lab.state].filter(Boolean).join(', ') || lab.city || 'India',
-        address: [lab.addressLine1, lab.area, lab.city].filter(Boolean).join(', ') || lab.city || 'India',
-        services: lab.services,
-        hospitalShare: lab.hospitalShare ?? null,
-        rating: 4.8,
-        time: 'Within 24 Hours',
-        price: `₹${Math.round(minPrice)}`,
-        availableTestsCount: offerings.length,
-        tests: offerings.map((o: any) => ({
-          id: o.platformTest.id,
-          name: o.platformTest.name,
-          category: o.platformTest.departmentId,
-          sampleType: o.platformTest.sampleType,
-          price: `₹${Math.round(o.price)}`,
-          numericPrice: o.price,
-          time: o.tatHours ? `${o.tatHours} Hours` : '12 Hours',
-          homeCollectionAvailable: o.isHomeCollectionAvailable,
-          homeCollectionFee: o.homeCollectionFee,
-        }))
-      }
+      data: formattedData
     });
   } catch (error) {
     next(error);

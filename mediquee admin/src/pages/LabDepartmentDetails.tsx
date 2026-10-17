@@ -103,25 +103,6 @@ const LabDepartmentDetails: React.FC = () => {
     }
   };
 
-  const getSpecimenBadgeColor = (type: string) => {
-    switch (type) {
-      case 'WHOLE_BLOOD':
-      case 'SERUM':
-      case 'PLASMA':
-        return 'bg-rose-50 text-rose-700 border-rose-200';
-      case 'URINE':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'STOOL':
-        return 'bg-yellow-50 text-yellow-800 border-yellow-200';
-      case 'IMAGE_SCAN':
-        return 'bg-cyan-50 text-cyan-700 border-cyan-200';
-      case 'TISSUE_BIOPSY':
-        return 'bg-purple-50 text-purple-700 border-purple-200';
-      default:
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-    }
-  };
-
   const testColumns: Column<any>[] = [
     {
       header: 'S.No',
@@ -149,14 +130,6 @@ const LabDepartmentDetails: React.FC = () => {
             </span>
           )}
         </div>
-      )
-    },
-    {
-      header: 'Sample Type',
-      accessor: (row) => (
-        <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-md border ${getSpecimenBadgeColor(row.specimenType)}`}>
-          {row.specimenType.replace(/_/g, ' ')}
-        </span>
       )
     },
     {
@@ -189,18 +162,6 @@ const LabDepartmentDetails: React.FC = () => {
       )
     },
     {
-      header: 'Status',
-      accessor: (row) => row.isActive ? (
-        <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-          Active
-        </span>
-      ) : (
-        <span className="text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
-          Inactive
-        </span>
-      )
-    },
-    {
       header: 'Actions',
       accessor: (row) => (
         <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
@@ -228,15 +189,7 @@ const LabDepartmentDetails: React.FC = () => {
     { header: 'Lab Facility', accessor: 'name', className: 'font-medium text-slate-900' },
     { header: 'Type', accessor: (row) => row.type === 'HOSPITAL_BASED' ? 'Hospital Diagnostic Unit' : 'Standalone Laboratory' },
     { header: 'Hospital', accessor: (row) => row.hospital?.name || '-' },
-    { header: 'City', accessor: (row) => row.city || row.hospital?.city || '-' },
-    { 
-      header: 'Status', 
-      accessor: (row) => (
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${row.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-          {row.status || 'Active'}
-        </span>
-      )
-    }
+    { header: 'City', accessor: (row) => row.city || row.hospital?.city || '-' }
   ];
 
   if (loading) {
@@ -304,10 +257,7 @@ const LabDepartmentDetails: React.FC = () => {
 
         <div className="p-6 flex flex-col md:flex-row gap-6 items-start">
           <div className="shrink-0 flex flex-col items-center justify-center p-4 bg-slate-50 border border-slate-100 rounded-2xl h-36 w-36 shadow-2xs">
-            <IconImage icon={department.icon} name={department.name} size="lg" rounded="rounded-xl" className="mb-2.5" />
-            <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold ${department.isActive ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
-              {department.isActive ? 'Active' : 'Inactive'}
-            </span>
+            <IconImage icon={department.icon} name={department.name} size="lg" rounded="rounded-xl" />
           </div>
 
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -387,7 +337,7 @@ const LabDepartmentDetails: React.FC = () => {
             (t.id && t.id.toLowerCase().includes(testSearch.toLowerCase()))
           )}
           keyExtractor={(item) => item.id}
-          searchPlaceholder="Search tests by name, code, or specimen..."
+          searchPlaceholder="Search tests by name or code..."
           searchValue={testSearch}
           onSearch={setTestSearch}
           emptyMessage="No diagnostic tests match the search."

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
-import StatusBadge from '../components/ui/StatusBadge';
 import { Activity, Clock, CheckCircle, XCircle, FileText, FlaskConical, Filter, X } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
 import { useAdminAuth } from '../contexts/AuthContext';
@@ -188,10 +187,6 @@ const LabTests: React.FC = () => {
     {
       header: 'Time',
       accessor: (o) => <span className="text-sm text-slate-700">{o.time || 'N/A'}</span>,
-    },
-    {
-      header: 'Status',
-      accessor: (o) => <StatusBadge status={o.status} />,
     },
     {
       header: 'Actions',

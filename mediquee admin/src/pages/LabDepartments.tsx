@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import { useAdminAuth } from '../contexts/AuthContext';
-import { Plus, Edit, Trash2, X, FlaskConical, TestTube, Building2, CheckCircle2 } from 'lucide-react';
+import { Plus, Edit, Trash2, FlaskConical, TestTube } from 'lucide-react';
 import LabDepartmentModal from '../components/LabDepartmentModal';
 import { IconImage } from '../components/IconImage';
 
@@ -24,26 +24,6 @@ const LabDepartments: React.FC = () => {
   const limit = 20;
 
   const [search, setSearch] = useState('');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const filterRef = useRef<HTMLDivElement>(null);
-
-  const [filters, setFilters] = useState({
-    status: 'ALL'
-  });
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
-        setIsFilterOpen(false);
-      }
-    }
-    if (isFilterOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isFilterOpen]);
 
   const fetchDepartments = useCallback(async () => {
     if (!token) return;
@@ -54,8 +34,7 @@ const LabDepartments: React.FC = () => {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: limit.toString(),
-        ...(search && { search }),
-        ...(filters.status !== 'ALL' && { status: filters.status })
+        ...(search && { search })
       });
 
       const res = await fetch(`${API_URL}/admin/lab-departments?${params.toString()}`, {
@@ -80,7 +59,7 @@ const LabDepartments: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, currentPage, search, filters]);
+  }, [token, currentPage, search]);
 
   useEffect(() => {
     fetchDepartments();
@@ -88,17 +67,7 @@ const LabDepartments: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filters]);
-
-  const handleClearFilters = () => {
-    setFilters({ status: 'ALL' });
-    setCurrentPage(1);
-    setIsFilterOpen(false);
-  };
-
-  const handleApplyFilters = () => {
-    setIsFilterOpen(false);
-  };
+  }, [search]);
 
   const handleDelete = async (e: React.MouseEvent, dept: any) => {
     e.stopPropagation();
@@ -127,7 +96,6 @@ const LabDepartments: React.FC = () => {
 
   // Quick stats
   const totalTestsCount = departments.reduce((acc, d) => acc + (d.testCount || 0), 0);
-  const activeDeptsCount = departments.filter(d => d.isActive).length;
 
   const columns: Column<any>[] = [
     {
@@ -179,18 +147,6 @@ const LabDepartments: React.FC = () => {
       )
     },
     {
-      header: 'Status',
-      accessor: (item) => item.isActive ? (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-          Active
-        </span>
-      ) : (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-          Inactive
-        </span>
-      )
-    },
-    {
       header: 'Created Date',
       accessor: (item) => (
         <span className="text-xs text-slate-500">
@@ -236,13 +192,6 @@ const LabDepartments: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/admin/labs')}
-            className="px-3.5 py-2 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
-          >
-            <Building2 size={15} /> View Labs
-          </button>
-
           {(adminUser?.role === 'SUPER_ADMIN' || adminUser?.role === 'HOSPITAL_ADMIN') && (
             <button
               onClick={() => { setEditingDept(null); setModalOpen(true); }}
@@ -255,7 +204,7 @@ const LabDepartments: React.FC = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white border border-slate-200 rounded-2xl p-4.5 shadow-2xs flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Departments</p>
@@ -263,16 +212,6 @@ const LabDepartments: React.FC = () => {
           </div>
           <div className="w-11 h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold">
             <FlaskConical size={22} />
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-2xl p-4.5 shadow-2xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Active Departments</p>
-            <p className="text-2xl font-bold text-emerald-600 mt-1">{activeDeptsCount}</p>
-          </div>
-          <div className="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-            <CheckCircle2 size={22} />
           </div>
         </div>
 
@@ -310,67 +249,22 @@ const LabDepartments: React.FC = () => {
       ) : null}
 
       {/* Main Table */}
-      <div className="relative">
-        <DataTable
-          columns={columns}
-          data={departments}
-          keyExtractor={(item) => item.id}
-          searchPlaceholder="Search lab departments by name, code, description..."
-          onSearch={(value) => setSearch(value)}
-          onRowClick={(item) => navigate(`/admin/lab-departments/${item.id}`)}
-          emptyMessage={loading ? 'Loading lab departments...' : 'No lab departments found.'}
-          onFilterClick={() => setIsFilterOpen(!isFilterOpen)}
-          pagination={{
-            currentPage,
-            totalPages,
-            totalResults,
-            pageSize: limit,
-            onPageChange: setCurrentPage
-          }}
-        />
-
-        {isFilterOpen && (
-          <div
-            ref={filterRef}
-            className="absolute right-0 top-16 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 z-20 animate-in fade-in duration-100"
-          >
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-semibold text-slate-800 text-sm">Filter Departments</h3>
-              <button onClick={() => setIsFilterOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-4 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Status</label>
-                <select
-                  value={filters.status}
-                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl text-sm p-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                >
-                  <option value="ALL">All Statuses</option>
-                  <option value="ACTIVE">Active Only</option>
-                  <option value="INACTIVE">Inactive Only</option>
-                </select>
-              </div>
-            </div>
-            <div className="p-4 border-t border-slate-100 flex gap-2">
-              <button
-                onClick={handleClearFilters}
-                className="flex-1 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
-              >
-                Clear
-              </button>
-              <button
-                onClick={handleApplyFilters}
-                className="flex-1 px-3 py-2 text-xs font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors shadow-2xs"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      <DataTable
+        columns={columns}
+        data={departments}
+        keyExtractor={(item) => item.id}
+        searchPlaceholder="Search lab departments by name, code, description..."
+        onSearch={(value) => setSearch(value)}
+        onRowClick={(item) => navigate(`/admin/lab-departments/${item.id}`)}
+        emptyMessage={loading ? 'Loading lab departments...' : 'No lab departments found.'}
+        pagination={{
+          currentPage,
+          totalPages,
+          totalResults,
+          pageSize: limit,
+          onPageChange: setCurrentPage
+        }}
+      />
 
       {modalOpen && (
         <LabDepartmentModal

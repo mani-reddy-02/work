@@ -58,33 +58,36 @@ export const getAdminDepartments = async (req: Request, res: Response, next: Nex
       whereClause.isActive = status === 'ACTIVE';
     }
 
-    const total = await prisma.platformSpecialty.count({ where: whereClause });
-
-    const specialties = await prisma.platformSpecialty.findMany({
-      where: whereClause,
-      skip: (page - 1) * limit,
-      take: limit,
-      include: {
-        _count: {
-          select: {
-            conditions: true,
-            departments: true,
-          }
-        },
-        departments: {
-          include: {
-            _count: {
-              select: {
-                users: {
-                  where: { role: Role.DOCTOR, active: true }
+    const [total, specialties, totalDepartmentsCount, totalDiseasesCount] = await Promise.all([
+      prisma.platformSpecialty.count({ where: whereClause }),
+      prisma.platformSpecialty.findMany({
+        where: whereClause,
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          _count: {
+            select: {
+              conditions: true,
+              departments: true,
+            }
+          },
+          departments: {
+            include: {
+              _count: {
+                select: {
+                  users: {
+                    where: { role: Role.DOCTOR, active: true }
+                  }
                 }
               }
             }
           }
-        }
-      },
-      orderBy: { name: 'asc' }
-    });
+        },
+        orderBy: { name: 'asc' }
+      }),
+      prisma.platformSpecialty.count(),
+      prisma.platformCondition.count()
+    ]);
 
     const formatted = specialties.map(s => {
       const doctorCount = s.departments.reduce((acc, d) => acc + d._count.users, 0);
@@ -105,7 +108,11 @@ export const getAdminDepartments = async (req: Request, res: Response, next: Nex
     res.json({ 
       success: true, 
       data: formatted,
-      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      summary: {
+        totalDepartments: totalDepartmentsCount,
+        totalDiseases: totalDiseasesCount
+      }
     });
   } catch (error) {
     next(error);

@@ -18,6 +18,7 @@ interface DataTableProps<T> {
   actions?: React.ReactNode;
   emptyMessage?: string;
   onFilterClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  hideToolbar?: boolean;
   pagination?: {
     currentPage: number;
     totalPages: number;
@@ -38,38 +39,41 @@ function DataTable<T>({
   actions,
   emptyMessage = 'No results found',
   onFilterClick,
+  hideToolbar = false,
   pagination
 }: DataTableProps<T>) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
       {/* Table Toolbar */}
-      <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="relative w-full sm:max-w-xs">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={16} className="text-slate-400" />
+      {!hideToolbar && (
+        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="relative w-full sm:max-w-xs">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search size={16} className="text-slate-400" />
+            </div>
+            <input
+              type="text"
+              placeholder={searchPlaceholder}
+              value={searchValue !== undefined ? searchValue : undefined}
+              onChange={(e) => onSearch?.(e.target.value)}
+              className="pl-9 pr-4 py-2 w-full border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            />
           </div>
-          <input
-            type="text"
-            placeholder={searchPlaceholder}
-            value={searchValue !== undefined ? searchValue : undefined}
-            onChange={(e) => onSearch?.(e.target.value)}
-            className="pl-9 pr-4 py-2 w-full border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-          />
+          
+          <div className="flex items-center gap-2">
+            {actions}
+            {onFilterClick && (
+              <button 
+                onClick={onFilterClick}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                <Filter size={16} />
+                Filters
+                <ChevronDown size={14} className="text-slate-400" />
+              </button>
+            )}
+          </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          {actions}
-          {onFilterClick && (
-            <button 
-              onClick={onFilterClick}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-              <Filter size={16} />
-              Filters
-              <ChevronDown size={14} className="text-slate-400" />
-            </button>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Table Content */}
       <div className="overflow-x-auto">
