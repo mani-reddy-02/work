@@ -105,6 +105,8 @@ export interface PrescriptionRecord {
   clinicalNotes?: string | null;
   generalAdvice?: string | null;
   followUpDate?: string | null;
+  suggestPhysicalFollowUp?: boolean | null;
+  physicalFollowUpReason?: string | null;
   createdAt?: string;
   items?: PrescriptionItem[];
 }

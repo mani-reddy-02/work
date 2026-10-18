@@ -1,4 +1,4 @@
-import { ArrowLeft, Plus, Users, Mail, Phone, Briefcase, Calendar, CheckCircle2 } from "lucide-react"
+import { ArrowLeft, Plus, Users, Mail, Phone, Briefcase, Calendar, CheckCircle2, Clock, Power } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import { EmptyState } from "@/components/ui/EmptyState"
@@ -8,6 +8,7 @@ import { useToast } from "@/context/ToastContext"
 
 import { useState, useEffect } from "react"
 import { adminApi } from "@/services/adminApi"
+import { receptionistApi } from "@/services/receptionistApi"
 import { usePermissions } from "@/hooks/usePermissions"
 
 export function StaffList() {
@@ -106,7 +107,18 @@ export function StaffList() {
                 }
               </div>
               <div className="flex flex-col flex-1">
-                <span className="font-bold text-foreground">{member.name}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-foreground">{member.name}</span>
+                  {member.role === 'DOCTOR' && member.inactiveUntil && new Date(member.inactiveUntil) > new Date() ? (
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                      PAUSED
+                    </span>
+                  ) : member.role === 'DOCTOR' ? (
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                      ACTIVE
+                    </span>
+                  ) : null}
+                </div>
                 <span className="text-xs text-muted">{member.department?.name || member.designation}</span>
               </div>
             </div>
@@ -127,12 +139,38 @@ export function StaffList() {
               <div className="flex flex-col items-center">
                 <h2 className="text-xl font-bold text-foreground">{selectedStaff.name}</h2>
                 <span className="text-sm text-primary font-medium">{selectedStaff.department?.name || selectedStaff.designation || selectedStaff.role}</span>
-                {selectedStaff.active && (
+                {selectedStaff.role === 'DOCTOR' && selectedStaff.inactiveUntil && new Date(selectedStaff.inactiveUntil) > new Date() ? (
+                  <div className="flex flex-col items-center gap-1.5 mt-2">
+                    <div className="flex items-center gap-1 text-amber-800 text-[12px] font-semibold bg-amber-100 px-2.5 py-1 rounded-full border border-amber-300">
+                      <Clock className="w-3.5 h-3.5 text-amber-700" />
+                      Temporarily Inactive (until {new Date(selectedStaff.inactiveUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                    </div>
+                    {selectedStaff.inactiveReason && (
+                      <span className="text-xs text-amber-900 italic font-medium">"{selectedStaff.inactiveReason}"</span>
+                    )}
+                    <button
+                      onClick={async () => {
+                        try {
+                          await receptionistApi.updateDoctorActiveStatus(selectedStaff.id, { active: true });
+                          toast("Doctor reactivated immediately!", "success");
+                          fetchStaff();
+                          setIsProfileOpen(false);
+                        } catch (err: any) {
+                          toast(err.message || "Failed to reactivate doctor", "error");
+                        }
+                      }}
+                      className="mt-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                    >
+                      <Power className="w-3.5 h-3.5" />
+                      Activate Doctor Now
+                    </button>
+                  </div>
+                ) : selectedStaff.active ? (
                   <div className="flex items-center gap-1 mt-2 text-success text-[12px] font-semibold bg-green-50 px-2 py-0.5 rounded-full">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     Active
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
 

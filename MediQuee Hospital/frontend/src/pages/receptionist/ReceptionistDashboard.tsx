@@ -1,16 +1,18 @@
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   UserPlus, Clock, ArrowRight, Building, CheckCircle2, 
   Activity, PlaySquare, RefreshCw, Play, Check, Phone, 
   Stethoscope, Sparkles, AlertCircle, Copy, CheckCheck,
-  Calendar, Layers, User
+  Calendar, Layers, User, HeartHandshake
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { cn } from "@/lib/utils"
 import { receptionistApi, type QueueEntry } from "@/services/receptionistApi"
+import { nurseApi } from "@/services/nurseApi"
+import { DoctorStatusControlPanel } from "@/components/doctor/DoctorStatusControlPanel"
 import { useTranslation } from "react-i18next"
 import { useToast } from "@/context/ToastContext"
 
@@ -23,18 +25,21 @@ export function ReceptionistDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
   const [queue, setQueue] = useState<QueueEntry[]>([]);
+  const [nursingPendingCount, setNursingPendingCount] = useState<number>(0);
   const [selectedDeptId, setSelectedDeptId] = useState<string>('all');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [copiedPhoneId, setCopiedPhoneId] = useState<string | null>(null);
+  const lastFetchRef = useRef<number>(0);
 
   const loadData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
 
     try {
-      const [depts, queueData] = await Promise.all([
+      const [depts, queueData, nursingData] = await Promise.all([
         receptionistApi.getDepartments().catch(() => []),
         receptionistApi.getQueue().catch(() => []),
+        nurseApi.getHospitalBookings({ status: 'PENDING_ASSIGNMENT', date: 'upcoming' }).catch(() => []),
       ]);
       const opOnly = (queueData || []).filter(q => {
         const type = (q.opType || '').toLowerCase();
@@ -42,26 +47,37 @@ export function ReceptionistDashboard() {
       });
       setDepartments(depts);
       setQueue(opOnly);
+      const pendingNursing = (nursingData || []).filter((b: any) => !b.nurseId && b.status !== 'CANCELLED' && b.status !== 'COMPLETED');
+      setNursingPendingCount(pendingNursing.length);
     } catch (err) {
       console.error("Error loading receptionist dashboard:", err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
     loadData();
+    lastFetchRef.current = Date.now();
 
-    // Fast 3.5-second live polling for immediate cross-portal synchronisation
+    // 12-second gentle live polling
     const timer = setInterval(() => {
       loadData(true);
-    }, 3500);
+      lastFetchRef.current = Date.now();
+    }, 12000);
 
-    const handleFocus = () => loadData(true);
+    const handleThrottledSync = () => {
+      if (Date.now() - lastFetchRef.current > 8000) {
+        loadData(true);
+        lastFetchRef.current = Date.now();
+      }
+    };
+
+    const handleFocus = () => handleThrottledSync();
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        loadData(true);
+        handleThrottledSync();
       }
     };
 
@@ -218,7 +234,7 @@ export function ReceptionistDashboard() {
 
         {/* Top 3 KPI Summary Cards */}
         <div className="grid grid-cols-3 gap-3">
-          {loading ? (
+          {loading && queue.length === 0 ? (
             <>
               <Skeleton className="h-24 rounded-2xl bg-surface border border-border" />
               <Skeleton className="h-24 rounded-2xl bg-surface border border-border" />
@@ -244,6 +260,39 @@ export function ReceptionistDashboard() {
             ))
           )}
         </div>
+
+        {/* Home Nursing Alert Card (Immediate Access for Receptionist) */}
+        {nursingPendingCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-amber-50 via-orange-50/70 to-surface border border-amber-200/90 rounded-[20px] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-200 text-amber-800 flex items-center justify-center shrink-0">
+                <HeartHandshake className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="text-[14px] font-black text-amber-950">
+                    {nursingPendingCount} Home Nursing {nursingPendingCount === 1 ? 'Request Needs' : 'Requests Need'} Nurse Assignment
+                  </span>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                </div>
+                <p className="text-[12px] font-medium text-amber-800/80">
+                  New home visit requests from patients ready for staff dispatch
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/receptionist/home-nursing')}
+              className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>Assign Nurses</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
+        )}
 
         {/* ========================================================================= */}
         {/* REQUIRED: PROMINENT LIVE QUEUE CONTROL TILE (ACTIVE & NEXT IN QUEUE)       */}
@@ -634,6 +683,11 @@ export function ReceptionistDashboard() {
             )}
           </div>
         </motion.div>
+
+        {/* ========================================================================= */}
+        {/* DOCTOR AVAILABILITY & STATUS OVERRIDE PANEL                               */}
+        {/* ========================================================================= */}
+        <DoctorStatusControlPanel onStatusChange={() => loadData(true)} />
 
         {/* ========================================================================= */}
         {/* DEPARTMENT QUEUES                                                         */}

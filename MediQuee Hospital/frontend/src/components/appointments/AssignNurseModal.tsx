@@ -19,10 +19,11 @@ interface AssignNurseModalProps {
     nurseId?: string | null;
     nurseName?: string | null;
   } | null;
-  onAssigned: () => void;
+  onAssigned?: () => void;
+  onSuccess?: () => void;
 }
 
-export function AssignNurseModal({ isOpen, onClose, booking, onAssigned }: AssignNurseModalProps) {
+export function AssignNurseModal({ isOpen, onClose, booking, onAssigned, onSuccess }: AssignNurseModalProps) {
   const { toast } = useToast();
   const [nurses, setNurses] = useState<HospitalNurseStaff[]>([]);
   const [selectedNurseId, setSelectedNurseId] = useState<string>('');
@@ -66,7 +67,8 @@ export function AssignNurseModal({ isOpen, onClose, booking, onAssigned }: Assig
       await nurseApi.assignNurse(booking.id, selectedNurseId);
       const selected = nurses.find(n => n.id === selectedNurseId);
       toast(`Successfully assigned ${selected?.name || 'Nurse'} to booking ${booking.bookingNumber}`, "success");
-      onAssigned();
+      onAssigned?.();
+      onSuccess?.();
       onClose();
     } catch (err: any) {
       toast(err.message || "Failed to assign nurse", "error");

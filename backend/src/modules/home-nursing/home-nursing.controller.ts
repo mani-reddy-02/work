@@ -995,10 +995,11 @@ export const getNurseDashboard = async (req: Request, res: Response, next: NextF
     const now = new Date();
     const todayIST = formatServiceDateToIST(now);
 
-    // Calculate real stats from DB
-    // A visit belongs to today if its serviceDate formatted to IST equals todayIST OR if it is currently IN_PROGRESS
+    // A visit belongs to today if its serviceDate formatted to IST equals todayIST, is IN_PROGRESS, or is an uncompleted past visit
     const visitsTodayList = allAssigned.filter(b => 
-      (formatServiceDateToIST(b.serviceDate) === todayIST || b.status === 'IN_PROGRESS') && 
+      (formatServiceDateToIST(b.serviceDate) === todayIST || 
+       b.status === 'IN_PROGRESS' || 
+       (['CONFIRMED', 'ASSIGNED'].includes(b.status) && formatServiceDateToIST(b.serviceDate) <= todayIST)) && 
       b.status !== 'CANCELLED'
     );
     const visitsToday = visitsTodayList.length;
@@ -1007,10 +1008,9 @@ export const getNurseDashboard = async (req: Request, res: Response, next: NextF
     const completedList = allAssigned.filter(b => b.status === 'COMPLETED');
     const completed = completedList.length;
     
-    // Upcoming: future visits (or today not yet completed/cancelled)
+    // Upcoming: all assigned or confirmed visits not yet completed/cancelled
     const upcomingList = allAssigned.filter(b => 
-      ['CONFIRMED', 'ASSIGNED'].includes(b.status) &&
-      formatServiceDateToIST(b.serviceDate) >= todayIST
+      ['CONFIRMED', 'ASSIGNED'].includes(b.status)
     );
     const upcoming = upcomingList.length;
 
@@ -1166,11 +1166,11 @@ export const getNurseVisits = async (req: Request, res: Response, next: NextFunc
  */
 export const updateNurseVisitStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const nurseId = req.user?.id;
+    const currentUserId = req.user?.id;
     const id = req.params.id as string;
     const { status, notes } = req.body;
 
-    if (!nurseId) {
+    if (!currentUserId) {
       return res.status(401).json({
         success: false,
         error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
@@ -1202,15 +1202,53 @@ export const updateNurseVisitStatus = async (req: Request, res: Response, next: 
       });
     }
 
-    // Verify permission: nurse assigned or hospital admin of this hospital or super admin
-    const isAssignedNurse = booking.nurseId === nurseId;
-    const isHospitalAdmin = req.user?.role === Role.HOSPITAL_ADMIN && req.user?.hospitalId === booking.hospitalId;
-    const isSuperAdmin = req.user?.role === Role.SUPER_ADMIN;
+    // Verify permission: nurse assigned, hospital admin/receptionist of this hospital, super admin, or the patient/user who owns the booking
+    const isAssignedNurse = booking.nurseId === currentUserId;
+    const isOwnerPatient = booking.userId === currentUserId;
+    const userRole = req.user?.role as string;
+    const isHospitalStaff = 
+      (userRole === Role.HOSPITAL_ADMIN || 
+       userRole === Role.RECEPTIONIST || 
+       userRole === 'HOSPITAL') && 
+      req.user?.hospitalId === booking.hospitalId;
+    const isSuperAdmin = userRole === Role.SUPER_ADMIN;
 
-    if (!isAssignedNurse && !isHospitalAdmin && !isSuperAdmin) {
+    if (!isAssignedNurse && !isHospitalStaff && !isSuperAdmin && !isOwnerPatient) {
       return res.status(403).json({
         success: false,
         error: { code: 'FORBIDDEN', message: 'You are not authorized to update this home nursing visit' },
+      });
+    }
+
+    // The complete option is entirely on the user (patient) only - nurses cannot complete visits
+    if (status === 'COMPLETED' && !isOwnerPatient && !isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'The complete option is entirely on the user (patient) only. Nurses cannot mark visits as completed.' },
+      });
+    }
+
+    // Patient is authorized to mark an active booking as COMPLETED
+    if (isOwnerPatient && !isHospitalStaff && !isSuperAdmin && !isAssignedNurse) {
+      if (status !== 'COMPLETED') {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_STATUS', message: 'Patients can only mark active bookings as COMPLETED' },
+        });
+      }
+    }
+
+    // Idempotent completion check
+    if (booking.status === 'COMPLETED' && status === 'COMPLETED') {
+      return res.json({
+        success: true,
+        data: {
+          id: booking.id,
+          bookingNumber: booking.bookingNumber,
+          status: booking.status,
+          patientName: booking.patientName,
+          message: 'Visit is already marked as Completed',
+        },
       });
     }
 
@@ -1218,6 +1256,7 @@ export const updateNurseVisitStatus = async (req: Request, res: Response, next: 
       where: { id: booking.id },
       data: {
         status,
+        completedAt: status === 'COMPLETED' ? (booking.completedAt || new Date()) : (status === 'ASSIGNED' ? null : booking.completedAt),
         notes: notes ? (booking.notes ? `${booking.notes}\n${notes}` : notes) : booking.notes,
       },
       include: {
@@ -1227,7 +1266,21 @@ export const updateNurseVisitStatus = async (req: Request, res: Response, next: 
       },
     });
 
-    // Send Real-Time Notifications
+    // Free up / update assigned nurse's active status if applicable
+    if (updated.nurseId && status === 'COMPLETED') {
+      try {
+        await prisma.user.update({
+          where: { id: updated.nurseId },
+          data: {
+            updatedAt: new Date(),
+          },
+        });
+      } catch (nurseUpdateErr) {
+        console.warn('Could not update nurse active state timestamp:', nurseUpdateErr);
+      }
+    }
+
+    // Send Real-Time Notifications across all relevant portals
     const nurseName = updated.nurse?.name || 'Assigned Nurse';
     if (status === 'IN_PROGRESS') {
       // Notify patient
@@ -1241,7 +1294,7 @@ export const updateNurseVisitStatus = async (req: Request, res: Response, next: 
         targetRoles: ['PATIENT']
       });
     } else if (status === 'COMPLETED') {
-      // Notify patient that service is completed & request feedback
+      // 1. Notify patient that service is completed & request feedback
       await sendNotification({
         userId: updated.userId,
         hospitalId: null,
@@ -1252,16 +1305,28 @@ export const updateNurseVisitStatus = async (req: Request, res: Response, next: 
         targetRoles: ['PATIENT']
       });
 
-      // Notify hospital
+      // 2. Notify Hospital Admin & Receptionist
       await sendNotification({
         hospitalId: updated.hospitalId,
-        userId: updated.nurseId,
-        title: 'Home Nursing Service Finished',
-        message: `${nurseName} has successfully completed ${updated.service.name} for ${updated.patientName}.`,
+        title: 'Home Nursing Service Completed',
+        message: `${isOwnerPatient ? `Patient ${updated.patientName}` : nurseName} has marked ${updated.service.name} (Booking #${updated.bookingNumber}) as COMPLETED.`,
         type: 'activity',
-        metadata: { bookingId: updated.id, status: 'COMPLETED', targetRoles: ['HOSPITAL_ADMIN', 'NURSE'] },
-        targetRoles: ['HOSPITAL_ADMIN', 'NURSE']
+        metadata: { bookingId: updated.id, status: 'COMPLETED', targetRoles: ['HOSPITAL_ADMIN', 'RECEPTIONIST'] },
+        targetRoles: ['HOSPITAL_ADMIN', 'RECEPTIONIST']
       });
+
+      // 3. Notify Assigned Nurse (if assigned and didn't trigger completion themselves)
+      if (updated.nurseId && updated.nurseId !== currentUserId) {
+        await sendNotification({
+          userId: updated.nurseId,
+          hospitalId: updated.hospitalId,
+          title: 'Home Nursing Service Completed',
+          message: `Home nursing service ${updated.service.name} for ${updated.patientName} has been marked completed by the patient.`,
+          type: 'activity',
+          metadata: { bookingId: updated.id, status: 'COMPLETED', targetRoles: ['NURSE'] },
+          targetRoles: ['NURSE']
+        });
+      }
     }
 
     res.json({
@@ -1286,7 +1351,17 @@ export const updateNurseVisitStatus = async (req: Request, res: Response, next: 
 export const getHospitalNursingBookings = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const hospitalId = req.user?.hospitalId;
-    if (!hospitalId && req.user?.role !== Role.SUPER_ADMIN) {
+    const userRole = req.user?.role as string;
+    const allowedRoles = [Role.HOSPITAL_ADMIN, Role.RECEPTIONIST, Role.SUPER_ADMIN, 'HOSPITAL'];
+    
+    if (!req.user || !allowedRoles.includes(userRole as any)) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Hospital staff access required' },
+      });
+    }
+
+    if (!hospitalId && userRole !== Role.SUPER_ADMIN) {
       return res.status(401).json({
         success: false,
         error: { code: 'UNAUTHORIZED', message: 'Hospital staff authentication required' },
@@ -1300,7 +1375,7 @@ export const getHospitalNursingBookings = async (req: Request, res: Response, ne
     if (status && typeof status === 'string' && status !== 'ALL') {
       if (status === 'PENDING_ASSIGNMENT') {
         where.nurseId = null;
-        where.status = { notIn: ['CANCELLED'] };
+        where.status = { notIn: ['CANCELLED', 'COMPLETED'] };
       } else {
         where.status = status;
       }
@@ -1312,10 +1387,17 @@ export const getHospitalNursingBookings = async (req: Request, res: Response, ne
       const end = new Date(y, m - 1, d, 23, 59, 59, 999);
       where.serviceDate = { gte: start, lte: end };
     } else if (date === 'upcoming') {
-      const now = new Date();
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      where.serviceDate = { gte: startOfToday };
-      where.status = { notIn: ['CANCELLED', 'COMPLETED'] };
+      // Show all active requests (uncompleted and not cancelled)
+      if (!where.status) {
+        where.status = { notIn: ['CANCELLED', 'COMPLETED'] };
+      }
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      where.OR = [
+        { serviceDate: { gte: todayStart } },
+        { status: 'IN_PROGRESS' },
+        { status: 'CONFIRMED' }
+      ];
     }
 
     const bookings = await prisma.homeNursingBooking.findMany({
@@ -1384,10 +1466,19 @@ export const getHospitalNursingBookings = async (req: Request, res: Response, ne
 export const assignNurseToBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const hospitalId = req.user?.hospitalId;
+    const userRole = req.user?.role as string;
     const id = req.params.id as string;
     const { nurseId } = req.body;
 
-    if (!hospitalId && req.user?.role !== Role.SUPER_ADMIN) {
+    const allowedRoles = [Role.HOSPITAL_ADMIN, Role.RECEPTIONIST, Role.SUPER_ADMIN, 'HOSPITAL'];
+    if (!req.user || !allowedRoles.includes(userRole as any)) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Hospital staff access required' },
+      });
+    }
+
+    if (!hospitalId && userRole !== Role.SUPER_ADMIN) {
       return res.status(401).json({
         success: false,
         error: { code: 'UNAUTHORIZED', message: 'Hospital staff authentication required' },
@@ -1498,7 +1589,17 @@ export const assignNurseToBooking = async (req: Request, res: Response, next: Ne
 export const getHospitalNursesList = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const hospitalId = req.user?.hospitalId;
-    if (!hospitalId && req.user?.role !== Role.SUPER_ADMIN) {
+    const userRole = req.user?.role as string;
+    const allowedRoles = [Role.HOSPITAL_ADMIN, Role.RECEPTIONIST, Role.SUPER_ADMIN, 'HOSPITAL'];
+    
+    if (!req.user || !allowedRoles.includes(userRole as any)) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Hospital staff access required' },
+      });
+    }
+
+    if (!hospitalId && userRole !== Role.SUPER_ADMIN) {
       return res.status(401).json({
         success: false,
         error: { code: 'UNAUTHORIZED', message: 'Hospital staff authentication required' },

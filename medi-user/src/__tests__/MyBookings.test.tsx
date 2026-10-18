@@ -325,5 +325,119 @@ describe('BookingDetails Page (Real Database Fetch)', () => {
     expect(screen.getByText(/Villa 12, Palm Meadows/i)).toBeDefined();
     expect(screen.getByText('Day Shift (08:00 AM - 08:00 PM)')).toBeDefined();
     expect(screen.getAllByText('₹1,500').length).toBeGreaterThan(0);
+    expect(screen.getByText('Mark Service as Completed')).toBeDefined();
+  });
+
+  it('displays visible Complete button for active Home Nursing booking in MyBookings list and calls updateBookingStatus', async () => {
+    vi.spyOn(opAppointmentApi, 'fetchMyAppointments').mockResolvedValueOnce({
+      success: true,
+      data: []
+    });
+    vi.spyOn(labBookingApi, 'getMyLabBookings').mockResolvedValueOnce({
+      success: true,
+      data: []
+    });
+    vi.spyOn(homeNursingApi, 'getMyBookings').mockResolvedValueOnce({
+      success: true,
+      data: [
+        {
+          id: 'nursing-booking-uuid-active',
+          bookingNumber: 'MQ-HN-ACTIVE-101',
+          serviceId: 'serv-1',
+          serviceName: 'Post-Surgical Care',
+          hospitalId: 'hosp-1',
+          hospitalName: 'Apollo Hospital',
+          nurseId: 'nurse-1',
+          nurseName: 'Sister Grace',
+          patientName: 'Anil Kumar',
+          patientPhone: '9876543210',
+          date: '2026-11-25',
+          timeSlot: 'Morning Shift',
+          address: 'Flat 401, Lotus Towers',
+          status: 'ASSIGNED',
+          paymentStatus: 'PAID',
+          totalAmount: 1800,
+          createdAt: new Date().toISOString()
+        } as any
+      ]
+    });
+
+    const updateStatusSpy = vi.spyOn(homeNursingApi, 'updateBookingStatus').mockResolvedValueOnce({
+      success: true,
+      data: { status: 'COMPLETED' }
+    });
+
+    render(<MyBookings />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Post-Surgical Care')).toBeDefined();
+    });
+
+    const completeBtn = screen.getByRole('button', { name: /Complete/i });
+    expect(completeBtn).toBeDefined();
+
+    fireEvent.click(completeBtn);
+
+    await waitFor(() => {
+      expect(updateStatusSpy).toHaveBeenCalledWith('nursing-booking-uuid-active', 'COMPLETED');
+    });
+  });
+
+  it('renders visible Complete button in BookingDetails and calls updateBookingStatus when clicked', async () => {
+    vi.spyOn(opAppointmentApi, 'fetchAppointmentDetails').mockResolvedValueOnce({
+      success: false,
+      error: 'Not OP'
+    });
+    vi.spyOn(labBookingApi, 'getLabBookingById').mockResolvedValueOnce({
+      success: false,
+      error: 'Not Lab'
+    });
+    vi.spyOn(homeNursingApi, 'getBookingById').mockResolvedValueOnce({
+      success: true,
+      data: {
+        id: 'nursing-booking-uuid-202',
+        bookingNumber: 'MQ-HN-ACTIVE-202',
+        serviceId: 'serv-2',
+        serviceName: 'Wound Dressing',
+        hospitalId: 'hosp-1',
+        hospitalName: 'City Hospital',
+        nurseId: 'nurse-2',
+        nurseName: 'Nurse James',
+        patientName: 'Kavita Patel',
+        patientPhone: '9988776655',
+        date: '2026-11-26',
+        timeSlot: 'Evening Shift',
+        address: 'Sector 5, Green Park',
+        status: 'IN_PROGRESS',
+        paymentStatus: 'PAID',
+        totalAmount: 1200,
+        createdAt: new Date().toISOString()
+      } as any
+    });
+
+    const updateSpy = vi.spyOn(homeNursingApi, 'updateBookingStatus').mockResolvedValueOnce({
+      success: true,
+      data: { status: 'COMPLETED' }
+    });
+
+    render(
+      <Routes>
+        <Route path="/booking/:id" element={<BookingDetails />} />
+      </Routes>,
+      { initialEntries: ['/booking/nursing-booking-uuid-202'] }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Wound Dressing')).toBeDefined();
+    });
+
+    const markCompletedBtn = screen.getByText('Mark Service as Completed');
+    expect(markCompletedBtn).toBeDefined();
+
+    fireEvent.click(markCompletedBtn);
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith('nursing-booking-uuid-202', 'COMPLETED');
+    });
   });
 });

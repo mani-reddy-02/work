@@ -40,9 +40,9 @@ export function LabOrderDetail() {
   // Fullscreen Report Viewer Modal
   const [reportViewerOpen, setReportViewerOpen] = useState(false)
 
-  const fetchDetail = async () => {
+  const fetchDetail = async (silent = false) => {
     if (!id) return
-    setIsLoading(true)
+    if (!silent) setIsLoading(true)
     setError(null)
     try {
       const res = await labApi.getLabBookingById(id)
@@ -55,25 +55,44 @@ export function LabOrderDetail() {
       }
     } catch (err: any) {
       console.error("Order detail error:", err)
-      setError(err.message || "Order could not be retrieved")
+      if (!silent) setError(err.message || "Order could not be retrieved")
     } finally {
-      setIsLoading(false)
+      if (!silent) setIsLoading(false)
     }
   }
 
   useEffect(() => {
     fetchDetail()
+    const interval = setInterval(() => {
+      fetchDetail(true)
+    }, 5000)
+
+    const handleFocus = () => {
+      fetchDetail(true)
+    }
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [id])
 
   // Status update function
   const handleUpdateStatus = async (nextStatus: string, payload: any = {}) => {
     if (!id) return
+    const isHome = booking?.bookingType === 'HOME_COLLECTION'
+    if (isHome && (nextStatus === 'COMPLETED' || nextStatus === 'REPORT_READY')) {
+      toast("Home sample collections can only be marked completed by the patient after reviewing their report", "error")
+      setStatusDropdownOpen(false)
+      return
+    }
     setIsUpdating(true)
     try {
       await labApi.updateLabBookingStatus(id, { status: nextStatus, ...payload })
-      toast(`Order status changed to ${formatStatusLabel(nextStatus)}`, "success")
+      toast(`Order status changed to ${formatStatusLabel(nextStatus, isHome)}`, "success")
       setStatusDropdownOpen(false)
-      fetchDetail()
+      fetchDetail(true)
     } catch (err: any) {
       toast(err.message || "Failed to update order status", "error")
     } finally {
@@ -144,13 +163,19 @@ export function LabOrderDetail() {
       toast("Please select a report file first", "error")
       return
     }
+    const isHome = booking?.bookingType === 'HOME_COLLECTION'
     setIsUploadingReport(true)
     try {
       await labApi.uploadReport(id, selectedFile)
-      toast("Diagnostic report uploaded and attached successfully!", "success")
+      toast(
+        isHome
+          ? "Diagnostic report sent to patient! Awaiting patient completion."
+          : "Diagnostic report uploaded and marked completed!",
+        "success"
+      )
       setSelectedFile(null)
       setUploadModalOpen(false)
-      fetchDetail()
+      fetchDetail(true)
     } catch (err: any) {
       toast(err.message || "Failed to upload report", "error")
     } finally {
@@ -193,26 +218,28 @@ export function LabOrderDetail() {
   }
 
   // Derive workflow stage
+  const isHomeBooking = booking.bookingType === 'HOME_COLLECTION'
   const rawStatus = (booking.status || 'REQUESTED').toUpperCase()
   const isWaiting = ['REQUESTED', 'ASSIGNED', 'WAITING', 'PENDING'].includes(rawStatus)
   const isInConsult = ['SAMPLE_COLLECTED', 'IN_LAB_PROCESSING', 'IN_CONSULTATION', 'IN_CONSULT'].includes(rawStatus)
-  const isCompleted = ['REPORT_READY', 'COMPLETED'].includes(rawStatus)
+  const isCompleted = isHomeBooking ? rawStatus === 'COMPLETED' : ['REPORT_READY', 'COMPLETED'].includes(rawStatus)
+  const isReportReady = rawStatus === 'REPORT_READY'
   const isCancelled = rawStatus === 'CANCELLED'
 
   // Current primary stage key for the 3 user requested stages
   const currentStage: 'waiting' | 'in_consult' | 'completed' | 'cancelled' = 
     isCancelled ? 'cancelled' :
-    isCompleted ? 'completed' :
+    isCompleted || (isHomeBooking && isReportReady) ? 'completed' :
     isInConsult ? 'in_consult' : 'waiting'
 
-  function formatStatusLabel(st: string) {
+  function formatStatusLabel(st: string, isHome: boolean = false) {
     switch (st.toUpperCase()) {
       case 'REQUESTED': return 'Waiting'
       case 'ASSIGNED': return 'Waiting (Assigned)'
       case 'WAITING': return 'Waiting'
       case 'SAMPLE_COLLECTED': return 'In Consult (Collected)'
       case 'IN_LAB_PROCESSING': return 'In Consult'
-      case 'REPORT_READY': return 'Completed'
+      case 'REPORT_READY': return isHome ? 'Awaiting User Completion' : 'Completed'
       case 'COMPLETED': return 'Completed'
       case 'CANCELLED': return 'Cancelled'
       default: return st.replace(/_/g, ' ')
@@ -224,7 +251,6 @@ export function LabOrderDetail() {
   const patientEmail = booking.patient?.email || ''
   const patientGender = booking.patient?.gender || 'Not specified'
   const patientDob = booking.patient?.dob
-  const isHomeBooking = booking.bookingType === 'HOME_COLLECTION'
   const patientAddress = formatPatientAddress(
     booking.collectionAddress || booking.patient?.address,
     isHomeBooking ? 'Home Address on file' : 'In-Person Lab / Clinic Walk-in'
@@ -355,7 +381,7 @@ export function LabOrderDetail() {
                 <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
               )}
               <span className="uppercase tracking-wider">
-                Status: {formatStatusLabel(rawStatus)}
+                Status: {formatStatusLabel(rawStatus, isHomeBooking)}
               </span>
               <ChevronDown className="w-3.5 h-3.5 opacity-80" />
             </button>
@@ -368,7 +394,7 @@ export function LabOrderDetail() {
                 {[
                   { label: 'Waiting', sub: 'Sample awaited / Patient arrival', value: 'REQUESTED', icon: Clock, color: 'text-amber-600' },
                   { label: 'In Consult', sub: 'Sample in lab testing & analysis', value: 'IN_LAB_PROCESSING', icon: FlaskConical, color: 'text-blue-600' },
-                  { label: 'Completed', sub: 'Report generated & certified', value: 'REPORT_READY', icon: CheckCircle2, color: 'text-emerald-600' },
+                  ...(!isHomeBooking ? [{ label: 'Completed', sub: 'Report generated & certified', value: 'REPORT_READY', icon: CheckCircle2, color: 'text-emerald-600' }] : []),
                   { label: 'Cancelled', sub: 'Order discontinued', value: 'CANCELLED', icon: X, color: 'text-red-500' },
                 ].map((item) => (
                   <button
@@ -429,19 +455,41 @@ export function LabOrderDetail() {
               >
                 2. In Consult
               </button>
-              <button
-                type="button"
-                onClick={() => handleUpdateStatus('REPORT_READY')}
-                disabled={isUpdating}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                  currentStage === 'completed'
-                    ? "bg-[#0A1A3D] text-white shadow-xs"
-                    : "text-muted hover:text-foreground"
-                )}
-              >
-                3. Completed
-              </button>
+              {isHomeBooking ? (
+                <div
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 select-none",
+                    rawStatus === 'COMPLETED'
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : rawStatus === 'REPORT_READY'
+                      ? "bg-amber-100 text-amber-800 border border-amber-300"
+                      : "text-muted opacity-60"
+                  )}
+                  title={
+                    rawStatus === 'COMPLETED'
+                      ? "Completed by patient"
+                      : rawStatus === 'REPORT_READY'
+                      ? "Report sent • Awaiting user to click Complete"
+                      : "Patient will complete after report upload"
+                  }
+                >
+                  <span>{rawStatus === 'COMPLETED' ? '3. Completed by Patient' : '3. Patient Completion'}</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleUpdateStatus('REPORT_READY')}
+                  disabled={isUpdating}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    currentStage === 'completed'
+                      ? "bg-[#0A1A3D] text-white shadow-xs"
+                      : "text-muted hover:text-foreground"
+                  )}
+                >
+                  3. Completed
+                </button>
+              )}
             </div>
           </div>
 
@@ -524,32 +572,51 @@ export function LabOrderDetail() {
                     className="px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <Upload className="w-3.5 h-3.5" />
-                    Upload Report & Complete
+                    {isHomeBooking ? 'Upload Report & Send to Patient' : 'Upload Report & Complete'}
                   </button>
                 </div>
               )}
             </div>
 
-            {/* Step 3: Completed */}
+            {/* Step 3: Completed / Patient Completion */}
             <div className={cn(
               "p-4 rounded-xl border transition-all flex flex-col gap-2 relative",
-              currentStage === 'completed'
+              isHomeBooking && rawStatus === 'REPORT_READY'
+                ? "bg-amber-50/70 border-amber-300 ring-2 ring-amber-400/20 shadow-xs"
+                : currentStage === 'completed'
                 ? "bg-emerald-50/70 border-emerald-300 ring-2 ring-emerald-400/20 shadow-xs"
                 : "bg-surface border-border"
             )}>
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-700">Stage 3</span>
-                {currentStage === 'completed' && (
+                <span className={cn(
+                  "text-[11px] font-black uppercase tracking-wider",
+                  isHomeBooking && rawStatus === 'REPORT_READY' ? "text-amber-700" : "text-emerald-700"
+                )}>
+                  Stage 3
+                </span>
+                {rawStatus === 'COMPLETED' ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                )}
+                ) : isHomeBooking && rawStatus === 'REPORT_READY' ? (
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                ) : null}
               </div>
-              <h3 className="text-[15px] font-bold text-foreground">Completed & Delivered</h3>
+              <h3 className="text-[15px] font-bold text-foreground">
+                {isHomeBooking
+                  ? (rawStatus === 'COMPLETED' ? 'Completed by Patient' : 'Report Sent • Awaiting Patient')
+                  : 'Completed & Delivered'}
+              </h3>
               <p className="text-xs text-muted">
-                Test certified by pathologist. Diagnostic report is attached and viewable by patient.
+                {isHomeBooking
+                  ? (rawStatus === 'COMPLETED'
+                      ? `Patient verified test report and marked home collection complete.${booking.completedAt ? ` (${new Date(booking.completedAt).toLocaleString()})` : ''}`
+                      : rawStatus === 'REPORT_READY'
+                      ? 'Test report has been delivered to patient mobile app. Awaiting patient to mark completed.'
+                      : 'After test report upload, patient will review report and mark order complete.')
+                  : 'Test certified by pathologist. Diagnostic report is attached and viewable by patient.'}
               </p>
               
-              {currentStage === 'completed' && (
-                <div className="pt-2 mt-auto flex flex-wrap gap-2">
+              {(rawStatus === 'REPORT_READY' || rawStatus === 'COMPLETED') && (
+                <div className="pt-2 mt-auto flex flex-wrap gap-2 items-center">
                   {reportUrl ? (
                     <button
                       type="button"
@@ -567,6 +634,11 @@ export function LabOrderDetail() {
                     >
                       Attach Report PDF
                     </button>
+                  )}
+                  {isHomeBooking && rawStatus === 'REPORT_READY' && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-100 text-amber-800 text-xs font-bold border border-amber-300">
+                      ⏳ Awaiting Patient Confirmation
+                    </span>
                   )}
                 </div>
               )}
@@ -960,14 +1032,14 @@ export function LabOrderDetail() {
                           className="w-full py-3 px-4 bg-primary text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
                         >
                           {isUploadingReport && <Loader2 className="w-4 h-4 animate-spin" />}
-                          <span>Upload & Mark Report Completed</span>
+                          <span>{isHomeBooking ? 'Upload & Send Report to Patient' : 'Upload & Mark Report Completed'}</span>
                         </button>
                       </div>
                     )}
 
                     <div className="text-[11px] text-muted flex items-center justify-center gap-1.5 pt-1">
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Certified report is automatically attached to patient records upon upload</span>
+                      <span>{isHomeBooking ? 'Certified report is sent directly to patient mobile app upon upload' : 'Certified report is automatically attached to patient records upon upload'}</span>
                     </div>
                   </div>
                 )}
@@ -991,6 +1063,14 @@ export function LabOrderDetail() {
                     <span>Sample Collected:</span>
                     <span className="font-semibold text-foreground">
                       {new Date(booking.sampleCollectedAt).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+                {booking.completedAt && (
+                  <div className="flex items-center justify-between text-muted">
+                    <span>Completed by Patient:</span>
+                    <span className="font-semibold text-emerald-600">
+                      {new Date(booking.completedAt).toLocaleString()}
                     </span>
                   </div>
                 )}
@@ -1177,7 +1257,7 @@ export function LabOrderDetail() {
                     className="px-5 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                   >
                     {isUploadingReport && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    <span>Attach & Mark Ready</span>
+                    <span>{isHomeBooking ? 'Attach & Send to Patient' : 'Attach & Mark Ready'}</span>
                   </button>
                 </div>
               </div>

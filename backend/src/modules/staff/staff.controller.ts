@@ -4,6 +4,8 @@ import { Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { sendNotification } from '../notifications/notifications.service';
 
+import { checkAndExpireDoctorOverrides } from '../doctors/doctor-override.service';
+
 // Staff roles that can be managed by a Hospital Admin
 const STAFF_ROLES: Role[] = [Role.DOCTOR, Role.NURSE, Role.RECEPTIONIST, Role.LAB_ADMIN];
 
@@ -13,6 +15,8 @@ export const getStaff = async (req: Request, res: Response, next: NextFunction) 
     if (!hospitalId) {
       return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'User does not belong to a hospital' } });
     }
+
+    await checkAndExpireDoctorOverrides();
 
     const staff = await prisma.user.findMany({
       where: {
@@ -37,6 +41,19 @@ export const getStaff = async (req: Request, res: Response, next: NextFunction) 
         experienceYears: true,
         consultationFee: true,
         licenseNumber: true,
+        inactiveUntil: true,
+        inactiveReason: true,
+        overrideUpdatedBy: true,
+        doctorSchedules: {
+          select: {
+            dayOfWeek: true,
+            isAvailable: true,
+            startTime: true,
+            endTime: true,
+            videoStartTime: true,
+            videoEndTime: true
+          }
+        },
         createdAt: true,
         updatedAt: true,
         department: { select: { id: true, name: true, code: true } }

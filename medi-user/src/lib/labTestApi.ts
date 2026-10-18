@@ -108,6 +108,11 @@ export interface LabBookingRecord {
   turnaroundTime?: string;
   createdAt: string;
   reportUrl?: string;
+  reportUploadedAt?: string;
+  completedAt?: string;
+  sampleCollectedAt?: string;
+  phlebotomistName?: string;
+  phlebotomistPhone?: string;
 }
 
 
@@ -291,6 +296,26 @@ export const labBookingApi = {
       return { success: true, data: json.data };
     } catch (err: any) {
       return { success: false, error: err.message || 'Network error fetching booking details' };
+    }
+  },
+
+  async updateBookingStatus(
+    id: string,
+    status: string
+  ): Promise<{ success: boolean; data?: LabBookingRecord; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/lab-bookings/${id}/status`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ status }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        return { success: false, error: json.error?.message || 'Failed to update lab booking status' };
+      }
+      return { success: true, data: json.data };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error updating booking status' };
     }
   },
 };

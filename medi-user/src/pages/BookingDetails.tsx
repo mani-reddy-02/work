@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Calendar,
@@ -20,6 +20,7 @@ import {
   Building2,
   CheckCircle2,
   User,
+  RefreshCw,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { opAppointmentApi, type OpBookingRecord } from '../lib/opAppointmentApi';
@@ -28,7 +29,7 @@ import { homeNursingApi, type HomeNursingBookingRecord } from '../lib/homeNursin
 import { cn } from '../lib/utils';
 import { getDiseaseIconUrl } from '../utils/diseaseIcons';
 import { getTestIcon } from '../lib/optimizedTestIcons';
-import { getStatusConfig } from './MyBookings';
+import { getStatusConfig, isNursingCompletable, isHomeSampleCompletable } from './MyBookings';
 
 const BookingDetails = () => {
   const navigate = useNavigate();
@@ -40,14 +41,82 @@ const BookingDetails = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
+  const [isCompleting, setIsCompleting] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [doctorImgError, setDoctorImgError] = useState<boolean>(false);
+
+  const lastFetchRef = useRef<number>(0);
+
+  const handleCompleteNursing = async () => {
+    if (!nursingBooking?.id) return;
+    setIsCompleting(true);
+    try {
+      const res = await homeNursingApi.updateBookingStatus(nursingBooking.id, 'COMPLETED');
+      if (res.success) {
+        setNursingBooking((prev) =>
+          prev ? { ...prev, status: 'COMPLETED' } : null
+        );
+        setToastMessage({
+          message: 'Home nursing service marked as completed successfully!',
+          type: 'success',
+        });
+        setTimeout(() => setToastMessage(null), 4000);
+      } else {
+        setToastMessage({
+          message: res.error || 'Failed to complete home nursing service.',
+          type: 'error',
+        });
+        setTimeout(() => setToastMessage(null), 4000);
+      }
+    } catch (err: any) {
+      setToastMessage({
+        message: err.message || 'Failed to complete home nursing service.',
+        type: 'error',
+      });
+      setTimeout(() => setToastMessage(null), 4000);
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
+  const handleCompleteHomeSample = async () => {
+    if (!labBooking?.id) return;
+    setIsCompleting(true);
+    try {
+      const res = await labBookingApi.updateBookingStatus(labBooking.id, 'COMPLETED');
+      if (res.success) {
+        setLabBooking((prev) =>
+          prev ? { ...prev, status: 'COMPLETED' } : null
+        );
+        setToastMessage({
+          message: 'Home sample collection service marked as completed successfully!',
+          type: 'success',
+        });
+        setTimeout(() => setToastMessage(null), 4000);
+      } else {
+        setToastMessage({
+          message: res.error || 'Failed to complete home sample collection service.',
+          type: 'error',
+        });
+        setTimeout(() => setToastMessage(null), 4000);
+      }
+    } catch (err: any) {
+      setToastMessage({
+        message: err.message || 'Failed to complete home sample collection service.',
+        type: 'error',
+      });
+      setTimeout(() => setToastMessage(null), 4000);
+    } finally {
+      setIsCompleting(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
 
     const loadDetails = async (silent = false) => {
       if (!silent) setIsLoading(true);
-      setError(null);
+      if (!silent) setError(null);
       try {
         // 1. Try fetching as an OP appointment
         const opRes = await opAppointmentApi.fetchAppointmentDetails(id);
@@ -82,16 +151,25 @@ const BookingDetails = () => {
     };
 
     loadDetails();
+    lastFetchRef.current = Date.now();
 
-    // Live 4-second polling for real-time consultation status updates (WAITING -> IN_CONSULTATION -> COMPLETED)
+    // Live 5-second gentle polling
     const timer = setInterval(() => {
       loadDetails(true);
-    }, 4000);
+      lastFetchRef.current = Date.now();
+    }, 5000);
 
-    const handleFocus = () => loadDetails(true);
+    const handleThrottledSync = () => {
+      if (Date.now() - lastFetchRef.current > 3000) {
+        loadDetails(true);
+        lastFetchRef.current = Date.now();
+      }
+    };
+
+    const handleFocus = () => handleThrottledSync();
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        loadDetails(true);
+        handleThrottledSync();
       }
     };
 
@@ -208,7 +286,16 @@ const BookingDetails = () => {
               {(() => {
                 const s = (labBooking.status || '').toUpperCase();
                 const isCancelled = s === 'CANCELLED';
-                const steps = [
+                const isHome = labBooking.collectionType === 'HOME_COLLECTION';
+                const isCompletable = isHomeSampleCompletable(labBooking.status, labBooking.collectionType, labBooking.reportUrl);
+
+                const steps = isHome ? [
+                  { key: 'CONFIRMED', label: labBooking.phlebotomistName ? 'Collector Assigned' : 'Order Placed', done: true },
+                  { key: 'SAMPLE_COLLECTED', label: 'Sample Collected', done: ['SAMPLE_COLLECTED', 'IN_LAB_PROCESSING', 'PROCESSING', 'REPORT_READY', 'COMPLETED'].includes(s) },
+                  { key: 'IN_LAB_PROCESSING', label: 'Lab Processing', done: ['IN_LAB_PROCESSING', 'PROCESSING', 'REPORT_READY', 'COMPLETED'].includes(s) },
+                  { key: 'REPORT_READY', label: 'Report Ready', done: ['REPORT_READY', 'COMPLETED'].includes(s) },
+                  { key: 'COMPLETED', label: 'Completed', done: s === 'COMPLETED' },
+                ] : [
                   { key: 'CONFIRMED', label: 'Order Confirmed', done: true },
                   { key: 'SAMPLE_COLLECTED', label: 'Sample Collected', done: ['SAMPLE_COLLECTED', 'IN_LAB_PROCESSING', 'PROCESSING', 'REPORT_READY', 'COMPLETED'].includes(s) },
                   { key: 'IN_LAB_PROCESSING', label: 'In Lab Processing', done: ['IN_LAB_PROCESSING', 'PROCESSING', 'REPORT_READY', 'COMPLETED'].includes(s) },
@@ -233,10 +320,11 @@ const BookingDetails = () => {
                         <div className="flex items-center justify-between relative z-10">
                           {steps.map((st, idx) => {
                             const isCurrent = (
-                              (st.key === 'CONFIRMED' && (s === 'PENDING' || s === 'CONFIRMED' || s === 'REQUESTED')) ||
+                              (st.key === 'CONFIRMED' && (s === 'PENDING' || s === 'CONFIRMED' || s === 'REQUESTED' || s === 'ASSIGNED')) ||
                               (st.key === 'SAMPLE_COLLECTED' && s === 'SAMPLE_COLLECTED') ||
                               (st.key === 'IN_LAB_PROCESSING' && (s === 'IN_LAB_PROCESSING' || s === 'PROCESSING')) ||
-                              (st.key === 'REPORT_READY' && (s === 'REPORT_READY' || s === 'COMPLETED'))
+                              (st.key === 'REPORT_READY' && s === 'REPORT_READY') ||
+                              (st.key === 'COMPLETED' && s === 'COMPLETED')
                             );
                             return (
                               <div key={idx} className="flex flex-col items-center flex-1 text-center">
@@ -273,21 +361,71 @@ const BookingDetails = () => {
                           <div
                             className="h-full bg-emerald-500 transition-all duration-500"
                             style={{
-                              width:
-                                s === 'COMPLETED' || s === 'REPORT_READY'
-                                  ? '100%'
-                                  : s === 'IN_LAB_PROCESSING' || s === 'PROCESSING'
-                                  ? '66%'
-                                  : s === 'SAMPLE_COLLECTED'
-                                  ? '33%'
-                                  : '0%'
+                              width: isHome
+                                ? (s === 'COMPLETED' ? '100%' : s === 'REPORT_READY' ? '75%' : s === 'IN_LAB_PROCESSING' || s === 'PROCESSING' ? '50%' : s === 'SAMPLE_COLLECTED' ? '25%' : '0%')
+                                : (s === 'COMPLETED' || s === 'REPORT_READY' ? '100%' : s === 'IN_LAB_PROCESSING' || s === 'PROCESSING' ? '66%' : s === 'SAMPLE_COLLECTED' ? '33%' : '0%')
                             }}
                           />
                         </div>
                       </div>
                     )}
 
-                    {(s === 'REPORT_READY' || s === 'COMPLETED') && (
+                    {/* Report Ready Notification Banner & Patient Complete Action */}
+                    {isCompletable && (
+                      <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                        <div className="flex items-start gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-amber-950">
+                                Diagnostic Lab Report Ready
+                              </span>
+                              <span className="text-[10px] font-bold bg-amber-600 text-white px-2 py-0.5 rounded-full">
+                                Action Required
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-amber-900 mt-0.5 leading-snug">
+                              Your test report has been published by the laboratory. Please inspect your report and tap below to complete your order.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          disabled={isCompleting}
+                          onClick={handleCompleteHomeSample}
+                          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 transition-all active:scale-95 shrink-0 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          {isCompleting ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              <span>Completing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Mark as Completed</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {s === 'COMPLETED' && isHome && (
+                      <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <CheckCircle2 className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xs font-bold text-emerald-950">Home Sample Collection Completed</h4>
+                          <p className="text-[11px] text-emerald-700 mt-0.5 leading-snug">
+                            This service has been successfully verified and marked completed. You can view or download your report anytime below.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {(s === 'REPORT_READY' || s === 'COMPLETED') && !isHome && (
                       <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -345,6 +483,27 @@ const BookingDetails = () => {
                       <p className="font-medium text-slate-800 text-xs leading-relaxed">
                         {labBooking.collectionAddress}
                       </p>
+                    </div>
+                  </div>
+                )}
+
+                {labBooking.collectionType === 'HOME_COLLECTION' && labBooking.phlebotomistName && (
+                  <div className="flex gap-3 items-start">
+                    <div className="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 text-teal-600">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                        Assigned Phlebotomist / Technician
+                      </p>
+                      <p className="font-bold text-slate-800 text-xs">
+                        {labBooking.phlebotomistName}
+                      </p>
+                      {labBooking.phlebotomistPhone && (
+                        <p className="text-xs text-teal-600 font-medium mt-0.5">
+                          📞 {labBooking.phlebotomistPhone}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -425,18 +584,39 @@ const BookingDetails = () => {
               </div>
 
               <div className="pt-2 pb-4 space-y-3">
-                {(labBooking.status === 'REPORT_READY' || labBooking.status === 'COMPLETED') && labBooking.reportUrl && (
+                {labBooking.reportUrl && (
                   <button
                     onClick={() => window.open(labBooking.reportUrl, '_blank')}
-                    className="w-full bg-emerald-600 text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-emerald-600/30 hover:bg-emerald-700 transition-colors text-sm flex items-center justify-center gap-2"
+                    className="w-full bg-emerald-600 text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-emerald-600/30 hover:bg-emerald-700 transition-colors text-sm flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <FileText className="w-5 h-5" />
-                    Download Lab Report
+                    View / Download Lab Report
                   </button>
                 )}
+
+                {isHomeSampleCompletable(labBooking.status, labBooking.collectionType, labBooking.reportUrl) && (
+                  <button
+                    disabled={isCompleting}
+                    onClick={handleCompleteHomeSample}
+                    className="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-colors text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isCompleting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Confirming Completion...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Complete Service</span>
+                      </>
+                    )}
+                  </button>
+                )}
+
                 <button
                   onClick={() => navigate('/bookings')}
-                  className="w-full bg-primary text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-primary/30 hover:bg-blue-700 transition-colors text-sm"
+                  className="w-full bg-slate-100 text-slate-700 font-semibold py-3 rounded-2xl hover:bg-slate-200 transition-colors text-sm cursor-pointer"
                 >
                   Back to My Bookings
                 </button>
@@ -489,6 +669,57 @@ const BookingDetails = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Status Banner with Complete Action */}
+              {nursingBooking.status === 'COMPLETED' ? (
+                <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-xs font-extrabold text-emerald-900">Service Completed</h4>
+                    <p className="text-[11px] text-emerald-700 mt-0.5 leading-snug">
+                      Your home nursing service has been marked completed successfully. Thank you for using MediQuee!
+                    </p>
+                  </div>
+                </div>
+              ) : isNursingCompletable(nursingBooking.status) ? (
+                <div className="bg-teal-50/90 rounded-2xl p-4 border border-teal-200 flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap shadow-sm">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-extrabold text-teal-900">
+                        {nursingBooking.nurseName ? `Nurse Assigned: ${nursingBooking.nurseName}` : 'Service Active'}
+                      </h4>
+                      <p className="text-[11px] text-teal-700 mt-0.5 leading-snug">
+                        {nursingBooking.status === 'IN_PROGRESS'
+                          ? 'Nurse has arrived and service is in progress'
+                          : 'Service is scheduled and nurse is assigned'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    disabled={isCompleting}
+                    onClick={handleCompleteNursing}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 cursor-pointer ml-auto shrink-0"
+                    title="Mark service as completed"
+                  >
+                    {isCompleting ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Completing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Complete Service</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : null}
 
               {/* Service & Shift Logistics Card */}
               <div className="bg-white p-5 rounded-2xl shadow-soft border border-slate-100 space-y-4">
@@ -559,6 +790,14 @@ const BookingDetails = () => {
                       </p>
                       <p className="font-semibold text-slate-800">{nursingBooking.nurseName}</p>
                       <p className="text-xs text-slate-500">{nursingBooking.nurseDesignation || 'Healthcare Nurse'}</p>
+                      {nursingBooking.nursePhone && (
+                        <a 
+                          href={`tel:${nursingBooking.nursePhone}`}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 hover:text-teal-900 mt-1"
+                        >
+                          <Phone className="w-3.5 h-3.5" /> {nursingBooking.nursePhone}
+                        </a>
+                      )}
                     </div>
                   </div>
                 )}
@@ -632,9 +871,29 @@ const BookingDetails = () => {
 
               {/* Actions */}
               <div className="pt-2 pb-6 space-y-3">
+                {isNursingCompletable(nursingBooking.status) && (
+                  <button
+                    disabled={isCompleting}
+                    onClick={handleCompleteNursing}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-emerald-600/30 active:scale-[0.98] transition-all text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isCompleting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Completing Service...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Mark Service as Completed</span>
+                      </>
+                    )}
+                  </button>
+                )}
+
                 {nursingBooking.status !== 'CANCELLED' && nursingBooking.status !== 'COMPLETED' && (
                   <button
-                    disabled={isCancelling}
+                    disabled={isCancelling || isCompleting}
                     onClick={async () => {
                       if (!nursingBooking.id) return;
                       if (!window.confirm('Are you sure you want to cancel this home nursing booking?')) return;
@@ -645,17 +904,20 @@ const BookingDetails = () => {
                           setNursingBooking((prev) =>
                             prev ? { ...prev, status: 'CANCELLED', paymentStatus: 'REFUNDED' } : null
                           );
-                          alert('Booking cancelled successfully.');
+                          setToastMessage({ message: 'Booking cancelled successfully.', type: 'success' });
+                          setTimeout(() => setToastMessage(null), 3000);
                         } else {
-                          alert(res.error || 'Could not cancel booking.');
+                          setToastMessage({ message: res.error || 'Could not cancel booking.', type: 'error' });
+                          setTimeout(() => setToastMessage(null), 3000);
                         }
                       } catch (err: any) {
-                        alert(err.message || 'Failed to cancel booking.');
+                        setToastMessage({ message: err.message || 'Failed to cancel booking.', type: 'error' });
+                        setTimeout(() => setToastMessage(null), 3000);
                       } finally {
                         setIsCancelling(false);
                       }
                     }}
-                    className="w-full bg-rose-50 text-rose-600 border border-rose-200 font-semibold py-3 rounded-2xl hover:bg-rose-100 transition-colors text-xs disabled:opacity-50"
+                    className="w-full bg-rose-50 text-rose-600 border border-rose-200 font-semibold py-3 rounded-2xl hover:bg-rose-100 transition-colors text-xs disabled:opacity-50 cursor-pointer"
                   >
                     {isCancelling ? 'Cancelling...' : 'Cancel Booking'}
                   </button>
@@ -663,7 +925,7 @@ const BookingDetails = () => {
 
                 <button
                   onClick={() => navigate('/bookings')}
-                  className="w-full bg-[#0055ff] text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-blue-500/30 hover:bg-blue-600 transition-colors text-sm"
+                  className="w-full bg-[#0055ff] text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-blue-500/30 hover:bg-blue-600 transition-colors text-sm cursor-pointer"
                 >
                   Back to My Bookings
                 </button>
@@ -1133,10 +1395,53 @@ const BookingDetails = () => {
                   )}
 
                   {/* Follow up date */}
-                  {appointment.prescription.followUpDate && (
+                  {appointment.prescription.followUpDate && !appointment.prescription.suggestPhysicalFollowUp && (
                     <div className="flex items-center gap-2 text-xs text-slate-600 pt-1">
                       <Calendar className="w-3.5 h-3.5 text-primary" />
                       <span>Follow-up: <strong>{new Date(appointment.prescription.followUpDate).toLocaleDateString()}</strong></span>
+                    </div>
+                  )}
+
+                  {/* Physical Follow-up Recommendation Badge & Quick Action */}
+                  {appointment.prescription.suggestPhysicalFollowUp && (
+                    <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs mt-2">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-blue-950">
+                              Physical Follow-up Recommended by Doctor
+                            </span>
+                            <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                              In-Person Visit
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-blue-800 mt-0.5">
+                            Dr. {appointment.doctorName} has advised an in-person follow-up visit at {appointment.hospitalName}.
+                          </p>
+                          {appointment.prescription.physicalFollowUpReason && (
+                            <p className="text-[11px] text-slate-700 mt-1 font-medium">
+                              <strong>Reason:</strong> {appointment.prescription.physicalFollowUpReason}
+                            </p>
+                          )}
+                          {appointment.prescription.followUpDate && (
+                            <div className="flex items-center gap-1.5 text-[11px] text-blue-900 font-semibold mt-1">
+                              <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Recommended Visit Date: <strong>{new Date(appointment.prescription.followUpDate).toLocaleDateString()}</strong></span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => navigate(`/specialties?type=hospital-op&doctorId=${appointment.doctorId}&hospitalId=${appointment.hospitalId}`)}
+                        className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all active:scale-95 shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Hospital className="w-3.5 h-3.5" />
+                        <span>Book OP Appointment</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1199,6 +1504,27 @@ const BookingDetails = () => {
           )}
         </div>
       </div>
+
+      {/* Notification Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-20 left-4 right-4 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-md mx-auto">
+          <div
+            className={cn(
+              'text-white px-4 py-3 rounded-2xl shadow-2xl text-[13px] font-semibold flex items-center gap-2.5 border',
+              toastMessage.type === 'error'
+                ? 'bg-rose-600 border-rose-500'
+                : 'bg-slate-900 border-slate-800'
+            )}
+          >
+            {toastMessage.type === 'error' ? (
+              <AlertCircle className="w-4 h-4 text-rose-200 shrink-0" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            )}
+            <span>{toastMessage.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Role } from '@prisma/client';
+import { checkAndExpireDoctorOverrides } from './doctor-override.service';
 
 const DEFAULT_DAYS = [
   'Monday',
@@ -178,6 +179,8 @@ export const getDoctorAvailableSlots = async (req: Request, res: Response, next:
     const rawType = (req.query.type || req.query.opType || req.query.consultationType || req.query.mode || '') as string;
     const typeQuery = rawType.trim().toUpperCase() || 'OP';
 
+    await checkAndExpireDoctorOverrides(doctorId);
+
     const doctor = await prisma.user.findFirst({
       where: {
         id: doctorId,
@@ -187,7 +190,9 @@ export const getDoctorAvailableSlots = async (req: Request, res: Response, next:
       select: {
         id: true,
         name: true,
-        hospitalId: true
+        hospitalId: true,
+        inactiveUntil: true,
+        inactiveReason: true
       }
     });
 
@@ -307,6 +312,15 @@ export const getDoctorAvailableSlots = async (req: Request, res: Response, next:
       }
     }
 
+    const isTemporarilyInactive = Boolean(
+      doctor.inactiveUntil && new Date(doctor.inactiveUntil) > new Date()
+    );
+
+    if (isTemporarilyInactive && returnDate <= serverTodayStr) {
+      isAvailable = false;
+      allSlots = [];
+    }
+
     const availableSlots = isAvailable ? allSlots.filter(slot => !bookedSlots.has(slot) && !expiredSlots.has(slot)) : [];
 
     res.json({
@@ -316,9 +330,12 @@ export const getDoctorAvailableSlots = async (req: Request, res: Response, next:
         doctorName: doctor.name,
         date: returnDate,
         dayOfWeek: dayName,
-        isAvailable,
-        allSlots,
-        availableSlots,
+        isAvailable: isTemporarilyInactive && returnDate <= serverTodayStr ? false : (availableSlots.length > 0 && isAvailable),
+        isTemporarilyInactive,
+        inactiveUntil: isTemporarilyInactive && doctor.inactiveUntil ? new Date(doctor.inactiveUntil).toISOString() : null,
+        inactiveReason: isTemporarilyInactive ? doctor.inactiveReason : null,
+        allSlots: isTemporarilyInactive && returnDate <= serverTodayStr ? [] : allSlots,
+        availableSlots: isTemporarilyInactive && returnDate <= serverTodayStr ? [] : availableSlots,
         bookedSlots: Array.from(bookedSlots),
         expiredSlots: Array.from(expiredSlots)
       }

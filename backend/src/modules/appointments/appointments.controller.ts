@@ -3,6 +3,7 @@ import { prisma } from '../../config/prisma';
 import { Prisma } from '@prisma/client';
 import { Role } from '@prisma/client';
 import { sendNotification } from '../notifications/notifications.service';
+import { checkAndExpireDoctorOverrides } from '../doctors/doctor-override.service';
 
 export const createAppointment = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -54,6 +55,8 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       }
 
       // 3. Verify doctor exists and has role DOCTOR
+      await checkAndExpireDoctorOverrides(doctorId);
+
       const doctor = await tx.user.findFirst({
         where: {
           id: doctorId,
@@ -63,6 +66,14 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       });
       if (!doctor) {
         throw { status: 404, code: 'NOT_FOUND', message: 'Doctor not found or inactive' };
+      }
+
+      if (doctor.inactiveUntil && new Date(doctor.inactiveUntil) > new Date()) {
+        throw {
+          status: 400,
+          code: 'DOCTOR_UNAVAILABLE',
+          message: 'Doctor is currently unavailable for consultations. Please select another doctor or try again later.'
+        };
       }
 
       // 4. Verify doctor belongs to the specified hospital
@@ -565,6 +576,8 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
         clinicalNotes: b.prescription.clinicalNotes,
         generalAdvice: b.prescription.generalAdvice,
         followUpDate: b.prescription.followUpDate,
+        suggestPhysicalFollowUp: b.prescription.suggestPhysicalFollowUp,
+        physicalFollowUpReason: b.prescription.physicalFollowUpReason,
         items: b.prescription.items || []
       }));
 

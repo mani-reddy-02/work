@@ -21,6 +21,33 @@ export interface AvailableSlotsResponse {
   bookedSlots: string[];
 }
 
+export interface DoctorStatusSummary {
+  doctorId: string;
+  doctorName: string;
+  specialization: string;
+  departmentId?: string | null;
+  departmentName?: string | null;
+  avatar?: string | null;
+  baseActive: boolean;
+  effectiveStatus: 'ACTIVE' | 'TEMPORARILY_INACTIVE' | 'OFF_DUTY';
+  isTemporarilyInactive: boolean;
+  inactiveUntil: string | null;
+  inactiveReason: string | null;
+  overrideUpdatedBy: string | null;
+  remainingMinutes: number;
+  reactivateAtTime: string | null;
+  isScheduledToday: boolean;
+  todayShift: string;
+  todaySchedule: {
+    day: string;
+    isAvailable: boolean;
+    startTime: string;
+    endTime: string;
+    videoStartTime?: string | null;
+    videoEndTime?: string | null;
+  } | null;
+}
+
 export type DosageTiming = 'BEFORE_FOOD' | 'AFTER_FOOD' | 'WITH_FOOD' | 'EMPTY_STOMACH';
 export type DoctorPresenceStatus = 'AVAILABLE_IN_OPD' | 'ON_BREAK' | 'IN_SURGERY' | 'OFF_DUTY';
 
@@ -50,6 +77,8 @@ export interface ConsultationPayload {
   clinicalNotes?: string | null;
   generalAdvice?: string | null;
   followUpDate?: string | null;
+  suggestPhysicalFollowUp?: boolean | null;
+  physicalFollowUpReason?: string | null;
   vitals?: ConsultationVitals | null;
   prescriptions?: PrescriptionItemPayload[];
   labTestIds?: string[];
@@ -61,6 +90,8 @@ export interface RecordConsultationResponse {
   vitalsRecorded: boolean;
   prescriptionItemsCount: number;
   labOrdersCount: number;
+  suggestPhysicalFollowUp?: boolean;
+  physicalFollowUpReason?: string | null;
   status: string;
 }
 
@@ -92,6 +123,8 @@ export interface ClinicalHistoryItem {
     clinicalNotes?: string;
     generalAdvice?: string;
     followUpDate?: string;
+    suggestPhysicalFollowUp?: boolean;
+    physicalFollowUpReason?: string | null;
     createdAt?: string;
     items: {
       id: string;
@@ -385,4 +418,43 @@ export const doctorApi = {
     const json = await res.json();
     return json.data;
   },
+
+  /**
+   * GET /api/v1/doctors/status/mine
+   * Loads the doctor's live override status & schedule.
+   */
+  async getMyStatus(): Promise<DoctorStatusSummary> {
+    const res = await fetch(`${API_URL}/api/v1/doctors/status/mine`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Failed to fetch doctor status');
+    }
+    const json = await res.json();
+    return json.data;
+  },
+
+  /**
+   * PATCH /api/v1/doctors/:id/active-status
+   * Updates doctor override status (turn Inactive for X hours or reactivate immediately).
+   */
+  async updateMyActiveStatus(doctorId: string, payload: {
+    active: boolean;
+    durationHours?: number;
+    durationMinutes?: number;
+    restOfToday?: boolean;
+    reason?: string;
+  }): Promise<{ success: boolean; data: DoctorStatusSummary; message?: string }> {
+    const res = await fetch(`${API_URL}/api/v1/doctors/${doctorId}/active-status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || err.message || 'Failed to update active status');
+    }
+    return await res.json();
+  }
 };

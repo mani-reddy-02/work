@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Role } from '@prisma/client';
+import { checkAndExpireDoctorOverrides, computeDoctorLiveStatus } from './doctor-override.service';
 
 const ALL_TIME_SLOTS = [
   '09:00 AM',
@@ -36,9 +37,20 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
       }
     }
 
+    await checkAndExpireDoctorOverrides();
+
+    const now = new Date();
     const whereClause: any = {
       role: Role.DOCTOR,
-      active: true
+      active: true,
+      AND: [
+        {
+          OR: [
+            { inactiveUntil: null },
+            { inactiveUntil: { lte: now } }
+          ]
+        }
+      ]
     };
 
     if (hospitalId) {
@@ -145,6 +157,8 @@ export const getDoctorById = async (req: Request, res: Response, next: NextFunct
   try {
     const id = req.params.id as string;
 
+    await checkAndExpireDoctorOverrides(id);
+
     const doctor = await prisma.user.findFirst({
       where: {
         id,
@@ -166,6 +180,9 @@ export const getDoctorById = async (req: Request, res: Response, next: NextFunct
         licenseNumber: true,
         hospitalId: true,
         departmentId: true,
+        inactiveUntil: true,
+        inactiveReason: true,
+        overrideUpdatedBy: true,
         hospital: {
           select: {
             id: true,
@@ -198,10 +215,10 @@ export const getDoctorById = async (req: Request, res: Response, next: NextFunct
       }
     });
 
-    if (!doctor) {
+    if (!doctor || (doctor.inactiveUntil && new Date(doctor.inactiveUntil) > new Date())) {
       return res.status(404).json({
         success: false,
-        error: { code: 'NOT_FOUND', message: 'Doctor not found or inactive' }
+        error: { code: 'DOCTOR_UNAVAILABLE', message: 'Doctor not found or currently unavailable for consultations' }
       });
     }
 
@@ -395,3 +412,171 @@ export const getDoctorAvailability = async (req: Request, res: Response, next: N
     next(error);
   }
 };
+
+/**
+ * PATCH /api/v1/doctors/:id/active-status
+ * Updates doctor override status (turn Inactive for X hours or reactivate immediately).
+ * Accessible by RECEPTIONIST, HOSPITAL_ADMIN, DOCTOR, SUPER_ADMIN.
+ */
+export const updateDoctorActiveStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const doctorId = req.params.id as string;
+    const { active, durationHours, durationMinutes, restOfToday, inactiveUntil: explicitUntil, reason } = req.body;
+    const currentUser = req.user;
+
+    if (!currentUser) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } });
+    }
+
+    const doctor = await prisma.user.findFirst({
+      where: {
+        id: doctorId,
+        role: Role.DOCTOR
+      },
+      include: {
+        department: { select: { id: true, name: true } },
+        doctorSchedules: true
+      }
+    });
+
+    if (!doctor) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Doctor not found' } });
+    }
+
+    // Role-based authorization
+    if (currentUser.role === Role.DOCTOR && currentUser.id !== doctorId) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Doctors can only modify their own status' } });
+    }
+
+    if ((currentUser.role === Role.RECEPTIONIST || currentUser.role === Role.HOSPITAL_ADMIN) && currentUser.hospitalId !== doctor.hospitalId) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only modify doctors in your hospital' } });
+    }
+
+    let calculatedInactiveUntil: Date | null = null;
+    let savedReason: string | null = null;
+    let updaterRole: string | null = null;
+
+    if (active === false) {
+      savedReason = typeof reason === 'string' && reason.trim() ? reason.trim() : 'Temporarily Unavailable';
+      updaterRole = currentUser.role;
+
+      if (restOfToday) {
+        // Set to end of today in Asia/Kolkata
+        const now = new Date();
+        const endOfDay = new Date(now);
+        endOfDay.setHours(23, 59, 59, 999);
+        calculatedInactiveUntil = endOfDay;
+      } else if (explicitUntil) {
+        calculatedInactiveUntil = new Date(explicitUntil);
+      } else {
+        const totalMinutes = (Number(durationHours) || 0) * 60 + (Number(durationMinutes) || 0);
+        const minutesToUse = totalMinutes > 0 ? totalMinutes : 60; // default 1 hour
+        calculatedInactiveUntil = new Date(Date.now() + minutesToUse * 60 * 1000);
+      }
+    }
+
+    const updatedDoctor = await prisma.user.update({
+      where: { id: doctorId },
+      data: {
+        inactiveUntil: calculatedInactiveUntil,
+        inactiveReason: calculatedInactiveUntil ? savedReason : null,
+        overrideUpdatedBy: calculatedInactiveUntil ? updaterRole : null,
+        active: true // ensure base active is true so it seamlessly activates
+      },
+      include: {
+        department: { select: { id: true, name: true } },
+        doctorSchedules: true
+      }
+    });
+
+    const statusSummary = computeDoctorLiveStatus(updatedDoctor);
+
+    res.json({
+      success: true,
+      message: active === false 
+        ? `Doctor set to inactive until ${statusSummary.reactivateAtTime || statusSummary.inactiveUntil}`
+        : 'Doctor reactivated successfully',
+      data: statusSummary
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/doctors/hospital/:hospitalId/status
+ * or GET /api/v1/doctors/status
+ * Fetches all hospital doctors with live base schedule, current override status, and remaining countdown.
+ */
+export const getHospitalDoctorsStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = (req.params.hospitalId || req.user?.hospitalId) as string;
+    if (!hospitalId) {
+      return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'Hospital ID is required' } });
+    }
+
+    // Lazy auto-heal any expired doctor overrides
+    await checkAndExpireDoctorOverrides();
+
+    const doctors = await prisma.user.findMany({
+      where: {
+        hospitalId,
+        role: Role.DOCTOR,
+        active: true
+      },
+      include: {
+        department: { select: { id: true, name: true } },
+        doctorSchedules: true
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    const summaries = doctors.map(doc => computeDoctorLiveStatus(doc));
+
+    res.json({
+      success: true,
+      data: summaries
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/doctors/status/mine
+ * Allows authenticated DOCTOR to fetch their live override status & base schedule.
+ */
+export const getMyDoctorStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const doctorId = req.user?.id;
+    if (!doctorId) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } });
+    }
+
+    await checkAndExpireDoctorOverrides(doctorId);
+
+    const doctor = await prisma.user.findFirst({
+      where: {
+        id: doctorId,
+        role: Role.DOCTOR
+      },
+      include: {
+        department: { select: { id: true, name: true } },
+        doctorSchedules: true
+      }
+    });
+
+    if (!doctor) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Doctor not found' } });
+    }
+
+    const summary = computeDoctorLiveStatus(doctor);
+    res.json({
+      success: true,
+      data: summary
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

@@ -1,4 +1,4 @@
-import { Search, Filter, Calendar, UserPlus } from "lucide-react"
+import { Search, Filter, Calendar, UserPlus, HeartHandshake } from "lucide-react"
 import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Skeleton } from "@/components/ui/Skeleton"
@@ -111,14 +111,24 @@ export function ReceptionistAppointments() {
         title="Appointments" 
         subtitle="OP Outpatient Records & Scheduling"
         rightActions={
-          <button
-            onClick={() => navigate('/receptionist/check-in')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1B5DF1] hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer active:scale-95"
-            title="Check-In Patient"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Check-In</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/receptionist/home-nursing')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-[#1B5DF1] hover:bg-blue-100 rounded-xl text-xs font-bold transition-all border border-blue-200 cursor-pointer active:scale-95"
+              title="Home Nursing Staff Assignment & Management"
+            >
+              <HeartHandshake className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Home Nursing</span>
+            </button>
+            <button
+              onClick={() => navigate('/receptionist/check-in')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1B5DF1] hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer active:scale-95"
+              title="Check-In Patient"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Check-In</span>
+            </button>
+          </div>
         }
       />
 

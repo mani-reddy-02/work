@@ -1,4 +1,4 @@
-import { Search, Filter, Calendar, ArrowLeft, Play, FileText, Plus, User, ChevronRight, X, Check, RotateCcw, SlidersHorizontal } from "lucide-react"
+import { Search, Filter, Calendar, ArrowLeft, Play, FileText, Plus, User, ChevronRight, X, Check, CheckCircle2, RotateCcw, SlidersHorizontal } from "lucide-react"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useAuth } from "@/context/AuthContext"
 import { motion, AnimatePresence } from "framer-motion"
@@ -83,8 +83,8 @@ export function Appointments() {
   const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
   const [nurseAssignModalBooking, setNurseAssignModalBooking] = useState<any>(null);
 
-  const fetchBookings = useCallback(async (targetDate: string) => {
-    setIsLoading(true);
+  const fetchBookings = useCallback(async (targetDate: string, silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const filters: any = {};
       if (targetDate === 'upcoming') {
@@ -154,8 +154,10 @@ export function Appointments() {
         const timeParts = timeSlot.trim().split(' ');
 
         let normalizedStatus = 'WAITING';
-        if (b.status === 'REPORT_READY' || b.status === 'COMPLETED') {
+        if (b.status === 'COMPLETED') {
           normalizedStatus = 'COMPLETED';
+        } else if (b.status === 'REPORT_READY') {
+          normalizedStatus = isHome ? 'REPORT_READY' : 'COMPLETED';
         } else if (b.status === 'SAMPLE_COLLECTED' || b.status === 'IN_LAB_PROCESSING' || b.status === 'ASSIGNED') {
           normalizedStatus = 'IN_CONSULTATION';
         } else if (b.status === 'CANCELLED') {
@@ -180,6 +182,9 @@ export function Appointments() {
         };
       }).filter((b: Appointment) => {
         if (targetDate === 'upcoming') {
+          if (b.isNursing && ['CONFIRMED', 'ASSIGNED', 'IN_PROGRESS'].includes(b.status)) {
+            return true;
+          }
           return b.date >= todayIso && b.status !== 'CANCELLED';
         }
         if (targetDate === 'all') return true;
@@ -190,7 +195,7 @@ export function Appointments() {
     } catch (err) {
       console.error('Failed to fetch bookings:', err);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, [todayIso]);
 
@@ -203,18 +208,30 @@ export function Appointments() {
     }
   }, [location.state]);
 
+  const lastFetchRef = useRef<number>(0);
+
   useEffect(() => {
     fetchBookings(selectedDate);
+    lastFetchRef.current = Date.now();
 
-    // Live 4-second polling for real-time synchronization with Receptionist and Doctor
+    // 12-second live polling for gentle real-time synchronization
     const timer = setInterval(() => {
-      fetchBookings(selectedDate);
-    }, 4000);
+      fetchBookings(selectedDate, true);
+      lastFetchRef.current = Date.now();
+    }, 12000);
 
-    const handleFocus = () => fetchBookings(selectedDate);
+    const handleThrottledSync = () => {
+      // Avoid rapid-fire re-fetching on quick tab switching if fetched within last 8 seconds
+      if (Date.now() - lastFetchRef.current > 8000) {
+        fetchBookings(selectedDate, true);
+        lastFetchRef.current = Date.now();
+      }
+    };
+
+    const handleFocus = () => handleThrottledSync();
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        fetchBookings(selectedDate);
+        handleThrottledSync();
       }
     };
 
@@ -334,7 +351,16 @@ export function Appointments() {
         if (newStatus === 'IN_PROGRESS' || newStatus === 'COMPLETED' || newStatus === 'ASSIGNED') {
           await nurseApi.updateVisitStatus(id, newStatus as any);
         }
-      } else if (apt?.category === 'lab' || apt?.category === 'home_sample') {
+      } else if (apt?.category === 'home_sample') {
+        if (newStatus === 'COMPLETED' || newStatus === 'REPORT_READY') {
+          toast("Home sample collections can only be marked completed by the patient after reviewing their report", "error");
+          setActiveDropdown(null);
+          return;
+        }
+        let labStatus = newStatus;
+        if (newStatus === 'IN_CONSULTATION') labStatus = 'SAMPLE_COLLECTED';
+        await labApi.updateLabBookingStatus(id, { status: labStatus }).catch(() => {});
+      } else if (apt?.category === 'lab') {
         let labStatus = newStatus;
         if (newStatus === 'COMPLETED') labStatus = 'REPORT_READY';
         if (newStatus === 'IN_CONSULTATION') labStatus = 'SAMPLE_COLLECTED';
@@ -342,7 +368,7 @@ export function Appointments() {
       } else {
         await adminApi.updateBookingStatus(id, newStatus);
       }
-      fetchBookings(selectedDate); // Refresh the list
+      fetchBookings(selectedDate, true); // Refresh the list
     } catch (err) {
       console.error(err);
     }
@@ -354,6 +380,7 @@ export function Appointments() {
       case 'CONFIRMED': return 'bg-emerald-50 text-emerald-500';
       case 'PENDING': return 'bg-[#EBF5FF] text-[#1B5DF1]';
       case 'IN_CONSULTATION': return 'bg-blue-50 text-blue-600';
+      case 'REPORT_READY': return 'bg-amber-100 text-amber-800 border border-amber-300';
       case 'COMPLETED': return 'bg-[#0A1A3D] text-white';
       case 'CANCELLED': return 'bg-red-50 text-red-500';
       case 'WAITING': return 'bg-amber-50 text-amber-500';
@@ -618,7 +645,7 @@ export function Appointments() {
 
           <div className="flex flex-col relative gap-3">
             <AnimatePresence mode="wait">
-              {isLoading ? (
+              {isLoading && appointmentsList.length === 0 ? (
                 <motion.div key="skeletons" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col gap-3">
                   {[1, 2, 3].map((i) => (
                     <Skeleton key={i} className="h-32 rounded-2xl bg-surface border border-border" />
@@ -696,12 +723,12 @@ export function Appointments() {
                                   getStatusColor(apt.status)
                                 )}
                               >
-                                {apt.status}
+                                {apt.status === 'REPORT_READY' ? 'REPORT READY' : apt.status}
                               </button>
 
                               {activeDropdown === apt.id && (
-                                <div className="absolute top-full right-0 mt-1 w-36 bg-surface rounded-xl shadow-xl border border-border py-1.5 z-50 overflow-hidden">
-                                  {['PENDING', 'WAITING', 'IN_CONSULTATION', 'COMPLETED', 'CANCELLED'].map(status => (
+                                <div className="absolute top-full right-0 mt-1 w-44 bg-surface rounded-xl shadow-xl border border-border py-1.5 z-50 overflow-hidden">
+                                  {['PENDING', 'WAITING', 'IN_CONSULTATION', ...(apt.category === 'home_sample' ? [] : ['COMPLETED']), 'CANCELLED'].map(status => (
                                     <button
                                       key={status}
                                       onClick={(e) => {
@@ -737,32 +764,47 @@ export function Appointments() {
                             
                             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                               {apt.isNursing ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setNurseAssignModalBooking({
-                                      id: apt.id,
-                                      bookingNumber: apt.bookingNumber || apt.mqId,
-                                      patientName: apt.patientName,
-                                      patientPhone: apt.patientPhone,
-                                      serviceName: apt.serviceName || apt.type,
-                                      date: apt.date,
-                                      time: `${apt.time} ${apt.period}`,
-                                      address: apt.address,
-                                      nurseId: apt.nurseId,
-                                      nurseName: apt.nurseName,
-                                    });
-                                  }}
-                                  className={cn(
-                                    "flex items-center gap-1.5 font-bold text-[12px] sm:text-[13px] px-3.5 py-1.5 rounded-xl transition-all active:scale-95",
-                                    apt.nurseId 
-                                      ? "text-[#1B5DF1] border border-[#1B5DF1]/20 hover:bg-[#EBF5FF]" 
-                                      : "bg-[#1B5DF1] text-white hover:bg-blue-700 shadow-sm"
+                                <div className="flex items-center gap-2">
+                                  {apt.status !== 'COMPLETED' && apt.status !== 'CANCELLED' && (
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        await updateStatus(apt.id, 'COMPLETED');
+                                      }}
+                                      className="flex items-center gap-1.5 font-bold text-[12px] sm:text-[13px] px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-sm active:scale-95"
+                                      title="Mark this home nursing visit as completed"
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      Complete
+                                    </button>
                                   )}
-                                >
-                                  <User className="w-3.5 h-3.5" />
-                                  {apt.nurseId ? "Change Nurse" : "Assign Nurse"}
-                                </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setNurseAssignModalBooking({
+                                        id: apt.id,
+                                        bookingNumber: apt.bookingNumber || apt.mqId,
+                                        patientName: apt.patientName,
+                                        patientPhone: apt.patientPhone,
+                                        serviceName: apt.serviceName || apt.type,
+                                        date: apt.date,
+                                        time: `${apt.time} ${apt.period}`,
+                                        address: apt.address,
+                                        nurseId: apt.nurseId,
+                                        nurseName: apt.nurseName,
+                                      });
+                                    }}
+                                    className={cn(
+                                      "flex items-center gap-1.5 font-bold text-[12px] sm:text-[13px] px-3.5 py-1.5 rounded-xl transition-all active:scale-95",
+                                      apt.nurseId 
+                                        ? "text-[#1B5DF1] border border-[#1B5DF1]/20 hover:bg-[#EBF5FF]" 
+                                        : "bg-[#1B5DF1] text-white hover:bg-blue-700 shadow-sm"
+                                    )}
+                                  >
+                                    <User className="w-3.5 h-3.5" />
+                                    {apt.nurseId ? "Change Nurse" : "Assign Nurse"}
+                                  </button>
+                                </div>
                               ) : (
                                 <button 
                                   onClick={(e) => {

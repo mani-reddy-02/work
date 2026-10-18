@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Role, BusinessType } from '@prisma/client';
+import { checkAndExpireDoctorOverrides } from '../doctors/doctor-override.service';
 
 export const getHospitals = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -219,10 +220,21 @@ export const getHospitalDoctors = async (req: Request, res: Response, next: Next
       }
     }
 
+    await checkAndExpireDoctorOverrides();
+
+    const now = new Date();
     const whereClause: any = {
       hospitalId,
       role: Role.DOCTOR,
-      active: true
+      active: true,
+      AND: [
+        {
+          OR: [
+            { inactiveUntil: null },
+            { inactiveUntil: { lte: now } }
+          ]
+        }
+      ]
     };
 
     if (targetSpecialtyId) {
@@ -267,7 +279,15 @@ export const getHospitalDoctors = async (req: Request, res: Response, next: Next
         where: {
           hospitalId,
           role: Role.DOCTOR,
-          active: true
+          active: true,
+          AND: [
+            {
+              OR: [
+                { inactiveUntil: null },
+                { inactiveUntil: { lte: now } }
+              ]
+            }
+          ]
         },
         select: {
           id: true,

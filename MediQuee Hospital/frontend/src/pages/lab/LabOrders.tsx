@@ -59,21 +59,34 @@ export function LabOrders() {
 
   const [orders, setOrders] = useState<any[]>([])
 
-  const fetchOrders = useCallback(async () => {
-    setIsLoading(true)
+  const fetchOrders = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true)
     try {
       const res = await labApi.getLabBookings()
       setOrders(res.data || [])
     } catch (error) {
       console.error("Failed to load lab bookings:", error)
-      toast("Failed to load lab orders", "error")
+      if (!silent) toast("Failed to load lab orders", "error")
     } finally {
-      setIsLoading(false)
+      if (!silent) setIsLoading(false)
     }
   }, [toast])
 
   useEffect(() => {
     fetchOrders()
+    const interval = setInterval(() => {
+      fetchOrders(true)
+    }, 5000)
+
+    const handleFocus = () => {
+      fetchOrders(true)
+    }
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [fetchOrders])
 
   // Helper to extract clean date and time info from booking
@@ -116,7 +129,8 @@ export function LabOrders() {
 
       const rawStatus = (o.status || 'PENDING').toUpperCase()
       let statusLabel = 'WAITING'
-      if (rawStatus === 'REPORT_READY' || rawStatus === 'COMPLETED') statusLabel = 'COMPLETED'
+      if (rawStatus === 'COMPLETED') statusLabel = 'COMPLETED'
+      else if (rawStatus === 'REPORT_READY') statusLabel = isHome ? 'AWAITING USER' : 'COMPLETED'
       else if (rawStatus === 'IN_LAB_PROCESSING') statusLabel = 'IN PROCESSING'
       else if (rawStatus === 'SAMPLE_COLLECTED') statusLabel = 'SAMPLE COLLECTED'
       else if (rawStatus === 'ASSIGNED') statusLabel = 'ASSIGNED'
@@ -236,11 +250,16 @@ export function LabOrders() {
 
   // Status update actions
   const updateStatus = async (id: string, newStatus: string, payload: any = {}) => {
+    const targetOrder = mappedOrders.find(o => o.id === id)
+    if (targetOrder?.isHome && (newStatus === 'COMPLETED' || newStatus === 'REPORT_READY')) {
+      toast("Home sample collections can only be marked completed by the patient after reviewing their report", "error")
+      return
+    }
     try {
       await labApi.updateLabBookingStatus(id, { status: newStatus, ...payload })
       toast(`Order marked as ${newStatus.replace(/_/g, ' ')}`, "success")
       setAssignModalOpen(false)
-      fetchOrders()
+      fetchOrders(true)
     } catch (error: any) {
       toast(error.message || "Failed to update status", "error")
     }
@@ -616,7 +635,11 @@ export function LabOrders() {
                                 }}
                                 className={cn(
                                   "text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider cursor-pointer active:scale-95 transition-all flex items-center gap-1",
-                                  apt.rawStatus === 'REPORT_READY' || apt.rawStatus === 'COMPLETED'
+                                  apt.rawStatus === 'COMPLETED'
+                                    ? "bg-emerald-600 text-white shadow-xs"
+                                    : apt.rawStatus === 'REPORT_READY' && apt.isHome
+                                    ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                    : apt.rawStatus === 'REPORT_READY'
                                     ? "bg-[#0A1A3D] text-white shadow-xs"
                                     : apt.rawStatus === 'IN_LAB_PROCESSING' || apt.rawStatus === 'SAMPLE_COLLECTED'
                                     ? "bg-blue-50 text-blue-600 border border-blue-200"
@@ -631,11 +654,11 @@ export function LabOrders() {
                               </button>
 
                               {activeDropdown === apt.id && (
-                                <div className="absolute top-full right-0 mt-1 w-36 bg-surface rounded-xl shadow-xl border border-border py-1.5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                                <div className="absolute top-full right-0 mt-1 w-44 bg-surface rounded-xl shadow-xl border border-border py-1.5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                                   {[
                                     { label: 'Waiting', value: 'REQUESTED' },
                                     { label: 'In Consult', value: 'IN_LAB_PROCESSING' },
-                                    { label: 'Completed', value: 'REPORT_READY' },
+                                    ...(!apt.isHome ? [{ label: 'Completed', value: 'REPORT_READY' }] : []),
                                     { label: 'Cancelled', value: 'CANCELLED' },
                                   ].map((item) => (
                                     <button
@@ -698,18 +721,49 @@ export function LabOrders() {
 
                               {/* Contextual Lab Actions */}
                               {apt.rawStatus === 'REPORT_READY' && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    navigate(`/lab/report/${apt.id}`)
-                                  }}
-                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold hover:bg-emerald-100 transition-all active:scale-95 cursor-pointer"
-                                  title="View Uploaded Diagnostic Report"
-                                >
-                                  <Eye className="w-3.5 h-3.5 text-emerald-700" />
-                                  <span>View Report</span>
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                  {apt.isHome && (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-300 text-xs font-bold whitespace-nowrap">
+                                      Report Sent • Awaiting User
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      navigate(`/lab/report/${apt.id}`)
+                                    }}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold hover:bg-emerald-100 transition-all active:scale-95 cursor-pointer"
+                                    title="View Uploaded Diagnostic Report"
+                                  >
+                                    <Eye className="w-3.5 h-3.5 text-emerald-700" />
+                                    <span>View Report</span>
+                                  </button>
+                                </div>
+                              )}
+
+                              {apt.rawStatus === 'COMPLETED' && (
+                                <div className="flex items-center gap-1.5">
+                                  {apt.isHome && (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-300 text-xs font-bold whitespace-nowrap">
+                                      ✓ Completed by Patient
+                                    </span>
+                                  )}
+                                  {apt.reportUrl && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        navigate(`/lab/report/${apt.id}`)
+                                      }}
+                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold hover:bg-emerald-100 transition-all active:scale-95 cursor-pointer"
+                                      title="View Uploaded Diagnostic Report"
+                                    >
+                                      <Eye className="w-3.5 h-3.5 text-emerald-700" />
+                                      <span>View Report</span>
+                                    </button>
+                                  )}
+                                </div>
                               )}
 
                               {apt.rawStatus === 'IN_LAB_PROCESSING' && (

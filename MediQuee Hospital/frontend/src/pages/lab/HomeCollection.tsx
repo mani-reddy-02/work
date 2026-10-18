@@ -7,7 +7,7 @@ import { cn, formatPatientAddress } from "@/lib/utils"
 import { labApi } from "@/services/labApi"
 
 const filters = ['All', 'Pending', 'Collected', 'Completed']
-const filterMap: Record<string, string> = { 'Pending': 'pending', 'Collected': 'collected', 'Completed': 'ready' }
+const filterMap: Record<string, string> = { 'Pending': 'pending', 'Collected': 'collected', 'Completed': 'completed' }
 
 export function HomeCollection() {
   const navigate = useNavigate()
@@ -15,42 +15,58 @@ export function HomeCollection() {
   const [collectionRequests, setCollectionRequests] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    async function loadHomeCollections() {
-      try {
-        const res = await labApi.getLabBookings({ bookingType: 'HOME_COLLECTION' })
-        const items = (res?.data || []).map((b: any) => {
-          let st: any = 'pending'
-          if (b.status === 'SAMPLE_COLLECTED') st = 'collected'
-          else if (b.status === 'IN_LAB_PROCESSING') st = 'processing'
-          else if (b.status === 'REPORT_READY') st = 'ready'
-          else if (b.status === 'CANCELLED') st = 'cancelled'
+  const loadHomeCollections = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true)
+    try {
+      const res = await labApi.getLabBookings({ bookingType: 'HOME_COLLECTION' })
+      const items = (res?.data || []).map((b: any) => {
+        let st: any = 'pending'
+        if (b.status === 'SAMPLE_COLLECTED') st = 'collected'
+        else if (b.status === 'IN_LAB_PROCESSING') st = 'processing'
+        else if (b.status === 'REPORT_READY') st = 'ready'
+        else if (b.status === 'COMPLETED') st = 'completed'
+        else if (b.status === 'CANCELLED') st = 'cancelled'
 
-          return {
-            id: b.id,
-            patient: b.patient?.name || 'Home Collection Patient',
-            test: b.items?.map((it: any) => it.labTest?.platformTest?.name).join(', ') || 'Diagnostic Test',
-            address: formatPatientAddress(b.collectionAddress || b.patient?.address, 'Home Address on file'),
-            date: b.collectionDate ? new Date(b.collectionDate).toLocaleDateString() : new Date(b.createdAt).toLocaleDateString(),
-            time: b.collectionTimeSlot || 'Standard Slot',
-            status: st,
-            fee: `₹${b.totalAmount}`
-          }
-        })
-        setCollectionRequests(items)
-      } catch (err) {
-        console.error("Failed to load home collection bookings", err)
-      } finally {
-        setIsLoading(false)
-      }
+        return {
+          id: b.id,
+          patient: b.patient?.name || 'Home Collection Patient',
+          test: b.items?.map((it: any) => it.labTest?.platformTest?.name).join(', ') || 'Diagnostic Test',
+          address: formatPatientAddress(b.collectionAddress || b.patient?.address, 'Home Address on file'),
+          date: b.collectionDate ? new Date(b.collectionDate).toLocaleDateString() : new Date(b.createdAt).toLocaleDateString(),
+          time: b.collectionTimeSlot || 'Standard Slot',
+          status: st,
+          fee: `₹${b.totalAmount}`
+        }
+      })
+      setCollectionRequests(items)
+    } catch (err) {
+      console.error("Failed to load home collection bookings", err)
+    } finally {
+      if (!silent) setIsLoading(false)
     }
-    loadHomeCollections()
   }, [])
+
+  useEffect(() => {
+    loadHomeCollections()
+    const interval = setInterval(() => {
+      loadHomeCollections(true)
+    }, 5000)
+
+    const handleFocus = () => {
+      loadHomeCollections(true)
+    }
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [loadHomeCollections])
 
   const todayStr = new Date().toLocaleDateString()
   const todaysCount = collectionRequests.filter(r => r.date === todayStr).length
   const scheduledCount = collectionRequests.filter(r => r.status === 'pending' || r.status === 'collected').length
-  const completedCount = collectionRequests.filter(r => r.status === 'ready').length
+  const completedCount = collectionRequests.filter(r => r.status === 'completed' || r.status === 'ready').length
 
   const filtered = activeFilter === 'All' 
     ? collectionRequests 
@@ -138,7 +154,7 @@ export function HomeCollection() {
                           <p className="text-[12px] md:text-[14px] text-[#667085] truncate max-w-[200px]">{req.test}</p>
                         </div>
                       </div>
-                      <StatusBadge status={req.status} />
+                      <StatusBadge status={req.status} isHome={true} />
                     </div>
                     <div className="flex flex-col gap-1.5 md:gap-2 pl-1">
                       <div className="flex items-center gap-2 text-[12px] md:text-[14px] text-[#667085]">

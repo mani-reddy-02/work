@@ -55,6 +55,8 @@ export function LabDepartmentIcon({
 
 interface StatusBadgeProps {
   status: string
+  isHome?: boolean
+  bookingType?: string
   size?: 'sm' | 'md'
   className?: string
 }
@@ -74,9 +76,23 @@ const config: Record<string, { label: string; className: string }> = {
   cancelled:        { label: 'Cancelled',  className: 'bg-red-50 text-red-600 border border-red-200' },
 }
 
-export function StatusBadge({ status, size = 'sm', className }: StatusBadgeProps) {
+export function StatusBadge({ status, isHome, bookingType, size = 'sm', className }: StatusBadgeProps) {
   const key = (status || '').toLowerCase()
-  const c = config[key] ?? config.pending
+  const isHomeBooking = isHome || bookingType === 'HOME_COLLECTION'
+
+  let c = config[key] ?? config.pending
+  if (isHomeBooking && (key === 'ready' || key === 'report_ready')) {
+    c = {
+      label: 'Awaiting User',
+      className: 'bg-amber-50 text-amber-700 border border-amber-300'
+    }
+  } else if (isHomeBooking && key === 'completed') {
+    c = {
+      label: 'Completed',
+      className: 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+    }
+  }
+
   return (
     <span className={cn(
       'rounded-full font-semibold inline-flex items-center justify-center',

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { 
   Clock, 
   Users, 
@@ -73,7 +73,7 @@ export function Dashboard() {
       console.error("Failed to load dashboard overview:", err);
       setError(err?.message || "Failed to load live metrics");
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }, []);
 
@@ -100,17 +100,29 @@ export function Dashboard() {
     }
   }, []);
 
+  const lastFetchRef = useRef<number>(0);
+
   useEffect(() => {
     fetchOverview();
-    // Live 4-second polling for real-time synchronization
+    lastFetchRef.current = Date.now();
+
+    // 15-second gentle live polling
     const interval = setInterval(() => {
       fetchOverview(false);
-    }, 4000);
+      lastFetchRef.current = Date.now();
+    }, 15000);
 
-    const handleFocus = () => fetchOverview(false);
+    const handleThrottledSync = () => {
+      if (Date.now() - lastFetchRef.current > 8000) {
+        fetchOverview(false);
+        lastFetchRef.current = Date.now();
+      }
+    };
+
+    const handleFocus = () => handleThrottledSync();
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        fetchOverview(false);
+        handleThrottledSync();
       }
     };
 

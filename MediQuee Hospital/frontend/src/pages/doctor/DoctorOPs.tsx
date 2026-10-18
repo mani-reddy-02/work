@@ -142,15 +142,24 @@ export function DoctorOPs() {
     }
   }, []);
 
+  const lastFetchRef = useRef<number>(0);
+
   useEffect(() => {
     loadData();
+    lastFetchRef.current = Date.now();
 
-    // 4-second live polling interval
+    // 12-second live polling interval
     const interval = setInterval(() => {
       loadData(true);
-    }, 4000);
+      lastFetchRef.current = Date.now();
+    }, 12000);
 
-    const handleFocus = () => loadData(true);
+    const handleFocus = () => {
+      if (Date.now() - lastFetchRef.current > 8000) {
+        loadData(true);
+        lastFetchRef.current = Date.now();
+      }
+    };
     window.addEventListener('focus', handleFocus);
 
     return () => {
@@ -521,7 +530,7 @@ export function DoctorOPs() {
 
           <div className="flex flex-col relative gap-3">
             <AnimatePresence mode="wait">
-              {isLoading ? (
+              {isLoading && appointmentsList.length === 0 ? (
                 <motion.div key="skeletons" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   {[1, 2, 3, 4].map((i) => (
                     <Skeleton key={i} className="h-32 rounded-2xl bg-surface border border-border" />

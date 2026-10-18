@@ -454,10 +454,8 @@ const Specialties = () => {
         hospitalApi.getHospitalDoctors(selectedHospital.id, selectedDepartment || undefined, selectedDisease?.id).then((res) => {
           if (active) {
             setIsDoctorsLoading(false);
-            if (res.success && res.data && res.data.length > 0) {
+            if (res.success && Array.isArray(res.data)) {
               setDoctorsList(res.data);
-            } else if (res.success && res.data && res.data.length === 0 && hospitalSearch) {
-              setDoctorsList([]);
             }
           }
         }).catch(() => {
@@ -474,10 +472,8 @@ const Specialties = () => {
         }).then((res) => {
           if (active) {
             setIsDoctorsLoading(false);
-            if (res.success && res.data && res.data.length > 0) {
+            if (res.success && Array.isArray(res.data)) {
               setDoctorsList(res.data);
-            } else if (res.success && res.data && res.data.length === 0 && hospitalSearch) {
-              setDoctorsList([]);
             }
           }
         }).catch(() => {

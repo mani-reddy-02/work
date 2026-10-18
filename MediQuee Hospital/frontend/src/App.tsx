@@ -19,6 +19,7 @@ import { CheckIn } from "./pages/receptionist/CheckIn"
 import { BookAppointment } from "./pages/receptionist/BookAppointment"
 import { QueueScreen } from "./pages/receptionist/QueueScreen"
 import { ReceptionistAppointments } from "./pages/receptionist/ReceptionistAppointments"
+import { ReceptionistHomeNursing } from "./pages/receptionist/ReceptionistHomeNursing"
 
 // Hospital layout & pages
 import { AppLayout } from "./components/layout/AppLayout"
@@ -183,6 +184,7 @@ function AnimatedRoutes() {
             <Route path="/receptionist/check-in" element={<CheckIn />} />
             <Route path="/receptionist/book-appointment" element={<BookAppointment />} />
             <Route path="/receptionist/appointments" element={<ReceptionistAppointments />} />
+            <Route path="/receptionist/home-nursing" element={<ReceptionistHomeNursing />} />
           </Route>
 
           {/* Shared routes (require authentication, content is role-aware) */}

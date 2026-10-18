@@ -23,6 +23,8 @@ type OfficialPrescriptionModalProps = {
     clinicalNotes?: string | null;
     generalAdvice?: string | null;
     followUpDate?: string | null;
+    suggestPhysicalFollowUp?: boolean | null;
+    physicalFollowUpReason?: string | null;
     items?: PrescriptionItem[];
     vitals?: any;
   } | null;
@@ -95,6 +97,8 @@ export function OfficialPrescriptionModal({
   const clinicalNotes = prescription?.clinicalNotes || appointment.clinicalNotes || null;
   const generalAdvice = prescription?.generalAdvice || appointment.generalAdvice || null;
   const followUpDate = prescription?.followUpDate || appointment.followUpDate || null;
+  const suggestPhysicalFollowUp = prescription?.suggestPhysicalFollowUp ?? appointment.suggestPhysicalFollowUp ?? appointment.prescription?.suggestPhysicalFollowUp ?? false;
+  const physicalFollowUpReason = prescription?.physicalFollowUpReason || appointment.physicalFollowUpReason || appointment.prescription?.physicalFollowUpReason || null;
   const items: PrescriptionItem[] = prescription?.items || appointment.prescription?.items || [];
   const vitals = prescription?.vitals || appointment.vitals || null;
 
@@ -350,15 +354,37 @@ export function OfficialPrescriptionModal({
             </div>
 
             {/* 5. General Advice & Follow up */}
-            {(generalAdvice || followUpDate) && (
-              <div className="py-3 border-b border-gray-200 flex flex-col gap-1 text-xs">
+            {(generalAdvice || followUpDate || suggestPhysicalFollowUp) && (
+              <div className="py-3 border-b border-gray-200 flex flex-col gap-2 text-xs">
+                {suggestPhysicalFollowUp && (
+                  <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl flex items-start gap-3">
+                    <div className="p-1.5 rounded-lg bg-blue-100 text-[#1B5DF1] shrink-0 mt-0.5">
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-bold text-[#0A1A3D] text-[13px]">
+                        🏥 In-Person Physical Follow-up at Hospital Recommended
+                      </span>
+                      {physicalFollowUpReason && (
+                        <p className="text-gray-700 text-[12px] font-medium">
+                          <span className="font-bold text-gray-900">Reason:</span> {physicalFollowUpReason}
+                        </p>
+                      )}
+                      {followUpDate && (
+                        <p className="text-[#1B5DF1] text-[12px] font-bold">
+                          Recommended Visit Date: {followUpDate}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {generalAdvice && (
                   <div>
                     <span className="font-bold text-gray-700">General Advice / Instructions: </span>
-                    <span className="text-gray-600 leading-relaxed">{generalAdvice}</span>
+                    <span className="text-gray-600 leading-relaxed whitespace-pre-line">{generalAdvice}</span>
                   </div>
                 )}
-                {followUpDate && (
+                {followUpDate && !suggestPhysicalFollowUp && (
                   <div className="mt-1">
                     <span className="font-bold text-gray-700">Recommended Follow-up: </span>
                     <span className="text-[#1B5DF1] font-semibold">{followUpDate}</span>

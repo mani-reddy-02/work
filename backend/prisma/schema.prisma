@@ -116,6 +116,9 @@ model User {
   digitalSignature        String?
   prescriptionSettings    Json?
   whatsappConsent         Boolean?              @default(true)
+  inactiveUntil           DateTime?
+  inactiveReason          String?
+  overrideUpdatedBy       String?
   doctorBookings          OPBooking[]           @relation("DoctorBookings")
   patientBookings         OPBooking[]           @relation("PatientBookings")
   department              Department?           @relation(fields: [departmentId], references: [id])
@@ -309,6 +312,7 @@ model HomeNursingBooking {
   totalAmount                  Float
   createdAt                    DateTime       @default(now())
   updatedAt                    DateTime       @updatedAt
+  completedAt                  DateTime?
   hospitalAmount               Float?
   hospitalSharePercentage      Float?
   mediqueeAmount               Float?
@@ -450,9 +454,11 @@ model Prescription {
   hospitalId    String
   diagnosis     String
   clinicalNotes String?
-  generalAdvice String?
-  followUpDate  DateTime?
-  createdAt     DateTime           @default(now())
+  generalAdvice           String?
+  followUpDate            DateTime?
+  suggestPhysicalFollowUp Boolean?           @default(false)
+  physicalFollowUpReason  String?
+  createdAt               DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   items         PrescriptionItem[]
   booking       OPBooking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -585,6 +591,8 @@ model LabBooking {
   mediqueeAmount               Float?
   mediqueeCommissionPercentage Float?
   reportUrl                    String?
+  reportUploadedAt             DateTime?
+  completedAt                  DateTime?
   cancellationReason           String?
   items                        LabBookingItem[]
   hospital                     Hospital         @relation(fields: [hospitalId], references: [id], onDelete: Cascade)

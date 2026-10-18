@@ -5,7 +5,7 @@ import { prisma } from '../../config/prisma';
 import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { sendNotification } from '../notifications/notifications.service';
-import { LabBookingType, LabBookingStatus } from '@prisma/client';
+import { LabBookingType, LabBookingStatus, Role } from '@prisma/client';
 
 export const createLabBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -338,7 +338,7 @@ export const getHospitalLabDashboard = async (req: Request, res: Response, next:
         collectedCount++;
       } else if (b.status === 'IN_LAB_PROCESSING') {
         processingCount++;
-      } else if (b.status === 'REPORT_READY') {
+      } else if (b.status === 'REPORT_READY' || b.status === 'COMPLETED') {
         reportsReady++;
       } else if (b.status === 'CANCELLED') {
         cancelledCount++;
@@ -424,6 +424,7 @@ export const getHospitalLabDashboard = async (req: Request, res: Response, next:
       if (b.status === 'SAMPLE_COLLECTED') statusNorm = 'collected';
       else if (b.status === 'IN_LAB_PROCESSING') statusNorm = 'processing';
       else if (b.status === 'REPORT_READY') statusNorm = 'ready';
+      else if (b.status === 'COMPLETED') statusNorm = 'completed';
       else if (b.status === 'CANCELLED') statusNorm = 'cancelled';
 
       return {
@@ -537,18 +538,86 @@ export const getHospitalLabBookings = async (req: Request, res: Response, next: 
 
 export const updateLabBookingStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const hospitalId = (req as any).user.hospitalId;
+    const currentUserId = (req as any).user?.id;
+    const userRole = (req as any).user?.role;
+    const userHospitalId = (req as any).user?.hospitalId;
     const { id } = req.params;
     const { status, phlebotomistName, phlebotomistPhone, sampleCollectedAt } = req.body;
 
-    const booking = await prisma.labBooking.findFirst({ where: { id: id as string, hospitalId: hospitalId as string } });
+    const booking = await prisma.labBooking.findUnique({
+      where: { id: id as string },
+      include: {
+        patient: true,
+        hospital: true,
+        items: { include: { labTest: { include: { platformTest: true } } } }
+      }
+    });
+
     if (!booking) {
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } });
+    }
+
+    const isOwnerPatient = booking.patientId === currentUserId;
+    const isHospitalStaff = Boolean(
+      userHospitalId &&
+      booking.hospitalId === userHospitalId &&
+      (userRole === Role.HOSPITAL_ADMIN ||
+       userRole === Role.RECEPTIONIST ||
+       userRole === 'HOSPITAL' ||
+       userRole === Role.LAB_ADMIN ||
+       userRole === 'LAB_ADMIN' ||
+       userRole === 'LAB_TECHNICIAN')
+    );
+    const isSuperAdmin = userRole === Role.SUPER_ADMIN;
+
+    if (!isOwnerPatient && !isHospitalStaff && !isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'You are not authorized to update this lab booking' }
+      });
     }
 
     let mappedStatus = status;
     if (status === 'WAITING' || status === 'PENDING') mappedStatus = 'REQUESTED';
     if (status === 'IN_CONSULT' || status === 'IN_CONSULTATION') mappedStatus = 'IN_LAB_PROCESSING';
+
+    const isHome = booking.bookingType === 'HOME_COLLECTION';
+
+    // 1. Strict Rule: For Home Sample Collection, block Lab / Hospital staff from marking COMPLETED
+    if (isHome && mappedStatus === 'COMPLETED' && !isOwnerPatient && !isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'For Home Sample Collection, only the patient can mark the order as Completed after receiving their report.'
+        }
+      });
+    }
+
+    // 2. Patient-specific rules for Home Sample Collection
+    if (isOwnerPatient && !isHospitalStaff && !isSuperAdmin) {
+      if (mappedStatus !== 'COMPLETED') {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_STATUS',
+            message: 'Patients can only mark their Home Sample Collection order as COMPLETED after receiving their report.'
+          }
+        });
+      }
+
+      // Check that report is uploaded / sample collected before patient can complete
+      const hasReport = Boolean(booking.reportUrl || booking.status === 'REPORT_READY');
+      if (!hasReport) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'REPORT_NOT_READY',
+            message: 'Cannot mark as Completed until your lab test report has been uploaded and delivered.'
+          }
+        });
+      }
+    }
 
     const data: any = { status: mappedStatus };
 
@@ -557,56 +626,116 @@ export const updateLabBookingStatus = async (req: Request, res: Response, next: 
 
     if (mappedStatus === 'SAMPLE_COLLECTED') {
       if (sampleCollectedAt) data.sampleCollectedAt = new Date(sampleCollectedAt);
-      else data.sampleCollectedAt = new Date();
+      else if (!booking.sampleCollectedAt) data.sampleCollectedAt = new Date();
+    }
+
+    if (mappedStatus === 'COMPLETED') {
+      data.completedAt = new Date();
+    }
+
+    // Handle report file upload if provided
+    let uploadedFileUrl: string | null = null;
+    if (req.body.reportData) {
+      const matches = req.body.reportData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        const fileBuffer = Buffer.from(matches[2], 'base64');
+        const UPLOADS_DIR = path.join(process.cwd(), 'uploads/reports');
+        if (!fs.existsSync(UPLOADS_DIR)) {
+          fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+        }
+        const originalName = req.body.reportName || 'report.pdf';
+        const safeFileName = `${Date.now()}-${originalName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        uploadedFileUrl = `/uploads/reports/${safeFileName}`;
+        const filePath = path.join(UPLOADS_DIR, safeFileName);
+        fs.writeFileSync(filePath, fileBuffer);
+
+        data.reportUrl = uploadedFileUrl;
+        data.reportUploadedAt = new Date();
+
+        await prisma.patientReport.create({
+          data: {
+            userId: booking.patientId,
+            title: 'Lab Report - ' + booking.id.substring(0, 8).toUpperCase(),
+            hospital: booking.bookingType === 'HOME_COLLECTION' ? (booking.collectionAddress || 'Home Collection') : booking.hospital.name, 
+            date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+            status: 'Normal',
+            fileUrl: uploadedFileUrl,
+          }
+        });
+      }
+    } else if (req.body.reportUrl) {
+      uploadedFileUrl = req.body.reportUrl;
+      data.reportUrl = req.body.reportUrl;
+      data.reportUploadedAt = new Date();
+
+      await prisma.patientReport.create({
+        data: {
+          userId: booking.patientId,
+          title: 'Lab Report - ' + booking.id.substring(0, 8).toUpperCase(),
+          hospital: booking.bookingType === 'HOME_COLLECTION' ? (booking.collectionAddress || 'Home Collection') : booking.hospital.name, 
+          date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+          status: 'Normal',
+          fileUrl: req.body.reportUrl,
+        }
+      });
     }
 
     const updated = await prisma.labBooking.update({
       where: { id: id as string },
       data,
-      include: { patient: true, hospital: true }
+      include: {
+        patient: true,
+        hospital: true,
+        items: { include: { labTest: { include: { platformTest: true } } } }
+      }
     });
 
-    if (mappedStatus === 'REPORT_READY') {
-      if (req.body.reportData) {
-        const matches = req.body.reportData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-        if (matches && matches.length === 3) {
-          const fileBuffer = Buffer.from(matches[2], 'base64');
-          const UPLOADS_DIR = path.join(process.cwd(), 'uploads/reports');
-          if (!fs.existsSync(UPLOADS_DIR)) {
-            fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-          }
-          const originalName = req.body.reportName || 'report.pdf';
-          const safeFileName = `${Date.now()}-${originalName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-          const fileUrl = `/uploads/reports/${safeFileName}`;
-          const filePath = path.join(UPLOADS_DIR, safeFileName);
-          fs.writeFileSync(filePath, fileBuffer);
-          
-          await prisma.labBooking.update({
-            where: { id: updated.id },
-            data: { reportUrl: fileUrl }
-          });
-
-          await prisma.patientReport.create({
-            data: {
-              userId: updated.patientId,
-              title: 'Lab Report - ' + updated.id.substring(0, 8).toUpperCase(),
-              hospital: updated.bookingType === 'HOME_COLLECTION' ? (updated.collectionAddress || 'Home Collection') : updated.hospital.name, 
-              date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-              status: 'Normal',
-              fileUrl: fileUrl,
-            }
-          });
-        }
-      }
-
+    // Notifications
+    if (mappedStatus === 'REPORT_READY' || (uploadedFileUrl && mappedStatus !== 'COMPLETED')) {
       await sendNotification({
         hospitalId: null,
         userId: updated.patientId,
-        title: 'Lab Report Ready',
-        message: 'Your lab test report is ready for download',
+        title: isHome ? 'Home Sample Report Ready' : 'Lab Report Ready',
+        message: isHome
+          ? 'Your home sample collection report is ready for download in your app. Please review and mark your order completed.'
+          : 'Your lab test report is ready for download',
         type: 'LAB_REPORT_READY',
         metadata: { 
           bookingId: updated.id,
+          targetRoles: ['PATIENT']
+        },
+        targetRoles: ['PATIENT']
+      });
+    }
+
+    if (mappedStatus === 'COMPLETED') {
+      // 1. Notify Hospital staff & Lab
+      await sendNotification({
+        hospitalId: updated.hospitalId,
+        userId: null,
+        title: isHome ? 'Home Sample Collection Completed' : 'Lab Order Completed',
+        message: isHome
+          ? `${isOwnerPatient ? `Patient ${updated.patient?.name || 'User'}` : 'User'} has reviewed their lab report and marked Home Sample Collection (#${updated.id.substring(0, 8).toUpperCase()}) as COMPLETED.`
+          : `Lab order #${updated.id.substring(0, 8).toUpperCase()} has been completed.`,
+        type: 'LAB_ORDER_COMPLETED',
+        metadata: {
+          bookingId: updated.id,
+          status: 'COMPLETED',
+          targetRoles: ['HOSPITAL_ADMIN', 'LAB_ADMIN', 'RECEPTIONIST']
+        },
+        targetRoles: ['HOSPITAL_ADMIN', 'LAB_ADMIN', 'RECEPTIONIST']
+      });
+
+      // 2. Notify Patient confirming completion
+      await sendNotification({
+        hospitalId: null,
+        userId: updated.patientId,
+        title: 'Home Sample Collection Completed',
+        message: 'Thank you for confirming completion of your home sample collection service. Your report is securely saved in My Reports.',
+        type: 'LAB_ORDER_COMPLETED',
+        metadata: {
+          bookingId: updated.id,
+          status: 'COMPLETED',
           targetRoles: ['PATIENT']
         },
         targetRoles: ['PATIENT']

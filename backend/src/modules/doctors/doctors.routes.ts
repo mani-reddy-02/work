@@ -1,5 +1,11 @@
 import { Router } from 'express';
-import { getDoctors, getDoctorById } from './doctors.controller';
+import { 
+  getDoctors, 
+  getDoctorById, 
+  updateDoctorActiveStatus, 
+  getHospitalDoctorsStatus, 
+  getMyDoctorStatus 
+} from './doctors.controller';
 import { 
   getMyDoctorSchedule, 
   updateMyDoctorSchedule, 
@@ -13,6 +19,13 @@ const router = Router();
 // Profile alias endpoints
 router.get('/profile', authenticate, getMe);
 router.get('/me', authenticate, getMe);
+
+// Doctor live override status & hospital doctor status list (BEFORE /:id)
+router.get('/status/mine', authenticate, requireRole(['DOCTOR']), getMyDoctorStatus);
+router.get('/status', authenticate, requireRole(['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR', 'SUPER_ADMIN']), getHospitalDoctorsStatus);
+router.get('/hospital/:hospitalId/status', authenticate, requireRole(['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR', 'SUPER_ADMIN']), getHospitalDoctorsStatus);
+router.patch('/:id/active-status', authenticate, requireRole(['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR', 'SUPER_ADMIN']), updateDoctorActiveStatus);
+router.patch('/:id/override-status', authenticate, requireRole(['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR', 'SUPER_ADMIN']), updateDoctorActiveStatus);
 
 // Doctor schedule configuration routes (Protected for DOCTOR)
 router.get('/schedule', authenticate, requireRole(['DOCTOR', 'SUPER_ADMIN']), getMyDoctorSchedule);

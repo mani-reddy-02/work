@@ -356,4 +356,33 @@ export const homeNursingApi = {
       return { success: false, error: err.message || 'Network error cancelling booking' };
     }
   },
+
+  /**
+   * Update home nursing booking status (e.g. mark COMPLETED by patient or nurse).
+   */
+  async updateBookingStatus(
+    id: string,
+    status: 'COMPLETED' | 'IN_PROGRESS' | 'ASSIGNED',
+    notes?: string
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/home-nursing/bookings/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status, notes }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        return { success: false, error: json.error?.message || 'Failed to update booking status' };
+      }
+
+      return { success: true, data: json.data };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error updating booking status' };
+    }
+  },
 };

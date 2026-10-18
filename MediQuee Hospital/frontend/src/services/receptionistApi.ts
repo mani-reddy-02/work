@@ -285,5 +285,46 @@ export const receptionistApi = {
       .filter((s: any) => s.role === 'DOCTOR')
       .filter((s: any) => !departmentId || s.department?.id === departmentId)
       .map((s: any) => ({ id: s.id, name: s.name, departmentId: s.department?.id || '' }));
+  },
+
+  /**
+   * GET /api/v1/doctors/status
+   * Retrieves live doctor availability, today's schedule, and temporary override status.
+   */
+  async getDoctorsStatus(hospitalId?: string): Promise<DoctorStatusSummary[]> {
+    const url = hospitalId 
+      ? `${API_URL}/api/v1/doctors/hospital/${hospitalId}/status`
+      : `${API_URL}/api/v1/doctors/status`;
+    const res = await fetch(url, { headers: getAuthHeaders() });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error?.message || 'Failed to fetch doctor status');
+    }
+    const data = await res.json();
+    return data.data || [];
+  },
+
+  /**
+   * PATCH /api/v1/doctors/:id/active-status
+   * Sets doctor to inactive for X hours or reactivates immediately.
+   */
+  async updateDoctorActiveStatus(doctorId: string, payload: {
+    active: boolean;
+    durationHours?: number;
+    durationMinutes?: number;
+    restOfToday?: boolean;
+    inactiveUntil?: string;
+    reason?: string;
+  }): Promise<{ success: boolean; data: DoctorStatusSummary; message?: string }> {
+    const res = await fetch(`${API_URL}/api/v1/doctors/${doctorId}/active-status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error?.message || error.message || 'Failed to update doctor active status');
+    }
+    return await res.json();
   }
 };

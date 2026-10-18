@@ -9,6 +9,8 @@ export const recordConsultationSchema = z.object({
     clinicalNotes: z.string().optional().nullable(),
     generalAdvice: z.string().optional().nullable(),
     followUpDate: z.string().optional().nullable(),
+    suggestPhysicalFollowUp: z.boolean().optional().nullable(),
+    physicalFollowUpReason: z.string().optional().nullable(),
     vitals: z.object({
       systolicBp: z.number().int().min(40).max(300).optional().nullable(),
       diastolicBp: z.number().int().min(30).max(200).optional().nullable(),

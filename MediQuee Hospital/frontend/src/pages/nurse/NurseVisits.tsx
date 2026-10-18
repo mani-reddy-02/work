@@ -96,6 +96,8 @@ export function NurseVisits() {
 
   const dateInputRef = useRef<HTMLInputElement>(null);
 
+  const lastFetchRef = useRef<number>(0);
+
   const loadVisits = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
     else setIsRefreshing(true);
@@ -105,15 +107,47 @@ export function NurseVisits() {
       setAllVisits(res.all || []);
     } catch (err: any) {
       console.error("Failed to load nurse visits:", err);
-      toast(err.message || "Failed to load home visits", "error");
+      if (!silent) {
+        toast(err.message || "Failed to load home visits", "error");
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
       setIsRefreshing(false);
     }
   }, [toast]);
 
   useEffect(() => {
     loadVisits();
+    lastFetchRef.current = Date.now();
+
+    // 12-second gentle live polling
+    const timer = setInterval(() => {
+      loadVisits(true);
+      lastFetchRef.current = Date.now();
+    }, 12000);
+
+    const handleThrottledSync = () => {
+      if (Date.now() - lastFetchRef.current > 8000) {
+        loadVisits(true);
+        lastFetchRef.current = Date.now();
+      }
+    };
+
+    const handleFocus = () => handleThrottledSync();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        handleThrottledSync();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [loadVisits]);
 
   // Sync state if arrived from navigation
@@ -589,7 +623,7 @@ export function NurseVisits() {
 
         {/* Visits Cards List */}
         <AnimatePresence mode="wait">
-          {isLoading ? (
+          {isLoading && allVisits.length === 0 ? (
             <motion.div key="skeletons" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col gap-3">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-44 rounded-2xl bg-surface border border-border" />
@@ -708,14 +742,10 @@ export function NurseVisits() {
                       </a>
 
                       {isInProgress ? (
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleUpdateStatus(visit.id, 'COMPLETED'); }}
-                          disabled={actionLoadingId === visit.id}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all text-[13px] shadow-sm shadow-emerald-600/20 disabled:opacity-50"
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                          {actionLoadingId === visit.id ? "Completing..." : "Complete"}
-                        </button>
+                        <div className="flex-1 py-2 text-center text-[12px] font-bold text-amber-800 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-center gap-1.5">
+                          <Activity className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                          <span>Service in Progress (User will complete)</span>
+                        </div>
                       ) : isCompleted ? (
                         <div className="flex-1 py-2 text-center text-[12px] font-bold text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-center gap-1">
                           <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Finished (₹{visit.totalAmount})
@@ -724,7 +754,7 @@ export function NurseVisits() {
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleUpdateStatus(visit.id, 'IN_PROGRESS'); }}
                           disabled={actionLoadingId === visit.id}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-[#1769E0] hover:bg-blue-700 text-white rounded-xl font-bold transition-all text-[13px] shadow-sm shadow-[#1769E0]/20 disabled:opacity-50"
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-[#1769E0] hover:bg-blue-700 text-white rounded-xl font-bold transition-all text-[13px] shadow-sm shadow-[#1769E0]/20 disabled:opacity-50 cursor-pointer"
                         >
                           <Play className="w-4 h-4 fill-white" />
                           {actionLoadingId === visit.id ? "Starting..." : "Start Visit"}

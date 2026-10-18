@@ -1,10 +1,11 @@
 import { Video, Stethoscope, Megaphone, ChevronRight, Calendar, RefreshCw, CalendarClock, ChevronDown } from "lucide-react"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { useToast } from "@/context/ToastContext"
 import { doctorApi, type DoctorPresenceStatus } from "@/services/doctorApi"
+import { DoctorOverrideBanner } from "@/components/doctor/DoctorOverrideBanner"
 
 export function DoctorDashboard() {
   const navigate = useNavigate()
@@ -28,18 +29,27 @@ export function DoctorDashboard() {
     }
   }, []);
 
+  const lastFetchRef = useRef<number>(0);
+
   useEffect(() => {
     loadData();
+    lastFetchRef.current = Date.now();
     doctorApi.getDoctorPresence()
       .then(status => setPresenceStatus(status))
       .catch(err => console.error("Failed to load doctor presence:", err));
 
-    // Real-time live data polling every 4 seconds
+    // Real-time live data polling every 12 seconds
     const interval = setInterval(() => {
       loadData(true);
-    }, 4000);
+      lastFetchRef.current = Date.now();
+    }, 12000);
 
-    const handleFocus = () => loadData(true);
+    const handleFocus = () => {
+      if (Date.now() - lastFetchRef.current > 8000) {
+        loadData(true);
+        lastFetchRef.current = Date.now();
+      }
+    };
     window.addEventListener('focus', handleFocus);
 
     return () => {
@@ -155,6 +165,9 @@ export function DoctorDashboard() {
   return (
     <div className="flex flex-col gap-6 w-full max-w-md mx-auto md:max-w-7xl md:p-6 pb-12 bg-[#F7F8FA] min-h-full px-4 pt-4">
       
+      {/* Temporary Inactive Banner (Receptionist Override) */}
+      <DoctorOverrideBanner onStatusChange={loadData} />
+
       {/* Compact Header Section with Presence Toggle */}
       <div className="flex items-center justify-between">
         <div className="flex flex-col">

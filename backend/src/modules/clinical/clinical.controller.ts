@@ -28,6 +28,8 @@ export const recordConsultation = async (req: Request, res: Response, next: Next
       clinicalNotes,
       generalAdvice,
       followUpDate,
+      suggestPhysicalFollowUp,
+      physicalFollowUpReason,
       vitals,
       prescriptions = [],
       labTestIds = []
@@ -89,6 +91,7 @@ export const recordConsultation = async (req: Request, res: Response, next: Next
       });
 
       const parsedFollowUp = followUpDate ? new Date(followUpDate) : null;
+      const isPhysicalFollowUp = Boolean(suggestPhysicalFollowUp);
 
       if (existingPrescription) {
         // Delete old items to cleanly replace
@@ -103,6 +106,8 @@ export const recordConsultation = async (req: Request, res: Response, next: Next
             clinicalNotes: clinicalNotes || null,
             generalAdvice: generalAdvice || null,
             followUpDate: parsedFollowUp && !isNaN(parsedFollowUp.getTime()) ? parsedFollowUp : null,
+            suggestPhysicalFollowUp: isPhysicalFollowUp,
+            physicalFollowUpReason: isPhysicalFollowUp ? (physicalFollowUpReason || null) : null,
             items: {
               create: prescriptions.map((p: any) => ({
                 medicineName: p.medicineName,
@@ -127,6 +132,8 @@ export const recordConsultation = async (req: Request, res: Response, next: Next
             clinicalNotes: clinicalNotes || null,
             generalAdvice: generalAdvice || null,
             followUpDate: parsedFollowUp && !isNaN(parsedFollowUp.getTime()) ? parsedFollowUp : null,
+            suggestPhysicalFollowUp: isPhysicalFollowUp,
+            physicalFollowUpReason: isPhysicalFollowUp ? (physicalFollowUpReason || null) : null,
             items: {
               create: prescriptions.map((p: any) => ({
                 medicineName: p.medicineName,
@@ -172,6 +179,8 @@ export const recordConsultation = async (req: Request, res: Response, next: Next
         vitalsRecorded: !!vitalsRecord,
         prescriptionItemsCount: prescriptionRecord.items?.length || 0,
         labOrdersCount: labTestIds.length,
+        suggestPhysicalFollowUp: prescriptionRecord.suggestPhysicalFollowUp,
+        physicalFollowUpReason: prescriptionRecord.physicalFollowUpReason,
         status: updatedBooking.status
       };
     });
@@ -290,6 +299,8 @@ export const getPatientHistory = async (req: Request, res: Response, next: NextF
         clinicalNotes: b.prescription.clinicalNotes,
         generalAdvice: b.prescription.generalAdvice,
         followUpDate: b.prescription.followUpDate,
+        suggestPhysicalFollowUp: b.prescription.suggestPhysicalFollowUp,
+        physicalFollowUpReason: b.prescription.physicalFollowUpReason,
         createdAt: b.prescription.createdAt,
         items: b.prescription.items
       } : null,
@@ -537,6 +548,9 @@ export const sendPrescriptionToPatient = async (req: Request, res: Response, nex
     const followUp = prescription?.followUpDate
       ? `Follow-up Date: ${new Date(prescription.followUpDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`
       : null;
+    const physicalFollowUp = prescription?.suggestPhysicalFollowUp
+      ? `RECOMMENDED IN-PERSON PHYSICAL FOLLOW-UP AT HOSPITAL${prescription.physicalFollowUpReason ? ` (${prescription.physicalFollowUpReason})` : ''}`
+      : null;
 
     const summary = [
       `CONSULTING PHYSICIAN: ${doctorName} (${doctor?.qualification || 'MBBS'}, Reg No: ${doctor?.licenseNumber || 'Verified'})`,
@@ -545,6 +559,7 @@ export const sendPrescriptionToPatient = async (req: Request, res: Response, nex
       `PRESCRIBED MEDICATIONS:\n${medLines}`,
       `ADVICE & PRECAUTIONS:\n${advice}`,
       followUp,
+      physicalFollowUp,
       `HOSPITAL: ${hospitalName}`
     ].filter(Boolean).join('\n\n');
 
@@ -659,6 +674,12 @@ export const sendPrescriptionToPatient = async (req: Request, res: Response, nex
   <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; font-size: 12px;">
     ${advice}
     ${followUp ? `<br><br><b>${followUp}</b>` : ''}
+    ${prescription?.suggestPhysicalFollowUp ? `
+      <div style="margin-top: 10px; padding: 10px 12px; background: #eff6ff; border: 1.5px solid #3b82f6; border-radius: 6px;">
+        <span style="color: #1d4ed8; font-weight: 700; font-size: 12px;">🏥 In-Person Physical Follow-up at Hospital Recommended</span>
+        ${prescription.physicalFollowUpReason ? `<div style="color: #1e40af; font-size: 11px; margin-top: 3px;"><b>Reason:</b> ${prescription.physicalFollowUpReason}</div>` : ''}
+      </div>
+    ` : ''}
   </div>
 
   <div class="sig-area">

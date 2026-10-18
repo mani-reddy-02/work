@@ -21,6 +21,7 @@ router.get('/hospital/dashboard', getHospitalLabDashboard);
 router.get('/hospital', getHospitalLabBookings);
 router.get('/:id', getLabBookingById);
 router.patch('/hospital/:id/status', updateLabBookingStatus);
+router.patch('/:id/status', updateLabBookingStatus);
 router.patch('/:id/cancel', cancelLabBooking);
 
 export default router;

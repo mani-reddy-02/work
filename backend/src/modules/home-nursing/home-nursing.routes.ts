@@ -59,15 +59,17 @@ router.get('/nurse/dashboard', authenticate, getNurseDashboard);
 router.get('/nurse/visits', authenticate, getNurseVisits);
 router.patch('/nurse/visits/:id/status', authenticate, updateNurseVisitStatus);
 
-// Hospital Management endpoints (Authenticated)
+// Hospital Management endpoints (Authenticated Hospital Admin & Receptionist)
 router.get('/hospital/bookings', authenticate, getHospitalNursingBookings);
 router.patch('/hospital/bookings/:id/assign', authenticate, assignNurseToBooking);
+router.patch('/hospital/bookings/:id/status', authenticate, updateNurseVisitStatus);
 router.get('/hospital/nurses', authenticate, getHospitalNursesList);
 
 // Protected patient booking endpoints
 router.post('/bookings', authenticate, createNursingBooking);
 router.get('/bookings/my', authenticate, getMyNursingBookings);
 router.get('/bookings/:id', authenticate, getNursingBookingById);
+router.patch('/bookings/:id/status', authenticate, updateNurseVisitStatus);
 router.patch('/bookings/:id/cancel', authenticate, cancelNursingBooking);
 
 export default router;

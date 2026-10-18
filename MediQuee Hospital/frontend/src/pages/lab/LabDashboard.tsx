@@ -134,10 +134,25 @@ export function LabDashboard() {
   }, [timeframe, customStartDate, customEndDate, toast])
 
   useEffect(() => {
-    if (timeframe !== 'custom') {
-      fetchDashboard()
-    } else if (customStartDate && customEndDate) {
-      fetchDashboard(false, customStartDate, customEndDate)
+    const runFetch = () => {
+      if (timeframe !== 'custom') {
+        fetchDashboard()
+      } else if (customStartDate && customEndDate) {
+        fetchDashboard(false, customStartDate, customEndDate)
+      }
+    }
+
+    runFetch()
+    const interval = setInterval(runFetch, 5000)
+
+    const handleFocus = () => {
+      runFetch()
+    }
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
     }
   }, [timeframe, customStartDate, customEndDate, fetchDashboard])
 

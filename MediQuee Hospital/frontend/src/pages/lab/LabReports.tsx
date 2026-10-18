@@ -102,6 +102,19 @@ export function LabReports() {
 
   useEffect(() => {
     loadReports()
+    const interval = setInterval(() => {
+      loadReports(true)
+    }, 5000)
+
+    const handleFocus = () => {
+      loadReports(true)
+    }
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [loadReports])
 
   // Filter reports according to selected mode (All Modes, In-Person, Home Collection)

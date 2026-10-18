@@ -1,4 +1,4 @@
-import { X, MapPin, Phone, Clock, Calendar, CheckCircle, Play, FileText, IndianRupee, Copy, ExternalLink } from "lucide-react"
+import { X, MapPin, Phone, Clock, Calendar, CheckCircle, Play, FileText, IndianRupee, Copy, ExternalLink, Activity } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { type NurseVisit } from "@/services/nurseApi"
@@ -199,15 +199,11 @@ export function NurseVisitDetailModal({
               </a>
 
               {/* Status-dependent action button */}
-              {visit.rawStatus === 'IN_PROGRESS' && onUpdateStatus && (
-                <button
-                  onClick={() => onUpdateStatus(visit.id, 'COMPLETED')}
-                  disabled={actionLoadingId === visit.id}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-[14px] shadow-lg shadow-emerald-600/20 transition-all active:scale-[0.98] disabled:opacity-50"
-                >
-                  <CheckCircle className="w-4.5 h-4.5" />
-                  {actionLoadingId === visit.id ? "Completing..." : "Complete Service"}
-                </button>
+              {visit.rawStatus === 'IN_PROGRESS' && (
+                <div className="w-full flex items-center justify-center gap-2 py-3.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl font-bold text-[13px]">
+                  <Activity className="w-4 h-4 text-amber-600 animate-spin" />
+                  Service in Progress (User will complete)
+                </div>
               )}
 
               {visit.rawStatus !== 'IN_PROGRESS' && visit.rawStatus !== 'COMPLETED' && visit.rawStatus !== 'CANCELLED' && onUpdateStatus && (

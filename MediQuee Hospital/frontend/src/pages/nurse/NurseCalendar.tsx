@@ -621,14 +621,10 @@ export function NurseCalendar() {
                       </a>
 
                       {isInProgress ? (
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleUpdateStatus(visit.id, 'COMPLETED'); }}
-                          disabled={actionLoadingId === visit.id}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all text-[13px] shadow-sm shadow-emerald-600/20 disabled:opacity-50"
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                          {actionLoadingId === visit.id ? "Completing..." : "Complete Service"}
-                        </button>
+                        <div className="flex-1 py-1.5 text-center text-[11px] font-bold text-amber-800 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-center gap-1">
+                          <Activity className="w-3 h-3 text-amber-600 animate-spin" />
+                          <span>In Progress (User will complete)</span>
+                        </div>
                       ) : isCompleted ? (
                         <div className="flex-1 py-1.5 text-center text-[12px] font-bold text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-center gap-1">
                           <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Finished (₹{visit.totalAmount})

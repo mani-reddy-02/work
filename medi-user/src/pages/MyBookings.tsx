@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   CalendarDays,
   Clock,
@@ -10,7 +10,10 @@ import {
   TestTube,
   Home,
   ChevronRight,
-  ClipboardList
+  ClipboardList,
+  CheckCircle2,
+  Building2,
+  FileText
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
@@ -122,6 +125,22 @@ export const getStatusConfig = (status: string) => {
   }
 };
 
+export const isNursingCompletable = (status: string) => {
+  const s = (status || '').toUpperCase().trim();
+  return (
+    ['ASSIGNED', 'CONFIRMED', 'IN_PROGRESS', 'ACTIVE', 'ON_THE_WAY'].includes(s) &&
+    s !== 'COMPLETED' &&
+    s !== 'CANCELLED'
+  );
+};
+
+export const isHomeSampleCompletable = (status: string, collectionType?: string, reportUrl?: string) => {
+  if (collectionType !== 'HOME_COLLECTION') return false;
+  const s = (status || '').toUpperCase().trim();
+  const hasReport = Boolean(reportUrl || s === 'REPORT_READY');
+  return hasReport && s !== 'COMPLETED' && s !== 'CANCELLED';
+};
+
 const MyBookings = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
@@ -130,10 +149,79 @@ const MyBookings = () => {
   const [nursingBookings, setNursingBookings] = useState<HomeNursingBookingRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const lastFetchRef = useRef<number>(0);
+
+  const handleCompleteNursing = async (bookingId: string) => {
+    setCompletingId(bookingId);
+    try {
+      const res = await homeNursingApi.updateBookingStatus(bookingId, 'COMPLETED');
+      if (res.success) {
+        setNursingBookings((prev) =>
+          prev.map((b) => (b.id === bookingId ? { ...b, status: 'COMPLETED' } : b))
+        );
+        setToastMessage({
+          message: 'Home nursing service marked as completed! Moved to Past bookings.',
+          type: 'success',
+        });
+        setTimeout(() => setToastMessage(null), 4000);
+        // Silently reload in background to sync all state
+        loadBookings(true);
+      } else {
+        setToastMessage({
+          message: res.error || 'Failed to complete home nursing booking.',
+          type: 'error',
+        });
+        setTimeout(() => setToastMessage(null), 4000);
+      }
+    } catch (err: any) {
+      setToastMessage({
+        message: err.message || 'Failed to complete home nursing booking.',
+        type: 'error',
+      });
+      setTimeout(() => setToastMessage(null), 4000);
+    } finally {
+      setCompletingId(null);
+    }
+  };
+
+  const handleCompleteLab = async (bookingId: string) => {
+    setCompletingId(bookingId);
+    try {
+      const res = await labBookingApi.updateBookingStatus(bookingId, 'COMPLETED');
+      if (res.success) {
+        setLabBookings((prev) =>
+          prev.map((b) => (b.id === bookingId ? { ...b, status: 'COMPLETED' } : b))
+        );
+        setToastMessage({
+          message: 'Home sample collection marked as completed! Moved to Past bookings.',
+          type: 'success',
+        });
+        setTimeout(() => setToastMessage(null), 4000);
+        // Silently reload in background to sync all state
+        loadBookings(true);
+      } else {
+        setToastMessage({
+          message: res.error || 'Failed to complete home sample collection booking.',
+          type: 'error',
+        });
+        setTimeout(() => setToastMessage(null), 4000);
+      }
+    } catch (err: any) {
+      setToastMessage({
+        message: err.message || 'Failed to complete home sample collection booking.',
+        type: 'error',
+      });
+      setTimeout(() => setToastMessage(null), 4000);
+    } finally {
+      setCompletingId(null);
+    }
+  };
 
   const loadBookings = async (silent = false) => {
     if (!silent) setIsLoading(true);
-    setError(null);
+    if (!silent) setError(null);
     try {
       const [opRes, labRes, nursingRes] = await Promise.all([
         opAppointmentApi.fetchMyAppointments(),
@@ -167,16 +255,25 @@ const MyBookings = () => {
 
   useEffect(() => {
     loadBookings();
+    lastFetchRef.current = Date.now();
 
-    // Fast 3.5-second live polling for immediate cross-portal synchronisation
+    // 5-second gentle live polling
     const timer = setInterval(() => {
       loadBookings(true);
-    }, 3500);
+      lastFetchRef.current = Date.now();
+    }, 5000);
 
-    const handleFocus = () => loadBookings(true);
+    const handleThrottledSync = () => {
+      if (Date.now() - lastFetchRef.current > 3000) {
+        loadBookings(true);
+        lastFetchRef.current = Date.now();
+      }
+    };
+
+    const handleFocus = () => handleThrottledSync();
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        loadBookings(true);
+        handleThrottledSync();
       }
     };
 
@@ -348,7 +445,7 @@ const MyBookings = () => {
             </div>
           )}
 
-          {isLoading ? (
+          {isLoading && displayedBookings.length === 0 ? (
             <div className="col-span-full space-y-3 pt-2 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4 md:space-y-0">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 animate-pulse">
@@ -400,13 +497,31 @@ const MyBookings = () => {
                     {booking.opRecord?.doctorDesignation && (
                       <p className="text-[11px] font-medium text-blue-600 mb-0.5 truncate">{booking.opRecord.doctorDesignation}</p>
                     )}
-                    {booking.opRecord?.diseaseName && (
-                      <div className="mb-2">
+                    <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                      {booking.opRecord?.diseaseName && (
                         <span className="inline-block bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-md">
                           {booking.opRecord.diseaseName}
                         </span>
-                      </div>
-                    )}
+                      )}
+                      {booking.opRecord?.prescription?.suggestPhysicalFollowUp && (
+                        <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs">
+                          <Building2 className="w-3 h-3 text-amber-600" />
+                          Physical OP Visit Advised
+                        </span>
+                      )}
+                      {booking.type === 'LAB' && isHomeSampleCompletable(booking.status, booking.labRecord?.collectionType, booking.labRecord?.reportUrl) && (
+                        <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs animate-pulse">
+                          <Clock className="w-3 h-3 text-amber-700" />
+                          Report Ready • Awaiting Completion
+                        </span>
+                      )}
+                      {booking.type === 'LAB' && booking.status === 'COMPLETED' && booking.labRecord?.collectionType === 'HOME_COLLECTION' && (
+                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          Completed
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[12px] font-semibold text-slate-500 mb-4 truncate">{booking.subtitle}</p>
 
                     <div className="space-y-2.5">
@@ -439,20 +554,84 @@ const MyBookings = () => {
                   </div>
 
                   {/* Bottom Row */}
-                  <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                  <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
                       <span className="font-semibold">ID:</span>
-                      <strong className="font-mono text-slate-900 font-bold truncate max-w-[100px] sm:max-w-[150px]">
+                      <strong className="font-mono text-slate-900 font-bold truncate max-w-[90px] sm:max-w-[140px]">
                         {booking.displayId}
                       </strong>
                     </div>
-                    <Link
-                      to={`/booking/${booking.id}`}
-                      className="flex items-center gap-1 text-[12px] font-black text-[#0055ff] hover:text-blue-700 transition-colors"
-                    >
-                      {booking.serviceTypeLabel === 'Video Consultation' ? 'View Consultation' : 'View Details'}
-                      <ChevronRight className="w-3 h-3" />
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      {booking.type === 'NURSING' && isNursingCompletable(booking.status) && (
+                        <button
+                          disabled={completingId === booking.id}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleCompleteNursing(booking.id);
+                          }}
+                          className="flex items-center gap-1.5 font-bold text-[12px] px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+                          title="Mark this home nursing service as completed"
+                        >
+                          {completingId === booking.id ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              <span>Completing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Complete</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                      {booking.type === 'LAB' && isHomeSampleCompletable(booking.status, booking.labRecord?.collectionType, booking.labRecord?.reportUrl) && (
+                        <button
+                          disabled={completingId === booking.id}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleCompleteLab(booking.id);
+                          }}
+                          className="flex items-center gap-1.5 font-bold text-[12px] px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+                          title="Mark this home sample collection as completed"
+                        >
+                          {completingId === booking.id ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              <span>Completing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Complete</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                      {booking.type === 'LAB' && booking.labRecord?.reportUrl && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.open(booking.labRecord!.reportUrl, '_blank');
+                          }}
+                          className="flex items-center gap-1 font-bold text-[11px] px-2.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer"
+                          title="Download official laboratory report"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>Report</span>
+                        </button>
+                      )}
+                      <Link
+                        to={`/booking/${booking.id}`}
+                        className="flex items-center gap-1 text-[12px] font-black text-[#0055ff] hover:text-blue-700 transition-colors"
+                      >
+                        {booking.serviceTypeLabel === 'Video Consultation' ? 'View Consultation' : 'View Details'}
+                        <ChevronRight className="w-3 h-3" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               );
@@ -484,6 +663,40 @@ const MyBookings = () => {
           )}
         </div>
       </div>
+
+      {/* Notification Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-20 left-4 right-4 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-md mx-auto">
+          <div
+            className={cn(
+              'text-white px-4 py-3 rounded-2xl shadow-2xl text-[13px] font-semibold flex items-center justify-between gap-3 border',
+              toastMessage.type === 'error'
+                ? 'bg-rose-600 border-rose-500'
+                : 'bg-slate-900 border-slate-800'
+            )}
+          >
+            <div className="flex items-center gap-2">
+              {toastMessage.type === 'error' ? (
+                <AlertCircle className="w-4 h-4 text-rose-200 shrink-0" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              )}
+              <span>{toastMessage.message}</span>
+            </div>
+            {toastMessage.type === 'success' && activeTab === 'upcoming' && (
+              <button
+                onClick={() => {
+                  setActiveTab('past');
+                  setToastMessage(null);
+                }}
+                className="text-xs font-bold text-blue-300 hover:text-white underline shrink-0 cursor-pointer"
+              >
+                View Past
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

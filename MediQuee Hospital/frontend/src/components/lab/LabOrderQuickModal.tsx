@@ -258,17 +258,51 @@ export function LabOrderQuickModal({ order, isOpen, onClose, onOrderUpdated }: L
               )}
             </div>
 
-            {/* Diagnostic Report Section for Completed Orders */}
-            {rawStatus === 'REPORT_READY' && (
-              <div className="bg-emerald-50/80 border border-emerald-200/90 rounded-2xl p-4 flex flex-col gap-2.5">
+            {/* Diagnostic Report Section for Completed / Ready Orders */}
+            {(rawStatus === 'REPORT_READY' || rawStatus === 'COMPLETED') && (
+              <div className={cn(
+                "border rounded-2xl p-4 flex flex-col gap-2.5",
+                order.bookingType === 'HOME_COLLECTION' && rawStatus === 'REPORT_READY'
+                  ? "bg-amber-50/80 border-amber-200/90"
+                  : "bg-emerald-50/80 border-emerald-200/90"
+              )}>
                 <div className="flex items-center justify-between">
-                  <span className="text-[12px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Diagnostic Report Ready
+                  <span className={cn(
+                    "text-[12px] font-bold uppercase tracking-wider flex items-center gap-1.5",
+                    order.bookingType === 'HOME_COLLECTION' && rawStatus === 'REPORT_READY'
+                      ? "text-amber-800"
+                      : "text-emerald-800"
+                  )}>
+                    <CheckCircle2 className={cn(
+                      "w-4 h-4",
+                      order.bookingType === 'HOME_COLLECTION' && rawStatus === 'REPORT_READY'
+                        ? "text-amber-600"
+                        : "text-emerald-600"
+                    )} />
+                    {order.bookingType === 'HOME_COLLECTION' && rawStatus === 'REPORT_READY'
+                      ? 'Report Sent to Patient'
+                      : 'Diagnostic Report Ready'}
                   </span>
-                  <span className="text-[11px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Completed</span>
+                  <span className={cn(
+                    "text-[11px] font-bold px-2 py-0.5 rounded-full",
+                    order.bookingType === 'HOME_COLLECTION' && rawStatus === 'REPORT_READY'
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-emerald-100 text-emerald-800"
+                  )}>
+                    {order.bookingType === 'HOME_COLLECTION' && rawStatus === 'REPORT_READY'
+                      ? 'Awaiting User Completion'
+                      : 'Completed'}
+                  </span>
                 </div>
-                <p className="text-[13px] text-emerald-950 font-medium">
-                  The examination report has been attached to this patient's order.
+                <p className={cn(
+                  "text-[13px] font-medium",
+                  order.bookingType === 'HOME_COLLECTION' && rawStatus === 'REPORT_READY'
+                    ? "text-amber-950"
+                    : "text-emerald-950"
+                )}>
+                  {order.bookingType === 'HOME_COLLECTION' && rawStatus === 'REPORT_READY'
+                    ? 'Report has been delivered to patient app. The booking will transition to COMPLETED once the user confirms on mobile.'
+                    : "The examination report has been attached to this patient's order."}
                 </p>
                 <div className="flex items-center gap-2 pt-1">
                   <button

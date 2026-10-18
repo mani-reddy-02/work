@@ -237,7 +237,9 @@ export function PersonalInformation() {
                 <h2 className="text-[20px] font-black text-[#0A1A3D] tracking-tight">
                   {activeUser.name || "Not provided"}
                 </h2>
-                <ShieldCheck className="w-4 h-4 text-[#1769E0]" title="Verified Staff" />
+                <span title="Verified Staff" className="inline-flex">
+                  <ShieldCheck className="w-4 h-4 text-[#1769E0]" />
+                </span>
               </div>
 
               <p className="text-[13px] text-[#1769E0] font-bold mt-0.5">

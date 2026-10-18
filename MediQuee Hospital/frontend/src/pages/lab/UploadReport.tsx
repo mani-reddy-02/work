@@ -136,8 +136,14 @@ export function UploadReport() {
           <Check className="w-10 h-10 text-emerald-600" strokeWidth={2.5} />
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-          <h2 className="text-[22px] font-bold text-[#172033]">Report Uploaded</h2>
-          <p className="text-[14px] text-[#667085] mt-2">The report has been successfully attached to the order.</p>
+          <h2 className="text-[22px] font-bold text-[#172033]">
+            {selectedOrder?.bookingType === 'HOME_COLLECTION' ? 'Report Sent to Patient' : 'Report Uploaded'}
+          </h2>
+          <p className="text-[14px] text-[#667085] mt-2">
+            {selectedOrder?.bookingType === 'HOME_COLLECTION'
+              ? 'The diagnostic report has been delivered to the patient app. The booking is now awaiting patient confirmation on mobile to complete.'
+              : 'The report has been successfully attached to the order.'}
+          </p>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="flex flex-col gap-2.5 w-full">
           <button onClick={() => navigate(`/lab/report/${selectedOrder?.id}`)} className="w-full bg-primary text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-sm">
@@ -417,7 +423,7 @@ export function UploadReport() {
               onClick={handleUpload}
               className="flex-[2] bg-primary text-white font-semibold py-3.5 md:py-4 rounded-xl md:rounded-2xl disabled:opacity-70 flex items-center justify-center gap-2 hover:bg-blue-700 active:bg-blue-800 transition-colors"
             >
-              {isUploading ? <><Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" />Uploading…</> : <><Upload className="w-5 h-5 md:w-6 md:h-6" />Upload Report</>}
+              {isUploading ? <><Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" />Uploading…</> : <><Upload className="w-5 h-5 md:w-6 md:h-6" />{selectedOrder?.bookingType === 'HOME_COLLECTION' ? 'Upload & Send to Patient' : 'Upload Report'}</>}
             </button>
           )}
         </div>

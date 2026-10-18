@@ -16,9 +16,9 @@ export function ReportView() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    async function loadReport() {
+    async function loadReport(silent = false) {
       if (!id) return
-      setIsLoading(true)
+      if (!silent) setIsLoading(true)
       setError(null)
       try {
         const res = await labApi.getLabBookingById(id)
@@ -29,12 +29,25 @@ export function ReportView() {
         }
       } catch (err: any) {
         console.error("Failed to load report", err)
-        setError(err.message || "Report could not be retrieved")
+        if (!silent) setError(err.message || "Report could not be retrieved")
       } finally {
-        setIsLoading(false)
+        if (!silent) setIsLoading(false)
       }
     }
     loadReport()
+    const interval = setInterval(() => {
+      loadReport(true)
+    }, 5000)
+
+    const handleFocus = () => {
+      loadReport(true)
+    }
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [id])
 
   if (isLoading) {
@@ -130,13 +143,32 @@ export function ReportView() {
             <motion.div 
               initial={{ opacity: 0, y: 6 }} 
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 md:px-5 md:py-4"
+              className={cn(
+                "flex items-center justify-between border rounded-2xl px-4 py-3 md:px-5 md:py-4",
+                booking.bookingType === 'HOME_COLLECTION' && booking.status === 'REPORT_READY'
+                  ? "bg-amber-50 border-amber-200"
+                  : "bg-emerald-50 border-emerald-200"
+              )}
             >
               <div>
-                <p className="text-[12px] md:text-[13px] font-semibold text-emerald-800">Order & Report Status</p>
-                <p className="text-[16px] md:text-[18px] font-bold text-emerald-900">Completed</p>
+                <p className={cn(
+                  "text-[12px] md:text-[13px] font-semibold",
+                  booking.bookingType === 'HOME_COLLECTION' && booking.status === 'REPORT_READY'
+                    ? "text-amber-800"
+                    : "text-emerald-800"
+                )}>Order & Report Status</p>
+                <p className={cn(
+                  "text-[16px] md:text-[18px] font-bold",
+                  booking.bookingType === 'HOME_COLLECTION' && booking.status === 'REPORT_READY'
+                    ? "text-amber-900"
+                    : "text-emerald-900"
+                )}>
+                  {booking.bookingType === 'HOME_COLLECTION' && booking.status === 'REPORT_READY'
+                    ? 'Report Sent • Awaiting Patient'
+                    : 'Completed'}
+                </p>
               </div>
-              <StatusBadge status={booking.status} size="md" />
+              <StatusBadge status={booking.status} isHome={booking.bookingType === 'HOME_COLLECTION'} size="md" />
             </motion.div>
 
             {/* Patient Info */}

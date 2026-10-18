@@ -24,6 +24,8 @@ import {
   RefreshCw,
   ChevronRight,
   Stethoscope,
+  Building2,
+  Check,
 } from "lucide-react";
 import {
   Room,
@@ -56,6 +58,62 @@ const TIMING_OPTIONS: { value: DosageTiming; label: string }[] = [
   { value: "BEFORE_FOOD", label: "Before Food" },
   { value: "WITH_FOOD", label: "With Food" },
   { value: "EMPTY_STOMACH", label: "Empty Stomach" },
+];
+
+const FREQUENCY_PILLS = [
+  { value: '1-0-1', label: '1-0-1' },
+  { value: '1-1-1', label: '1-1-1' },
+  { value: '1-0-0', label: '1-0-0' },
+  { value: '0-0-1', label: '0-0-1' },
+  { value: 'SOS', label: 'SOS' },
+];
+
+const TIMING_PILLS: { value: DosageTiming; label: string }[] = [
+  { value: 'AFTER_FOOD', label: 'After Food' },
+  { value: 'BEFORE_FOOD', label: 'Before Food' },
+  { value: 'WITH_FOOD', label: 'With Food' },
+];
+
+const DURATION_PILLS = [
+  { days: 3, label: '3 Days' },
+  { days: 5, label: '5 Days' },
+  { days: 7, label: '7 Days' },
+  { days: 10, label: '10 Days' },
+  { days: 15, label: '15 Days' },
+  { days: 30, label: '1 Mo' },
+];
+
+const QUICK_DIAGNOSES = [
+  'Viral Fever',
+  'Acute Bronchitis',
+  'Gastroenteritis',
+  'Hypertension Follow-up',
+  'Type 2 Diabetes',
+  'Migraine',
+  'Allergic Rhinitis'
+];
+
+const GENERAL_ADVICE_PRESETS = [
+  '+ Drink plenty of warm water',
+  '+ Adequate rest for 3 days',
+  '+ Avoid oily & spicy food',
+  '+ Steam inhalation twice daily',
+  '+ Monitor temperature every 6 hours'
+];
+
+const FOLLOWUP_TIMEFRAMES = [
+  { days: 1, label: 'Tomorrow' },
+  { days: 3, label: '3 Days' },
+  { days: 5, label: '5 Days' },
+  { days: 7, label: '1 Week' },
+  { days: 14, label: '2 Weeks' },
+];
+
+const PHYSICAL_FOLLOWUP_REASONS = [
+  'Physical Examination Required',
+  'Lab Report Review',
+  'Wound / Dressing Check',
+  'Routine Checkup',
 ];
 
 const QUICK_PRESETS = [
@@ -96,9 +154,10 @@ export function DoctorVideoCallRoom({
   // In-Call Prescription Drawer & Medications State
   const [isPrescriptionOpen, setIsPrescriptionOpen] = useState<boolean>(false);
   const [diagnosis, setDiagnosis] = useState<string>("");
-  const [clinicalNotes, setClinicalNotes] = useState<string>("");
   const [generalAdvice, setGeneralAdvice] = useState<string>("");
   const [followUpDate, setFollowUpDate] = useState<string>("");
+  const [suggestPhysicalFollowUp, setSuggestPhysicalFollowUp] = useState<boolean>(false);
+  const [physicalFollowUpReason, setPhysicalFollowUpReason] = useState<string>("Physical Examination Required");
   const [prescriptions, setPrescriptions] = useState<PrescriptionItemPayload[]>([
     {
       medicineName: "",
@@ -483,9 +542,11 @@ export function DoctorVideoCallRoom({
 
     const payload: ConsultationPayload = {
       diagnosis: activeDiagnosis,
-      clinicalNotes: clinicalNotes.trim() || null,
+      clinicalNotes: null,
       generalAdvice: generalAdvice.trim() || null,
       followUpDate: followUpDate || null,
+      suggestPhysicalFollowUp: suggestPhysicalFollowUp,
+      physicalFollowUpReason: suggestPhysicalFollowUp ? (physicalFollowUpReason.trim() || 'Physical Examination Required') : null,
       prescriptions: validItems,
     };
 
@@ -834,25 +895,11 @@ export function DoctorVideoCallRoom({
                       </div>
                     </div>
 
-                    {/* Diagnosis & Findings */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-300">
-                        Diagnosis & Clinical Findings <span className="text-rose-400">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Viral Fever, Acute Pharyngitis, Migraine"
-                        value={diagnosis}
-                        onChange={(e) => setDiagnosis(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-800 border border-white/15 rounded-xl text-xs text-white placeholder-slate-500 outline-none focus:border-blue-500 font-medium"
-                      />
-                    </div>
-
-                    {/* Prescribed Medications Section */}
+                    {/* 1. Prescribed Medications Section (TOP) */}
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <label className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
-                          <span>Prescribed Medications</span>
+                          <span>Prescribed Medications (Rx)</span>
                           <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px]">
                             {validMedsCount}
                           </span>
@@ -890,17 +937,17 @@ export function DoctorVideoCallRoom({
                           {/* Medicine Name & Strength */}
                           <div className="grid grid-cols-3 gap-2">
                             <div className="col-span-2 space-y-1">
-                              <span className="text-[10px] text-slate-400">Medicine Name</span>
+                              <span className="text-[10px] text-slate-400 font-medium">Medicine Name</span>
                               <input
                                 type="text"
-                                placeholder="e.g. Paracetamol"
+                                placeholder="e.g. Paracetamol 650mg"
                                 value={med.medicineName}
                                 onChange={(e) => handleMedicationChange(index, "medicineName", e.target.value)}
                                 className="w-full px-2.5 py-1.5 bg-slate-900 border border-white/10 rounded-lg text-xs text-white placeholder-slate-500 outline-none focus:border-blue-500 font-bold"
                               />
                             </div>
                             <div className="space-y-1">
-                              <span className="text-[10px] text-slate-400">Strength</span>
+                              <span className="text-[10px] text-slate-400 font-medium">Strength</span>
                               <input
                                 type="text"
                                 placeholder="650mg"
@@ -911,91 +958,160 @@ export function DoctorVideoCallRoom({
                             </div>
                           </div>
 
-                          {/* Form, Frequency, Duration */}
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="space-y-1">
-                              <span className="text-[10px] text-slate-400">Form</span>
-                              <select
-                                value={med.dosageForm}
-                                onChange={(e) => handleMedicationChange(index, "dosageForm", e.target.value)}
-                                className="w-full px-2 py-1.5 bg-slate-900 border border-white/10 rounded-lg text-xs text-white outline-none focus:border-blue-500"
-                              >
-                                {DOSAGE_FORMS.map((f) => (
-                                  <option key={f} value={f} className="bg-slate-900">
-                                    {f}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div className="space-y-1">
-                              <span className="text-[10px] text-slate-400">Frequency</span>
-                              <select
-                                value={med.frequency}
-                                onChange={(e) => handleMedicationChange(index, "frequency", e.target.value)}
-                                className="w-full px-2 py-1.5 bg-slate-900 border border-white/10 rounded-lg text-xs text-white outline-none focus:border-blue-500 font-bold text-blue-400"
-                              >
-                                {FREQUENCY_OPTIONS.map((fq) => (
-                                  <option key={fq} value={fq} className="bg-slate-900">
-                                    {fq}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div className="space-y-1">
-                              <span className="text-[10px] text-slate-400">Days</span>
-                              <input
-                                type="number"
-                                min={1}
-                                value={med.durationDays}
-                                onChange={(e) =>
-                                  handleMedicationChange(index, "durationDays", Number(e.target.value) || 1)
-                                }
-                                className="w-full px-2.5 py-1.5 bg-slate-900 border border-white/10 rounded-lg text-xs text-white outline-none focus:border-blue-500"
-                              />
+                          {/* Quick Pills: Frequency */}
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-slate-400 font-medium">Frequency:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {FREQUENCY_PILLS.map(fp => (
+                                <button
+                                  key={fp.value}
+                                  type="button"
+                                  onClick={() => handleMedicationChange(index, "frequency", fp.value)}
+                                  className={cn(
+                                    "px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer",
+                                    med.frequency === fp.value
+                                      ? "bg-blue-600 text-white border-blue-500"
+                                      : "bg-slate-900 hover:bg-slate-700 text-slate-300 border-white/10"
+                                  )}
+                                >
+                                  {fp.label}
+                                </button>
+                              ))}
                             </div>
                           </div>
 
-                          {/* Food Timing & Instructions */}
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <span className="text-[10px] text-slate-400">Timing</span>
-                              <select
-                                value={med.timing}
-                                onChange={(e) =>
-                                  handleMedicationChange(index, "timing", e.target.value as DosageTiming)
-                                }
-                                className="w-full px-2 py-1.5 bg-slate-900 border border-white/10 rounded-lg text-xs text-white outline-none focus:border-blue-500"
-                              >
-                                {TIMING_OPTIONS.map((t) => (
-                                  <option key={t.value} value={t.value} className="bg-slate-900">
-                                    {t.label}
-                                  </option>
-                                ))}
-                              </select>
+                          {/* Quick Pills: Timing */}
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-slate-400 font-medium">Timing:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {TIMING_PILLS.map(tp => (
+                                <button
+                                  key={tp.value}
+                                  type="button"
+                                  onClick={() => handleMedicationChange(index, "timing", tp.value)}
+                                  className={cn(
+                                    "px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer",
+                                    med.timing === tp.value
+                                      ? "bg-blue-600 text-white border-blue-500"
+                                      : "bg-slate-900 hover:bg-slate-700 text-slate-300 border-white/10"
+                                  )}
+                                >
+                                  {tp.label}
+                                </button>
+                              ))}
                             </div>
+                          </div>
 
-                            <div className="space-y-1">
-                              <span className="text-[10px] text-slate-400">Instructions</span>
-                              <input
-                                type="text"
-                                placeholder="After meal"
-                                value={med.instructions || ""}
-                                onChange={(e) => handleMedicationChange(index, "instructions", e.target.value)}
-                                className="w-full px-2.5 py-1.5 bg-slate-900 border border-white/10 rounded-lg text-xs text-white placeholder-slate-500 outline-none focus:border-blue-500"
-                              />
+                          {/* Quick Pills: Duration */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400 font-medium">Duration:</span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={med.durationDays}
+                                  onChange={(e) => handleMedicationChange(index, "durationDays", Number(e.target.value) || 1)}
+                                  className="w-10 px-1 py-0.5 bg-slate-900 border border-white/10 rounded text-[10px] text-white text-center"
+                                />
+                                <span className="text-[10px] text-slate-500">days</span>
+                              </div>
                             </div>
+                            <div className="flex flex-wrap gap-1">
+                              {DURATION_PILLS.map(dp => (
+                                <button
+                                  key={dp.days}
+                                  type="button"
+                                  onClick={() => handleMedicationChange(index, "durationDays", dp.days)}
+                                  className={cn(
+                                    "px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer",
+                                    Number(med.durationDays) === dp.days
+                                      ? "bg-blue-600 text-white border-blue-500"
+                                      : "bg-slate-900 hover:bg-slate-700 text-slate-300 border-white/10"
+                                  )}
+                                >
+                                  {dp.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Instructions */}
+                          <div className="space-y-1 pt-1 border-t border-white/5">
+                            <span className="text-[10px] text-slate-400">Special Instructions</span>
+                            <input
+                              type="text"
+                              placeholder="e.g. Take with warm water at bedtime"
+                              value={med.instructions || ""}
+                              onChange={(e) => handleMedicationChange(index, "instructions", e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-slate-900 border border-white/10 rounded-lg text-xs text-white placeholder-slate-500 outline-none focus:border-blue-500"
+                            />
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    {/* General Advice & Clinical Notes */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-300">
-                        General Advice / Dietary Instructions
-                      </label>
+                    {/* 2. Diagnosis & Findings Section (BELOW MEDICATIONS) */}
+                    <div className="space-y-2 pt-2 border-t border-white/10">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-slate-300">
+                          Clinical Diagnosis <span className="text-rose-400">*</span>
+                        </label>
+                        <span className="text-[10px] text-slate-500">1-click fill</span>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="e.g. Viral Fever, Acute Pharyngitis, Migraine"
+                        value={diagnosis}
+                        onChange={(e) => setDiagnosis(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-800 border border-white/15 rounded-xl text-xs text-white placeholder-slate-500 outline-none focus:border-blue-500 font-medium"
+                      />
+                      <div className="flex flex-wrap gap-1">
+                        {QUICK_DIAGNOSES.map((diag, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setDiagnosis(diag)}
+                            className={cn(
+                              "px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer border",
+                              diagnosis === diag
+                                ? "bg-blue-600 text-white border-blue-500"
+                                : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-white/10"
+                            )}
+                          >
+                            {diag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 3. General Advice & Instructions */}
+                    <div className="space-y-2 pt-2 border-t border-white/10">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-slate-300">
+                          General Advice / Lifestyle
+                        </label>
+                        <span className="text-[10px] text-slate-500">1-click insert</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {GENERAL_ADVICE_PRESETS.map((preset, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => {
+                              const clean = preset.replace(/^\+\s*/, '').trim();
+                              setGeneralAdvice(prev => {
+                                if (!prev || !prev.trim()) return clean;
+                                if (prev.includes(clean)) return prev;
+                                return `${prev.trim()}\n• ${clean}`;
+                              });
+                            }}
+                            className="px-2 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 rounded text-[10px] font-medium transition-colors cursor-pointer"
+                          >
+                            {preset}
+                          </button>
+                        ))}
+                      </div>
                       <textarea
                         rows={2}
                         placeholder="e.g. Hydrate with plenty of warm water, adequate rest, avoid cold beverages"
@@ -1005,15 +1121,90 @@ export function DoctorVideoCallRoom({
                       />
                     </div>
 
-                    {/* Follow-up Date */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-300">Follow-up Date (Optional)</label>
-                      <input
-                        type="date"
-                        value={followUpDate}
-                        onChange={(e) => setFollowUpDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-800 border border-white/15 rounded-xl text-xs text-white outline-none focus:border-blue-500"
-                      />
+                    {/* 4. Suggest Physical Follow-up & Follow-up Date */}
+                    <div className="space-y-2 pt-2 border-t border-white/10">
+                      <div 
+                        onClick={() => setSuggestPhysicalFollowUp(prev => !prev)}
+                        className={cn(
+                          "p-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-colors",
+                          suggestPhysicalFollowUp
+                            ? "bg-blue-600/20 border-blue-500 text-blue-200"
+                            : "bg-slate-800/80 border-white/10 text-slate-300 hover:bg-slate-800"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-4 h-4 rounded flex items-center justify-center",
+                          suggestPhysicalFollowUp ? "bg-blue-600 text-white" : "border border-slate-500"
+                        )}>
+                          {suggestPhysicalFollowUp && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                        <span className="text-xs font-bold">
+                          Suggest Physical Follow-up (In-Person OP Visit)
+                        </span>
+                      </div>
+
+                      {suggestPhysicalFollowUp && (
+                        <div className="p-2.5 bg-blue-900/30 border border-blue-500/30 rounded-xl space-y-1.5">
+                          <span className="text-[10px] text-blue-300 font-bold flex items-center gap-1">
+                            <Building2 className="w-3 h-3" /> Follow-up Reason:
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {PHYSICAL_FOLLOWUP_REASONS.map((r, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => setPhysicalFollowUpReason(r)}
+                                className={cn(
+                                  "px-2 py-0.5 rounded text-[10px] font-semibold border transition-colors cursor-pointer",
+                                  physicalFollowUpReason === r
+                                    ? "bg-blue-600 text-white border-blue-500"
+                                    : "bg-slate-900 text-slate-300 border-white/10 hover:bg-slate-800"
+                                )}
+                              >
+                                {r}
+                              </button>
+                            ))}
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Reason for in-person follow-up"
+                            value={physicalFollowUpReason}
+                            onChange={(e) => setPhysicalFollowUpReason(e.target.value)}
+                            className="w-full px-2 py-1 bg-slate-900 border border-white/10 rounded text-xs text-white outline-none focus:border-blue-500"
+                          />
+                        </div>
+                      )}
+
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-bold text-slate-300">Recommended Follow-up Date</label>
+                          <div className="flex flex-wrap gap-1">
+                            {FOLLOWUP_TIMEFRAMES.map((tf, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => {
+                                  const target = new Date();
+                                  target.setDate(target.getDate() + tf.days);
+                                  const yyyy = target.getFullYear();
+                                  const mm = String(target.getMonth() + 1).padStart(2, '0');
+                                  const dd = String(target.getDate()).padStart(2, '0');
+                                  setFollowUpDate(`${yyyy}-${mm}-${dd}`);
+                                }}
+                                className="px-1.5 py-0.5 bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white rounded text-[9px] font-semibold border border-white/5 transition-colors"
+                              >
+                                {tf.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <input
+                          type="date"
+                          value={followUpDate}
+                          onChange={(e) => setFollowUpDate(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-slate-800 border border-white/15 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+                        />
+                      </div>
                     </div>
                   </div>
 

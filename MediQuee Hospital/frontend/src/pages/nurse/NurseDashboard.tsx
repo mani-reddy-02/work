@@ -16,7 +16,7 @@ import {
   Sparkles,
   ArrowRight
 } from "lucide-react"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { EmptyState } from "@/components/ui/EmptyState"
 import { useNavigate } from "react-router-dom"
@@ -38,6 +38,8 @@ export function NurseDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [todayFilter, setTodayFilter] = useState<'all' | 'in_progress' | 'assigned' | 'completed'>('all');
 
+  const lastFetchRef = useRef<number>(0);
+
   const loadDashboard = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
     else setIsRefreshing(true);
@@ -47,15 +49,47 @@ export function NurseDashboard() {
       setData(res);
     } catch (err: any) {
       console.error("Failed to load nurse dashboard:", err);
-      toast(err.message || "Failed to load nurse dashboard data", "error");
+      if (!silent) {
+        toast(err.message || "Failed to load nurse dashboard data", "error");
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
       setIsRefreshing(false);
     }
   }, [toast]);
 
   useEffect(() => {
     loadDashboard();
+    lastFetchRef.current = Date.now();
+
+    // 12-second gentle live polling
+    const timer = setInterval(() => {
+      loadDashboard(true);
+      lastFetchRef.current = Date.now();
+    }, 12000);
+
+    const handleThrottledSync = () => {
+      if (Date.now() - lastFetchRef.current > 8000) {
+        loadDashboard(true);
+        lastFetchRef.current = Date.now();
+      }
+    };
+
+    const handleFocus = () => handleThrottledSync();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        handleThrottledSync();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [loadDashboard]);
 
   const handleUpdateStatus = async (visitId: string, targetStatus: 'IN_PROGRESS' | 'COMPLETED') => {
@@ -367,14 +401,25 @@ export function NurseDashboard() {
                       <CheckCircle className="w-4 h-4 text-emerald-300" /> Finished
                     </div>
                   ) : (
-                    <button
-                      onClick={() => handleUpdateStatus(nextVisit.id, 'IN_PROGRESS')}
-                      disabled={actionLoadingId === nextVisit.id}
-                      className="flex-1 bg-white hover:bg-blue-50 text-[#1769E0] py-3 rounded-xl font-black text-[13px] flex items-center justify-center gap-1.5 shadow-md shadow-black/10 transition-all disabled:opacity-50 active:scale-[0.99]"
-                    >
-                      <Play className="w-4 h-4 fill-[#1769E0]" />
-                      {actionLoadingId === nextVisit.id ? "Starting..." : "Start Visit"}
-                    </button>
+                    <div className="flex-1 flex items-center gap-2">
+                      <button
+                        onClick={() => handleUpdateStatus(nextVisit.id, 'IN_PROGRESS')}
+                        disabled={actionLoadingId === nextVisit.id}
+                        className="flex-1 bg-white hover:bg-blue-50 text-[#1769E0] py-3 rounded-xl font-black text-[13px] flex items-center justify-center gap-1.5 shadow-md shadow-black/10 transition-all disabled:opacity-50 active:scale-[0.99] cursor-pointer"
+                      >
+                        <Play className="w-4 h-4 fill-[#1769E0]" />
+                        {actionLoadingId === nextVisit.id ? "Starting..." : "Start Visit"}
+                      </button>
+                      <button
+                        onClick={() => handleUpdateStatus(nextVisit.id, 'COMPLETED')}
+                        disabled={actionLoadingId === nextVisit.id}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-3.5 py-3 rounded-xl font-bold text-[12px] flex items-center justify-center gap-1 shadow-md transition-all disabled:opacity-50 active:scale-[0.99] cursor-pointer"
+                        title="Mark Completed"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Complete
+                      </button>
+                    </div>
                   )}
 
                   <button
@@ -547,14 +592,10 @@ export function NurseDashboard() {
                   </a>
 
                   {isInProgress ? (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleUpdateStatus(visit.id, 'COMPLETED'); }}
-                      disabled={actionLoadingId === visit.id}
-                      className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 shadow-sm shadow-emerald-600/20"
-                    >
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      {actionLoadingId === visit.id ? "Saving..." : "Complete Service"}
-                    </button>
+                    <div className="flex-1 text-center py-1.5 text-[11px] font-bold text-amber-800 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-center gap-1.5">
+                      <Activity className="w-3 h-3 text-amber-600 animate-spin" />
+                      <span>In Progress (User will complete)</span>
+                    </div>
                   ) : isCompleted ? (
                     <span className="flex-1 text-center py-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-100">
                       Finished (₹{visit.totalAmount})
@@ -563,7 +604,7 @@ export function NurseDashboard() {
                     <button
                       onClick={(e) => { e.stopPropagation(); handleUpdateStatus(visit.id, 'IN_PROGRESS'); }}
                       disabled={actionLoadingId === visit.id}
-                      className="flex-1 py-1.5 bg-[#1769E0] hover:bg-blue-700 text-white rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 shadow-sm shadow-[#1769E0]/20"
+                      className="flex-1 py-1.5 bg-[#1769E0] hover:bg-blue-700 text-white rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 shadow-sm shadow-[#1769E0]/20 cursor-pointer"
                     >
                       <Play className="w-3.5 h-3.5 fill-white" />
                       {actionLoadingId === visit.id ? "Starting..." : "Start Visit"}

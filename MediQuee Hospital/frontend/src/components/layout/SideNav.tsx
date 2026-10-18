@@ -49,6 +49,7 @@ export function SideNav({
           { to: '/receptionist', icon: LayoutGrid, label: t('dashboard') },
           { to: '/receptionist/appointments', icon: Calendar, label: t('appointments') },
           { to: '/receptionist/queue', icon: Users, label: 'Queue Management' },
+          { to: '/receptionist/home-nursing', icon: HeartHandshake, label: 'Home Nursing' },
           { to: '/receptionist/check-in', icon: UserPlus, label: 'Check-In Patient' },
           { to: '/receptionist/book-appointment', icon: CalendarClock, label: 'Book Appointment' },
           { to: '/profile', icon: User, label: t('profile') },

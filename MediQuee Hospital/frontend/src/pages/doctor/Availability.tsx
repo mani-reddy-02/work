@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useToast } from "@/context/ToastContext"
 import { doctorApi, type DayAvailability } from "@/services/doctorApi"
+import { DoctorOverrideBanner } from "@/components/doctor/DoctorOverrideBanner"
 
 export function Availability() {
   const navigate = useNavigate();
@@ -65,6 +66,10 @@ export function Availability() {
           <div className="w-9 h-9" /> {/* Spacer */}
         </div>
         <p className="text-[13px] font-medium text-muted">Set your working hours for physical and remote consultations.</p>
+      </div>
+
+      <div className="px-4 md:px-6 pt-4">
+        <DoctorOverrideBanner />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 md:p-6">
