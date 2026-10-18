@@ -5,6 +5,9 @@ export type QueueStatus = 'ARRIVED' | 'WAITING' | 'CALLED' | 'IN_CONSULTATION' |
 export interface QueueEntry {
   id: string;
   token: string;
+  tokenNumber?: number;
+  isWalkIn?: boolean;
+  place?: string;
   patientId: string;
   patientName: string;
   patientPhone?: string;
@@ -20,6 +23,7 @@ export interface QueueEntry {
   timeSlot?: string;
   opType?: string;
   reason?: string;
+  fee?: number;
 }
 
 export interface Patient {
@@ -28,21 +32,31 @@ export interface Patient {
   phone: string;
   age: number;
   gender: 'Male' | 'Female' | 'Other';
+  place?: string;
 }
 
 export interface CheckInRequest {
   patientId?: string; // If existing
-  patientData?: { name: string; phone: string; age: number; gender: string }; // If new
+  patientData?: {
+    name: string;
+    phone: string;
+    age: number;
+    gender: string;
+    place?: string;
+  };
   departmentId: string;
   doctorId?: string;
-  opType: string;
+  opType?: string;
   slotTime?: string;
   timeSlot?: string;
+  reason?: string;
+  symptoms?: string;
+  consultationFee?: number;
 }
 
 export interface BookAppointmentRequest {
   patientId?: string;
-  patientData?: { name: string; phone: string; age: number; gender: string };
+  patientData?: { name: string; phone: string; age: number; gender: string; place?: string };
   departmentId: string;
   doctorId?: string;
   date: string;
@@ -73,12 +87,12 @@ export const receptionistApi = {
    * Registers a patient and adds them to the OP queue as a WAITING walk-in.
    * Maps the CheckInRequest to the backend walk-in schema.
    */
-  async checkInPatient(request: CheckInRequest): Promise<{ token: string; queueId: string }> {
-    // Build the walk-in payload from the check-in request
+  async checkInPatient(request: CheckInRequest): Promise<{ token: string; tokenNumber?: number; queueId: string }> {
     const patientName = request.patientData?.name || 'Walk-In Patient';
     const patientPhone = request.patientData?.phone || undefined;
     const patientAge = request.patientData?.age || undefined;
     const patientGender = request.patientData?.gender || undefined;
+    const place = request.patientData?.place || undefined;
 
     const res = await fetch(`${API_URL}/api/v1/hospital/bookings/walk-in`, {
       method: 'POST',
@@ -90,19 +104,27 @@ export const receptionistApi = {
         patientPhone,
         patientAge,
         patientGender,
+        place,
         opType: request.opType || 'Normal',
+        reason: request.reason || request.symptoms,
         timeSlot: request.timeSlot || request.slotTime,
         slotTime: request.slotTime || request.timeSlot,
-        fee: 0
+        consultationFee: request.consultationFee,
+        fee: request.consultationFee || 0
       }),
     });
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
-      throw new Error(error.error?.message || 'Failed to check in patient');
+      throw new Error(error.error?.message || error.message || 'Failed to check in patient');
     }
     const data = await res.json();
-    // Return a token-like response from the booking ID
-    return { token: `OP-${data.data.id.substring(0, 6).toUpperCase()}`, queueId: data.data.id };
+    const b = data.data;
+    const tokenFormatted = b.token || (b.tokenNumber ? `Token #${String(b.tokenNumber).padStart(2, '0')}` : `OP-${b.id.substring(0, 6).toUpperCase()}`);
+    return {
+      token: tokenFormatted,
+      tokenNumber: b.tokenNumber,
+      queueId: b.id
+    };
   },
 
   /**
@@ -180,25 +202,35 @@ export const receptionistApi = {
     // Map OPBooking to QueueEntry format
     return (data.data || [])
       .filter((b: any) => !isVideoBooking(b))
-      .map((b: any) => ({
-      id: b.id,
-      token: `OP-${b.id.substring(0, 6).toUpperCase()}`,
-      patientId: b.patientId || b.id,
-      patientName: b.patientName,
-      patientPhone: b.patientPhone,
-      patientAge: b.patientAge,
-      patientGender: b.patientGender,
-      departmentId: b.departmentId,
-      departmentName: b.department?.name || '',
-      doctorId: b.doctorId,
-      doctorName: b.doctor?.name || '',
-      arrivalTime: b.appointmentDate,
-      slotTime: b.slotTime || b.timeSlot,
-      timeSlot: b.timeSlot || b.slotTime,
-      opType: b.opType || 'OP Walk-In',
-      reason: b.reason || b.condition?.name,
-      status: b.status as QueueStatus,
-    }));
+      .map((b: any) => {
+        const tokenNum = b.tokenNumber;
+        const tokenStr = tokenNum
+          ? `OP-${String(tokenNum).padStart(2, '0')}`
+          : `OP-${b.id.substring(0, 6).toUpperCase()}`;
+        return {
+          id: b.id,
+          token: tokenStr,
+          tokenNumber: tokenNum,
+          isWalkIn: b.isWalkIn,
+          place: b.place || b.patient?.address || '',
+          patientId: b.patientId || b.id,
+          patientName: b.patientName,
+          patientPhone: b.patientPhone,
+          patientAge: b.patientAge,
+          patientGender: b.patientGender,
+          departmentId: b.departmentId,
+          departmentName: b.department?.name || '',
+          doctorId: b.doctorId,
+          doctorName: b.doctor?.name || '',
+          arrivalTime: b.appointmentDate,
+          slotTime: b.slotTime || b.timeSlot,
+          timeSlot: b.timeSlot || b.slotTime,
+          opType: b.opType || (b.isWalkIn ? 'OP Walk-In' : 'OP Consultation'),
+          reason: b.reason || b.condition?.name,
+          status: b.status as QueueStatus,
+          fee: b.fee
+        };
+      });
   },
 
   /**
@@ -217,9 +249,16 @@ export const receptionistApi = {
     }
     const data = await res.json();
     const b = data.data;
+    const tokenNum = b.tokenNumber;
+    const tokenStr = tokenNum
+      ? `OP-${String(tokenNum).padStart(2, '0')}`
+      : `OP-${b.id.substring(0, 6).toUpperCase()}`;
     return {
       id: b.id,
-      token: `OP-${b.id.substring(0, 6).toUpperCase()}`,
+      token: tokenStr,
+      tokenNumber: tokenNum,
+      isWalkIn: b.isWalkIn,
+      place: b.place || b.patient?.address || '',
       patientId: b.patientId || b.id,
       patientName: b.patientName,
       patientPhone: b.patientPhone,
@@ -232,9 +271,10 @@ export const receptionistApi = {
       arrivalTime: b.appointmentDate,
       slotTime: b.slotTime || b.timeSlot,
       timeSlot: b.timeSlot || b.slotTime,
-      opType: b.opType || 'OP Walk-In',
+      opType: b.opType || (b.isWalkIn ? 'OP Walk-In' : 'OP Consultation'),
       reason: b.reason || b.condition?.name,
       status: b.status as QueueStatus,
+      fee: b.fee
     };
   },
 
@@ -271,7 +311,7 @@ export const receptionistApi = {
    * Multi-tenancy: backend filters by hospitalId from the JWT token.
    * We filter client-side for DOCTOR role since the staff endpoint returns all staff roles.
    */
-  async getDoctors(departmentId?: string): Promise<{ id: string; name: string; departmentId: string }[]> {
+  async getDoctors(departmentId?: string): Promise<{ id: string; name: string; departmentId: string; consultationFee?: number; specialization?: string; avatar?: string }[]> {
     const res = await fetch(`${API_URL}/api/v1/staff`, {
       headers: getAuthHeaders(),
     });
@@ -284,7 +324,14 @@ export const receptionistApi = {
     return (data.data || [])
       .filter((s: any) => s.role === 'DOCTOR')
       .filter((s: any) => !departmentId || s.department?.id === departmentId)
-      .map((s: any) => ({ id: s.id, name: s.name, departmentId: s.department?.id || '' }));
+      .map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        departmentId: s.department?.id || '',
+        consultationFee: s.consultationFee || 500,
+        specialization: s.specialization || '',
+        avatar: s.avatar || ''
+      }));
   },
 
   /**

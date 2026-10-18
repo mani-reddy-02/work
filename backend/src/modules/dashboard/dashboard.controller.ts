@@ -639,7 +639,9 @@ export const getHospitalRevenueAnalytics = async (req: Request, res: Response, n
         where: {
           hospitalId,
           status: { not: 'CANCELLED' },
-          appointmentDate: { gte: startDate, lte: endDate }
+          appointmentDate: { gte: startDate, lte: endDate },
+          isWalkIn: false,
+          payoutEligible: true
         },
         select: {
           id: true,
@@ -975,11 +977,11 @@ export const getHospitalRevenueAnalytics = async (req: Request, res: Response, n
 
     const [thisMonthOps, lastMonthOps, thisMonthNursing, lastMonthNursing] = await Promise.all([
       prisma.oPBooking.aggregate({
-        where: { hospitalId, status: { not: 'CANCELLED' }, appointmentDate: { gte: thisMonthStart, lte: thisMonthEnd } },
+        where: { hospitalId, status: { not: 'CANCELLED' }, appointmentDate: { gte: thisMonthStart, lte: thisMonthEnd }, isWalkIn: false, payoutEligible: true },
         _sum: { fee: true }
       }).catch(() => ({ _sum: { fee: 0 } })),
       prisma.oPBooking.aggregate({
-        where: { hospitalId, status: { not: 'CANCELLED' }, appointmentDate: { gte: lastMonthStart, lte: lastMonthEnd } },
+        where: { hospitalId, status: { not: 'CANCELLED' }, appointmentDate: { gte: lastMonthStart, lte: lastMonthEnd }, isWalkIn: false, payoutEligible: true },
         _sum: { fee: true }
       }).catch(() => ({ _sum: { fee: 0 } })),
       prisma.homeNursingBooking.aggregate({

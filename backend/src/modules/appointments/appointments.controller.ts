@@ -431,7 +431,7 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
         select: { id: true, name: true, description: true }
       },
       patient: {
-        select: { id: true, name: true, phone: true, dob: true, gender: true, avatar: true }
+        select: { id: true, name: true, phone: true, dob: true, gender: true, avatar: true, address: true }
       },
       prescription: {
         include: {
@@ -666,6 +666,9 @@ export const getAppointmentById = async (req: Request, res: Response, next: Next
         patientPhone: booking.patientPhone,
         patientAge: resolvedAge,
         patientGender: resolvedGender,
+        place: booking.place || booking.patient?.address || null,
+        isWalkIn: booking.isWalkIn,
+        tokenNumber: booking.tokenNumber,
         date: booking.appointmentDate.toISOString().split('T')[0],
         timeSlot: booking.timeSlot || booking.slotTime,
         slotTime: booking.slotTime || booking.timeSlot,
@@ -947,6 +950,9 @@ export const getMyAppointments = async (req: Request, res: Response, next: NextF
         patientPhone: b.patientPhone,
         patientAge: b.patientAge,
         patientGender: b.patientGender,
+        place: b.place || null,
+        isWalkIn: b.isWalkIn,
+        tokenNumber: b.tokenNumber,
         date: b.appointmentDate.toISOString().split('T')[0],
         timeSlot: b.timeSlot || b.slotTime,
         slotTime: b.slotTime || b.timeSlot,

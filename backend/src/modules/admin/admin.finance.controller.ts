@@ -4,6 +4,7 @@ import { prisma } from '../../config/prisma';
 export const getTransactions = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const opBookings = await prisma.oPBooking.findMany({
+      where: { isWalkIn: false, payoutEligible: true },
       orderBy: { createdAt: 'desc' },
       include: {
         hospital: { select: { id: true, name: true, hospitalShare: true, businessType: true } },
@@ -616,7 +617,7 @@ export const getRevenueAnalytics = async (req: Request, res: Response, next: Nex
   try {
     // Generate analytics based on transactions
     // Since we lack a dedicated Revenue table, we aggregate on the fly.
-    const opBookings = await prisma.oPBooking.findMany({ include: { hospital: true }});
+    const opBookings = await prisma.oPBooking.findMany({ where: { isWalkIn: false, payoutEligible: true }, include: { hospital: true }});
     const labBookings = await prisma.labBooking.findMany({ include: { hospital: true }});
     const nursingBookings = await prisma.homeNursingBooking.findMany({ include: { hospital: true }});
 
@@ -702,7 +703,7 @@ export const getRevenueAnalytics = async (req: Request, res: Response, next: Nex
 
 export const getSettlements = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const opBookings = await prisma.oPBooking.findMany({ include: { hospital: true }});
+    const opBookings = await prisma.oPBooking.findMany({ where: { isWalkIn: false, payoutEligible: true }, include: { hospital: true }});
     const labBookings = await prisma.labBooking.findMany({ include: { hospital: true }});
     const nursingBookings = await prisma.homeNursingBooking.findMany({ include: { hospital: true }});
     

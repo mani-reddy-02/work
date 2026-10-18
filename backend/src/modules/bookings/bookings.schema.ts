@@ -2,14 +2,18 @@ import { z } from 'zod';
 
 export const createWalkInBookingSchema = z.object({
   body: z.object({
-    departmentId: z.string().uuid('Invalid department ID'),
-    doctorId: z.string().uuid('Invalid doctor ID'),
+    departmentId: z.string().min(1, 'Department ID is required'),
+    doctorId: z.string().min(1, 'Doctor ID is required'),
     patientName: z.string().min(2, 'Patient name must be at least 2 characters'),
-    patientPhone: z.string().optional(),
-    patientAge: z.number().int().min(0).max(150).optional(),
-    patientGender: z.string().optional(),
+    patientPhone: z.string().optional().nullable(),
+    patientAge: z.union([z.number(), z.string().regex(/^\d+$/).transform(Number)]).optional().nullable(),
+    patientGender: z.string().optional().nullable(),
+    place: z.string().optional().nullable(),
+    reason: z.string().optional().nullable(),
+    symptoms: z.string().optional().nullable(),
     opType: z.string().default('Normal'),
-    fee: z.number().min(0).default(0),
+    fee: z.number().min(0).default(0).optional(),
+    consultationFee: z.number().min(0).optional(),
     timeSlot: z.string().optional(),
     slotTime: z.string().optional(),
     appointmentDate: z.string().optional()

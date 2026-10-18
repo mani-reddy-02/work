@@ -150,7 +150,19 @@ export function QueueScreen() {
                 </div>
                 
                 <div className="flex flex-col flex-1">
-                  <h3 className="font-bold text-[17px] text-[#0A1A3D]">{item.patientName}</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-[17px] text-[#0A1A3D]">{item.patientName}</h3>
+                    {item.place && (
+                      <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                        {item.place}
+                      </span>
+                    )}
+                    {item.isWalkIn && (
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-200">
+                        Walk-In
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[13px] font-medium text-muted mt-0.5">{item.doctorName}</p>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <div className="flex items-center gap-1">

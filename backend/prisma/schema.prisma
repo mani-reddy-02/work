@@ -213,6 +213,10 @@ model OPBooking {
   opType                       String             @default("Normal")
   patientAge                   Int?
   patientGender                String?
+  place                        String?
+  isWalkIn                     Boolean            @default(false)
+  tokenNumber                  Int?
+  payoutEligible               Boolean            @default(true)
   conditionId                  String?
   patientId                    String?
   reason                       String?

@@ -1,6 +1,6 @@
 import { 
   Search, Filter, Calendar, ArrowLeft, Play, FileText, X, RotateCcw,
-  CheckCircle2, Check, User, Phone, Clock, CalendarDays, History
+  CheckCircle2, Check, User, Phone, Clock, CalendarDays, History, MapPin
 } from "lucide-react"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useAuth } from "@/context/AuthContext"
@@ -20,6 +20,9 @@ export type DoctorAppointment = {
   patientPhone?: string; 
   patientAge?: number | string;
   patientGender?: string;
+  place?: string;
+  isWalkIn?: boolean;
+  tokenNumber?: number;
   reason?: string;
   time: string; 
   period: string;
@@ -114,13 +117,17 @@ export function DoctorOPs() {
         const parts = timeStr.trim().split(' ');
         const opTypeStr = a.opType || 'OPD';
         const diseaseStr = a.diseaseName || '';
+        const tokenDisplay = a.tokenNumber ? `Token #${String(a.tokenNumber).padStart(2, '0')}` : ((a.id || a.appointmentId || '').slice(0, 8).toUpperCase() || 'OP');
         return {
           id: a.id || a.appointmentId,
-          mqId: (a.id || a.appointmentId || '').slice(0, 8).toUpperCase() || 'OP',
+          mqId: tokenDisplay,
           patientName: a.patientName || a.name || 'Patient',
           patientPhone: a.patientPhone,
           patientAge: a.patientAge ?? a.age,
           patientGender: a.patientGender || a.gender,
+          place: a.place || a.patient?.address || '',
+          isWalkIn: a.isWalkIn,
+          tokenNumber: a.tokenNumber,
           reason: a.reason,
           time: parts[0] || '10:00',
           period: parts[1] || (timeStr.toUpperCase().includes('PM') ? 'PM' : 'AM'),
@@ -559,7 +566,19 @@ export function DoctorOPs() {
                           {/* Info & Status */}
                           <div className="flex justify-between items-start">
                             <div className="flex flex-col">
-                              <span className="text-[16px] font-bold text-[#0A1A3D] group-hover:text-[#1B5DF1] transition-colors">{apt.patientName}</span>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[16px] font-bold text-[#0A1A3D] group-hover:text-[#1B5DF1] transition-colors">{apt.patientName}</span>
+                                {apt.place && (
+                                  <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 flex items-center gap-0.5">
+                                    <MapPin className="w-2.5 h-2.5" /> {apt.place}
+                                  </span>
+                                )}
+                                {apt.isWalkIn && (
+                                  <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                    Walk-In
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex items-center gap-1.5 mt-0.5">
                                 <span className="text-[12px] font-medium text-muted">ID: {apt.mqId}</span>
                                 <span className="w-1 h-1 rounded-full bg-gray-300"></span>
@@ -945,6 +964,18 @@ export function DoctorOPs() {
                     <p className="text-[11px] font-semibold text-muted">Date & Type</p>
                     <p className="text-[13px] font-bold text-[#0A1A3D]">
                       {selectedPatient.date} • {selectedPatient.type}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-surface rounded-2xl p-3.5 border border-border flex items-center gap-3 col-span-2">
+                  <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-muted">Place / Location</p>
+                    <p className="text-[13px] font-bold text-[#0A1A3D]">
+                      {selectedPatient.place || patientFullDetails?.place || patientFullDetails?.patientAddress || 'Local / Walk-In'}
                     </p>
                   </div>
                 </div>

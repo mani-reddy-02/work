@@ -53,7 +53,7 @@ export async function generateWeeklySettlementsEngine() {
   // 2. Fetch all bookings
   const [opBookings, labBookings, nursingBookings] = await Promise.all([
     prisma.oPBooking.findMany({
-      where: { fee: { gt: 0 } },
+      where: { fee: { gt: 0 }, isWalkIn: false, payoutEligible: true },
       include: {
         hospital: { select: { id: true, name: true, hospitalShare: true, businessType: true } },
         patient: { select: { name: true } },

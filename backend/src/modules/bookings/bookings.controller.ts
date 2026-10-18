@@ -9,7 +9,20 @@ export const createWalkInBooking = async (req: Request, res: Response, next: Nex
       return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'User does not belong to a hospital' } });
     }
 
-    const { departmentId, doctorId, patientName, patientPhone, patientAge, patientGender, opType, fee } = req.body;
+    const {
+      departmentId,
+      doctorId,
+      patientName,
+      patientPhone,
+      patientAge,
+      patientGender,
+      place,
+      reason,
+      symptoms,
+      opType,
+      fee,
+      consultationFee
+    } = req.body;
 
     // Verify department belongs to hospital
     const department = await prisma.department.findFirst({
@@ -19,70 +32,124 @@ export const createWalkInBooking = async (req: Request, res: Response, next: Nex
       return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid department' } });
     }
 
-    // Verify doctor belongs to hospital and is actually a doctor
-    const doctor = await prisma.user.findFirst({
-      where: { id: doctorId, hospitalId, role: 'DOCTOR' }
-    });
-    if (!doctor) {
-      return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid doctor' } });
+    // Resolve doctor: either explicit doctorId or any active doctor in the department
+    let targetDoctorId = doctorId;
+    let doctor = null;
+
+    if (targetDoctorId && targetDoctorId !== 'any' && targetDoctorId !== '') {
+      doctor = await prisma.user.findFirst({
+        where: { id: targetDoctorId, hospitalId, role: 'DOCTOR' }
+      });
     }
+
+    if (!doctor) {
+      // Find first active doctor in this department
+      doctor = await prisma.user.findFirst({
+        where: { departmentId, hospitalId, role: 'DOCTOR', active: true }
+      });
+    }
+
+    if (!doctor) {
+      // Fallback: any doctor in this hospital
+      doctor = await prisma.user.findFirst({
+        where: { hospitalId, role: 'DOCTOR', active: true }
+      });
+    }
+
+    if (!doctor) {
+      return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'No active doctor found for this department' } });
+    }
+
+    targetDoctorId = doctor.id;
 
     const assignedSlot = req.body.timeSlot || req.body.slotTime || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     const apptDate = req.body.appointmentDate ? new Date(req.body.appointmentDate) : new Date();
 
-    // Prevent double-booking for the specified slot if doctorId and slot are provided
     const startOfAppt = new Date(apptDate);
     startOfAppt.setHours(0, 0, 0, 0);
     const endOfAppt = new Date(apptDate);
     endOfAppt.setHours(23, 59, 59, 999);
 
-    const existingBooking = await prisma.oPBooking.findFirst({
+    // Calculate next sequential queue Token Number for today for this doctor
+    const doctorTodayCount = await prisma.oPBooking.count({
       where: {
-        doctorId,
-        appointmentDate: { gte: startOfAppt, lte: endOfAppt },
-        timeSlot: assignedSlot,
-        status: { notIn: ['COMPLETED', 'CANCELLED'] }
+        doctorId: targetDoctorId,
+        appointmentDate: { gte: startOfAppt, lte: endOfAppt }
       }
     });
+    const nextTokenNum = doctorTodayCount + 1;
 
-    if (existingBooking) {
-      return res.status(409).json({
-        success: false,
-        error: {
-          code: 'SLOT_ALREADY_BOOKED',
-          message: `The selected time slot (${assignedSlot}) is already booked for this doctor.`
-        }
+    // Safe Find-or-Create Patient User record by phone without unique constraint errors (P2002)
+    let patientUser = null;
+    const cleanPhone = patientPhone ? String(patientPhone).trim() : null;
+
+    if (cleanPhone) {
+      patientUser = await prisma.user.findFirst({
+        where: { phone: cleanPhone }
       });
+
+      if (!patientUser) {
+        try {
+          patientUser = await prisma.user.create({
+            data: {
+              phone: cleanPhone,
+              name: (patientName || 'Walk-In Patient').trim(),
+              role: 'PATIENT',
+              passwordHash: '',
+              gender: patientGender || null,
+              address: place ? String(place).trim() : null,
+              active: true
+            }
+          });
+        } catch (createErr) {
+          // Concurrency safety: if another request created the user concurrently, fetch it
+          patientUser = await prisma.user.findFirst({
+            where: { phone: cleanPhone }
+          });
+        }
+      } else {
+        // If existing patient has no address, update it with place
+        if (place && !patientUser.address) {
+          await prisma.user.update({
+            where: { id: patientUser.id },
+            data: { address: String(place).trim() }
+          }).catch(() => {});
+        }
+      }
     }
 
-    const hospitalConfig = await prisma.hospital.findUnique({ where: { id: hospitalId }, select: { hospitalShare: true } });
-    const hospitalSharePct = hospitalConfig?.hospitalShare ?? 80.0;
-    const mediqueeCommissionPct = 100.0 - hospitalSharePct;
-    const feeAmount = fee || 0;
-    const hospitalAmt = feeAmount * (hospitalSharePct / 100);
-    const mediqueeAmt = feeAmount * (mediqueeCommissionPct / 100);
+    // ZERO platform commission and ZERO platform payouts for Walk-In bookings:
+    // Walk-Ins pay directly at hospital counter (cash/UPI)
+    const feeAmount = Number(consultationFee ?? fee ?? doctor.consultationFee ?? 0);
 
     const booking = await prisma.oPBooking.create({
       data: {
         hospitalId,
         departmentId,
-        doctorId,
-        patientName,
-        patientPhone,
-        patientAge,
-        patientGender,
+        doctorId: targetDoctorId,
+        patientId: patientUser?.id || null,
+        patientName: (patientName || 'Walk-In Patient').trim(),
+        patientPhone: cleanPhone,
+        patientAge: patientAge !== undefined && patientAge !== null && !isNaN(Number(patientAge)) ? Number(patientAge) : null,
+        patientGender: patientGender || null,
+        place: place ? String(place).trim() : null,
+        reason: (reason || symptoms || '').trim() || null,
         opType: opType || 'Normal',
         fee: feeAmount,
         timeSlot: assignedSlot,
+        slotTime: assignedSlot,
         status: 'WAITING',
         appointmentDate: apptDate,
-        hospitalSharePercentage: hospitalSharePct,
-        mediqueeCommissionPercentage: mediqueeCommissionPct,
-        hospitalAmount: hospitalAmt,
-        mediqueeAmount: mediqueeAmt
+        isWalkIn: true,
+        payoutEligible: false,
+        tokenNumber: nextTokenNum,
+        hospitalSharePercentage: 100.0,
+        mediqueeCommissionPercentage: 0.0,
+        hospitalAmount: 0.0,
+        mediqueeAmount: 0.0
       },
       include: {
-        doctor: { select: { id: true, name: true, avatar: true } },
+        doctor: { select: { id: true, name: true, avatar: true, consultationFee: true } },
         department: { select: { id: true, name: true } }
       }
     });
@@ -90,23 +157,38 @@ export const createWalkInBooking = async (req: Request, res: Response, next: Nex
     sendNotification({
       hospitalId,
       userId: booking.doctorId,
-      title: 'Walk-In OP Registered',
-      message: `Patient ${booking.patientName} registered for Dr. ${booking.doctor?.name || 'Doctor'} (${booking.department?.name || 'OP'})`,
+      title: `Walk-In Token #${String(nextTokenNum).padStart(2, '0')}`,
+      message: `Patient ${booking.patientName} (${place || 'Walk-In'}) checked in for Dr. ${booking.doctor?.name || 'Doctor'} - Token #${String(nextTokenNum).padStart(2, '0')}`,
       type: 'appointment',
       metadata: { 
         bookingId: booking.id, 
         patientName: booking.patientName,
+        tokenNumber: nextTokenNum,
+        token: `Token #${String(nextTokenNum).padStart(2, '0')}`,
         targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
       },
       targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
     }).catch(console.error);
 
-    // Trigger Meta WhatsApp appointment confirmation
-    import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
-      WhatsAppNotificationService.sendAppointmentConfirmation(booking.id).catch(console.error);
-    }).catch(console.error);
+    // Trigger Meta WhatsApp appointment confirmation if phone is valid
+    if (cleanPhone) {
+      import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
+        WhatsAppNotificationService.sendAppointmentConfirmation(booking.id).catch(console.error);
+      }).catch(console.error);
+    }
 
-    res.status(201).json({ success: true, data: booking });
+    const tokenFormatted = `Token #${String(nextTokenNum).padStart(2, '0')}`;
+    const opTokenCode = `OP-${String(nextTokenNum).padStart(2, '0')}`;
+
+    res.status(201).json({
+      success: true,
+      data: {
+        ...booking,
+        token: tokenFormatted,
+        tokenNumber: nextTokenNum,
+        opToken: opTokenCode
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -215,6 +297,7 @@ export const getTodayBookings = async (req: Request, res: Response, next: NextFu
         doctor: { select: { id: true, name: true, avatar: true } },
         department: { select: { id: true, name: true } },
         condition: { select: { id: true, name: true } },
+        patient: { select: { id: true, name: true, phone: true, address: true } },
         videoConsultation: { select: { id: true, roomName: true, status: true } }
       },
       orderBy: [
