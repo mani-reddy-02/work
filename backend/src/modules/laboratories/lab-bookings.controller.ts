@@ -855,7 +855,7 @@ export const getLabBookingById = async (req: Request, res: Response, next: NextF
     const userId = (req as any).user?.id;
     const hospitalId = (req as any).user?.hospitalId;
 
-    const booking = await prisma.labBooking.findUnique({
+    let booking = await prisma.labBooking.findUnique({
       where: { id: id as string },
       include: {
         items: { include: { labTest: { include: { platformTest: { include: { department: true } } } } } },
@@ -877,12 +877,43 @@ export const getLabBookingById = async (req: Request, res: Response, next: NextF
       }
     });
 
+    if (!booking && typeof id === 'string') {
+      const cleanId = id.replace(/^LB-/i, '').trim();
+      booking = await prisma.labBooking.findFirst({
+        where: {
+          OR: [
+            { id: { startsWith: cleanId.toLowerCase() } },
+            { id: { startsWith: cleanId.toUpperCase() } },
+            { id: { startsWith: cleanId } },
+          ]
+        },
+        include: {
+          items: { include: { labTest: { include: { platformTest: { include: { department: true } } } } } },
+          patient: { select: { id: true, name: true, phone: true, email: true, gender: true, dob: true, address: true } },
+          hospital: {
+            select: {
+              id: true,
+              name: true,
+              contactPhone: true,
+              contactEmail: true,
+              addressLine1: true,
+              addressLine2: true,
+              area: true,
+              city: true,
+              state: true,
+              pincode: true,
+            }
+          }
+        }
+      });
+    }
+
     if (!booking) {
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } });
     }
 
     const userRole = (req as any).user?.role;
-    const isPatient = userRole === 'PATIENT' && booking.patientId === userId;
+    const isPatient = booking.patientId === userId;
     const isHospitalStaff = Boolean(hospitalId && booking.hospitalId === hospitalId);
     const isSuperAdmin = userRole === 'SUPER_ADMIN';
 

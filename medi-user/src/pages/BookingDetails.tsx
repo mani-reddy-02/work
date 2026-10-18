@@ -118,31 +118,36 @@ const BookingDetails = () => {
       if (!silent) setIsLoading(true);
       if (!silent) setError(null);
       try {
-        // 1. Try fetching as an OP appointment
-        const opRes = await opAppointmentApi.fetchAppointmentDetails(id);
+        const [opRes, labRes, nursingRes] = await Promise.all([
+          opAppointmentApi.fetchAppointmentDetails(id).catch(() => ({ success: false, error: 'OP appointment not found' })),
+          labBookingApi.getLabBookingById(id).catch(() => ({ success: false, error: 'Lab booking not found' })),
+          homeNursingApi.getBookingById(id).catch(() => ({ success: false, error: 'Home nursing booking not found' })),
+        ]);
+
         if (opRes.success && opRes.data) {
           setAppointment(opRes.data);
           if (!silent) setIsLoading(false);
           return;
         }
 
-        // 2. Try fetching as a Lab booking
-        const labRes = await labBookingApi.getLabBookingById(id);
         if (labRes.success && labRes.data) {
           setLabBooking(labRes.data);
           if (!silent) setIsLoading(false);
           return;
         }
 
-        // 3. Try fetching as a Home Nursing booking
-        const nursingRes = await homeNursingApi.getBookingById(id);
         if (nursingRes.success && nursingRes.data) {
           setNursingBooking(nursingRes.data);
           if (!silent) setIsLoading(false);
           return;
         }
 
-        if (!silent) setError(opRes.error || labRes.error || nursingRes.error || 'Booking not found');
+        if (!silent) {
+          const authError = [opRes.error, labRes.error, nursingRes.error].find(
+            (e) => typeof e === 'string' && (e.includes('Unauthorized') || e.includes('FORBIDDEN') || e.includes('permission'))
+          );
+          setError(authError || 'Booking not found');
+        }
       } catch (err: any) {
         if (!silent) setError(err.message || 'Booking not found');
       } finally {
