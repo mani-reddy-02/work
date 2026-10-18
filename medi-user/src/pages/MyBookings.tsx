@@ -315,19 +315,38 @@ const MyBookings = () => {
     });
 
     // Map Lab Bookings: COMPLETED and CANCELLED move to Past, pending/in-progress stay in Upcoming
-    labBookings.forEach((l) => {
+    labBookings.forEach((l: any) => {
       const isStatusPast = l.status === 'COMPLETED' || l.status === 'CANCELLED';
+
+      const rawTests = l.items?.map((i: any) => i.labTest?.platformTest?.name).filter(Boolean) || [];
+      const isHome = (l.collectionType || l.bookingType) === 'HOME_COLLECTION';
+      const testTitle = l.testName || (rawTests.length > 0 ? rawTests.join(', ') : (isHome ? 'Home Sample Collection' : 'Diagnostic Lab Test'));
+      const labName = l.laboratoryName || l.hospital?.name || 'Laboratory';
+
+      const rawDate = l.date || l.bookingDate || (l.collectionDate ? String(l.collectionDate).split('T')[0] : (l.createdAt ? String(l.createdAt).split('T')[0] : ''));
+      const rawTime = l.timeSlot || l.time || l.collectionTimeSlot || (isHome ? 'Standard Slot' : 'Flexible Hours');
+
+      const labAddressParts = [
+        l.hospital?.addressLine1,
+        l.hospital?.area,
+        l.hospital?.city
+      ].filter(Boolean).join(', ');
+
+      const loc = isHome
+        ? (l.collectionAddress || 'Home Collection')
+        : (l.laboratoryAddress || labAddressParts || labName || 'Hospital Visit');
 
       const unified: UnifiedBooking = {
         id: l.id,
-        displayId: l.bookingNumber || l.bookingId || l.id,
+        displayId: l.bookingNumber || l.bookingId || (l.id ? `LB-${l.id.slice(0, 8).toUpperCase()}` : l.id),
         type: 'LAB',
-        serviceTypeLabel: l.collectionType === 'HOME_COLLECTION' ? 'Home Sample Collection' : 'Lab Visit',
-        title: l.testName,
-        subtitle: l.laboratoryName,
-        date: formatDate(l.date || l.bookingDate),
-        timeSlot: l.timeSlot || l.time,
-        location: l.collectionType === 'HOME_COLLECTION' ? l.collectionAddress || 'Home Collection' : l.laboratoryAddress || l.laboratoryName || 'Contact laboratory for location',
+        serviceTypeLabel: isHome ? 'Home Sample Collection' : 'Lab Visit',
+        title: testTitle,
+        subtitle: labName,
+        date: formatDate(rawDate),
+        rawDate: rawDate,
+        timeSlot: rawTime,
+        location: loc,
         status: l.status,
         labRecord: l,
       };
@@ -359,8 +378,8 @@ const MyBookings = () => {
     });
 
     const sorter = (a: UnifiedBooking, b: UnifiedBooking) => {
-      const dateA = a.opRecord?.date || a.labRecord?.date || a.labRecord?.bookingDate || a.nursingRecord?.date || '';
-      const dateB = b.opRecord?.date || b.labRecord?.date || b.labRecord?.bookingDate || b.nursingRecord?.date || '';
+      const dateA = a.opRecord?.date || a.labRecord?.date || a.labRecord?.bookingDate || (a.labRecord as any)?.collectionDate || a.nursingRecord?.date || '';
+      const dateB = b.opRecord?.date || b.labRecord?.date || b.labRecord?.bookingDate || (b.labRecord as any)?.collectionDate || b.nursingRecord?.date || '';
       return new Date(dateB).getTime() - new Date(dateA).getTime();
     };
 

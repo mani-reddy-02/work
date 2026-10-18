@@ -748,18 +748,102 @@ export const updateLabBookingStatus = async (req: Request, res: Response, next: 
   }
 };
 
+export const formatLabBookingResponse = (booking: any) => {
+  if (!booking) return booking;
+  const tests = booking.items?.map((i: any) => i.labTest?.platformTest).filter(Boolean) || [];
+  const testNames = tests.map((t: any) => t.name).filter(Boolean);
+  const isHome = booking.bookingType === 'HOME_COLLECTION';
+  const testName = testNames.length > 0 
+    ? testNames.join(', ') 
+    : (isHome ? 'Home Sample Collection' : 'Diagnostic Lab Test');
+  const category = tests[0]?.department?.name || 'Diagnostic';
+  const sampleType = tests[0]?.specimenType || 'SERUM';
+  const description = tests[0]?.description || '';
+
+  const hospitalAddressParts = [
+    booking.hospital?.addressLine1,
+    booking.hospital?.addressLine2,
+    booking.hospital?.area,
+    booking.hospital?.city,
+    booking.hospital?.state,
+    booking.hospital?.pincode
+  ].filter(Boolean);
+  const laboratoryAddress = hospitalAddressParts.length > 0 
+    ? hospitalAddressParts.join(', ') 
+    : (booking.hospital?.name || 'Laboratory');
+
+  let dateStr = '';
+  if (booking.collectionDate instanceof Date) {
+    dateStr = booking.collectionDate.toISOString().split('T')[0];
+  } else if (booking.collectionDate) {
+    dateStr = String(booking.collectionDate).split('T')[0];
+  } else if (booking.createdAt) {
+    dateStr = new Date(booking.createdAt).toISOString().split('T')[0];
+  }
+
+  const timeStr = booking.collectionTimeSlot || (isHome ? 'Standard Slot' : 'Flexible Hours');
+  const bookingNumber = booking.id ? `LB-${booking.id.slice(0, 8).toUpperCase()}` : '';
+
+  return {
+    ...booking,
+    bookingId: booking.id,
+    bookingNumber,
+    type: 'LAB',
+    bookingType: booking.bookingType,
+    collectionType: booking.bookingType,
+    testName,
+    testId: booking.items?.[0]?.labTestId || '',
+    category,
+    sampleType,
+    desc: description,
+    description,
+    laboratoryId: booking.hospitalId,
+    laboratoryName: booking.hospital?.name || 'Laboratory',
+    laboratoryAddress,
+    laboratoryPhone: booking.hospital?.contactPhone || '',
+    patientName: booking.patient?.name || '',
+    patientPhone: booking.patient?.phone || '',
+    patientEmail: booking.patient?.email || '',
+    patientGender: booking.patient?.gender || '',
+    date: dateStr,
+    bookingDate: dateStr,
+    timeSlot: timeStr,
+    time: timeStr,
+    amount: booking.totalAmount,
+    testPrice: (booking.totalAmount || 0) - (booking.homeCollectionFee || 0),
+    collectionFee: booking.homeCollectionFee || 0,
+    paymentStatus: booking.paymentStatus || 'PENDING',
+  };
+};
+
 export const getMyLabBookings = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user.id;
     const bookings = await prisma.labBooking.findMany({
       where: { patientId: userId },
       include: {
-        items: { include: { labTest: { include: { platformTest: true } } } },
-        hospital: { select: { id: true, name: true } }
+        items: { include: { labTest: { include: { platformTest: { include: { department: true } } } } } },
+        hospital: {
+          select: {
+            id: true,
+            name: true,
+            contactPhone: true,
+            contactEmail: true,
+            addressLine1: true,
+            addressLine2: true,
+            area: true,
+            city: true,
+            state: true,
+            pincode: true,
+          }
+        },
+        patient: { select: { id: true, name: true, phone: true, email: true, gender: true, dob: true, address: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
-    res.json({ success: true, data: bookings });
+
+    const formatted = bookings.map(formatLabBookingResponse);
+    res.json({ success: true, data: formatted });
   } catch (error) {
     next(error);
   }
@@ -774,9 +858,22 @@ export const getLabBookingById = async (req: Request, res: Response, next: NextF
     const booking = await prisma.labBooking.findUnique({
       where: { id: id as string },
       include: {
-        items: { include: { labTest: { include: { platformTest: true } } } },
+        items: { include: { labTest: { include: { platformTest: { include: { department: true } } } } } },
         patient: { select: { id: true, name: true, phone: true, email: true, gender: true, dob: true, address: true } },
-        hospital: { select: { id: true, name: true } }
+        hospital: {
+          select: {
+            id: true,
+            name: true,
+            contactPhone: true,
+            contactEmail: true,
+            addressLine1: true,
+            addressLine2: true,
+            area: true,
+            city: true,
+            state: true,
+            pincode: true,
+          }
+        }
       }
     });
 
@@ -793,16 +890,7 @@ export const getLabBookingById = async (req: Request, res: Response, next: NextF
       return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Unauthorized access to this booking' } });
     }
 
-    const responseData = {
-      ...booking,
-      collectionType: booking.bookingType,
-      amount: booking.totalAmount,
-      testPrice: (booking.totalAmount || 0) - (booking.homeCollectionFee || 0),
-      collectionFee: booking.homeCollectionFee || 0,
-      bookingNumber: (booking as any).bookingNumber || booking.id,
-      paymentStatus: (booking as any).paymentStatus || 'PENDING'
-    };
-
+    const responseData = formatLabBookingResponse(booking);
     res.json({ success: true, data: responseData });
   } catch (error) {
     next(error);
