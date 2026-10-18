@@ -6,7 +6,7 @@ const router = Router();
 
 // Protect all hospital dashboard routes with authentication and staff roles
 router.use(authenticate);
-router.use(requireRole(['HOSPITAL_ADMIN', 'RECEPTIONIST', 'DOCTOR', 'NURSE', 'SUPER_ADMIN']));
+router.use(requireRole(['HOSPITAL_ADMIN', 'RECEPTIONIST', 'DOCTOR', 'NURSE', 'LAB_ADMIN', 'SUPER_ADMIN']));
 
 // GET /api/v1/hospital/dashboard/overview
 router.get('/overview', getHospitalDashboardOverview);

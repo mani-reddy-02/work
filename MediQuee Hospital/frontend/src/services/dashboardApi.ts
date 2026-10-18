@@ -131,6 +131,8 @@ export interface PayoutTransaction {
 }
 
 export interface RevenueAnalyticsResponse {
+  businessType?: string;
+  hospitalName?: string;
   totalRevenue: number;
   totalGross?: number;
   totalPayout?: number;

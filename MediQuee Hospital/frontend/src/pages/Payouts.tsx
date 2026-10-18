@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import { 
   Calendar as CalendarIcon, 
   Stethoscope, 
@@ -199,10 +199,12 @@ function PaginationBar({
 export function Payouts() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, role } = useAuth();
 
   const isLabUser = role === 'lab' || user?.role === 'LAB_ADMIN';
   const isHospitalLab = isLabUser && user?.hospital?.businessType !== 'LABORATORY';
+  const isStandaloneLab = (isLabUser && user?.hospital?.businessType === 'LABORATORY') || location.pathname.includes('/lab') || payoutsData?.businessType === 'LABORATORY';
 
   const [selectedPreset, setSelectedPreset] = useState<DatePreset>('week');
   const [startDate, setStartDate] = useState<string>('');
@@ -261,10 +263,12 @@ export function Payouts() {
     setServiceStatusFilter('ALL');
   }, [selectedServiceDetail]);
 
-  // Requirement 1: Header Back Button Handler
+  // Header Back Button Handler: return to lab dashboard if lab user
   const handleHeaderBack = () => {
     if (selectedServiceDetail) {
       setSelectedServiceDetail(null);
+    } else if (isLabUser || location.pathname.startsWith('/lab')) {
+      navigate('/lab');
     } else {
       navigate('/dashboard');
     }
@@ -541,7 +545,7 @@ export function Payouts() {
               )}
             </h1>
             <span className="text-[11px] sm:text-[12px] text-muted font-medium">
-              Hospital Share: {hospitalSharePercent}% &middot; Platform Fee: {adminSharePercent}%
+              {isStandaloneLab ? 'Laboratory Share' : 'Hospital Share'}: {hospitalSharePercent}% &middot; Platform Fee: {adminSharePercent}%
             </span>
           </div>
         </div>
@@ -962,7 +966,10 @@ export function Payouts() {
 
             {/* Service Switcher Tabs */}
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-1">
-              {(Object.keys(SERVICE_CONFIG) as ServiceDetailKey[]).map((key) => {
+              {((isStandaloneLab 
+                ? ['labTests', 'homeSampleCollection'] 
+                : Object.keys(SERVICE_CONFIG)
+              ) as ServiceDetailKey[]).map((key) => {
                 const cfg = SERVICE_CONFIG[key];
                 const isCurrent = selectedServiceDetail === key;
                 return (
@@ -1247,12 +1254,12 @@ export function Payouts() {
 
           {error && (
             <div className="bg-amber-50/80 border border-amber-200/60 text-amber-800 text-xs px-3.5 py-2.5 rounded-xl flex items-center justify-between">
-              <span>Unable to refresh payout metrics. Showing fallback data.</span>
+              <span>{error}</span>
               <button onClick={() => fetchPayouts(selectedPreset, startDate, endDate, true)} className="font-semibold underline ml-2">Retry</button>
             </div>
           )}
 
-          {/* Total Hospital Payout Summary Card with 20% Admin Deduction */}
+          {/* Total Net Payout Summary Card with Platform Deduction */}
           <div className="bg-surface rounded-2xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] border border-emerald-200/70 relative overflow-hidden flex flex-col gap-3">
             <div className="absolute top-0 right-0 p-4 opacity-5 text-emerald-600 pointer-events-none">
               <TrendingUp className="w-28 h-28 -mt-4 -mr-4" strokeWidth={1} />
@@ -1264,12 +1271,14 @@ export function Payouts() {
                   {hospitalSharePercent}%
                 </div>
                 <div>
-                  <span className="text-[14px] font-semibold text-foreground">Hospital Net Payout</span>
+                  <span className="text-[14px] font-semibold text-foreground">
+                    {isStandaloneLab ? 'Laboratory Net Payout' : 'Hospital Net Payout'}
+                  </span>
                   <span className="text-[11px] text-muted block">After {adminSharePercent}% platform admin fee</span>
                 </div>
               </div>
               <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-full">
-                Hospital Share
+                {isStandaloneLab ? 'Lab Share' : 'Hospital Share'}
               </span>
             </div>
 
@@ -1323,127 +1332,131 @@ export function Payouts() {
 
             <div className="bg-surface rounded-2xl border border-border shadow-[0_1px_2px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col divide-y divide-gray-100">
               
-              {/* 1. OP Consultation */}
-              <div 
-                onClick={() => setSelectedServiceDetail('op')}
-                className="flex items-center justify-between p-3.5 cursor-pointer hover:bg-blue-50/30 active:bg-blue-50/60 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-primary flex items-center justify-center shrink-0 border border-blue-100/80 group-hover:scale-105 transition-transform">
-                    <Stethoscope className="w-5 h-5" />
-                  </div>
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[14px] font-semibold text-foreground group-hover:text-primary transition-colors">
-                        OP Consultation
-                      </span>
+              {!isStandaloneLab && (
+                <>
+                  {/* 1. OP Consultation */}
+                  <div 
+                    onClick={() => setSelectedServiceDetail('op')}
+                    className="flex items-center justify-between p-3.5 cursor-pointer hover:bg-blue-50/30 active:bg-blue-50/60 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-primary flex items-center justify-center shrink-0 border border-blue-100/80 group-hover:scale-105 transition-transform">
+                        <Stethoscope className="w-5 h-5" />
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[14px] font-semibold text-foreground group-hover:text-primary transition-colors">
+                            OP Consultation
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-muted">
+                          {isLoading && !payoutsData ? "Loading..." : `${byService?.op.count ?? 0} bookings`}
+                        </span>
+                      </div>
                     </div>
-                    <span className="text-[11px] text-muted">
-                      {isLoading && !payoutsData ? "Loading..." : `${byService?.op.count ?? 0} bookings`}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-end min-w-[120px]">
+                        {isLoading && !payoutsData ? (
+                          <Skeleton className="h-5 w-20" />
+                        ) : (
+                          <>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-[15px] font-bold text-emerald-600">
+                                {formatCurrency(byService?.op.hospitalPayout ?? Math.round((byService?.op.revenue ?? 0) * (hospitalSharePercent / 100)))}
+                              </span>
+                              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">{hospitalSharePercent}%</span>
+                            </div>
+                            <span className="text-[10px] text-muted mt-0.5 text-right">
+                              Gross: {formatCurrency(byService?.op.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.op.adminCommission ?? Math.round((byService?.op.revenue ?? 0) * (adminSharePercent / 100)))}</span>
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-col items-end min-w-[120px]">
-                    {isLoading && !payoutsData ? (
-                      <Skeleton className="h-5 w-20" />
-                    ) : (
-                      <>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-[15px] font-bold text-emerald-600">
-                            {formatCurrency(byService?.op.hospitalPayout ?? Math.round((byService?.op.revenue ?? 0) * (hospitalSharePercent / 100)))}
-                          </span>
-                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">{hospitalSharePercent}%</span>
-                        </div>
-                        <span className="text-[10px] text-muted mt-0.5 text-right">
-                          Gross: {formatCurrency(byService?.op.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.op.adminCommission ?? Math.round((byService?.op.revenue ?? 0) * (adminSharePercent / 100)))}</span>
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
-                </div>
-              </div>
 
-              {/* 2. Video Consultation */}
-              <div 
-                onClick={() => setSelectedServiceDetail('videoConsultation')}
-                className="flex items-center justify-between p-3.5 cursor-pointer hover:bg-purple-50/30 active:bg-purple-50/60 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-[#8B5CF6] flex items-center justify-center shrink-0 border border-purple-100/80 group-hover:scale-105 transition-transform">
-                    <Video className="w-5 h-5" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[14px] font-semibold text-foreground group-hover:text-purple-600 transition-colors">
-                      Video Consultation
-                    </span>
-                    <span className="text-[11px] text-muted">
-                      {isLoading && !payoutsData ? "Loading..." : `${byService?.videoConsultation.count ?? 0} consults`}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-col items-end min-w-[120px]">
-                    {isLoading && !payoutsData ? (
-                      <Skeleton className="h-5 w-20" />
-                    ) : (
-                      <>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-[15px] font-bold text-emerald-600">
-                            {formatCurrency(byService?.videoConsultation.hospitalPayout ?? Math.round((byService?.videoConsultation.revenue ?? 0) * (hospitalSharePercent / 100)))}
-                          </span>
-                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">{hospitalSharePercent}%</span>
-                        </div>
-                        <span className="text-[10px] text-muted mt-0.5 text-right">
-                          Gross: {formatCurrency(byService?.videoConsultation.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.videoConsultation.adminCommission ?? Math.round((byService?.videoConsultation.revenue ?? 0) * (adminSharePercent / 100)))}</span>
+                  {/* 2. Video Consultation */}
+                  <div 
+                    onClick={() => setSelectedServiceDetail('videoConsultation')}
+                    className="flex items-center justify-between p-3.5 cursor-pointer hover:bg-purple-50/30 active:bg-purple-50/60 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-purple-50 text-[#8B5CF6] flex items-center justify-center shrink-0 border border-purple-100/80 group-hover:scale-105 transition-transform">
+                        <Video className="w-5 h-5" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[14px] font-semibold text-foreground group-hover:text-purple-600 transition-colors">
+                          Video Consultation
                         </span>
-                      </>
-                    )}
+                        <span className="text-[11px] text-muted">
+                          {isLoading && !payoutsData ? "Loading..." : `${byService?.videoConsultation.count ?? 0} consults`}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-end min-w-[120px]">
+                        {isLoading && !payoutsData ? (
+                          <Skeleton className="h-5 w-20" />
+                        ) : (
+                          <>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-[15px] font-bold text-emerald-600">
+                                {formatCurrency(byService?.videoConsultation.hospitalPayout ?? Math.round((byService?.videoConsultation.revenue ?? 0) * (hospitalSharePercent / 100)))}
+                              </span>
+                              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">{hospitalSharePercent}%</span>
+                            </div>
+                            <span className="text-[10px] text-muted mt-0.5 text-right">
+                              Gross: {formatCurrency(byService?.videoConsultation.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.videoConsultation.adminCommission ?? Math.round((byService?.videoConsultation.revenue ?? 0) * (adminSharePercent / 100)))}</span>
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted group-hover:text-purple-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                    </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-muted group-hover:text-purple-600 group-hover:translate-x-0.5 transition-all shrink-0" />
-                </div>
-              </div>
 
-              {/* 3. Home Nursing */}
-              <div 
-                onClick={() => setSelectedServiceDetail('homeNursing')}
-                className="flex items-center justify-between p-3.5 cursor-pointer hover:bg-green-50/30 active:bg-green-50/60 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-green-50 text-success flex items-center justify-center shrink-0 border border-green-100/80 group-hover:scale-105 transition-transform">
-                    <Home className="w-5 h-5" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[14px] font-semibold text-foreground group-hover:text-success transition-colors">
-                      Home Nursing
-                    </span>
-                    <span className="text-[11px] text-muted">
-                      {isLoading && !payoutsData ? "Loading..." : `${byService?.homeNursing.count ?? 0} visits`}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-col items-end min-w-[120px]">
-                    {isLoading && !payoutsData ? (
-                      <Skeleton className="h-5 w-20" />
-                    ) : (
-                      <>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-[15px] font-bold text-emerald-600">
-                            {formatCurrency(byService?.homeNursing.hospitalPayout ?? Math.round((byService?.homeNursing.revenue ?? 0) * (hospitalSharePercent / 100)))}
-                          </span>
-                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">{hospitalSharePercent}%</span>
-                        </div>
-                        <span className="text-[10px] text-muted mt-0.5 text-right">
-                          Gross: {formatCurrency(byService?.homeNursing.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.homeNursing.adminCommission ?? Math.round((byService?.homeNursing.revenue ?? 0) * (adminSharePercent / 100)))}</span>
+                  {/* 3. Home Nursing */}
+                  <div 
+                    onClick={() => setSelectedServiceDetail('homeNursing')}
+                    className="flex items-center justify-between p-3.5 cursor-pointer hover:bg-green-50/30 active:bg-green-50/60 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-green-50 text-success flex items-center justify-center shrink-0 border border-green-100/80 group-hover:scale-105 transition-transform">
+                        <Home className="w-5 h-5" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[14px] font-semibold text-foreground group-hover:text-success transition-colors">
+                          Home Nursing
                         </span>
-                      </>
-                    )}
+                        <span className="text-[11px] text-muted">
+                          {isLoading && !payoutsData ? "Loading..." : `${byService?.homeNursing.count ?? 0} visits`}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-end min-w-[120px]">
+                        {isLoading && !payoutsData ? (
+                          <Skeleton className="h-5 w-20" />
+                        ) : (
+                          <>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-[15px] font-bold text-emerald-600">
+                                {formatCurrency(byService?.homeNursing.hospitalPayout ?? Math.round((byService?.homeNursing.revenue ?? 0) * (hospitalSharePercent / 100)))}
+                              </span>
+                              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">{hospitalSharePercent}%</span>
+                            </div>
+                            <span className="text-[10px] text-muted mt-0.5 text-right">
+                              Gross: {formatCurrency(byService?.homeNursing.revenue ?? 0)} &middot; <span className="text-amber-700 font-medium">Admin: -{formatCurrency(byService?.homeNursing.adminCommission ?? Math.round((byService?.homeNursing.revenue ?? 0) * (adminSharePercent / 100)))}</span>
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted group-hover:text-success group-hover:translate-x-0.5 transition-all shrink-0" />
+                    </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-muted group-hover:text-success group-hover:translate-x-0.5 transition-all shrink-0" />
-                </div>
-              </div>
+                </>
+              )}
 
               {/* 4. Lab Tests */}
               <div 
@@ -1546,9 +1559,11 @@ export function Payouts() {
                 </div>
               </div>
 
-              {/* Average Net Hospital Payout */}
+              {/* Average Net Payout */}
               <div className="bg-surface rounded-2xl p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)] border border-border flex flex-col gap-1">
-                <span className="text-[12px] font-semibold text-muted">Avg Hospital Net</span>
+                <span className="text-[12px] font-semibold text-muted">
+                  {isStandaloneLab ? 'Avg Lab Net' : 'Avg Hospital Net'}
+                </span>
                 <div className="min-h-[28px] flex items-center">
                   {isLoading && !payoutsData ? (
                     <Skeleton className="h-6 w-16" />
@@ -1603,7 +1618,9 @@ export function Payouts() {
           <div className="bg-surface rounded-2xl border border-border shadow-[0_1px_2px_rgba(0,0,0,0.02)] p-4 flex flex-col gap-4 mt-1">
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
-                <h3 className="text-[15px] font-semibold text-foreground">Hospital Net Payout Trend</h3>
+                <h3 className="text-[15px] font-semibold text-foreground">
+                  {isStandaloneLab ? 'Laboratory Net Payout Trend' : 'Hospital Net Payout Trend'}
+                </h3>
                 <span className="text-[11px] text-muted">Daily {hospitalSharePercent}% net earnings for selected period</span>
               </div>
             </div>
@@ -1625,7 +1642,7 @@ export function Payouts() {
                     <Tooltip
                       contentStyle={{ background: 'var(--surface, #1E293B)', borderRadius: '12px', border: '1px solid var(--border, #334155)', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px', color: 'var(--foreground, #F8FAFC)' }}
                       itemStyle={{ color: '#059669', fontWeight: '700' }}
-                      formatter={(val: any) => [formatCurrency(Number(val) || 0), `Hospital Net (${hospitalSharePercent}%)`]}
+                      formatter={(val: any) => [formatCurrency(Number(val) || 0), `${isStandaloneLab ? 'Lab Net' : 'Hospital Net'} (${hospitalSharePercent}%)`]}
                       cursor={{ stroke: 'var(--border, #334155)', strokeWidth: 1, strokeDasharray: '4 4' }}
                     />
                     <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorPayout)" />

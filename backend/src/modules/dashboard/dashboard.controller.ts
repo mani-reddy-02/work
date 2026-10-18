@@ -372,7 +372,7 @@ export const getHospitalRevenueAnalytics = async (req: Request, res: Response, n
 
     const hospital = await prisma.hospital.findUnique({
       where: { id: hospitalId },
-      select: { hospitalShare: true }
+      select: { hospitalShare: true, businessType: true, name: true }
     });
 
     const hospitalShareRate = hospital?.hospitalShare ?? 80;
@@ -662,20 +662,21 @@ export const getHospitalRevenueAnalytics = async (req: Request, res: Response, n
           hospitalId,
           status: { not: 'CANCELLED' },
           OR: [
-            { collectionDate: { gte: startDate, lte: endDate } },
-            { collectionDate: null, createdAt: { gte: startDate, lte: endDate } }
+            { createdAt: { gte: startDate, lte: endDate } },
+            { collectionDate: { gte: startDate, lte: endDate } }
           ]
         },
-        select: {
-          id: true,
-          totalAmount: true,
-          createdAt: true,
-          collectionDate: true,
-          patientId: true,
-          status: true,
-          bookingType: true,
-          hospitalAmount: true,
-          mediqueeAmount: true
+        include: {
+          patient: { select: { id: true, name: true, phone: true } },
+          items: {
+            include: {
+              labTest: {
+                include: {
+                  platformTest: { select: { id: true, name: true } }
+                }
+              }
+            }
+          }
         },
         orderBy: { createdAt: 'desc' }
       }).catch(() => []),
@@ -779,7 +780,9 @@ export const getHospitalRevenueAnalytics = async (req: Request, res: Response, n
 
     // 2. Lab & Home Sample Collection
     for (const b of labBookings) {
-      const date = b.collectionDate ? new Date(b.collectionDate) : new Date(b.createdAt);
+      const date = (b.createdAt && b.createdAt >= startDate && b.createdAt <= endDate)
+        ? new Date(b.createdAt)
+        : (b.collectionDate ? new Date(b.collectionDate) : new Date(b.createdAt));
       if (date < startDate || date > endDate) continue;
 
       const amount = Number((b as any).totalAmount || (b as any).price) || 0;
@@ -803,6 +806,16 @@ export const getHospitalRevenueAnalytics = async (req: Request, res: Response, n
 
       addToBucket(date, amount);
 
+      const testNames = ((b as any).items || [])
+        .map((i: any) => i.labTest?.platformTest?.name)
+        .filter(Boolean)
+        .join(', ');
+
+      const patientDisplayName = (b as any).patient?.name || 'Patient';
+      const infoText = isSample
+        ? (testNames ? `Home Collection • ${testNames}` : 'Home Sample Collection')
+        : (testNames || 'Diagnostic Lab Test');
+
       allTransactions.push({
         id: b.id.slice(0, 8).toUpperCase(),
         service: serviceName,
@@ -817,8 +830,8 @@ export const getHospitalRevenueAnalytics = async (req: Request, res: Response, n
         netPayout: net,
         status: b.status,
         statusColor: getStatusColor(b.status),
-        patientName: (b as any).patientId || 'Patient',
-        info: isSample ? 'Home Sample Collection' : 'Diagnostic Lab Test'
+        patientName: patientDisplayName,
+        info: infoText
       });
     }
 
@@ -975,7 +988,7 @@ export const getHospitalRevenueAnalytics = async (req: Request, res: Response, n
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
-    const [thisMonthOps, lastMonthOps, thisMonthNursing, lastMonthNursing] = await Promise.all([
+    const [thisMonthOps, lastMonthOps, thisMonthNursing, lastMonthNursing, thisMonthLabs, lastMonthLabs] = await Promise.all([
       prisma.oPBooking.aggregate({
         where: { hospitalId, status: { not: 'CANCELLED' }, appointmentDate: { gte: thisMonthStart, lte: thisMonthEnd }, isWalkIn: false, payoutEligible: true },
         _sum: { fee: true }
@@ -991,13 +1004,21 @@ export const getHospitalRevenueAnalytics = async (req: Request, res: Response, n
       prisma.homeNursingBooking.aggregate({
         where: { hospitalId, status: { not: 'CANCELLED' }, serviceDate: { gte: lastMonthStart, lte: lastMonthEnd } },
         _sum: { totalAmount: true }
+      }).catch(() => ({ _sum: { totalAmount: 0 } })),
+      prisma.labBooking.aggregate({
+        where: { hospitalId, status: { not: 'CANCELLED' }, createdAt: { gte: thisMonthStart, lte: thisMonthEnd } },
+        _sum: { totalAmount: true }
+      }).catch(() => ({ _sum: { totalAmount: 0 } })),
+      prisma.labBooking.aggregate({
+        where: { hospitalId, status: { not: 'CANCELLED' }, createdAt: { gte: lastMonthStart, lte: lastMonthEnd } },
+        _sum: { totalAmount: true }
       }).catch(() => ({ _sum: { totalAmount: 0 } }))
     ]);
 
-    const thisMonthTotal = (thisMonthOps._sum?.fee || 0) + (thisMonthNursing._sum?.totalAmount || 0);
+    const thisMonthTotal = (thisMonthOps._sum?.fee || 0) + (thisMonthNursing._sum?.totalAmount || 0) + (thisMonthLabs._sum?.totalAmount || 0);
     const thisMonthHospitalPayout = Math.round(thisMonthTotal * (hospitalShareRate / 100));
 
-    const lastMonthTotal = (lastMonthOps._sum?.fee || 0) + (lastMonthNursing._sum?.totalAmount || 0);
+    const lastMonthTotal = (lastMonthOps._sum?.fee || 0) + (lastMonthNursing._sum?.totalAmount || 0) + (lastMonthLabs._sum?.totalAmount || 0);
     const lastMonthHospitalPayout = Math.round(lastMonthTotal * (hospitalShareRate / 100));
 
     const totalTransactions = allTransactions.length;
@@ -1007,6 +1028,8 @@ export const getHospitalRevenueAnalytics = async (req: Request, res: Response, n
     res.json({
       success: true,
       data: {
+        businessType: hospital?.businessType || 'HOSPITAL',
+        hospitalName: hospital?.name,
         totalRevenue: totalGross,
         totalGross,
         totalPayout: totalGross,
