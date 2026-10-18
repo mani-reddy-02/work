@@ -3,8 +3,11 @@ import {
   getHospitalLabTests,
   addHospitalLabTestsBatch,
   updateHospitalLabTest,
+  deleteHospitalLabTest,
   getHospitalLabPackages,
-  createHospitalLabPackage
+  createHospitalLabPackage,
+  updateHospitalLabPackage,
+  deleteHospitalLabPackage
 } from './lab-tests.controller';
 
 const router = Router();
@@ -14,7 +17,10 @@ const router = Router();
 router.get('/', getHospitalLabTests);
 router.post('/batch', addHospitalLabTestsBatch);
 router.patch('/:id', updateHospitalLabTest);
+router.delete('/:id', deleteHospitalLabTest);
 router.get('/packages', getHospitalLabPackages);
 router.post('/packages', createHospitalLabPackage);
+router.patch('/packages/:id', updateHospitalLabPackage);
+router.delete('/packages/:id', deleteHospitalLabPackage);
 
 export default router;

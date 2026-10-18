@@ -257,6 +257,38 @@ export const labApi = {
     }
     return data;
   },
+
+  async updatePackage(id: string, payload: { name?: string; originalPrice?: number; packagePrice?: number; tests?: string[]; status?: string }) {
+    const res = await fetch(`${API_BASE}/hospital/lab-tests/packages/${id}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data?.error?.message || 'Failed to update package');
+    return data.data;
+  },
+
+  async deletePackage(id: string) {
+    const res = await fetch(`${API_BASE}/hospital/lab-tests/packages/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data?.error?.message || 'Failed to delete package');
+    return data;
+  },
+
+  async deleteTest(id: string) {
+    const res = await fetch(`${API_BASE}/hospital/lab-tests/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data?.error?.message || 'Failed to delete test');
+    return data;
+  },
+
   async createHomeCollection(payload: {
     patientName: string;
     mobile: string;
@@ -275,7 +307,33 @@ export const labApi = {
       collectionTimeSlot: payload.time
     });
   },
-  async updateLabInfo(payload: unknown): Promise<void> {
-    throw new Error('Lab information is managed by hospital administration.');
+
+  async getLabProfile() {
+    const res = await fetch(`${API_BASE}/laboratories/me/profile`, {
+      headers: getAuthHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data?.error?.message || data?.error || 'Failed to fetch laboratory profile');
+    }
+    return data.data;
+  },
+
+  async updateLabProfile(payload: any) {
+    const res = await fetch(`${API_BASE}/laboratories/me/profile`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data?.error?.message || data?.error || 'Failed to update laboratory profile');
+    }
+    return data.data;
+  },
+
+  async updateLabInfo(payload: any): Promise<any> {
+    return this.updateLabProfile(payload);
   }
 };
+

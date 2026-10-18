@@ -187,3 +187,81 @@ export const createHospitalLabPackage = async (req: Request, res: Response, next
   }
 };
 
+export const updateHospitalLabPackage = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = (req as any).user?.hospitalId;
+    const id = req.params.id as string;
+    const { name, tests, originalPrice, packagePrice, status } = req.body;
+
+    const existing = await prisma.labPackage.findFirst({
+      where: { id, hospitalId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Package not found' } });
+    }
+
+    const updated = await prisma.labPackage.update({
+      where: { id },
+      data: {
+        ...(name && { name: name.trim() }),
+        ...(tests && { tests: tests as string[] }),
+        ...(originalPrice !== undefined && { originalPrice: Number(originalPrice) }),
+        ...(packagePrice !== undefined && { packagePrice: Number(packagePrice) }),
+        ...(status && { status: String(status) })
+      }
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteHospitalLabPackage = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = (req as any).user?.hospitalId;
+    const id = req.params.id as string;
+
+    const existing = await prisma.labPackage.findFirst({
+      where: { id, hospitalId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Package not found' } });
+    }
+
+    await prisma.labPackage.delete({
+      where: { id }
+    });
+
+    res.json({ success: true, message: 'Package deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteHospitalLabTest = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hospitalId = (req as any).user?.hospitalId;
+    const id = req.params.id as string;
+
+    const existing = await prisma.labTest.findFirst({
+      where: { id, hospitalId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Test not found' } });
+    }
+
+    await prisma.labTest.delete({
+      where: { id }
+    });
+
+    res.json({ success: true, message: 'Test deleted from lab offerings successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+

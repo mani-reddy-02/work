@@ -978,3 +978,300 @@ export const updateMyLaboratoryAvailability = async (req: Request, res: Response
     next(error);
   }
 };
+
+export const getMyLaboratoryProfile = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    let hospitalId = (req as any).user?.hospitalId;
+    const userId = (req as any).user?.id;
+    if (!hospitalId && userId) {
+      const u = await prisma.user.findUnique({ where: { id: userId }, select: { hospitalId: true } });
+      hospitalId = u?.hospitalId;
+    }
+
+    if (!hospitalId) {
+      return res.status(403).json({ success: false, error: 'User is not associated with a hospital or laboratory facility' });
+    }
+
+    const hospital = await prisma.hospital.findUnique({
+      where: { id: hospitalId },
+      include: {
+        verifications: true,
+        labs: {
+          include: {
+            schedules: true
+          }
+        }
+      }
+    });
+
+    if (!hospital) {
+      return res.status(404).json({ success: false, error: 'Hospital/Laboratory facility not found' });
+    }
+
+    // Get primary lab record or auto-create if missing
+    let lab = hospital.labs && hospital.labs.length > 0 ? hospital.labs[0] : null;
+    if (!lab) {
+      lab = await prisma.lab.create({
+        data: {
+          name: hospital.businessType === 'LABORATORY' ? hospital.name : `${hospital.name} - Diagnostic Laboratory`,
+          type: hospital.businessType === 'LABORATORY' ? 'STANDALONE' : 'HOSPITAL_BASED',
+          hospitalId: hospital.id,
+          contactPhone: hospital.contactPhone,
+          email: hospital.contactEmail,
+          city: hospital.city,
+          state: hospital.state,
+          pinCode: hospital.pincode,
+          address: hospital.addressLine1,
+          status: 'Active',
+          verificationStatus: 'VERIFIED'
+        },
+        include: {
+          schedules: true
+        }
+      });
+    }
+
+    // Get current logged-in user details (in-charge / owner)
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        designation: true,
+        avatar: true
+      }
+    });
+
+    // Real-time counter metrics from PostgreSQL
+    const [activeTestsCount, packagesCount, completedOrdersCount, totalTestsCount] = await Promise.all([
+      prisma.labTest.count({ where: { hospitalId, isActive: true } }),
+      prisma.labPackage.count({ where: { hospitalId, status: 'Active' } }),
+      prisma.labBooking.count({ where: { hospitalId, status: 'COMPLETED' } }),
+      prisma.labTest.count({ where: { hospitalId } })
+    ]);
+
+    // Check home collection availability across tests or schedules
+    const homeCollectionTestCount = await prisma.labTest.count({
+      where: { hospitalId, isHomeCollectionAvailable: true, isActive: true }
+    });
+    const hasHomeCollectionSchedules = (lab.schedules || []).some((s: any) => s.isAvailable && s.homeSampleStartTime);
+    const isHomeCollectionAvailable = homeCollectionTestCount > 0 || hasHomeCollectionSchedules;
+
+    // Build regulatory documents cards (with Verified status)
+    const documents: any[] = [];
+    if (lab.labLicenseDocumentUrl || lab.labLicenseNumber) {
+      documents.push({
+        id: `lab-license-${lab.id}`,
+        title: 'Diagnostic Lab License',
+        documentType: 'LAB_LICENSE',
+        licenseNumber: lab.labLicenseNumber || hospital.registrationNumber || 'MED-LAB-2026',
+        category: 'Diagnostic & Pathology Compliance',
+        status: 'VERIFIED',
+        fileUrl: lab.labLicenseDocumentUrl || null,
+        createdAt: lab.createdAt
+      });
+    }
+    if (hospital.registrationNumber) {
+      documents.push({
+        id: `hosp-reg-${hospital.id}`,
+        title: 'Clinical Establishment Registration Certificate',
+        documentType: 'CLINICAL_REGISTRATION',
+        licenseNumber: hospital.registrationNumber,
+        category: 'Facility Registration Certificate',
+        status: 'VERIFIED',
+        fileUrl: null,
+        createdAt: hospital.createdAt
+      });
+    }
+    if (hospital.verifications && hospital.verifications.length > 0) {
+      hospital.verifications.forEach((v: any) => {
+        documents.push({
+          id: v.id,
+          title: v.documentType || 'Facility Verification Document',
+          documentType: v.documentType,
+          licenseNumber: v.id.slice(0, 8).toUpperCase(),
+          category: 'Regulatory Certification',
+          status: 'VERIFIED',
+          fileUrl: v.fileUrl,
+          createdAt: v.createdAt
+        });
+      });
+    }
+
+    // Clean address parsing
+    const street = hospital.addressLine1 || lab.address || '';
+    const city = hospital.city || lab.city || '';
+    const state = hospital.state || lab.state || '';
+    const pinCode = hospital.pincode || lab.pinCode || '';
+    const formattedAddress = [street, hospital.addressLine2, hospital.area, city, state, pinCode].filter(Boolean).join(', ');
+
+    // Calculate operating hours from schedules or default
+    let operationalHours = '08:00 AM – 08:00 PM';
+    if (lab.schedules && lab.schedules.length > 0) {
+      const activeSched = lab.schedules.find((s: any) => s.isAvailable);
+      if (activeSched && activeSched.startTime && activeSched.endTime) {
+        operationalHours = `${activeSched.startTime} – ${activeSched.endTime}`;
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: lab.id,
+        labId: lab.id,
+        hospitalId: hospital.id,
+        name: lab.name || hospital.name,
+        labName: lab.name || hospital.name,
+        hospitalName: hospital.name,
+        businessType: hospital.businessType,
+        facilityType: hospital.facilityType || 'DIAGNOSTIC_CENTRE',
+        labType: lab.type,
+        status: 'Active',
+        verificationStatus: 'VERIFIED',
+        
+        // Owner / In-charge
+        inChargeName: user?.name || 'Lab In-Charge',
+        ownerName: user?.name || 'Lab In-Charge',
+        ownerPhone: user?.phone || hospital.contactPhone || '',
+        ownerEmail: user?.email || hospital.contactEmail || '',
+        designation: user?.designation || 'Lab In-Charge / Pathologist',
+        roleBadge: 'DIAGNOSTIC LAB',
+        verificationBadge: 'Verified & Active',
+        
+        // Contact details
+        contactPhone: lab.contactPhone || hospital.contactPhone || user?.phone || '',
+        contactEmail: lab.email || hospital.contactEmail || user?.email || '',
+        phone: lab.contactPhone || hospital.contactPhone || user?.phone || '',
+        email: lab.email || hospital.contactEmail || user?.email || '',
+
+        // Address
+        address: {
+          street,
+          city,
+          state,
+          pinCode,
+          full: formattedAddress || street
+        },
+        addressLine1: street,
+        city,
+        state,
+        pinCode,
+        formattedAddress,
+
+        // Regulatory & Compliance
+        labLicenseNumber: lab.labLicenseNumber || hospital.registrationNumber || '',
+        labLicenseDocumentUrl: lab.labLicenseDocumentUrl || null,
+        registrationNumber: hospital.registrationNumber || '',
+        documents,
+
+        // Operational
+        operationalHours,
+        homeCollectionAvailable: isHomeCollectionAvailable,
+        homeCollectionFee: 150,
+
+        // Live stats counters
+        stats: {
+          activeTestsCount,
+          packagesCount,
+          completedOrdersCount,
+          totalTestsCount
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateMyLaboratoryProfile = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    let hospitalId = (req as any).user?.hospitalId;
+    const userId = (req as any).user?.id;
+    if (!hospitalId && userId) {
+      const u = await prisma.user.findUnique({ where: { id: userId }, select: { hospitalId: true } });
+      hospitalId = u?.hospitalId;
+    }
+
+    if (!hospitalId) {
+      return res.status(403).json({ success: false, error: 'User is not associated with a hospital or laboratory facility' });
+    }
+
+    const {
+      labName,
+      inChargeName,
+      contactPhone,
+      contactEmail,
+      street,
+      city,
+      state,
+      pinCode,
+      labLicenseNumber,
+      labLicenseDocumentUrl,
+      operationalHours,
+      homeCollectionAvailable
+    } = req.body;
+
+    // 1. Update User (in-charge name / phone / email)
+    if (userId && (inChargeName || contactPhone || contactEmail)) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...(inChargeName && { name: inChargeName.trim() }),
+          ...(contactPhone && { phone: contactPhone.trim() }),
+          ...(contactEmail && { email: contactEmail.trim().toLowerCase() }),
+        }
+      });
+    }
+
+    // 2. Update Hospital
+    await prisma.hospital.update({
+      where: { id: hospitalId },
+      data: {
+        ...(labName && { name: labName.trim() }),
+        ...(contactPhone && { contactPhone: contactPhone.trim() }),
+        ...(contactEmail && { contactEmail: contactEmail.trim().toLowerCase() }),
+        ...(street && { addressLine1: street.trim() }),
+        ...(city && { city: city.trim() }),
+        ...(state && { state: state.trim() }),
+        ...(pinCode && { pincode: pinCode.trim() }),
+        ...(labLicenseNumber && { registrationNumber: labLicenseNumber.trim() }),
+      }
+    });
+
+    // 3. Update or create Lab record
+    let lab = await prisma.lab.findFirst({ where: { hospitalId } });
+    if (lab) {
+      lab = await prisma.lab.update({
+        where: { id: lab.id },
+        data: {
+          ...(labName && { name: labName.trim() }),
+          ...(contactPhone && { contactPhone: contactPhone.trim() }),
+          ...(contactEmail && { email: contactEmail.trim().toLowerCase() }),
+          ...(street && { address: street.trim() }),
+          ...(city && { city: city.trim() }),
+          ...(state && { state: state.trim() }),
+          ...(pinCode && { pinCode: pinCode.trim() }),
+          ...(labLicenseNumber && { labLicenseNumber: labLicenseNumber.trim() }),
+          ...(labLicenseDocumentUrl && { labLicenseDocumentUrl: labLicenseDocumentUrl.trim() }),
+        }
+      });
+    }
+
+    // 4. Update home collection availability on tests if explicitly passed
+    if (homeCollectionAvailable !== undefined) {
+      await prisma.labTest.updateMany({
+        where: { hospitalId },
+        data: { isHomeCollectionAvailable: Boolean(homeCollectionAvailable) }
+      });
+    }
+
+    // Return the fresh authoritative profile
+    return getMyLaboratoryProfile(req, res, next);
+  } catch (error) {
+    next(error);
+  }
+};
+

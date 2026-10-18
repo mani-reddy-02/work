@@ -33,7 +33,7 @@ export function ChangePassword() {
 
     try {
       setIsLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('mediquee_token') || localStorage.getItem('token');
       const res = await fetch(`${API_URL}/api/v1/users/change-password`, {
         method: "POST",
         headers: {

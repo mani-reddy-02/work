@@ -71,9 +71,15 @@ export function ContactSupport() {
         <div className="flex items-center gap-3">
           <button 
             type="button"
-            onClick={() => navigate('/profile')} 
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate(user?.role === 'lab' || (user as any)?.role === 'LAB_ADMIN' ? '/lab/profile' : '/profile');
+              }
+            }} 
             className="p-2 -ml-2 text-muted hover:text-foreground transition-colors rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
-            title="Back to Profile"
+            title="Back"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
