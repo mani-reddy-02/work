@@ -13,13 +13,16 @@ import {
   ClipboardList,
   CheckCircle2,
   Building2,
-  FileText
+  FileText,
+  Star
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { opAppointmentApi, type OpBookingRecord } from '../lib/opAppointmentApi';
 import { labBookingApi, type LabBookingRecord } from '../lib/labTestApi';
 import { homeNursingApi, type HomeNursingBookingRecord } from '../lib/homeNursingApi';
+import { reviewApi, type ReviewItem, type ReviewTargetType, type ReviewServiceType } from '../lib/reviewApi';
+import { ReviewModal } from '../components/ReviewModal';
 
 interface UnifiedBooking {
   id: string;
@@ -151,6 +154,16 @@ const MyBookings = () => {
   const [error, setError] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [userReviews, setUserReviews] = useState<Record<string, ReviewItem>>({});
+  const [reviewModal, setReviewModal] = useState<{
+    isOpen: boolean;
+    bookingId: string;
+    serviceType: ReviewServiceType;
+    targetType: ReviewTargetType;
+    targetName: string;
+    targetSubtitle?: string | null;
+    targetImage?: string | null;
+  } | null>(null);
   const lastFetchRef = useRef<number>(0);
 
   const handleCompleteNursing = async (bookingId: string) => {
@@ -223,10 +236,11 @@ const MyBookings = () => {
     if (!silent) setIsLoading(true);
     if (!silent) setError(null);
     try {
-      const [opRes, labRes, nursingRes] = await Promise.all([
+      const [opRes, labRes, nursingRes, reviewsRes] = await Promise.all([
         opAppointmentApi.fetchMyAppointments(),
         labBookingApi.getMyLabBookings(),
         homeNursingApi.getMyBookings().catch(() => ({ success: true, data: [] })),
+        reviewApi.getMyReviews().catch(() => ({ success: true, data: [] })),
       ]);
 
       if (opRes.success && opRes.data) {
@@ -237,6 +251,15 @@ const MyBookings = () => {
       }
       if (nursingRes.success && nursingRes.data) {
         setNursingBookings(nursingRes.data);
+      }
+      if (reviewsRes.success && reviewsRes.data) {
+        const map: Record<string, ReviewItem> = {};
+        reviewsRes.data.forEach((r) => {
+          if (r.bookingId) {
+            map[`${r.bookingId}_${r.targetType}`] = r;
+          }
+        });
+        setUserReviews(map);
       }
 
       if (!silent) {
@@ -406,7 +429,7 @@ const MyBookings = () => {
             {upcomingList.length + pastList.length} Total
           </span>
           <button
-            onClick={loadBookings}
+            onClick={() => { loadBookings(); }}
             disabled={isLoading}
             className="p-2 hover:bg-blue-50 text-blue-600 rounded-full transition-colors disabled:opacity-50 bg-blue-50/50"
           >
@@ -458,7 +481,7 @@ const MyBookings = () => {
                 <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
                 <span className="font-semibold">{error}</span>
               </div>
-              <button onClick={loadBookings} className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg font-bold transition-colors">
+              <button onClick={() => { loadBookings(); }} className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg font-bold transition-colors">
                 Retry
               </button>
             </div>
@@ -580,7 +603,148 @@ const MyBookings = () => {
                         {booking.displayId}
                       </strong>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Review & Rating Actions for Completed Bookings */}
+                      {booking.status === 'COMPLETED' && (
+                        <>
+                          {booking.type === 'OP' && (
+                            <>
+                              {/* Hospital Review */}
+                              {userReviews[`${booking.id}_HOSPITAL`] ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200">
+                                  <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
+                                  <span>Hospital ★{userReviews[`${booking.id}_HOSPITAL`].rating}</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setReviewModal({
+                                      isOpen: true,
+                                      bookingId: booking.id,
+                                      serviceType:
+                                        booking.serviceTypeLabel === 'Video Consultation'
+                                          ? 'VIDEO_CONSULTATION'
+                                          : 'OP_CONSULTATION',
+                                      targetType: 'HOSPITAL',
+                                      targetName: booking.location || 'Hospital',
+                                      targetSubtitle: booking.serviceTypeLabel,
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-xl border border-blue-200 transition-colors cursor-pointer"
+                                  title="Rate Hospital"
+                                >
+                                  <Star className="w-3 h-3 text-blue-500" />
+                                  <span>Rate Hospital</span>
+                                </button>
+                              )}
+
+                              {/* Doctor Review */}
+                              {userReviews[`${booking.id}_DOCTOR`] ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-xl border border-indigo-200">
+                                  <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
+                                  <span>Doctor ★{userReviews[`${booking.id}_DOCTOR`].rating}</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setReviewModal({
+                                      isOpen: true,
+                                      bookingId: booking.id,
+                                      serviceType:
+                                        booking.serviceTypeLabel === 'Video Consultation'
+                                          ? 'VIDEO_CONSULTATION'
+                                          : 'OP_CONSULTATION',
+                                      targetType: 'DOCTOR',
+                                      targetName: booking.title,
+                                      targetSubtitle: booking.subtitle || 'Specialist',
+                                      targetImage: booking.opRecord?.doctorAvatar,
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-xl border border-indigo-200 transition-colors cursor-pointer"
+                                  title="Rate Doctor"
+                                >
+                                  <Star className="w-3 h-3 text-indigo-500" />
+                                  <span>Rate Doctor</span>
+                                </button>
+                              )}
+                            </>
+                          )}
+
+                          {booking.type === 'LAB' && (
+                            <>
+                              {userReviews[`${booking.id}_HOSPITAL`] ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
+                                  <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
+                                  <span>Reviewed ★{userReviews[`${booking.id}_HOSPITAL`].rating}</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setReviewModal({
+                                      isOpen: true,
+                                      bookingId: booking.id,
+                                      serviceType:
+                                        booking.labRecord?.collectionType === 'HOME_COLLECTION'
+                                          ? 'HOME_SAMPLE_COLLECTION'
+                                          : 'LAB_TEST',
+                                      targetType: 'HOSPITAL',
+                                      targetName: booking.location || 'Diagnostic Provider',
+                                      targetSubtitle: booking.title,
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 px-2.5 py-1 rounded-xl border border-teal-200 transition-colors cursor-pointer"
+                                  title="Rate Service Provider"
+                                >
+                                  <Star className="w-3 h-3 text-teal-500" />
+                                  <span>Rate Provider</span>
+                                </button>
+                              )}
+                            </>
+                          )}
+
+                          {booking.type === 'NURSING' && (
+                            <>
+                              {userReviews[`${booking.id}_HOSPITAL`] ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
+                                  <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
+                                  <span>Reviewed ★{userReviews[`${booking.id}_HOSPITAL`].rating}</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setReviewModal({
+                                      isOpen: true,
+                                      bookingId: booking.id,
+                                      serviceType: 'HOME_NURSING',
+                                      targetType: 'HOSPITAL',
+                                      targetName: booking.location || 'Home Nursing Provider',
+                                      targetSubtitle: booking.title,
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 px-2.5 py-1 rounded-xl border border-teal-200 transition-colors cursor-pointer"
+                                  title="Rate Service Provider"
+                                >
+                                  <Star className="w-3 h-3 text-teal-500" />
+                                  <span>Rate Provider</span>
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </>
+                      )}
+
                       {booking.type === 'NURSING' && isNursingCompletable(booking.status) && (
                         <button
                           disabled={completingId === booking.id}
@@ -715,6 +879,30 @@ const MyBookings = () => {
             )}
           </div>
         </div>
+      )}
+      {/* Review Modal */}
+      {reviewModal && (
+        <ReviewModal
+          isOpen={reviewModal.isOpen}
+          onClose={() => setReviewModal(null)}
+          bookingId={reviewModal.bookingId}
+          serviceType={reviewModal.serviceType}
+          targetType={reviewModal.targetType}
+          targetName={reviewModal.targetName}
+          targetSubtitle={reviewModal.targetSubtitle}
+          targetImage={reviewModal.targetImage}
+          onSuccess={(review) => {
+            setUserReviews((prev) => ({
+              ...prev,
+              [`${review.bookingId || reviewModal.bookingId}_${review.targetType}`]: review,
+            }));
+            setToastMessage({
+              message: `Thank you! Your ${review.targetType.toLowerCase()} review has been submitted.`,
+              type: 'success',
+            });
+            setTimeout(() => setToastMessage(null), 4000);
+          }}
+        />
       )}
     </div>
   );

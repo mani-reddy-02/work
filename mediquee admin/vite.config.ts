@@ -9,6 +9,7 @@ export default defineConfig({
     port: 5174,
     host: true,
     allowedHosts: true,
+    cors: true,
     fs: {
       allow: ['..']
     },

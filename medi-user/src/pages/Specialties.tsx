@@ -20,6 +20,7 @@ import {
   ThermometerIcon, WindIcon, HeadacheIcon, PainIcon, JointIcon,
   SparklesIcon, IntestinesIcon, ThroatIcon, ShieldVirusIcon, VomitIcon
 } from '../components/DiseaseIcons';
+import { ReviewList } from '../components/ReviewList';
 
 // --- MOCK DATA ---
 const opBookingStepsData = [
@@ -1228,6 +1229,9 @@ const Specialties = () => {
             </div>
           </div>
         )}
+
+        {/* Real Reviews & Ratings for Hospital */}
+        <ReviewList targetType="HOSPITAL" targetId={selectedHospital.id} targetName={selectedHospital.name} className="mt-4" />
       </div>
       {selectedDisease ? (
         <div className="mt-2">
@@ -1573,6 +1577,9 @@ const Specialties = () => {
             </p>
           </div>
         )}
+
+        {/* Real Reviews & Ratings for Doctor */}
+        <ReviewList targetType="DOCTOR" targetId={doc.id} targetName={doc.name} />
 
         {/* Action Button */}
         <div className="pt-2">

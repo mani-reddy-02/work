@@ -25,7 +25,8 @@ import {
   ListTodo,
   Inbox,
   Network,
-  HelpCircle
+  HelpCircle,
+  Star
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -98,6 +99,7 @@ export const navGroups = [
     items: [
       { name: 'Requests', path: '/admin/requests', icon: Inbox },
       { name: 'Notifications', path: '/admin/notifications', icon: Bell },
+      { name: 'Reviews', path: '/admin/reviews', icon: Star },
       { name: 'Activity Log', path: '/admin/activity', icon: ListTodo }
     ]
   },

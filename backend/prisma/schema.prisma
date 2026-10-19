@@ -50,6 +50,7 @@ model Hospital {
   medicalCampRequests MedicalCampRequest[]
   notifications       Notification[]
   settlements         Settlement[]
+  reviews             Review[]               @relation("HospitalReviews")
 }
 
 model PlatformSpecialty {
@@ -130,6 +131,8 @@ model User {
   notifications           Notification[]
   patientReports          PatientReport[]
   prescriptions           Prescription[]        @relation("DoctorPrescriptions")
+  authoredReviews         Review[]              @relation("UserReviews")
+  doctorReviews           Review[]              @relation("DoctorReviews")
 }
 
 model Department {
@@ -936,6 +939,53 @@ model Insurance {
   updatedAt      DateTime @updatedAt
 
   @@map("insurances")
+}
+
+enum ReviewTargetType {
+  HOSPITAL
+  DOCTOR
+}
+
+enum ReviewServiceType {
+  OP_CONSULTATION
+  VIDEO_CONSULTATION
+  LAB_TEST
+  HOME_SAMPLE_COLLECTION
+  HOME_NURSING
+}
+
+enum ReviewStatus {
+  PUBLISHED
+  HIDDEN
+}
+
+model Review {
+  id              String            @id @default(uuid())
+  userId          String
+  bookingId       String
+  targetType      ReviewTargetType
+  serviceType     ReviewServiceType
+  hospitalId      String
+  doctorId        String?
+  rating          Int
+  comment         String?
+  status          ReviewStatus      @default(PUBLISHED)
+  moderatedAt     DateTime?
+  moderatedBy     String?
+  moderationNotes String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  user            User              @relation("UserReviews", fields: [userId], references: [id], onDelete: Cascade)
+  hospital        Hospital          @relation("HospitalReviews", fields: [hospitalId], references: [id], onDelete: Cascade)
+  doctor          User?             @relation("DoctorReviews", fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, targetType])
+  @@index([hospitalId, targetType, status])
+  @@index([doctorId, targetType, status])
+  @@index([userId])
+  @@index([bookingId])
+  @@map("reviews")
 }
 
 
