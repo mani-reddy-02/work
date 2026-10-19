@@ -254,8 +254,8 @@ const Specialties = () => {
     categorical: FALLBACK_CATEGORICAL_SPECIALTIES as any[],
     raw: [] as any[]
   });
-  const [hospitalsList, setHospitalsList] = useState<any[]>(FALLBACK_HOSPITALS);
-  const [doctorsList, setDoctorsList] = useState<any[]>(FALLBACK_DOCTORS);
+  const [hospitalsList, setHospitalsList] = useState<any[]>([]);
+  const [doctorsList, setDoctorsList] = useState<any[]>([]);
   const [availableSlots, setAvailableSlots] = useState<string[]>(FALLBACK_SLOTS);
   const [allSlots, setAllSlots] = useState<string[]>(FALLBACK_SLOTS);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
@@ -428,23 +428,28 @@ const Specialties = () => {
     if (view === 'HOSPITAL_RESULTS' || view === 'HOSPITAL_DETAILS') {
       let active = true;
       setIsHospitalsLoading(true);
-      hospitalApi.getHospitals({ search: hospitalSearch, conditionId: selectedDisease?.id }).then((res) => {
+      hospitalApi.getHospitals({
+        search: hospitalSearch,
+        conditionId: selectedDisease?.id,
+        consultationType: isVideo ? 'VIDEO' : 'OP'
+      }).then((res) => {
         if (active) {
           setIsHospitalsLoading(false);
-          if (res.success && res.data && res.data.length > 0) {
+          if (res.success && Array.isArray(res.data)) {
             setHospitalsList(res.data);
-          } else if (res.success && res.data && res.data.length === 0 && hospitalSearch) {
+          } else {
             setHospitalsList([]);
           }
         }
       }).catch(() => {
         if (active) {
           setIsHospitalsLoading(false);
+          setHospitalsList([]);
         }
       });
       return () => { active = false; };
     }
-  }, [view, hospitalSearch, selectedDisease]);
+  }, [view, hospitalSearch, selectedDisease, isVideo]);
 
   // Fetch real doctors when entering doctor list
   useEffect(() => {
@@ -452,16 +457,24 @@ const Specialties = () => {
       let active = true;
       setIsDoctorsLoading(true);
       if (selectedHospital?.id) {
-        hospitalApi.getHospitalDoctors(selectedHospital.id, selectedDepartment || undefined, selectedDisease?.id).then((res) => {
+        hospitalApi.getHospitalDoctors(
+          selectedHospital.id,
+          selectedDepartment || undefined,
+          selectedDisease?.id,
+          isVideo ? 'VIDEO' : 'OP'
+        ).then((res) => {
           if (active) {
             setIsDoctorsLoading(false);
             if (res.success && Array.isArray(res.data)) {
               setDoctorsList(res.data);
+            } else {
+              setDoctorsList([]);
             }
           }
         }).catch(() => {
           if (active) {
             setIsDoctorsLoading(false);
+            setDoctorsList([]);
           }
         });
       } else {
@@ -475,17 +488,20 @@ const Specialties = () => {
             setIsDoctorsLoading(false);
             if (res.success && Array.isArray(res.data)) {
               setDoctorsList(res.data);
+            } else {
+              setDoctorsList([]);
             }
           }
         }).catch(() => {
           if (active) {
             setIsDoctorsLoading(false);
+            setDoctorsList([]);
           }
         });
       }
       return () => { active = false; };
     }
-  }, [view, selectedHospital, selectedDepartment, hospitalSearch, selectedDisease]);
+  }, [view, selectedHospital?.id, selectedDepartment, hospitalSearch, selectedDisease?.id, isVideo]);
 
   // Fetch real availability when selecting slots
   useEffect(() => {
@@ -1152,8 +1168,18 @@ const Specialties = () => {
         )}
 
         {!isHospitalsLoading && filteredHospitals.length === 0 ? (
-          <div className="text-center py-8">
-             <p className="text-[14px] text-slate-500 font-bold">{hasSearch ? "No hospitals found matching your search" : "No hospitals found."}</p>
+          <div className="text-center py-10 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+             <AlertCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+             <p className="text-[14px] text-slate-700 font-bold mb-1">
+               {hasSearch 
+                 ? "No hospitals found matching your search" 
+                 : (selectedDisease ? `No eligible hospitals found for ${selectedDisease.name}` : "No hospitals available")}
+             </p>
+             <p className="text-[12px] text-slate-400">
+               {hasSearch 
+                 ? "Try searching with a different hospital name, city, or location."
+                 : (selectedDisease ? "There are currently no approved hospitals with scheduled doctors for this condition." : "Please check back later.")}
+             </p>
           </div>
         ) : (
         <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
@@ -1161,7 +1187,11 @@ const Specialties = () => {
             <div 
               key={hosp.id} 
               className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => { setSelectedHospital(hosp); setView(isVideo ? 'DOCTOR_LIST' : 'HOSPITAL_DETAILS'); }}
+              onClick={() => { 
+                setSelectedHospital(hosp); 
+                setSelectedDepartment(hosp.relevantDepartment || null);
+                setView(isVideo ? 'DOCTOR_LIST' : 'HOSPITAL_DETAILS'); 
+              }}
             >
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-bold text-slate-900 text-[15px] flex items-center gap-1.5">
@@ -1179,11 +1209,15 @@ const Specialties = () => {
               </p>
               
               <div className="flex flex-wrap gap-1.5 mb-4">
-                {(hosp.departments || []).slice(0, 3).map((dept: string) => (
-                  <span key={dept} className="px-2 py-1 bg-slate-50 text-slate-600 text-[9px] rounded-md font-medium border border-slate-100">
-                    {dept}
+                <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-lg border border-blue-100 flex items-center gap-1">
+                  <Activity className="w-3 h-3 text-blue-600" />
+                  {hosp.relevantDepartment || (Array.isArray(hosp.departments) && hosp.departments[0]) || 'General Medicine'}
+                </span>
+                {hosp.eligibleDoctorCount ? (
+                  <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-medium rounded-lg border border-emerald-100">
+                    {hosp.eligibleDoctorCount} {hosp.eligibleDoctorCount === 1 ? 'Doctor available' : 'Doctors available'}
                   </span>
-                ))}
+                ) : null}
               </div>
 
               <div className="w-full py-2.5 rounded-xl bg-blue-50 text-blue-600 font-bold text-[12px] text-center flex items-center justify-center pointer-events-none">
@@ -1331,13 +1365,7 @@ const Specialties = () => {
     if (!isVideo && selectedHospital) {
       docs = doctorsList.filter(d => d.hospitalId === selectedHospital.id);
       if (selectedDepartment) {
-        const deptDocs = docs.filter(d => d.department === selectedDepartment || d.departmentId === selectedDepartment);
-        if (deptDocs.length > 0) {
-          docs = deptDocs;
-        }
-      }
-      if (docs.length === 0) {
-        docs = doctorsList.filter(d => d.hospitalId === selectedHospital.id);
+        docs = docs.filter(d => d.department === selectedDepartment || d.departmentId === selectedDepartment);
       }
     }
 
