@@ -125,20 +125,20 @@ const BookingDetails = () => {
           homeNursingApi.getBookingById(id).catch(() => ({ success: false, error: 'Home nursing booking not found' })),
         ]);
 
-        if (opRes.success && opRes.data) {
-          setAppointment(opRes.data);
+        if ((opRes as any)?.success && (opRes as any)?.data) {
+          setAppointment((opRes as any).data);
           if (!silent) setIsLoading(false);
           return;
         }
 
-        if (labRes.success && labRes.data) {
-          setLabBooking(labRes.data);
+        if ((labRes as any)?.success && (labRes as any)?.data) {
+          setLabBooking((labRes as any).data);
           if (!silent) setIsLoading(false);
           return;
         }
 
-        if (nursingRes.success && nursingRes.data) {
-          setNursingBooking(nursingRes.data);
+        if ((nursingRes as any)?.success && (nursingRes as any)?.data) {
+          setNursingBooking((nursingRes as any).data);
           if (!silent) setIsLoading(false);
           return;
         }
@@ -587,6 +587,8 @@ const BookingDetails = () => {
                     </span>
                   </div>
                 </div>
+              </div>
+
               {/* Reviews & Experience for Completed Lab / Home Sample Bookings */}
               {labBooking.status === 'COMPLETED' && (
                 <BookingReviewCard
@@ -598,8 +600,8 @@ const BookingDetails = () => {
                   }
                   isCompleted={true}
                   hospital={{
-                    id: labBooking.hospitalId,
-                    name: labBooking.hospitalName,
+                    id: labBooking.hospitalId || labBooking.laboratoryId || '',
+                    name: labBooking.laboratoryName || 'Diagnostic Provider',
                   }}
                   onToast={(msg, type) => {
                     setToastMessage({ message: msg, type });
@@ -892,6 +894,8 @@ const BookingDetails = () => {
                     {nursingBooking.amount || `₹${Math.round(nursingBooking.totalAmount || 0)}`}
                   </span>
                 </div>
+              </div>
+
               {/* Reviews & Experience for Completed Home Nursing Bookings */}
               {nursingBooking.status === 'COMPLETED' && (
                 <BookingReviewCard
