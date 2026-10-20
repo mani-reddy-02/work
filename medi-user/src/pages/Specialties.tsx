@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { departmentIcons, allIcons, getDiseaseIconUrl } from '../utils/diseaseIcons';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { 
-  Search, Hospital, Video, Clock, CheckCircle2, ChevronLeft, 
-  MapPin, Phone, Star, ShieldCheck, User, Activity, FileText, AlertCircle, 
+import {
+  Search, Hospital, Video, Clock, CheckCircle2, ChevronLeft,
+  MapPin, Phone, Star, ShieldCheck, User, Activity, FileText, AlertCircle,
   Mic, MicOff, Video as VideoIcon, VideoOff, PhoneOff, Info,
   Thermometer, Brain, Droplet, Heart, Wind, Bone, Flame, Sparkles, Eye, Shield, ArrowLeft, Calendar,
   Building2, Stethoscope, CalendarClock, CalendarCheck, ActivitySquare, Bot, X
@@ -71,12 +71,12 @@ const INITIAL_DATES = getUpcomingDates();
 
 const getDiseasesForCategory = (catId: string, catName: string, rawConditions: any[] = [], categoryObj?: any) => {
   // Return any diseases associated with this category/specialty in the backend
-  const backendMatches = rawConditions.filter(c => 
+  const backendMatches = rawConditions.filter(c =>
     c.specialtyId === catId || (c.specialtyName && c.specialtyName.toLowerCase().includes(catName.toLowerCase()))
   );
 
-  const listToUse = backendMatches.length > 0 
-    ? backendMatches 
+  const listToUse = backendMatches.length > 0
+    ? backendMatches
     : (categoryObj?.conditions || []);
 
   return listToUse.map((bm: any, idx: number) => ({
@@ -90,7 +90,7 @@ const getDiseasesForCategory = (catId: string, catName: string, rawConditions: a
   }));
 };
 
-type ViewState = 
+type ViewState =
   | 'LANDING'
   | 'CATEGORICAL_DISEASES'
   | 'HOSPITAL_RESULTS'
@@ -103,135 +103,6 @@ type ViewState =
   | 'VIDEO_UPCOMING'
   | 'VIDEO_CALL'
   | 'VIDEO_COMPLETED';
-
-const FALLBACK_GENERAL_DISEASES = [
-  { id: 'gen-1', name: 'Fever', icon: Activity, image: '/optimized/Blood Test.webp', bg: 'bg-red-50' },
-  { id: 'gen-2', name: 'Cold & Cough', icon: Activity, image: '/optimized/Blood Test.webp', bg: 'bg-blue-50' },
-  { id: 'gen-3', name: 'Headache', icon: Activity, image: '/optimized/Blood Test.webp', bg: 'bg-purple-50' },
-  { id: 'gen-4', name: 'Stomach Pain', icon: Activity, image: '/optimized/Blood Test.webp', bg: 'bg-amber-50' },
-  { id: 'gen-5', name: 'Body Pain', icon: Activity, image: '/optimized/Blood Test.webp', bg: 'bg-emerald-50' },
-  { id: 'gen-6', name: 'Vomiting & Nausea', icon: Activity, image: '/optimized/Blood Test.webp', bg: 'bg-rose-50' },
-  { id: 'gen-7', name: 'Diarrhea', icon: Activity, image: '/optimized/Blood Test.webp', bg: 'bg-orange-50' },
-  { id: 'gen-8', name: 'Sore Throat', icon: Activity, image: '/optimized/Blood Test.webp', bg: 'bg-teal-50' },
-  { id: 'gen-9', name: 'Fatigue & Weakness', icon: Activity, image: '/optimized/Blood Test.webp', bg: 'bg-indigo-50' },
-  { id: 'gen-10', name: 'Eye Irritation', icon: Activity, image: '/optimized/Blood Test.webp', bg: 'bg-cyan-50' },
-];
-
-const FALLBACK_ADVANCED_DISEASES = [
-  { id: 'adv-1', name: 'Chest Pain', icon: ShieldCheck, image: '/optimized/Blood Test.webp', bg: 'bg-pink-50' },
-  { id: 'adv-2', name: 'Shortness of Breath', icon: ShieldCheck, image: '/optimized/Blood Test.webp', bg: 'bg-blue-50' },
-  { id: 'adv-3', name: 'Diabetes Check', icon: ShieldCheck, image: '/optimized/Blood Test.webp', bg: 'bg-orange-50' },
-  { id: 'adv-4', name: 'Hypertension Management', icon: ShieldCheck, image: '/optimized/Blood Test.webp', bg: 'bg-rose-50' },
-  { id: 'adv-5', name: 'Kidney Health Screening', icon: ShieldCheck, image: '/optimized/Blood Test.webp', bg: 'bg-cyan-50' },
-  { id: 'adv-6', name: 'Thyroid Disorder', icon: ShieldCheck, image: '/optimized/Blood Test.webp', bg: 'bg-purple-50' },
-  { id: 'adv-7', name: 'Chronic Joint Pain', icon: ShieldCheck, image: '/optimized/Blood Test.webp', bg: 'bg-amber-50' },
-  { id: 'adv-8', name: 'Severe Migraine', icon: ShieldCheck, image: '/optimized/Blood Test.webp', bg: 'bg-indigo-50' },
-  { id: 'adv-9', name: 'Liver Function Concern', icon: ShieldCheck, image: '/optimized/Blood Test.webp', bg: 'bg-emerald-50' },
-];
-
-const FALLBACK_CATEGORICAL_SPECIALTIES = [
-  {
-    id: 'cat-1',
-    name: 'Cardiology',
-    desc: 'Heart and cardiovascular care',
-    icon: Stethoscope,
-    bg: 'bg-emerald-50',
-    conditions: [
-      { id: 'c-1', name: 'Hypertension / High BP', specialtyId: 'cat-1' },
-      { id: 'c-2', name: 'Angina & Chest Discomfort', specialtyId: 'cat-1' },
-    ]
-  },
-  {
-    id: 'cat-2',
-    name: 'Dermatology',
-    desc: 'Skin and hair conditions',
-    icon: Stethoscope,
-    bg: 'bg-cyan-50',
-    conditions: [
-      { id: 'c-3', name: 'Acne', specialtyId: 'cat-2' },
-      { id: 'c-4', name: 'Eczema', specialtyId: 'cat-2' },
-    ]
-  },
-  {
-    id: 'cat-3',
-    name: 'Neurology',
-    desc: 'Brain and nervous system care',
-    icon: Stethoscope,
-    bg: 'bg-purple-50',
-    conditions: [
-      { id: 'c-5', name: 'Migraine', specialtyId: 'cat-3' },
-    ]
-  },
-  {
-    id: 'cat-4',
-    name: 'Orthopedics',
-    desc: 'Bones, joints, and spine care',
-    icon: Stethoscope,
-    bg: 'bg-amber-50',
-    conditions: [
-      { id: 'c-6', name: 'Back Pain', specialtyId: 'cat-4' },
-      { id: 'c-7', name: 'Arthritis', specialtyId: 'cat-4' },
-    ]
-  },
-  {
-    id: 'cat-5',
-    name: 'Gastroenterology',
-    desc: 'Digestive and liver health',
-    icon: Stethoscope,
-    bg: 'bg-rose-50',
-    conditions: [
-      { id: 'c-8', name: 'Acid Reflux / GERD', specialtyId: 'cat-5' },
-    ]
-  },
-];
-
-const FALLBACK_HOSPITALS = [
-  {
-    id: 'hosp-1',
-    name: 'Apollo Hospitals',
-    address: 'Road No. 72, Jubilee Hills, Hyderabad',
-    contact: '+91 40 2360 7777',
-    departments: ['General Medicine', 'Cardiology', 'Emergency Care'],
-    services: ['op_consultation', 'video_consultation', 'emergency'],
-    verified: true,
-    description: 'Premier multi-specialty tertiary care hospital with world-class medical experts.'
-  },
-  {
-    id: 'hosp-2',
-    name: 'KIMS Hospitals',
-    address: 'Minister Road, Secunderabad, Telangana',
-    contact: '+91 40 4488 5000',
-    departments: ['General Medicine', 'Neurology', 'Pediatrics'],
-    services: ['op_consultation', 'video_consultation'],
-    verified: true,
-    description: 'Leading healthcare institute delivering comprehensive clinical services.'
-  }
-];
-
-const FALLBACK_DOCTORS = [
-  {
-    id: 'doc-1',
-    name: 'Dr. Sarah Jenkins',
-    specialization: 'General Physician & Internal Medicine',
-    qualification: 'MBBS, MD (General Medicine)',
-    experience: '12 years',
-    designation: 'Senior Consultant Physician',
-    hospitalId: 'hosp-1',
-    hospitalName: 'Apollo Hospitals',
-    hospitalAddress: 'Road No. 72, Jubilee Hills, Hyderabad',
-    departmentId: 'dept-gen',
-    department: 'General Medicine',
-    consultInfo: 'Expert in infectious diseases, chronic illness management, and adult primary care.',
-    bio: 'Dr. Sarah Jenkins has over 12 years of experience in internal medicine and outpatient care with high patient satisfaction.',
-    fees: '₹ 500',
-    consultationFee: 500,
-    rating: 4.8
-  }
-];
-
-const FALLBACK_SLOTS = [
-  '09:00 AM', '10:00 AM', '11:00 AM', '02:00 PM', '03:00 PM', '04:00 PM'
-];
 
 const Specialties = () => {
   const [searchParams] = useSearchParams();
@@ -246,24 +117,24 @@ const Specialties = () => {
   const [showAllGeneral, setShowAllGeneral] = useState(false);
   const [showAllAdvanced, setShowAllAdvanced] = useState(false);
   const [showAllCategorical, setShowAllCategorical] = useState(false);
-  
-  // Real Data State with resilient fallbacks
+
+  // Dynamic Data State from database
   const [diseasesList, setDiseasesList] = useState({
-    general: FALLBACK_GENERAL_DISEASES as any[],
-    advanced: FALLBACK_ADVANCED_DISEASES as any[],
-    categorical: FALLBACK_CATEGORICAL_SPECIALTIES as any[],
+    general: [] as any[],
+    advanced: [] as any[],
+    categorical: [] as any[],
     raw: [] as any[]
   });
   const [hospitalsList, setHospitalsList] = useState<any[]>([]);
   const [doctorsList, setDoctorsList] = useState<any[]>([]);
-  const [availableSlots, setAvailableSlots] = useState<string[]>(FALLBACK_SLOTS);
-  const [allSlots, setAllSlots] = useState<string[]>(FALLBACK_SLOTS);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [allSlots, setAllSlots] = useState<string[]>([]);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [expiredSlots, setExpiredSlots] = useState<string[]>([]);
   const [isHospitalsLoading, setIsHospitalsLoading] = useState(false);
   const [isDoctorsLoading, setIsDoctorsLoading] = useState(false);
   const [isSlotsLoading, setIsSlotsLoading] = useState(false);
-  const [isDiseasesLoading, setIsDiseasesLoading] = useState(false);
+  const [isDiseasesLoading, setIsDiseasesLoading] = useState(true);
   const [diseasesError, setDiseasesError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState('');
@@ -276,7 +147,7 @@ const Specialties = () => {
   const [selectedDisease, setSelectedDisease] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [categoricalDiseaseSearch, setCategoricalDiseaseSearch] = useState('');
-  
+
   const [selectedHospital, setSelectedHospital] = useState<any>(null);
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
@@ -286,12 +157,12 @@ const Specialties = () => {
   const [isDoctorAvailable, setIsDoctorAvailable] = useState<boolean>(true);
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [reason, setReason] = useState('');
-  
+
   // Booking State
   const [bookingId, setBookingId] = useState('');
   const [bookingStatus, setBookingStatus] = useState('PENDING'); // PENDING, CONFIRMED, COMPLETED, CANCELLED
   const [notification, setNotification] = useState('');
-  
+
   // Video specific state
   const [isVideoActive, setIsVideoActive] = useState(false);
   const [micOn, setMicOn] = useState(true);
@@ -320,7 +191,7 @@ const Specialties = () => {
   // Shows as Tile initially, then after 5s collapses to circle popup
   useEffect(() => {
     const isDiseaseSelectionScreen = view === 'LANDING' || view === 'CATEGORICAL_DISEASES';
-    
+
     if (!isDiseaseSelectionScreen || hasDismissedAiPopup) {
       setIsAiPopupCollapsed(true);
       return;
@@ -344,7 +215,7 @@ const Specialties = () => {
     setHasDismissedAiPopup(true);
     try {
       sessionStorage.setItem('mediquee_dismissed_ai_popup', 'true');
-    } catch {}
+    } catch { }
   };
 
   // Fetch full doctor details using doctorApi when entering DOCTOR_PROFILE
@@ -371,14 +242,15 @@ const Specialties = () => {
     }
   }, [view, selectedDoctor?.id]);
 
-  // Fetch real diseases on mount
+  // Fetch real diseases on mount from database
   useEffect(() => {
     let mounted = true;
+    setIsDiseasesLoading(true);
     setDiseasesError(false);
     opAppointmentApi.fetchDiseases().then((res) => {
       if (mounted) {
         if (res.success && res.data) {
-          
+
           // Map general
           const general = (res.data.general || []).map((d: any, idx: number) => ({
             ...d,
@@ -386,7 +258,7 @@ const Specialties = () => {
             image: getDiseaseIconUrl(d.name, d.icon),
             bg: ['bg-red-50', 'bg-blue-50', 'bg-emerald-50', 'bg-purple-50', 'bg-amber-50'][idx % 5]
           }));
-          
+
           // Map advanced
           const advanced = (res.data.advanced || []).map((d: any, idx: number) => ({
             ...d,
@@ -394,7 +266,7 @@ const Specialties = () => {
             image: getDiseaseIconUrl(d.name, d.icon),
             bg: ['bg-pink-50', 'bg-blue-50', 'bg-orange-50', 'bg-fuchsia-50', 'bg-rose-50'][idx % 5]
           }));
-          
+
           // Map categorical
           const categorical = (res.data.categorical || []).map((s: any, idx: number) => ({
             ...s,
@@ -411,19 +283,34 @@ const Specialties = () => {
             raw: res.data.conditions || []
           });
           setDiseasesError(false);
+        } else {
+          setDiseasesList({
+            general: [],
+            advanced: [],
+            categorical: [],
+            raw: []
+          });
+          setDiseasesError(true);
         }
         setIsDiseasesLoading(false);
       }
     }).catch(() => {
       if (mounted) {
+        setDiseasesList({
+          general: [],
+          advanced: [],
+          categorical: [],
+          raw: []
+        });
         setIsDiseasesLoading(false);
+        setDiseasesError(true);
       }
     });
 
     return () => { mounted = false; };
   }, []);
 
-  // Fetch real hospitals when entering hospital view or changing search/disease
+  // Fetch real hospitals from database when entering hospital view or changing search/disease
   useEffect(() => {
     if (view === 'HOSPITAL_RESULTS' || view === 'HOSPITAL_DETAILS') {
       let active = true;
@@ -451,7 +338,7 @@ const Specialties = () => {
     }
   }, [view, hospitalSearch, selectedDisease, isVideo]);
 
-  // Fetch real doctors when entering doctor list
+  // Fetch real doctors from database when entering doctor list
   useEffect(() => {
     if (view === 'DOCTOR_LIST' || view === 'DOCTOR_PROFILE' || (view === 'HOSPITAL_DETAILS' && selectedDisease)) {
       let active = true;
@@ -503,7 +390,7 @@ const Specialties = () => {
     }
   }, [view, selectedHospital?.id, selectedDepartment, hospitalSearch, selectedDisease?.id, isVideo]);
 
-  // Fetch real availability when selecting slots
+  // Fetch real availability from database when selecting slots
   useEffect(() => {
     if (view === 'SELECT_SLOT' && selectedDoctor?.id) {
       let active = true;
@@ -515,15 +402,26 @@ const Specialties = () => {
           setIsSlotsLoading(false);
           if (res.success && res.data) {
             setIsDoctorAvailable(res.data.isAvailable !== false);
-            setAvailableSlots(res.data.availableSlots && res.data.availableSlots.length > 0 ? res.data.availableSlots : FALLBACK_SLOTS);
-            setAllSlots(res.data.allSlots && res.data.allSlots.length > 0 ? res.data.allSlots : FALLBACK_SLOTS);
+            setAvailableSlots(Array.isArray(res.data.availableSlots) ? res.data.availableSlots : []);
+            setAllSlots(Array.isArray(res.data.allSlots) ? res.data.allSlots : []);
             setBookedSlots(res.data.bookedSlots || []);
             setExpiredSlots(res.data.expiredSlots || []);
+          } else {
+            setIsDoctorAvailable(false);
+            setAvailableSlots([]);
+            setAllSlots([]);
+            setBookedSlots([]);
+            setExpiredSlots([]);
           }
         }
       }).catch(() => {
         if (active) {
           setIsSlotsLoading(false);
+          setIsDoctorAvailable(false);
+          setAvailableSlots([]);
+          setAllSlots([]);
+          setBookedSlots([]);
+          setExpiredSlots([]);
         }
       });
       return () => { active = false; };
@@ -533,8 +431,8 @@ const Specialties = () => {
   const handleAiSelectConcern = (concern: any) => {
     const term = concern.diseaseSearchTerm || concern.name;
     const matched = diseasesList.general.find(d => d.name.toLowerCase().includes(term.toLowerCase())) ||
-                    diseasesList.advanced.find(d => d.name.toLowerCase().includes(term.toLowerCase())) ||
-                    diseasesList.categorical.find(d => d.name.toLowerCase().includes(term.toLowerCase()));
+      diseasesList.advanced.find(d => d.name.toLowerCase().includes(term.toLowerCase())) ||
+      diseasesList.categorical.find(d => d.name.toLowerCase().includes(term.toLowerCase()));
 
     if (matched) {
       handleDiseaseSelect(matched);
@@ -556,9 +454,9 @@ const Specialties = () => {
       const trimmedQuery = categoryQuery.trim().toLowerCase();
       const matchedCategory = diseasesList.categorical.find(
         c => (c.name || '').trim().toLowerCase() === trimmedQuery ||
-             (c.id || '') === categoryQuery ||
-             (c.name || '').toLowerCase().includes(trimmedQuery) ||
-             trimmedQuery.includes((c.name || '').toLowerCase())
+          (c.id || '') === categoryQuery ||
+          (c.name || '').toLowerCase().includes(trimmedQuery) ||
+          trimmedQuery.includes((c.name || '').toLowerCase())
       );
       if (matchedCategory) {
         setSelectedCategory(matchedCategory);
@@ -596,19 +494,19 @@ const Specialties = () => {
       case 'HOSPITAL_RESULTS':
       case 'DOCTOR_LIST':
         if (selectedDisease) {
-           if (selectedCategory) {
-             setView('CATEGORICAL_DISEASES');
-           } else {
-             setView('LANDING');
-           }
-           setSelectedDisease(null);
-           setSelectedDepartment(null);
-           setHospitalSearch('');
+          if (selectedCategory) {
+            setView('CATEGORICAL_DISEASES');
+          } else {
+            setView('LANDING');
+          }
+          setSelectedDisease(null);
+          setSelectedDepartment(null);
+          setHospitalSearch('');
         } else {
-           setView(selectedHospital ? 'HOSPITAL_DETAILS' : 'LANDING');
-           if (!selectedHospital) {
-               setSelectedDepartment(null);
-           }
+          setView(selectedHospital ? 'HOSPITAL_DETAILS' : 'LANDING');
+          if (!selectedHospital) {
+            setSelectedDepartment(null);
+          }
         }
         break;
       case 'HOSPITAL_DETAILS':
@@ -671,7 +569,7 @@ const Specialties = () => {
           const slotType = isVideo ? 'VIDEO' : 'OP';
           opAppointmentApi.fetchDoctorAvailability(selectedDoctor.id, targetDate, slotType).then(r => {
             if (r.success && r.data?.availableSlots) setAvailableSlots(r.data.availableSlots);
-          }).catch(() => {});
+          }).catch(() => { });
         }
         return;
       }
@@ -705,19 +603,19 @@ const Specialties = () => {
 
   const renderDiseaseCategories = () => {
     const query = diseaseSearch.toLowerCase().trim();
-    
+
     let filteredGeneral = diseasesList.general;
     let filteredAdvanced = diseasesList.advanced;
     let filteredCategorical = diseasesList.categorical;
 
     if (query) {
-      filteredGeneral = diseasesList.general.filter(d => 
+      filteredGeneral = diseasesList.general.filter(d =>
         (d?.name || (d as any)?.title || '').toLowerCase().includes(query)
       );
-      filteredAdvanced = diseasesList.advanced.filter(d => 
+      filteredAdvanced = diseasesList.advanced.filter(d =>
         (d?.name || (d as any)?.title || '').toLowerCase().includes(query)
       );
-      filteredCategorical = diseasesList.categorical.filter(d => 
+      filteredCategorical = diseasesList.categorical.filter(d =>
         (d?.name || (d as any)?.title || '').toLowerCase().includes(query) || (d?.desc && typeof d.desc === 'string' && d.desc.toLowerCase().includes(query))
       );
     }
@@ -730,254 +628,255 @@ const Specialties = () => {
 
     return (
       <div className="bg-slate-50 p-4 py-5">
-      {!diseaseSearchMode && <h2 className="text-[17px] font-bold text-slate-900 mb-1">Browse Diseases</h2>}
-      {!diseaseSearchMode && <p className="text-[12px] text-slate-500 mb-4">
-        {isVideo ? 'Select a disease to find available doctors' : 'Select a disease to find suitable hospitals'}
-      </p>}
+        {!diseaseSearchMode && <h2 className="text-[17px] font-bold text-slate-900 mb-1">Browse Diseases</h2>}
+        {!diseaseSearchMode && <p className="text-[12px] text-slate-500 mb-4">
+          {isVideo ? 'Select a disease to find available doctors' : 'Select a disease to find suitable hospitals'}
+        </p>}
 
-      {/* Disease Search Bar */}
-      <div className="relative mb-6">
-        {diseaseSearchMode ? (
-          <button 
-            onClick={() => { setDiseaseSearchMode(false); setDiseaseSearch(''); }}
-            className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 hover:text-slate-800 z-10"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-        ) : (
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-slate-400" />
+        {/* Disease Search Bar */}
+        <div className="relative mb-6">
+          {diseaseSearchMode ? (
+            <button
+              onClick={() => { setDiseaseSearchMode(false); setDiseaseSearch(''); }}
+              className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 hover:text-slate-800 z-10"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          ) : (
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-slate-400" />
+            </div>
+          )}
+          <input
+            type="text"
+            value={diseaseSearch}
+            onChange={(e) => setDiseaseSearch(e.target.value)}
+            onFocus={() => setDiseaseSearchMode(true)}
+            placeholder="Search for a disease or condition..."
+            className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm text-[13px] font-medium transition-all"
+          />
+          {diseaseSearch && (
+            <button
+              onClick={() => setDiseaseSearch('')}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {isDiseasesLoading ? (
+          <div className="text-center py-12">
+            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-[13px] text-slate-500 font-medium">Loading diseases...</p>
           </div>
-        )}
-        <input
-          type="text"
-          value={diseaseSearch}
-          onChange={(e) => setDiseaseSearch(e.target.value)}
-          onFocus={() => setDiseaseSearchMode(true)}
-          placeholder="Search for a disease or condition..."
-          className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm text-[13px] font-medium transition-all"
-        />
-        {diseaseSearch && (
-          <button
-            onClick={() => setDiseaseSearch('')}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-      
-      {isDiseasesLoading ? (
-        <div className="text-center py-12">
-           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-           <p className="text-[13px] text-slate-500 font-medium">Loading diseases...</p>
-        </div>
-      ) : diseasesError ? (
-        <div className="text-center py-12">
-           <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
-           <p className="text-[14px] text-slate-700 font-bold mb-1">Failed to load diseases</p>
-           <p className="text-[13px] text-slate-500 mb-4">Please check your connection and try again.</p>
-           <button onClick={() => window.location.reload()} className="px-5 py-2 bg-blue-600 text-white text-[13px] font-bold rounded-xl hover:bg-blue-700 shadow-sm">
-             Retry
-           </button>
-        </div>
-      ) : !hasResults ? (
-        <div className="text-center py-12">
-           <p className="text-[14px] text-slate-500 font-bold">No matching diseases found</p>
-        </div>
-      ) : (
-        <>
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-6">
-         {/* Tabs */}
-         <div className="flex border-b border-slate-100">
-            <button 
-              className={`flex-1 py-4 text-[13px] font-bold text-center border-b-[2.5px] transition-colors ${activeTab === 'general' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-              onClick={() => setActiveTab('general')}
-            >
-              General
+        ) : diseasesError ? (
+          <div className="text-center py-12">
+            <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
+            <p className="text-[14px] text-slate-700 font-bold mb-1">Failed to load diseases</p>
+            <p className="text-[13px] text-slate-500 mb-4">Please check your connection and try again.</p>
+            <button onClick={() => window.location.reload()} className="px-5 py-2 bg-blue-600 text-white text-[13px] font-bold rounded-xl hover:bg-blue-700 shadow-sm">
+              Retry
             </button>
-            <button 
-              className={`flex-1 py-4 text-[13px] font-bold text-center border-b-[2.5px] transition-colors ${activeTab === 'advanced' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-              onClick={() => setActiveTab('advanced')}
-            >
-              Advanced
-            </button>
-         </div>
-         
-         {/* Tab Content */}
-         <div className="p-4">
-           {activeTab === 'general' && (
-             <>
-               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-3 gap-y-4">
-                 {displayedGeneral.map((item) => (
-                    <div key={item.id} onClick={() => handleDiseaseSelect(item)} className="flex flex-col items-center bg-white rounded-2xl p-2 cursor-pointer border border-slate-50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-shadow h-[90px] justify-center">
-                      <div className={`w-[54px] h-[54px] rounded-full ${item.bg} flex items-center justify-center mb-2 shadow-sm overflow-hidden p-1`}>
-                          {item.image ? (
-                              <img 
-                                src={item.image} 
-                                alt={item.name} 
-                                className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" 
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
-                                }}
-                              />
-                          ) : item.icon ? (
-                              <item.icon className={`w-8 h-8`} />
-                          ) : (
-                              <Activity className="w-8 h-8 text-blue-600" />
-                          )}
-                      </div>
-                      <span className="text-[11px] font-bold text-center text-slate-800 leading-tight">
-                          {item.name}
-                      </span>
-                    </div>
-                 ))}
-               </div>
-               
-               {!query && filteredGeneral.length > 8 && (
-                 <div className="mt-5 flex justify-center">
-                   <button 
-                     onClick={() => setShowAllGeneral(!showAllGeneral)}
-                     className="text-[12px] font-bold text-blue-600 flex items-center gap-1 hover:text-blue-700 transition-colors"
-                   >
-                     {showAllGeneral ? 'Show Less ↑' : 'See More Diseases →'}
-                   </button>
-                 </div>
-               )}
-             </>
-           )}
-
-           {activeTab === 'advanced' && (
-             <>
-               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-3 gap-y-4">
-                 {displayedAdvanced.map((item) => (
-                    <div key={item.id} onClick={() => handleDiseaseSelect(item)} className="flex flex-col items-center bg-white rounded-2xl p-2 cursor-pointer border border-slate-50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-shadow h-[90px] justify-center">
-                      <div className={`w-[54px] h-[54px] rounded-full ${item.bg} flex items-center justify-center mb-2 shadow-sm overflow-hidden p-1`}>
-                          {item.image ? (
-                              <img 
-                                src={item.image} 
-                                alt={item.name} 
-                                className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" 
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
-                                }}
-                              />
-                          ) : item.icon ? (
-                              <item.icon className={`w-8 h-8`} />
-                          ) : (
-                              <ShieldCheck className="w-8 h-8 text-indigo-600" />
-                          )}
-                      </div>
-                      <span className="text-[11px] font-bold text-center text-slate-800 leading-tight">
-                          {item.name}
-                      </span>
-                    </div>
-                 ))}
-               </div>
-
-               {!query && filteredAdvanced.length > 8 && (
-                 <div className="mt-5 flex justify-center">
-                   <button 
-                     onClick={() => setShowAllAdvanced(!showAllAdvanced)}
-                     className="text-[12px] font-bold text-blue-600 flex items-center gap-1 hover:text-blue-700 transition-colors"
-                   >
-                     {showAllAdvanced ? 'Show Less ↑' : 'See More Diseases →'}
-                   </button>
-                 </div>
-               )}
-             </>
-           )}
-         </div>
-      </div>
-
-      <div>
-         <h2 className="text-[17px] font-bold text-slate-900 mb-3">Categorical Diseases</h2>
-         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-           {displayedCategorical.map((cat) => (
-              <div key={cat.id} onClick={() => handleCategorySelect(cat)} className="flex items-center justify-between bg-white rounded-2xl p-3 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
-                 <div className="flex items-center gap-3">
-                    <div className={`w-14 h-14 rounded-full ${cat.bg} flex items-center justify-center shrink-0 shadow-sm border border-slate-100/50 p-1.5`}>
-                       {cat.image ? (
-                           <img 
-                             src={cat.image} 
-                             alt={cat.name} 
-                             className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" 
-                             onError={(e) => {
-                               (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
-                             }}
-                           />
-                       ) : cat.icon ? (
-                           <cat.icon className={`w-8 h-8`} />
-                       ) : (
-                           <Stethoscope className="w-8 h-8 text-blue-600" />
-                       )}
-                    </div>
-                    <div>
-                       <h3 className="font-bold text-slate-900 text-[13px] mb-0.5">{cat.name}</h3>
-                       <p className="text-[10px] text-slate-500 font-medium leading-tight whitespace-pre-line">{cat.desc}</p>
-                    </div>
-                 </div>
-                 <ChevronLeft className="w-4 h-4 text-slate-400 shrink-0 rotate-180" />
+          </div>
+        ) : !hasResults ? (
+          <div className="text-center py-12">
+            <p className="text-[14px] text-slate-500 font-bold">No matching diseases found</p>
+          </div>
+        ) : (
+          <>
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-6">
+              {/* Tabs */}
+              <div className="flex border-b border-slate-100">
+                <button
+                  className={`flex-1 py-4 text-[13px] font-bold text-center border-b-[2.5px] transition-colors ${activeTab === 'general' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                  onClick={() => setActiveTab('general')}
+                >
+                  General
+                </button>
+                <button
+                  className={`flex-1 py-4 text-[13px] font-bold text-center border-b-[2.5px] transition-colors ${activeTab === 'advanced' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                  onClick={() => setActiveTab('advanced')}
+                >
+                  Advanced
+                </button>
               </div>
-           ))}
-         </div>
-         
-         {!query && filteredCategorical.length > 4 && (
-           <div className="mt-4 mb-2 flex justify-center">
-             <button 
-               onClick={() => setShowAllCategorical(!showAllCategorical)}
-               className="text-[12px] font-bold text-blue-600 flex items-center gap-1 hover:text-blue-700 transition-colors"
-             >
-               {showAllCategorical ? 'Show Less ↑' : 'See More Diseases →'}
-             </button>
-           </div>
-         )}
+
+              {/* Tab Content */}
+              <div className="p-4">
+                {activeTab === 'general' && (
+                  <>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-3 gap-y-4">
+                      {displayedGeneral.map((item) => (
+                        <div key={item.id} onClick={() => handleDiseaseSelect(item)} className="flex flex-col items-center bg-white rounded-2xl p-2 cursor-pointer border border-slate-50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-shadow h-[90px] justify-center">
+                          <div className={`w-[54px] h-[54px] rounded-full ${item.bg} flex items-center justify-center mb-2 shadow-sm overflow-hidden p-1`}>
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                                }}
+                              />
+                            ) : item.icon ? (
+                              <item.icon className={`w-8 h-8`} />
+                            ) : (
+                              <Activity className="w-8 h-8 text-blue-600" />
+                            )}
+                          </div>
+                          <span className="text-[11px] font-bold text-center text-slate-800 leading-tight">
+                            {item.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {!query && filteredGeneral.length > 8 && (
+                      <div className="mt-5 flex justify-center">
+                        <button
+                          onClick={() => setShowAllGeneral(!showAllGeneral)}
+                          className="text-[12px] font-bold text-blue-600 flex items-center gap-1 hover:text-blue-700 transition-colors"
+                        >
+                          {showAllGeneral ? 'Show Less ↑' : 'See More Diseases →'}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {activeTab === 'advanced' && (
+                  <>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-3 gap-y-4">
+                      {displayedAdvanced.map((item) => (
+                        <div key={item.id} onClick={() => handleDiseaseSelect(item)} className="flex flex-col items-center bg-white rounded-2xl p-2 cursor-pointer border border-slate-50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-shadow h-[90px] justify-center">
+                          <div className={`w-[54px] h-[54px] rounded-full ${item.bg} flex items-center justify-center mb-2 shadow-sm overflow-hidden p-1`}>
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                                }}
+                              />
+                            ) : item.icon ? (
+                              <item.icon className={`w-8 h-8`} />
+                            ) : (
+                              <ShieldCheck className="w-8 h-8 text-indigo-600" />
+                            )}
+                          </div>
+                          <span className="text-[11px] font-bold text-center text-slate-800 leading-tight">
+                            {item.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {!query && filteredAdvanced.length > 8 && (
+                      <div className="mt-5 flex justify-center">
+                        <button
+                          onClick={() => setShowAllAdvanced(!showAllAdvanced)}
+                          className="text-[12px] font-bold text-blue-600 flex items-center gap-1 hover:text-blue-700 transition-colors"
+                        >
+                          {showAllAdvanced ? 'Show Less ↑' : 'See More Diseases →'}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-[17px] font-bold text-slate-900 mb-3">Categorical Diseases</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {displayedCategorical.map((cat) => (
+                  <div key={cat.id} onClick={() => handleCategorySelect(cat)} className="flex items-center justify-between bg-white rounded-2xl p-3 border border-slate-100 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-14 h-14 rounded-full ${cat.bg} flex items-center justify-center shrink-0 shadow-sm border border-slate-100/50 p-1.5`}>
+                        {cat.image ? (
+                          <img
+                            src={cat.image}
+                            alt={cat.name}
+                            className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                            }}
+                          />
+                        ) : cat.icon ? (
+                          <cat.icon className={`w-8 h-8`} />
+                        ) : (
+                          <Stethoscope className="w-8 h-8 text-blue-600" />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-[13px] mb-0.5">{cat.name}</h3>
+                        <p className="text-[10px] text-slate-500 font-medium leading-tight whitespace-pre-line">{cat.desc}</p>
+                      </div>
+                    </div>
+                    <ChevronLeft className="w-4 h-4 text-slate-400 shrink-0 rotate-180" />
+                  </div>
+                ))}
+              </div>
+
+              {!query && filteredCategorical.length > 4 && (
+                <div className="mt-4 mb-2 flex justify-center">
+                  <button
+                    onClick={() => setShowAllCategorical(!showAllCategorical)}
+                    className="text-[12px] font-bold text-blue-600 flex items-center gap-1 hover:text-blue-700 transition-colors"
+                  >
+                    {showAllCategorical ? 'Show Less ↑' : 'See More Diseases →'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
-        </>
-      )}
-    </div>
-  );
-};
+    );
+  };
 
   const renderLanding = () => {
     return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {!diseaseSearchMode && (
-        <div className="bg-gradient-to-r from-[#0055ff] to-[#06b6d4] pt-5 pb-8 px-4 text-white rounded-b-3xl relative overflow-hidden">
-          {isVideo && (
-            <div className="absolute right-0 top-0 opacity-10">
-              <Video className="w-32 h-32 -mr-6 -mt-4" strokeWidth={1} />
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {!diseaseSearchMode && (
+          <div className="bg-gradient-to-r from-[#0055ff] to-[#06b6d4] pt-5 pb-8 px-4 text-white rounded-b-3xl relative overflow-hidden">
+            {isVideo && (
+              <div className="absolute right-0 top-0 opacity-10">
+                <Video className="w-32 h-32 -mr-6 -mt-4" strokeWidth={1} />
+              </div>
+            )}
+            <div className="flex items-center gap-3 mb-1 relative z-10">
+              <button onClick={() => navigate(-1)} className="p-1 hover:bg-white/20 rounded-full transition-colors -ml-1">
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+              <h1 className="text-[20px] font-bold">{isVideo ? 'Video Consultation' : 'Book an OP Appointment'}</h1>
             </div>
-          )}
-          <div className="flex items-center gap-3 mb-1 relative z-10">
-            <button onClick={() => navigate(-1)} className="p-1 hover:bg-white/20 rounded-full transition-colors -ml-1">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <h1 className="text-[20px] font-bold">{isVideo ? 'Video Consultation' : 'Book an OP Appointment'}</h1>
+            <p className="text-[11px] text-blue-100 mb-5 max-w-[280px] relative z-10">
+              {isVideo
+                ? 'Consult with a doctor online from wherever you are.'
+                : 'Find a hospital, choose a doctor, and book an available appointment.'}
+            </p>
           </div>
-          <p className="text-[11px] text-blue-100 mb-5 max-w-[280px] relative z-10">
-            {isVideo 
-              ? 'Consult with a doctor online from wherever you are.' 
-              : 'Find a hospital, choose a doctor, and book an available appointment.'}
-          </p>
-        </div>
-      )}
+        )}
 
-      {!diseaseSearchMode && (
-        <HowItWorks 
-          title={isVideo ? "How Video Consultation Works" : "How OP Booking Works"}
-          steps={isVideo ? videoConsultationStepsData : opBookingStepsData}
-          className="shadow-sm -mt-2 relative z-20 rounded-t-3xl mb-2"
-        />
-      )}
+        {!diseaseSearchMode && (
+          <HowItWorks
+            title={isVideo ? "How Video Consultation Works" : "How OP Booking Works"}
+            steps={isVideo ? videoConsultationStepsData : opBookingStepsData}
+            className="shadow-sm -mt-2 relative z-20 rounded-t-3xl mb-2"
+          />
+        )}
 
-      {renderDiseaseCategories()}
-    </div>
-  )};
+        {renderDiseaseCategories()}
+      </div>
+    )
+  };
 
   const renderCategoricalDiseases = () => {
     if (!selectedCategory) return null;
-    
+
     const categoryDiseases = getDiseasesForCategory(selectedCategory.id, selectedCategory.name, diseasesList.raw, selectedCategory);
     const query = categoricalDiseaseSearch.toLowerCase().trim();
     const filtered = query
@@ -990,10 +889,10 @@ const Specialties = () => {
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm flex items-start gap-4">
           <div className={`w-14 h-14 rounded-2xl ${selectedCategory.bg || 'bg-blue-50'} flex items-center justify-center shrink-0 shadow-sm border border-slate-100/60 p-1.5 overflow-hidden`}>
             {selectedCategory.image ? (
-              <img 
-                src={selectedCategory.image} 
-                alt={selectedCategory.name} 
-                className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" 
+              <img
+                src={selectedCategory.image}
+                alt={selectedCategory.name}
+                className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
                 }}
@@ -1023,8 +922,8 @@ const Specialties = () => {
         {/* Search within Category */}
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder={`Search within ${selectedCategory.name}...`}
             value={categoricalDiseaseSearch}
             onChange={(e) => setCategoricalDiseaseSearch(e.target.value)}
@@ -1061,10 +960,10 @@ const Specialties = () => {
                     <div className="flex items-start gap-3 min-w-0 pr-2">
                       <div className={`w-11 h-11 rounded-xl ${item.bg || 'bg-blue-50'} flex items-center justify-center shrink-0 shadow-sm border border-slate-100 group-hover:scale-105 transition-transform p-1 overflow-hidden`}>
                         {item.image ? (
-                          <img 
-                            src={item.image} 
-                            alt={item.name} 
-                            className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply" 
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply"
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
                             }}
@@ -1103,28 +1002,28 @@ const Specialties = () => {
     const query = hospitalSearch.toLowerCase().trim();
     const hasSearch = query.length > 0;
     const showPopular = searchFocused && !hasSearch;
-    
+
     let filteredHospitals = hospitalsList;
-    
+
     if (query) {
       filteredHospitals = hospitalsList.filter(h => {
         const name = (h?.name || h?.hospitalName || h?.title || '').toLowerCase();
         const desc = (typeof h?.description === 'string' ? h.description : '').toLowerCase();
         const city = (typeof h?.city === 'string' ? h.city : '').toLowerCase();
         const loc = (typeof h?.location === 'string' ? h.location : '').toLowerCase();
-        const depts = Array.isArray(h?.departments) 
+        const depts = Array.isArray(h?.departments)
           ? h.departments.some((d: any) => (typeof d === 'string' ? d : d?.name || '').toLowerCase().includes(query))
           : false;
         return name.includes(query) || desc.includes(query) || city.includes(query) || loc.includes(query) || depts;
       });
     }
-    
-    let title = selectedDisease 
+
+    let title = selectedDisease
       ? `Hospitals for ${selectedDisease.name}`
       : (query ? `Hospitals found for "${hospitalSearch}"` : `All Hospitals`);
-      
-    let subtitle = selectedDisease 
-      ? 'Hospitals offering care for this condition' 
+
+    let subtitle = selectedDisease
+      ? 'Hospitals offering care for this condition'
       : (query ? 'Select a hospital to view details' : 'Browse available hospitals');
 
     if (showPopular) {
@@ -1136,7 +1035,7 @@ const Specialties = () => {
       <div className={`px-4 py-6 ${!hasSearch ? 'animate-in fade-in slide-in-from-right-4' : ''}`}>
         <div className="relative max-w-md md:max-w-xl mx-auto z-10 mb-6">
           {searchFocused ? (
-            <button 
+            <button
               onClick={() => { setSearchFocused(false); setHospitalSearch(''); }}
               className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 hover:text-slate-800 z-10"
             >
@@ -1147,19 +1046,19 @@ const Specialties = () => {
               <Search className="h-5 w-5 text-slate-400" />
             </div>
           )}
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={hospitalSearch}
             onChange={(e) => setHospitalSearch(e.target.value)}
             onFocus={() => setSearchFocused(true)}
-            className="block w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-2xl bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm text-[13px] font-medium" 
+            className="block w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-2xl bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm text-[13px] font-medium"
             placeholder={isVideo ? "Search hospital, doctor..." : "Search hospital by name, city, location..."}
           />
         </div>
 
         <h2 className="text-[16px] font-bold text-slate-800 mb-1">{title}</h2>
         <p className="text-[12px] text-slate-500 mb-4">{subtitle}</p>
-        
+
         {isHospitalsLoading && (
           <div className="flex items-center justify-center py-6 text-blue-600 gap-2">
             <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -1220,12 +1119,20 @@ const Specialties = () => {
                 ) : null}
               </div>
 
-              <div className="w-full py-2.5 rounded-xl bg-blue-50 text-blue-600 font-bold text-[12px] text-center flex items-center justify-center pointer-events-none">
-                {isVideo ? 'View Available Doctors' : 'View Hospital'}
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  {(hosp.departments || []).slice(0, 3).map((dept: string) => (
+                    <span key={dept} className="px-2 py-1 bg-slate-50 text-slate-600 text-[9px] rounded-md font-medium border border-slate-100">
+                      {dept}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="w-full py-2.5 rounded-xl bg-blue-50 text-blue-600 font-bold text-[12px] text-center flex items-center justify-center pointer-events-none">
+                  {isVideo ? 'View Available Doctors' : 'View Hospital'}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
         )}
       </div>
     );
@@ -1239,7 +1146,7 @@ const Specialties = () => {
           {selectedHospital.verified && <ShieldCheck className="w-5 h-5 text-emerald-500" />}
         </h2>
         <p className="text-[12px] text-slate-600 mb-4">{selectedHospital.description}</p>
-        
+
         <div className="space-y-2 mb-4">
           <p className="text-[11px] text-slate-500 flex items-center gap-2">
             <MapPin className="w-4 h-4 text-blue-500" />
@@ -1270,7 +1177,7 @@ const Specialties = () => {
       {selectedDisease ? (
         <div className="mt-2">
           <h3 className="font-bold text-slate-800 text-[15px] mb-3">Doctors for {selectedDisease.name}</h3>
-          
+
           {isDoctorsLoading ? (
             <div className="flex items-center justify-center py-6 text-blue-600 gap-2">
               <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -1303,11 +1210,11 @@ const Specialties = () => {
                       </div>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => { 
-                      setSelectedDoctor(doc); 
-                      setDoctorSourceView('HOSPITAL_DETAILS'); 
-                      setView('DOCTOR_PROFILE'); 
+                  <button
+                    onClick={() => {
+                      setSelectedDoctor(doc);
+                      setDoctorSourceView('HOSPITAL_DETAILS');
+                      setView('DOCTOR_PROFILE');
                     }}
                     className="w-full mt-4 py-2.5 rounded-xl bg-blue-50 text-blue-600 font-bold text-[12px] hover:bg-blue-100 transition-colors"
                   >
@@ -1317,7 +1224,7 @@ const Specialties = () => {
               ))}
             </div>
           )}
-          <button 
+          <button
             onClick={() => { setSelectedDepartment(null); setView('DOCTOR_LIST'); }}
             className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm hover:bg-blue-700 transition-colors"
           >
@@ -1334,8 +1241,8 @@ const Specialties = () => {
               </div>
             ) : (
               selectedHospital.departments.map((dept: string) => (
-                <div 
-                  key={dept} 
+                <div
+                  key={dept}
                   onClick={() => { setSelectedDepartment(dept); setView('DOCTOR_LIST'); }}
                   className="bg-white rounded-xl p-4 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-300 transition-colors"
                 >
@@ -1348,7 +1255,7 @@ const Specialties = () => {
             )}
           </div>
 
-          <button 
+          <button
             onClick={() => { setSelectedDepartment(null); setView('DOCTOR_LIST'); }}
             className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm"
           >
@@ -1369,7 +1276,7 @@ const Specialties = () => {
       }
     }
 
-    const title = isVideo 
+    const title = isVideo
       ? (selectedDisease ? `Available Doctors for ${selectedDisease.name}` : `Available Specialists Online`)
       : (selectedHospital ? `Doctors at ${selectedHospital.name}` : `Doctors for "${selectedDisease?.name || 'Selected Condition'}"`);
 
@@ -1390,40 +1297,40 @@ const Specialties = () => {
             <p className="text-[11px] text-slate-400 mt-1">No doctors are currently available for this selection.</p>
           </div>
         ) : (
-        <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
-          {docs.map(doc => (
-            <div key={doc.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-              <div className="flex gap-3">
-                <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
-                  {doc.avatar ? (
-                    <img src={doc.avatar} alt={doc.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-6 h-6 text-slate-400" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-slate-900 text-[14px]">{doc.name}</h3>
-                  <p className="text-[11px] text-blue-600 font-medium mb-0.5">{doc.specialization} • {doc.qualification}</p>
-                  <p className="text-[10px] text-slate-500 mb-1">{doc.hospitalName}</p>
-                  <div className="flex items-center gap-3 text-[10px] text-slate-500">
-                    <span className="flex items-center gap-1"><Star className="w-3 h-3 text-amber-400" /> {doc.rating}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {doc.experience}</span>
+          <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
+            {docs.map(doc => (
+              <div key={doc.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+                <div className="flex gap-3">
+                  <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
+                    {doc.avatar ? (
+                      <img src={doc.avatar} alt={doc.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-6 h-6 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-slate-900 text-[14px]">{doc.name}</h3>
+                    <p className="text-[11px] text-blue-600 font-medium mb-0.5">{doc.specialization} • {doc.qualification}</p>
+                    <p className="text-[10px] text-slate-500 mb-1">{doc.hospitalName}</p>
+                    <div className="flex items-center gap-3 text-[10px] text-slate-500">
+                      <span className="flex items-center gap-1"><Star className="w-3 h-3 text-amber-400" /> {doc.rating}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {doc.experience}</span>
+                    </div>
                   </div>
                 </div>
+                <button
+                  onClick={() => {
+                    setSelectedDoctor(doc);
+                    setDoctorSourceView('DOCTOR_LIST');
+                    setView('DOCTOR_PROFILE');
+                  }}
+                  className="w-full mt-4 py-2.5 rounded-xl bg-blue-50 text-blue-600 font-bold text-[12px] hover:bg-blue-100 transition-colors"
+                >
+                  View Doctor
+                </button>
               </div>
-              <button 
-                onClick={() => { 
-                  setSelectedDoctor(doc); 
-                  setDoctorSourceView('DOCTOR_LIST'); 
-                  setView('DOCTOR_PROFILE'); 
-                }}
-                className="w-full mt-4 py-2.5 rounded-xl bg-blue-50 text-blue-600 font-bold text-[12px] hover:bg-blue-100 transition-colors"
-              >
-                View Doctor
-              </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
         )}
       </div>
     );
@@ -1475,7 +1382,7 @@ const Specialties = () => {
         {/* Doctor Header Profile Card */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-sky-500/10 -z-0" />
-          
+
           <div className="relative z-10 flex flex-col items-center">
             <div className="w-24 h-24 rounded-full bg-white p-1 shadow-md mb-3 border-2 border-white overflow-hidden relative">
               {doc.avatar ? (
@@ -1524,7 +1431,7 @@ const Specialties = () => {
         {/* Hospital Affiliation & Department Card */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm space-y-3">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Hospital & Clinical Affiliation</h3>
-          
+
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
               <Hospital className="w-5 h-5" />
@@ -1554,7 +1461,7 @@ const Specialties = () => {
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
             {isVideo ? 'Consultation Mode' : 'Consultation Service'}
           </h3>
-          
+
           {isVideo ? (
             <div className="p-3.5 rounded-xl border border-indigo-200 bg-indigo-50/70 text-indigo-900 flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-indigo-600 text-white shadow-sm">
@@ -1611,7 +1518,7 @@ const Specialties = () => {
 
         {/* Action Button */}
         <div className="pt-2">
-          <button 
+          <button
             onClick={() => setView('SELECT_SLOT')}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
@@ -1629,7 +1536,7 @@ const Specialties = () => {
         <h2 className="text-[15px] font-bold text-slate-800 mb-4">Select {isVideo ? 'Consultation' : 'Appointment'} Date</h2>
         <div className="flex overflow-x-auto gap-3 pb-2 -mx-4 px-4 hide-scrollbar mb-4">
           {upcomingDates.map((d) => (
-            <div 
+            <div
               key={d.isoDate}
               onClick={() => {
                 setSelectedDate(d.date);
@@ -1676,13 +1583,12 @@ const Specialties = () => {
               const isSelected = selectedTime === time;
 
               return (
-                <div 
+                <div
                   key={time}
                   onClick={() => setSelectedTime(time)}
-                  className={`py-3 px-1 rounded-xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer ${
-                    isSelected ? 'border-blue-600 bg-blue-600 text-white shadow-md' :
-                    'border-slate-200 bg-white text-slate-700 hover:border-blue-300'
-                  }`}
+                  className={`py-3 px-1 rounded-xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer ${isSelected ? 'border-blue-600 bg-blue-600 text-white shadow-md' :
+                      'border-slate-200 bg-white text-slate-700 hover:border-blue-300'
+                    }`}
                 >
                   <span className="text-[12px] font-bold">{time}</span>
                 </div>
@@ -1713,7 +1619,7 @@ const Specialties = () => {
           </div>
         )}
 
-        <button 
+        <button
           disabled={!selectedTime || isSubmitting}
           onClick={confirmBooking}
           className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
@@ -1742,8 +1648,8 @@ const Specialties = () => {
     const statusLabel = confirmedBookingData?.status || 'CONFIRMED';
     const patientDisplayName = confirmedBookingData?.patientName || user?.name || 'Self';
     const patientPhone = confirmedBookingData?.patientPhone || user?.phone;
-    const feeDisplay = confirmedBookingData?.fee !== undefined 
-      ? `₹${confirmedBookingData.fee}` 
+    const feeDisplay = confirmedBookingData?.fee !== undefined
+      ? `₹${confirmedBookingData.fee}`
       : (selectedDoctor?.fees && selectedDoctor.fees !== 'Not specified' ? selectedDoctor.fees : '₹500');
 
     return (
@@ -1753,7 +1659,7 @@ const Specialties = () => {
           <div className="absolute inset-0 bg-emerald-400 rounded-full animate-ping opacity-25"></div>
           <CheckCircle2 className="w-10 h-10 text-emerald-600 relative z-10" />
         </div>
-        
+
         <div>
           <h2 className="text-xl md:text-2xl font-black text-slate-900 mb-1">
             {isVideo ? 'Video Consultation Confirmed' : 'Appointment Confirmed'}
@@ -1879,7 +1785,7 @@ const Specialties = () => {
 
         {/* Action Buttons */}
         <div className="space-y-3 pt-2">
-          <button 
+          <button
             onClick={() => navigate(`/booking/${effectiveBookingId}`)}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
@@ -1895,8 +1801,8 @@ const Specialties = () => {
               </>
             )}
           </button>
-          
-          <button 
+
+          <button
             onClick={() => navigate('/bookings')}
             className="w-full py-3.5 rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-xs hover:bg-emerald-100 transition-colors flex items-center justify-center gap-2"
           >
@@ -1904,7 +1810,7 @@ const Specialties = () => {
             <span>Go to My Bookings</span>
           </button>
 
-          <button 
+          <button
             onClick={() => navigate('/')}
             className="w-full py-3.5 rounded-2xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-colors"
           >
@@ -1919,12 +1825,11 @@ const Specialties = () => {
     <div className="px-4 py-6 max-w-md md:max-w-2xl mx-auto animate-in fade-in slide-in-from-right-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-[15px] font-bold text-slate-800">Appointment Details</h2>
-        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
-          bookingStatus === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
-          bookingStatus === 'PENDING' ? 'bg-amber-100 text-amber-700' :
-          bookingStatus === 'COMPLETED' ? 'bg-blue-100 text-blue-700' :
-          'bg-red-100 text-red-700'
-        }`}>
+        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${bookingStatus === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
+            bookingStatus === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+              bookingStatus === 'COMPLETED' ? 'bg-blue-100 text-blue-700' :
+                'bg-red-100 text-red-700'
+          }`}>
           {bookingStatus}
         </span>
       </div>
@@ -1940,7 +1845,7 @@ const Specialties = () => {
             <p className="text-[11px] text-slate-500">{selectedDoctor.hospitalName}</p>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
           <div>
             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Date & Time</span>
@@ -1956,7 +1861,7 @@ const Specialties = () => {
       <h3 className="font-bold text-slate-800 text-[13px] mb-3">Appointment History</h3>
       <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm mb-6 relative">
         <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-slate-100"></div>
-        
+
         <div className="flex gap-4 mb-6 relative">
           <div className="w-5 h-5 rounded-full bg-blue-500 border-4 border-white shadow-sm flex items-center justify-center shrink-0 z-10">
             <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
@@ -1966,7 +1871,7 @@ const Specialties = () => {
             <p className="text-[10px] text-slate-500">Your appointment request was placed.</p>
           </div>
         </div>
-        
+
         <div className="flex gap-4 mb-6 relative">
           <div className={`w-5 h-5 rounded-full ${bookingStatus !== 'PENDING' ? 'bg-green-500' : 'bg-slate-200'} border-4 border-white shadow-sm flex items-center justify-center shrink-0 z-10`}>
             {bookingStatus !== 'PENDING' && <CheckCircle2 className="w-2.5 h-2.5 text-white" />}
@@ -1989,14 +1894,14 @@ const Specialties = () => {
       </div>
 
       <div className="space-y-3 mb-3">
-        <button 
+        <button
           onClick={() => navigate('/bookings')}
           className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-[13px] shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
         >
           <Calendar className="w-4 h-4" /> View in My Bookings
         </button>
         {bookingStatus !== 'CANCELLED' && bookingStatus !== 'COMPLETED' && (
-          <button 
+          <button
             onClick={() => {
               setBookingStatus('CANCELLED');
               showNotification('Appointment has been cancelled.');
@@ -2013,17 +1918,17 @@ const Specialties = () => {
   const renderVideoUpcoming = () => {
     // Demo interaction: wait 3 seconds then allow join
     const canJoin = isVideoActive;
-    
+
     return (
       <div className="px-4 py-6 animate-in fade-in slide-in-from-right-4 text-center h-full flex flex-col justify-center min-h-[70vh]">
         <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-5 relative">
           <VideoIcon className="w-10 h-10 text-blue-500" />
           <div className="absolute top-0 right-0 w-6 h-6 bg-green-500 border-2 border-white rounded-full animate-pulse"></div>
         </div>
-        
+
         <h2 className="text-[20px] font-bold text-slate-900 mb-1">Upcoming Consultation</h2>
         <p className="text-[13px] text-blue-600 font-medium mb-6">Dr. {selectedDoctor.name.split(' ')[1]}</p>
-        
+
         <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm mx-auto max-w-[280px] mb-8">
           <div className="flex justify-between items-center mb-3">
             <span className="text-[11px] text-slate-500 font-bold">Consultation ID</span>
@@ -2050,7 +1955,7 @@ const Specialties = () => {
             </p>
           </div>
         ) : (
-          <button 
+          <button
             onClick={() => setView('VIDEO_CALL')}
             className="w-full py-4 rounded-xl bg-green-500 text-white font-bold text-[14px] shadow-md animate-in slide-in-from-bottom-2 flex items-center justify-center gap-2"
           >
@@ -2087,7 +1992,7 @@ const Specialties = () => {
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/50 text-[12px]">
           Waiting for doctor's video...
         </div>
-        
+
         {/* PIP (Patient) */}
         <div className="absolute bottom-4 right-4 w-28 h-36 bg-slate-800 rounded-xl border-2 border-white/10 shadow-xl overflow-hidden flex items-center justify-center">
           {camOn ? (
@@ -2102,13 +2007,13 @@ const Specialties = () => {
 
       {/* Controls */}
       <div className="bg-black/60 backdrop-blur-xl p-6 pb-10 flex items-center justify-center gap-6">
-        <button 
+        <button
           onClick={() => setMicOn(!micOn)}
           className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${micOn ? 'bg-white/20 text-white' : 'bg-red-500 text-white'}`}
         >
           {micOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
         </button>
-        <button 
+        <button
           onClick={() => {
             setView('VIDEO_COMPLETED');
             setBookingStatus('COMPLETED');
@@ -2117,7 +2022,7 @@ const Specialties = () => {
         >
           <PhoneOff className="w-6 h-6" />
         </button>
-        <button 
+        <button
           onClick={() => setCamOn(!camOn)}
           className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${camOn ? 'bg-white/20 text-white' : 'bg-red-500 text-white'}`}
         >
@@ -2132,7 +2037,7 @@ const Specialties = () => {
       <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
         <CheckCircle2 className="w-10 h-10 text-blue-500" />
       </div>
-      
+
       <h2 className="text-[20px] font-bold text-slate-900 mb-2">Consultation Completed</h2>
       <p className="text-[12px] text-slate-500 mb-8 max-w-[250px] mx-auto">
         Your video consultation with Dr. {selectedDoctor.name.split(' ')[1]} has ended successfully.
@@ -2141,15 +2046,15 @@ const Specialties = () => {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-8 text-left mx-auto max-w-sm w-full">
         <div className="p-4 space-y-4">
           <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-               <User className="w-5 h-5 text-slate-400" />
-             </div>
-             <div>
-               <div className="font-bold text-slate-800 text-[14px]">{selectedDoctor.name}</div>
-               <div className="text-[11px] text-slate-500">Duration: 14 mins 32 secs</div>
-             </div>
+            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+              <User className="w-5 h-5 text-slate-400" />
+            </div>
+            <div>
+              <div className="font-bold text-slate-800 text-[14px]">{selectedDoctor.name}</div>
+              <div className="text-[11px] text-slate-500">Duration: 14 mins 32 secs</div>
+            </div>
           </div>
-          
+
           <div className="border-t border-slate-100 pt-4">
             <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Consultation Details</div>
             <div className="flex justify-between mb-2">
@@ -2169,13 +2074,13 @@ const Specialties = () => {
       </div>
 
       <div className="space-y-3 mt-auto">
-        <button 
+        <button
           onClick={() => showNotification("Demo: Prescription will be available shortly.")}
           className="w-full py-3.5 rounded-xl bg-blue-50 text-blue-600 font-bold text-[13px] flex items-center justify-center gap-2"
         >
           <FileText className="w-4 h-4" /> View Summary & Prescription
         </button>
-        <button 
+        <button
           onClick={() => setView('LANDING')}
           className="w-full py-3.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-[13px] hover:bg-slate-50"
         >
@@ -2187,11 +2092,11 @@ const Specialties = () => {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 relative overflow-x-hidden">
-      
+
       {/* Dynamic Header */}
       {view !== 'LANDING' && view !== 'VIDEO_CALL' && (
         <div className="bg-white px-4 py-4 flex items-center gap-3 sticky top-0 z-20 border-b border-slate-100">
-          <button 
+          <button
             onClick={handleBack}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100"
           >
@@ -2199,15 +2104,15 @@ const Specialties = () => {
           </button>
           <h2 className="text-[15px] font-bold text-slate-800">
             {view === 'CATEGORICAL_DISEASES' ? (selectedCategory?.name || 'Categorical Diseases') :
-             view === 'HOSPITAL_RESULTS' ? 'Search Results' : 
-             view === 'HOSPITAL_DETAILS' ? 'Hospital Details' :
-             view === 'DOCTOR_LIST' ? 'Select Doctor' :
-             view === 'DOCTOR_PROFILE' ? 'Doctor Profile' :
-             view === 'SELECT_SLOT' ? 'Select Slot' :
-             view === 'APPOINTMENT_STATUS' ? 'Status' :
-             view === 'VIDEO_UPCOMING' ? 'Upcoming' :
-             view === 'VIDEO_COMPLETED' ? 'Summary' :
-             ''}
+              view === 'HOSPITAL_RESULTS' ? 'Search Results' :
+                view === 'HOSPITAL_DETAILS' ? 'Hospital Details' :
+                  view === 'DOCTOR_LIST' ? 'Select Doctor' :
+                    view === 'DOCTOR_PROFILE' ? 'Doctor Profile' :
+                      view === 'SELECT_SLOT' ? 'Select Slot' :
+                        view === 'APPOINTMENT_STATUS' ? 'Status' :
+                          view === 'VIDEO_UPCOMING' ? 'Upcoming' :
+                            view === 'VIDEO_COMPLETED' ? 'Summary' :
+                              ''}
           </h2>
         </div>
       )}
@@ -2264,7 +2169,7 @@ const Specialties = () => {
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-sky-400"></span>
                   </span>
                 </div>
-                
+
                 <div className="flex-1 min-w-0 pr-1">
                   <div className="flex items-center gap-1.5">
                     <span className="text-[12px] font-extrabold text-white tracking-tight leading-none truncate">
@@ -2276,7 +2181,7 @@ const Specialties = () => {
                     Not sure what you're experiencing? Get instant AI guidance
                   </p>
                 </div>
-                
+
                 <ChevronLeft className="w-4 h-4 text-slate-400 rotate-180 group-hover:text-white shrink-0 group-hover:translate-x-0.5 transition-transform" />
               </button>
             ) : (
@@ -2288,7 +2193,7 @@ const Specialties = () => {
                 title="Know Your Disease - Get AI guidance"
               >
                 <span className="absolute inset-0 rounded-full border border-sky-300 animate-ping opacity-30 pointer-events-none" />
-                
+
                 <div className="relative flex items-center justify-center">
                   <Bot className="w-6 h-6 md:w-7 md:h-7 text-white" />
                   <Sparkles className="w-3 h-3 text-amber-300 fill-amber-300 absolute -top-1 -right-1.5 animate-pulse" />

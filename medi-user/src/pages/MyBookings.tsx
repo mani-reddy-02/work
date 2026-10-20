@@ -429,7 +429,7 @@ const MyBookings = () => {
             {upcomingList.length + pastList.length} Total
           </span>
           <button
-            onClick={() => { loadBookings(); }}
+            onClick={() => loadBookings()}
             disabled={isLoading}
             className="p-2 hover:bg-blue-50 text-blue-600 rounded-full transition-colors disabled:opacity-50 bg-blue-50/50"
           >
@@ -481,7 +481,7 @@ const MyBookings = () => {
                 <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
                 <span className="font-semibold">{error}</span>
               </div>
-              <button onClick={() => { loadBookings(); }} className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg font-bold transition-colors">
+              <button onClick={() => loadBookings()} className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg font-bold transition-colors">
                 Retry
               </button>
             </div>

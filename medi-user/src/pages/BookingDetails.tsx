@@ -120,9 +120,9 @@ const BookingDetails = () => {
       if (!silent) setError(null);
       try {
         const [opRes, labRes, nursingRes] = await Promise.all([
-          opAppointmentApi.fetchAppointmentDetails(id).catch(() => ({ success: false, error: 'OP appointment not found' })),
-          labBookingApi.getLabBookingById(id).catch(() => ({ success: false, error: 'Lab booking not found' })),
-          homeNursingApi.getBookingById(id).catch(() => ({ success: false, error: 'Home nursing booking not found' })),
+          opAppointmentApi.fetchAppointmentDetails(id).catch(() => ({ success: false as const, data: undefined, error: 'OP appointment not found' })),
+          labBookingApi.getLabBookingById(id).catch(() => ({ success: false as const, data: undefined, error: 'Lab booking not found' })),
+          homeNursingApi.getBookingById(id).catch(() => ({ success: false as const, data: undefined, error: 'Home nursing booking not found' })),
         ]);
 
         if ((opRes as any)?.success && (opRes as any)?.data) {
