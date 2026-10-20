@@ -32,8 +32,6 @@ import whatsappRoutes from '../modules/whatsapp/whatsapp.routes';
 import healthAiRoutes from '../modules/health-ai/health-ai.routes';
 import videoRoutes from '../modules/video/video.routes';
 import insuranceRoutes from '../modules/insurance/insurance.routes';
-import reviewsRoutes from '../modules/reviews/reviews.routes';
-import { getHospitalDashboardReviews } from '../modules/reviews/reviews.controller';
 import { prisma } from '../config/prisma';
 import { authenticate, requireRole } from '../middleware/auth';
 
@@ -95,7 +93,5 @@ router.use('/health-ai', healthAiRoutes);
 router.use('/video', videoRoutes);
 router.use('/insurance', insuranceRoutes);
 router.use('/insurances', insuranceRoutes);
-router.use('/reviews', reviewsRoutes);
-router.use('/hospital/reviews', authenticate, requireRole(['HOSPITAL_ADMIN', 'RECEPTIONIST', 'DOCTOR', 'SUPER_ADMIN']), getHospitalDashboardReviews);
 
 export default router;

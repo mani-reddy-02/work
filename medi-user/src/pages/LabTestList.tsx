@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Activity,
@@ -40,14 +40,15 @@ import { profileApi } from '../lib/profileApi';
 import HowItWorks from '../components/HowItWorks';
 import { getTestIcon, getHealthConcernIcon, parseDatePill } from '../lib/optimizedTestIcons';
 
-const homeSampleStepsData = [
-  { id: '01', title: 'Select Test', desc: 'Choose the test you want to book.', icon: TestTube },
-  { id: '02', title: 'Choose Laboratory', desc: 'Select laboratory visit where available.', icon: Home },
-  { id: '03', title: 'Enter Patient Details', desc: 'Provide the required patient information.', icon: User },
-  { id: '04', title: 'Choose Date & Time', desc: 'Select a convenient collection slot.', icon: Calendar },
-  { id: '05', title: 'Sample Collection', desc: 'A sample is collected according to the selected service.', icon: Pipette },
-  { id: '06', title: 'Report Ready', desc: 'Access the report when processing is complete.', icon: FileText },
+const labBookingStepsData = [
+  { id: '01', title: 'Select Test', desc: 'Browse or search diagnostic tests and health packages.', icon: TestTube },
+  { id: '02', title: 'Select Lab', desc: 'Choose a verified certified laboratory near you.', icon: Building2 },
+  { id: '03', title: 'Slot & Time Selection', desc: 'Pick a convenient date and time slot for your appointment.', icon: Calendar },
+  { id: '04', title: 'Review', desc: 'Verify patient details, test summary, and price breakdown.', icon: FileText },
+  { id: '05', title: 'Confirmation Booking', desc: 'Get your instant appointment reference and token details.', icon: CheckCircle }
 ];
+
+const homeSampleStepsData = labBookingStepsData;
 
 const healthConcerns = [
   { id: 'diabetes', name: 'Diabetes', icon: Droplet, color: 'text-indigo-500', bg: 'bg-indigo-100' },
@@ -73,6 +74,7 @@ type ViewState =
   | 'PATIENT'
   | 'DATE_TIME'
   | 'REVIEW'
+  | 'PAYMENT'
   | 'CONFIRMED'
   | 'STATUS';
 
@@ -187,7 +189,7 @@ const LabTestList = () => {
   const slotRequestSeqRef = useRef<number>(0);
 
   // Booking & payment state
-  const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'COD'>('ONLINE');
+  const [paymentMethod, setPaymentMethod] = useState<'ONLINE'>('ONLINE');
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [createdBooking, setCreatedBooking] = useState<LabBookingRecord | null>(null);
@@ -380,8 +382,12 @@ const LabTestList = () => {
 
   const handleSelectTest = (item: any) => {
     setSelectedItem(item);
+    setSelectedLab(null);
     setSelectedTime('');
-    setViewState('TEST_DETAIL');
+    if (item?.id) {
+      loadEligibleLaboratories(item.id);
+    }
+    setViewState('LAB_SELECT');
   };
 
   const handleProceedToLabSelect = () => {
@@ -391,17 +397,9 @@ const LabTestList = () => {
     setViewState('LAB_SELECT');
   };
 
-  const handleProceedToPatient = () => {
+  const handleProceedToDateTime = () => {
     if (!selectedLab) {
       alert('Please select a laboratory.');
-      return;
-    }
-    setViewState('PATIENT');
-  };
-
-  const handleProceedToDateTime = () => {
-    if (!patientDetails.name.trim() || !patientDetails.phone.trim()) {
-      alert('Please provide patient name and phone number.');
       return;
     }
     const targetDate = selectedDate || availableDates[0]?.date || '';
@@ -415,6 +413,10 @@ const LabTestList = () => {
     setViewState('DATE_TIME');
   };
 
+  const handleProceedToPatient = () => {
+    handleProceedToDateTime();
+  };
+
   const handleProceedToReview = () => {
     if (!selectedDate || !selectedTime) {
       alert('Please select visit date and time slot.');
@@ -423,9 +425,19 @@ const LabTestList = () => {
     setViewState('REVIEW');
   };
 
+  const handleProceedToPayment = () => {
+    handleProceedToReview();
+  };
+
   // Submit real booking
   const handleConfirmAndPay = async () => {
     if (!selectedItem || !selectedLab) return;
+
+    if (!patientDetails.name.trim() || !patientDetails.phone.trim()) {
+      setBookingError('Please provide patient name and contact phone number.');
+      return;
+    }
+
     setIsSubmittingBooking(true);
     setBookingError(null);
 
@@ -448,7 +460,6 @@ const LabTestList = () => {
         patientGender: patientDetails.gender,
         patientPhone: patientDetails.phone.trim(),
         patientEmail: patientDetails.email?.trim() || undefined,
-        
       });
 
       if (!res.success || !res.data) {
@@ -482,24 +493,22 @@ const LabTestList = () => {
         setSelectedConcern(null);
         setSearchQuery('');
         break;
-      case 'TEST_DETAIL':
+      case 'HOME_COLLECTION':
+      case 'LAB_SELECT':
         if (selectedConcern) {
           setViewState('CONCERN_RESULTS');
         } else {
           setViewState('LIST');
         }
         break;
-      case 'HOME_COLLECTION':
-      case 'LAB_SELECT':
-        setViewState('TEST_DETAIL');
-        break;
       case 'PATIENT':
         setViewState('LAB_SELECT');
         break;
       case 'DATE_TIME':
-        setViewState('PATIENT');
+        setViewState('LAB_SELECT');
         break;
       case 'REVIEW':
+      case 'PAYMENT':
         setViewState('DATE_TIME');
         break;
       case 'CONFIRMED':
@@ -511,6 +520,72 @@ const LabTestList = () => {
       default:
         navigate(-1);
     }
+  };
+
+  // Helper for Stepper Progress
+  const getCurrentStepNumber = (): 1 | 2 | 3 | 4 | 5 => {
+    if (viewState === 'LIST' || viewState === 'CONCERN_RESULTS' || (viewState as string) === 'TEST_DETAIL') return 1;
+    if (viewState === 'LAB_SELECT' || viewState === 'HOME_COLLECTION') return 2;
+    if (viewState === 'DATE_TIME') return 3;
+    if (viewState === 'REVIEW' || viewState === 'PAYMENT' || viewState === 'PATIENT') return 4;
+    return 5;
+  };
+
+  const renderStepper = () => {
+    const currentStep = getCurrentStepNumber();
+    const steps = [
+      { num: 1, label: 'Test' },
+      { num: 2, label: 'Lab' },
+      { num: 3, label: 'Slot' },
+      { num: 4, label: 'Review' },
+      { num: 5, label: 'Confirm' },
+    ];
+
+    return (
+      <div className="bg-white border-b border-slate-200/80 px-4 py-3 sticky top-0 z-20 shadow-2xs">
+        <div className="max-w-md md:max-w-xl mx-auto flex items-center justify-between">
+          {steps.map((s, idx) => {
+            const isCompleted = currentStep > s.num;
+            const isCurrent = currentStep === s.num;
+            return (
+              <React.Fragment key={s.num}>
+                <div className="flex flex-col items-center flex-1 max-w-[62px]">
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                      isCompleted
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : isCurrent
+                        ? 'bg-blue-600 text-white ring-4 ring-blue-100 shadow-xs'
+                        : 'bg-slate-100 text-slate-400'
+                    }`}
+                  >
+                    {isCompleted ? <Check className="w-4 h-4" /> : s.num}
+                  </div>
+                  <span
+                    className={`text-[10px] mt-1 font-semibold truncate text-center ${
+                      isCurrent
+                        ? 'text-blue-600 font-bold'
+                        : isCompleted
+                        ? 'text-slate-700'
+                        : 'text-slate-400'
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+                {idx < steps.length - 1 && (
+                  <div
+                    className={`flex-1 h-0.5 mx-1 transition-all duration-300 ${
+                      currentStep > s.num ? 'bg-emerald-500' : 'bg-slate-200'
+                    }`}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const handlePatientChange = (e: any) => {
@@ -543,11 +618,21 @@ const LabTestList = () => {
           <button onClick={handleBack} className="p-1.5 hover:bg-white/20 rounded-full transition-colors" aria-label="Go back">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="flex-1">
-            <h1 className="text-[17px] font-bold">laboratory visit</h1>
-            {viewState !== 'LIST' && (
-              <p className="text-[11px] text-blue-100 mt-0.5 capitalize">
-                {viewState.replace('_', ' ').toLowerCase()}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-[17px] font-bold truncate">
+              {viewState === 'LIST' ? 'Laboratory Visit' :
+               viewState === 'CONCERN_RESULTS' ? (selectedConcern ? `${selectedConcern} Tests` : 'Concern Tests') :
+               viewState === 'TEST_DETAIL' ? 'Select Test' :
+               viewState === 'LAB_SELECT' ? 'Select Lab' :
+               viewState === 'DATE_TIME' ? 'Slot & Time Selection' :
+               viewState === 'REVIEW' || viewState === 'PAYMENT' ? 'Review & Pay' :
+               viewState === 'CONFIRMED' ? 'Confirmation Booking' :
+               viewState === 'STATUS' ? 'Sample Status' :
+               'Laboratory Visit'}
+            </h1>
+            {viewState !== 'LIST' && selectedItem?.name && (
+              <p className="text-[11px] text-blue-100 mt-0.5 truncate max-w-xs">
+                Test: {selectedItem.name}
               </p>
             )}
           </div>
@@ -586,6 +671,9 @@ const LabTestList = () => {
           </div>
         )}
       </div>
+
+      {/* 5-Step Progress Stepper (Visible across booking steps) */}
+      {viewState !== 'STATUS' && renderStepper()}
 
       <div className="flex-1 overflow-y-auto pb-24">
         {/* VIEW: LIST */}
@@ -955,106 +1043,23 @@ const LabTestList = () => {
 
         {/* BOOKING FLOW STEPS CONTAINER */}
         <div className="px-4 pt-4 max-w-md md:max-w-2xl mx-auto space-y-4">
-          {['TEST_DETAIL', 'LAB_SELECT', 'HOME_COLLECTION', 'PATIENT', 'DATE_TIME', 'REVIEW'].includes(viewState) && (
-            <div className="flex items-center justify-between px-2 mb-2 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
-              {['Test', 'Lab', 'Patient', 'Date & Time', 'Review', 'Confirm'].map((step, idx) => {
-                const isActive =
-                  (viewState === 'TEST_DETAIL' && idx === 0) ||
-                  (viewState === 'LAB_SELECT' && idx === 1) ||
-                  (viewState === 'HOME_COLLECTION' && idx === 1) ||
-                  (viewState === 'PATIENT' && idx === 2) ||
-                  (viewState === 'DATE_TIME' && idx === 3) ||
-                  (viewState === 'REVIEW' && idx === 4) ||
-                  (viewState === 'CONFIRMED' && idx === 5);
-
-                return (
-                  <div key={step} className="flex flex-col items-center flex-1">
-                    <div
-                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mb-1 ${
-                        isActive
-                          ? 'bg-[#0055ff] text-white shadow-md'
-                          : 'bg-slate-100 text-slate-400'
-                      }`}
-                    >
-                      {idx + 1}
-                    </div>
-                    <span
-                      className={`text-[9px] font-bold text-center ${
-                        isActive ? 'text-[#0055ff]' : 'text-slate-400'
-                      }`}
-                    >
-                      {step.split(' ')[0]}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* VIEW: TEST_DETAIL */}
-          {viewState === 'TEST_DETAIL' && selectedItem && (
-            <section className="animate-in fade-in zoom-in-95 duration-300">
-              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm mb-6">
-                <div className="flex items-start gap-4 mb-4">
-                  <div
-                    className={`w-14 h-14 rounded-xl ${
-                      (selectedItem as any)?.bg || 'bg-blue-50'
-                    } flex items-center justify-center shrink-0 overflow-hidden`}
-                  >
-                    <img
-                      src={getTestIcon(selectedItem.name, selectedItem.category)}
-                      alt={selectedItem.name}
-                      className="w-10 h-10 object-contain"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = '/optimized/Blood Test.webp';
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <h2 className="text-[18px] font-black text-slate-900 leading-tight mb-1">
-                      {selectedItem.name}
-                    </h2>
-                    <p className="text-[12px] text-slate-500 font-medium">
-                      {selectedItem.category} • {selectedItem.sampleType || 'Blood Sample'}
-                    </p>
-                  </div>
-                </div>
-
-                <p className="text-[12px] text-slate-600 font-medium mb-4 leading-relaxed">
-                  {selectedItem.desc || selectedItem.description || 'Standard diagnostic laboratory investigation.'}
-                </p>
-
-                <div className="flex flex-col gap-2 py-3 border-t border-b border-slate-100 mb-4 text-[12px]">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Clock className="w-4 h-4 text-slate-400" />
-                    <span>Report Time: {selectedItem.time || selectedItem.tat || '12-24 Hours'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <ShieldCheck className="w-4 h-4 text-slate-400" />
-                    <span>
-                      Preparation: {selectedItem.prep || selectedItem.preparation || 'No special fasting required.'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 font-bold text-emerald-600">
-                    <Home className="w-4 h-4 text-emerald-500" />
-                    <span>Laboratory Visit Available</span>
-                  </div>
-                </div>
-
-              </div>
-
-              <button
-                onClick={handleProceedToLabSelect}
-                className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
-              >
-                Select Laboratory & Continue
-              </button>
-            </section>
-          )}
-
-          {/* VIEW: HOME_COLLECTION (Select Laboratory Offering laboratory visit) */}
+          {/* VIEW: LAB_SELECT (Step 2) */}
           {viewState === 'LAB_SELECT' && (
             <section className="animate-in fade-in zoom-in-95 duration-300">
+              <div className="flex items-center justify-between pb-1 mb-3">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Tests
+                </button>
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                  Step 2 of 5
+                </span>
+              </div>
+
               <h2 className="text-[18px] font-black text-slate-900 mb-2">Select Diagnostic Laboratory</h2>
               <p className="text-[12px] text-slate-500 font-medium mb-4">
                 Choose a certified laboratory providing laboratory visit for this test.
@@ -1148,15 +1153,15 @@ const LabTestList = () => {
               <div className="space-y-3">
                 <button
                   disabled={!selectedLab || isLoadingLabs}
-                  onClick={handleProceedToPatient}
+                  onClick={handleProceedToDateTime}
                   className="w-full flex items-center justify-center gap-2 bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold disabled:opacity-50 hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
                 >
-                  <span>Continue to Patient Details</span>
+                  <span>Continue to Date & Slot</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
                 <button
                   type="button"
-                  onClick={() => setViewState('TEST_DETAIL')}
+                  onClick={handleBack}
                   className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
                 >
                   Back
@@ -1165,122 +1170,23 @@ const LabTestList = () => {
             </section>
           )}
 
-          {/* VIEW: PATIENT */}
-          {viewState === 'PATIENT' && (
-            <section className="animate-in fade-in zoom-in-95 duration-300">
-              <h2 className="text-[18px] font-black text-slate-900 mb-1">Patient Details</h2>
-              <p className="text-[12px] text-slate-500 font-medium mb-6">
-                Sample will be collected at this location by a certified technician.
-              </p>
-
-              <form
-                onSubmit={(e) => { e.preventDefault(); handleProceedToDateTime(); }}
-                className="space-y-6"
-              >
-                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-2">
-                    <User className="w-4 h-4 text-blue-600" />
-                    <h3 className="text-[13px] font-bold text-slate-800">Personal Information</h3>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                      Patient Name *
-                    </label>
-                    <input
-                      name="name"
-                      value={patientDetails.name}
-                      onChange={handlePatientChange}
-                      required
-                      type="text"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                      placeholder="Enter full name"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Age *</label>
-                      <input
-                        name="age"
-                        value={patientDetails.age}
-                        onChange={handlePatientChange}
-                        type="number"
-                        required
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                        placeholder="e.g. 30"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Gender *</label>
-                      <select
-                        name="gender"
-                        value={patientDetails.gender}
-                        onChange={handlePatientChange as any}
-                        required
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                      >
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-2">
-                    <MapPin className="w-4 h-4 text-blue-600" />
-                    <h3 className="text-[13px] font-bold text-slate-800">Contact & Location</h3>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                      Contact Phone Number *
-                    </label>
-                    <input
-                      name="phone"
-                      value={patientDetails.phone}
-                      onChange={handlePatientChange}
-                      required
-                      type="tel"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                      placeholder="10-digit mobile number"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Email</label>
-                    <input
-                      name="email"
-                      value={patientDetails.email}
-                      onChange={handlePatientChange}
-                      type="email"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                      placeholder="name@example.com"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3 mt-4 pt-2">
-                  <button
-                    type="submit"
-                    className="w-full flex items-center justify-center gap-2 bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/30"
-                  >
-                    <span>Continue to Date & Time</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewState('LAB_SELECT')}
-                    className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-all"
-                  >
-                    Back
-                  </button>
-                </div>
-              </form>
-            </section>
-          )}
-
-          {/* VIEW: DATE_TIME */}
+          {/* VIEW: DATE_TIME (Step 3) */}
           {viewState === 'DATE_TIME' && (
             <section className="animate-in fade-in zoom-in-95 duration-300">
+              <div className="flex items-center justify-between pb-1 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setViewState('LAB_SELECT')}
+                  className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Lab Selection
+                </button>
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                  Step 3 of 5
+                </span>
+              </div>
+
               <h2 className="text-[18px] font-black text-slate-900 mb-1">Choose Visit Date & Slot</h2>
               <p className="text-[12px] text-slate-500 font-medium mb-6">
                 Select your preferred date and time slot for your laboratory visit at{' '}
@@ -1422,7 +1328,7 @@ const LabTestList = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setViewState('PATIENT')}
+                  onClick={() => setViewState('LAB_SELECT')}
                   className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
                 >
                   Back
@@ -1431,10 +1337,29 @@ const LabTestList = () => {
             </section>
           )}
 
-          {/* VIEW: REVIEW */}
-          {viewState === 'REVIEW' && (
+          {/* VIEW: REVIEW & PAY (Step 4) */}
+          {(viewState === 'REVIEW' || viewState === 'PAYMENT') && (
             <section className="animate-in fade-in zoom-in-95 duration-300">
-              <h2 className="text-[18px] font-black text-slate-900 mb-4">Review Your Booking</h2>
+              <div className="flex items-center justify-between pb-1 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setViewState('DATE_TIME')}
+                  className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Slot Selection
+                </button>
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                  Step 4 of 5
+                </span>
+              </div>
+
+              <div className="mb-4">
+                <h2 className="text-[18px] font-black text-slate-900">Review Your Booking</h2>
+                <p className="text-[12px] text-slate-500 font-medium mt-0.5">
+                  Please verify your test booking details and patient information before confirming.
+                </p>
+              </div>
 
               {bookingError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-[13px] font-medium mb-5 flex items-start gap-3 shadow-sm">
@@ -1460,12 +1385,12 @@ const LabTestList = () => {
                     <p className="text-[14px] font-black text-slate-900">{selectedItem?.name}</p>
                     <div className="flex items-center gap-1.5 mt-2 text-[11px] font-bold text-emerald-600 bg-emerald-50 w-max px-2 py-1 rounded-md border border-emerald-100">
                       <Home className="w-3 h-3" />
-                      laboratory visit
+                      Laboratory Visit
                     </div>
                   </div>
                 </div>
 
-                <div className="p-5 space-y-5">
+                <div className="p-5 space-y-4">
                   <div className="flex items-start gap-3">
                     <Building2 className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
                     <div>
@@ -1478,33 +1403,101 @@ const LabTestList = () => {
                   <div className="flex items-start gap-3">
                     <Calendar className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Date & Time</p>
+                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Scheduled Date & Slot</p>
                       <p className="text-[13px] font-bold text-slate-800">
                         {selectedDate} <span className="text-slate-300 mx-1">•</span> {selectedTime}
                       </p>
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  <div className="flex items-start gap-3">
-                    <User className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Patient Details</p>
-                      <p className="text-[13px] font-bold text-slate-800">
-                        {patientDetails.name} <span className="text-slate-400 mx-1 font-medium">({patientDetails.gender}, {patientDetails.age} yrs)</span>
-                      </p>
-                      <p className="text-[11px] font-medium text-slate-500 mt-0.5">+91 {patientDetails.phone}</p>
-                    </div>
+              {/* Patient Details Form (Review & Edit) */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm mb-5 space-y-3.5">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-blue-600" />
+                    <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-700">Patient Details</h3>
                   </div>
+                  <span className="text-[10px] text-slate-400 font-medium">Verify or edit</span>
+                </div>
 
-                  <div className="flex items-start gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                    <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-[11px] font-bold text-slate-500 mb-1 tracking-wide uppercase">Collection Address</p>
-                      <p className="text-[12px] font-bold text-slate-800 leading-snug">
-                        {patientDetails.address}
-                      </p>
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Patient Name <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      name="name"
+                      value={patientDetails.name}
+                      onChange={handlePatientChange}
+                      required
+                      type="text"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="Enter full name"
+                    />
                   </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Contact Phone Number <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      name="phone"
+                      value={patientDetails.phone}
+                      onChange={handlePatientChange}
+                      required
+                      type="tel"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="10-digit mobile number"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Age <span className="text-[10px] text-slate-400">(Optional)</span>
+                    </label>
+                    <input
+                      name="age"
+                      value={patientDetails.age}
+                      onChange={handlePatientChange}
+                      type="number"
+                      min={0}
+                      max={120}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="e.g. 30"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Gender <span className="text-[10px] text-slate-400">(Optional)</span>
+                    </label>
+                    <select
+                      name="gender"
+                      value={patientDetails.gender}
+                      onChange={handlePatientChange as any}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Email <span className="text-[10px] text-slate-400">(Optional)</span>
+                  </label>
+                  <input
+                    name="email"
+                    value={patientDetails.email}
+                    onChange={handlePatientChange}
+                    type="email"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder="name@example.com"
+                  />
                 </div>
               </div>
 
@@ -1521,7 +1514,7 @@ const LabTestList = () => {
                   </div>
                   <div className="flex justify-between items-center text-[13px]">
                     <span className="font-medium text-slate-600 flex items-center gap-1.5">
-                      laboratory visit Fee
+                      Laboratory Visit Fee
                     </span>
                     <span className="font-bold text-slate-800">
                       {effectiveCollectionFee > 0 ? `₹${effectiveCollectionFee}` : 'Free'}
@@ -1537,34 +1530,17 @@ const LabTestList = () => {
                 </div>
               </div>
 
-              {/* Payment Mode Selection */}
+              {/* Payment Mode Selection — Online Payment Only */}
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2 mb-6">
-                <h3 className="font-bold text-slate-800 text-xs mb-2">Select Payment Mode</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('ONLINE')}
-                    className={`p-3 rounded-xl border text-left flex items-center gap-2 text-xs font-bold transition-colors ${
-                      paymentMethod === 'ONLINE'
-                        ? 'border-blue-600 bg-blue-50 text-blue-700'
-                        : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <CreditCard className="w-4 h-4 text-blue-600" />
-                    <span>Pay Online (UPI / Card)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('COD')}
-                    className={`p-3 rounded-xl border text-left flex items-center gap-2 text-xs font-bold transition-colors ${
-                      paymentMethod === 'COD'
-                        ? 'border-blue-600 bg-blue-50 text-blue-700'
-                        : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <Home className="w-4 h-4 text-emerald-600" />
-                    <span>Pay on Collection</span>
-                  </button>
+                <h3 className="font-bold text-slate-800 text-xs mb-2">Payment Mode</h3>
+                <div className="p-3.5 rounded-xl border border-blue-600 bg-blue-50 text-blue-800 flex items-center justify-between text-xs font-bold shadow-sm">
+                  <div className="flex items-center gap-2.5">
+                    <CreditCard className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>Pay Online (UPI / Credit & Debit Card / NetBanking)</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-extrabold uppercase tracking-wider">
+                    Secured
+                  </span>
                 </div>
               </div>
 
@@ -1580,7 +1556,7 @@ const LabTestList = () => {
                       <span>Creating Real Booking...</span>
                     </>
                   ) : (
-                    <span>Confirm & Book (₹{effectiveTotal})</span>
+                    <span>Confirm & Pay (₹{effectiveTotal})</span>
                   )}
                 </button>
                 <button
@@ -1594,9 +1570,14 @@ const LabTestList = () => {
             </section>
           )}
 
-          {/* VIEW: CONFIRMED */}
+          {/* VIEW: CONFIRMED (Step 5) */}
           {viewState === 'CONFIRMED' && (
-            <section className="animate-in fade-in zoom-in-95 duration-300 text-center pt-4">
+            <section className="animate-in fade-in zoom-in-95 duration-300 text-center pt-2">
+              <div className="flex items-center justify-end pb-1 mb-3">
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                  Step 5 of 5: Confirmed
+                </span>
+              </div>
               <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-white shadow-sm">
                 <CheckCircle className="w-10 h-10 text-emerald-600" />
               </div>

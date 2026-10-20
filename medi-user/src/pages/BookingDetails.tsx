@@ -30,7 +30,6 @@ import { cn } from '../lib/utils';
 import { getDiseaseIconUrl } from '../utils/diseaseIcons';
 import { getTestIcon } from '../lib/optimizedTestIcons';
 import { getStatusConfig, isNursingCompletable, isHomeSampleCompletable } from './MyBookings';
-import { BookingReviewCard } from '../components/BookingReviewCard';
 
 const BookingDetails = () => {
   const navigate = useNavigate();
@@ -125,20 +124,20 @@ const BookingDetails = () => {
           homeNursingApi.getBookingById(id).catch(() => ({ success: false as const, data: undefined, error: 'Home nursing booking not found' })),
         ]);
 
-        if ((opRes as any)?.success && (opRes as any)?.data) {
-          setAppointment((opRes as any).data);
+        if (opRes.success && opRes.data) {
+          setAppointment(opRes.data);
           if (!silent) setIsLoading(false);
           return;
         }
 
-        if ((labRes as any)?.success && (labRes as any)?.data) {
-          setLabBooking((labRes as any).data);
+        if (labRes.success && labRes.data) {
+          setLabBooking(labRes.data);
           if (!silent) setIsLoading(false);
           return;
         }
 
-        if ((nursingRes as any)?.success && (nursingRes as any)?.data) {
-          setNursingBooking((nursingRes as any).data);
+        if (nursingRes.success && nursingRes.data) {
+          setNursingBooking(nursingRes.data);
           if (!silent) setIsLoading(false);
           return;
         }
@@ -589,27 +588,6 @@ const BookingDetails = () => {
                 </div>
               </div>
 
-              {/* Reviews & Experience for Completed Lab / Home Sample Bookings */}
-              {labBooking.status === 'COMPLETED' && (
-                <BookingReviewCard
-                  bookingId={labBooking.id}
-                  serviceType={
-                    labBooking.collectionType === 'HOME_COLLECTION'
-                      ? 'HOME_SAMPLE_COLLECTION'
-                      : 'LAB_TEST'
-                  }
-                  isCompleted={true}
-                  hospital={{
-                    id: labBooking.hospitalId || labBooking.laboratoryId || '',
-                    name: labBooking.laboratoryName || 'Diagnostic Provider',
-                  }}
-                  onToast={(msg, type) => {
-                    setToastMessage({ message: msg, type });
-                    setTimeout(() => setToastMessage(null), 4000);
-                  }}
-                />
-              )}
-
               <div className="pt-2 pb-4 space-y-3">
                 {labBooking.reportUrl && (
                   <button
@@ -895,23 +873,6 @@ const BookingDetails = () => {
                   </span>
                 </div>
               </div>
-
-              {/* Reviews & Experience for Completed Home Nursing Bookings */}
-              {nursingBooking.status === 'COMPLETED' && (
-                <BookingReviewCard
-                  bookingId={nursingBooking.id}
-                  serviceType="HOME_NURSING"
-                  isCompleted={true}
-                  hospital={{
-                    id: nursingBooking.hospitalId,
-                    name: nursingBooking.hospitalName,
-                  }}
-                  onToast={(msg, type) => {
-                    setToastMessage({ message: msg, type });
-                    setTimeout(() => setToastMessage(null), 4000);
-                  }}
-                />
-              )}
 
               {/* Actions */}
               <div className="pt-2 pb-6 space-y-3">
@@ -1489,37 +1450,6 @@ const BookingDetails = () => {
                     </div>
                   )}
                 </div>
-              )}
-
-              {/* Reviews & Experience for Completed OP / Video Consultations */}
-              {appointment.status === 'COMPLETED' && (
-                <BookingReviewCard
-                  bookingId={appointment.id || appointment.appointmentId}
-                  serviceType={
-                    (appointment.opType || '').toLowerCase().includes('video')
-                      ? 'VIDEO_CONSULTATION'
-                      : 'OP_CONSULTATION'
-                  }
-                  isCompleted={true}
-                  hospital={{
-                    id: appointment.hospitalId,
-                    name: appointment.hospitalName,
-                  }}
-                  doctor={
-                    appointment.doctorId
-                      ? {
-                          id: appointment.doctorId,
-                          name: appointment.doctorName,
-                          avatar: appointment.doctorAvatar,
-                          specialization: appointment.doctorDesignation,
-                        }
-                      : null
-                  }
-                  onToast={(msg, type) => {
-                    setToastMessage({ message: msg, type });
-                    setTimeout(() => setToastMessage(null), 4000);
-                  }}
-                />
               )}
 
               {/* 7. ACTIONS & VIDEO CONSULTATION CALLOUT */}

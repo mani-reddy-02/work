@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Activity,
@@ -40,12 +40,11 @@ import HowItWorks from '../components/HowItWorks';
 import { getTestIcon, getHealthConcernIcon, parseDatePill } from '../lib/optimizedTestIcons';
 
 const homeSampleStepsData = [
-  { id: '01', title: 'Select Test', desc: 'Choose the test you want to book.', icon: TestTube },
-  { id: '02', title: 'Choose Home Collection', desc: 'Select home sample collection where available.', icon: Home },
-  { id: '03', title: 'Enter Patient Details', desc: 'Provide the required patient information.', icon: User },
-  { id: '04', title: 'Choose Date & Time', desc: 'Select a convenient collection slot.', icon: Calendar },
-  { id: '05', title: 'Sample Collection', desc: 'A sample is collected according to the selected service.', icon: Pipette },
-  { id: '06', title: 'Report Ready', desc: 'Access the report when processing is complete.', icon: FileText },
+  { id: '01', title: 'Select Test', desc: 'Browse or search diagnostic tests for home sample collection.', icon: TestTube },
+  { id: '02', title: 'Select Lab', desc: 'Choose an accredited laboratory partner for home collection.', icon: Building2 },
+  { id: '03', title: 'Slot & Time Selection', desc: 'Pick a convenient collection date and doorstep time slot.', icon: Calendar },
+  { id: '04', title: 'Review', desc: 'Provide collection address, patient details, and choose payment method.', icon: FileText },
+  { id: '05', title: 'Confirmation Booking', desc: 'Receive instant confirmation and phlebotomist assignment details.', icon: CheckCircle }
 ];
 
 const healthConcerns = [
@@ -379,8 +378,12 @@ const HomeSampleList = () => {
 
   const handleSelectTest = (item: any) => {
     setSelectedItem(item);
+    setSelectedLab(null);
     setSelectedTime('');
-    setViewState('TEST_DETAIL');
+    if (item?.id) {
+      loadEligibleLaboratories(item.id);
+    }
+    setViewState('HOME_COLLECTION');
   };
 
   const handleProceedToHomeCollection = () => {
@@ -390,17 +393,9 @@ const HomeSampleList = () => {
     setViewState('HOME_COLLECTION');
   };
 
-  const handleProceedToPatient = () => {
+  const handleProceedToDateTime = () => {
     if (!selectedLab) {
       alert('Please select a laboratory providing home collection.');
-      return;
-    }
-    setViewState('PATIENT');
-  };
-
-  const handleProceedToDateTime = () => {
-    if (!patientDetails.name.trim() || !patientDetails.phone.trim() || !patientDetails.address.trim()) {
-      alert('Please provide patient name, phone number, and doorstep collection address.');
       return;
     }
     const targetDate = selectedDate || availableDates[0]?.date || '';
@@ -414,6 +409,10 @@ const HomeSampleList = () => {
     setViewState('DATE_TIME');
   };
 
+  const handleProceedToPatient = () => {
+    handleProceedToDateTime();
+  };
+
   const handleProceedToReview = () => {
     if (!selectedDate || !selectedTime) {
       alert('Please select collection date and time slot.');
@@ -425,6 +424,17 @@ const HomeSampleList = () => {
   // Submit real booking
   const handleConfirmAndPay = async () => {
     if (!selectedItem || !selectedLab) return;
+
+    if (!patientDetails.name.trim() || !patientDetails.phone.trim()) {
+      setBookingError('Please provide patient name and contact phone number.');
+      return;
+    }
+
+    if (!patientDetails.address.trim()) {
+      setBookingError('Please provide or select a doorstep collection address.');
+      return;
+    }
+
     setIsSubmittingBooking(true);
     setBookingError(null);
 
@@ -488,13 +498,14 @@ const HomeSampleList = () => {
         }
         break;
       case 'HOME_COLLECTION':
-        setViewState('TEST_DETAIL');
-        break;
-      case 'PATIENT':
-        setViewState('HOME_COLLECTION');
+        if (selectedConcern) {
+          setViewState('CONCERN_RESULTS');
+        } else {
+          setViewState('LIST');
+        }
         break;
       case 'DATE_TIME':
-        setViewState('PATIENT');
+        setViewState('HOME_COLLECTION');
         break;
       case 'REVIEW':
         setViewState('DATE_TIME');
@@ -508,6 +519,72 @@ const HomeSampleList = () => {
       default:
         navigate(-1);
     }
+  };
+
+  // Helper for Stepper Progress
+  const getCurrentStepNumber = (): 1 | 2 | 3 | 4 | 5 => {
+    if (viewState === 'LIST' || viewState === 'CONCERN_RESULTS' || (viewState as string) === 'TEST_DETAIL') return 1;
+    if (viewState === 'HOME_COLLECTION') return 2;
+    if (viewState === 'DATE_TIME') return 3;
+    if (viewState === 'REVIEW') return 4;
+    return 5;
+  };
+
+  const renderStepper = () => {
+    const currentStep = getCurrentStepNumber();
+    const steps = [
+      { num: 1, label: 'Test' },
+      { num: 2, label: 'Lab' },
+      { num: 3, label: 'Slot' },
+      { num: 4, label: 'Review' },
+      { num: 5, label: 'Confirm' },
+    ];
+
+    return (
+      <div className="bg-white border-b border-slate-200/80 px-4 py-3 sticky top-0 z-20 shadow-2xs">
+        <div className="max-w-md md:max-w-xl mx-auto flex items-center justify-between">
+          {steps.map((s, idx) => {
+            const isCompleted = currentStep > s.num;
+            const isCurrent = currentStep === s.num;
+            return (
+              <React.Fragment key={s.num}>
+                <div className="flex flex-col items-center flex-1 max-w-[62px]">
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                      isCompleted
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : isCurrent
+                        ? 'bg-blue-600 text-white ring-4 ring-blue-100 shadow-xs'
+                        : 'bg-slate-100 text-slate-400'
+                    }`}
+                  >
+                    {isCompleted ? <Check className="w-4 h-4" /> : s.num}
+                  </div>
+                  <span
+                    className={`text-[10px] mt-1 font-semibold truncate text-center ${
+                      isCurrent
+                        ? 'text-blue-600 font-bold'
+                        : isCompleted
+                        ? 'text-slate-700'
+                        : 'text-slate-400'
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+                {idx < steps.length - 1 && (
+                  <div
+                    className={`flex-1 h-0.5 mx-1 transition-all duration-300 ${
+                      currentStep > s.num ? 'bg-emerald-500' : 'bg-slate-200'
+                    }`}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const handlePatientChange = (e: any) => {
@@ -540,11 +617,21 @@ const HomeSampleList = () => {
           <button onClick={handleBack} className="p-1.5 hover:bg-white/20 rounded-full transition-colors" aria-label="Go back">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="flex-1">
-            <h1 className="text-[17px] font-bold">Home Sample Collection</h1>
-            {viewState !== 'LIST' && (
-              <p className="text-[11px] text-blue-100 mt-0.5 capitalize">
-                {viewState.replace('_', ' ').toLowerCase()}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-[17px] font-bold truncate">
+              {viewState === 'LIST' ? 'Home Sample Collection' :
+               viewState === 'CONCERN_RESULTS' ? (selectedConcern ? `${selectedConcern} Tests` : 'Concern Tests') :
+               viewState === 'TEST_DETAIL' ? 'Select Test' :
+               viewState === 'HOME_COLLECTION' ? 'Select Lab' :
+               viewState === 'DATE_TIME' ? 'Slot & Time Selection' :
+               viewState === 'REVIEW' ? 'Review & Pay' :
+               viewState === 'CONFIRMED' ? 'Confirmation Booking' :
+               viewState === 'STATUS' ? 'Sample Status' :
+               'Home Sample Collection'}
+            </h1>
+            {viewState !== 'LIST' && selectedItem?.name && (
+              <p className="text-[11px] text-blue-100 mt-0.5 truncate max-w-xs">
+                Test: {selectedItem.name}
               </p>
             )}
           </div>
@@ -583,6 +670,9 @@ const HomeSampleList = () => {
           </div>
         )}
       </div>
+
+      {/* 5-Step Progress Stepper (Visible across booking steps) */}
+      {viewState !== 'STATUS' && renderStepper()}
 
       <div className="flex-1 overflow-y-auto pb-24">
         {/* VIEW: LIST */}
@@ -941,105 +1031,22 @@ const HomeSampleList = () => {
 
         {/* BOOKING FLOW STEPS CONTAINER */}
         <div className="px-4 pt-4 max-w-md md:max-w-2xl mx-auto space-y-4">
-          {['TEST_DETAIL', 'HOME_COLLECTION', 'PATIENT', 'DATE_TIME', 'REVIEW'].includes(viewState) && (
-            <div className="flex items-center justify-between px-2 mb-2 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
-              {['Test', 'Lab', 'Patient', 'Date & Time', 'Review', 'Confirm'].map((step, idx) => {
-                const isActive =
-                  (viewState === 'TEST_DETAIL' && idx === 0) ||
-                  (viewState === 'HOME_COLLECTION' && idx === 1) ||
-                  (viewState === 'PATIENT' && idx === 2) ||
-                  (viewState === 'DATE_TIME' && idx === 3) ||
-                  (viewState === 'REVIEW' && idx === 4) ||
-                  (viewState === 'CONFIRMED' && idx === 5);
-
-                return (
-                  <div key={step} className="flex flex-col items-center flex-1">
-                    <div
-                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mb-1 ${
-                        isActive
-                          ? 'bg-[#0055ff] text-white shadow-md'
-                          : 'bg-slate-100 text-slate-400'
-                      }`}
-                    >
-                      {idx + 1}
-                    </div>
-                    <span
-                      className={`text-[9px] font-bold text-center ${
-                        isActive ? 'text-[#0055ff]' : 'text-slate-400'
-                      }`}
-                    >
-                      {step.split(' ')[0]}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* VIEW: TEST_DETAIL */}
-          {viewState === 'TEST_DETAIL' && selectedItem && (
-            <section className="animate-in fade-in zoom-in-95 duration-300">
-              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm mb-6">
-                <div className="flex items-start gap-4 mb-4">
-                  <div
-                    className={`w-14 h-14 rounded-xl ${
-                      (selectedItem as any)?.bg || 'bg-blue-50'
-                    } flex items-center justify-center shrink-0 overflow-hidden`}
-                  >
-                    <img
-                      src={getTestIcon(selectedItem.name, selectedItem.category)}
-                      alt={selectedItem.name}
-                      className="w-10 h-10 object-contain"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = '/optimized/Blood Test.webp';
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <h2 className="text-[18px] font-black text-slate-900 leading-tight mb-1">
-                      {selectedItem.name}
-                    </h2>
-                    <p className="text-[12px] text-slate-500 font-medium">
-                      {selectedItem.category} • {selectedItem.sampleType || 'Blood Sample'}
-                    </p>
-                  </div>
-                </div>
-
-                <p className="text-[12px] text-slate-600 font-medium mb-4 leading-relaxed">
-                  {selectedItem.desc || selectedItem.description || 'Standard diagnostic laboratory investigation.'}
-                </p>
-
-                <div className="flex flex-col gap-2 py-3 border-t border-b border-slate-100 mb-4 text-[12px]">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Clock className="w-4 h-4 text-slate-400" />
-                    <span>Report Time: {selectedItem.time || selectedItem.tat || '12-24 Hours'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <ShieldCheck className="w-4 h-4 text-slate-400" />
-                    <span>
-                      Preparation: {selectedItem.prep || selectedItem.preparation || 'No special fasting required.'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 font-bold text-emerald-600">
-                    <Home className="w-4 h-4 text-emerald-500" />
-                    <span>Doorstep Home Sample Collection Available</span>
-                  </div>
-                </div>
-
-              </div>
-
-              <button
-                onClick={handleProceedToHomeCollection}
-                className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
-              >
-                Select Laboratory & Continue
-              </button>
-            </section>
-          )}
-
-          {/* VIEW: HOME_COLLECTION (Select Laboratory Offering Home Collection) */}
+          {/* VIEW: HOME_COLLECTION (Step 2 - Select Laboratory Offering Home Collection) */}
           {viewState === 'HOME_COLLECTION' && (
             <section className="animate-in fade-in zoom-in-95 duration-300">
+              <div className="flex items-center justify-between pb-1 mb-2">
+                <button
+                  onClick={handleBack}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Back to Tests
+                </button>
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                  Step 2 of 5
+                </span>
+              </div>
+
               <h2 className="text-[18px] font-black text-slate-900 mb-2">Select Diagnostic Laboratory</h2>
               <p className="text-[12px] text-slate-500 font-medium mb-4">
                 Choose a certified laboratory providing home collection for this test.
@@ -1133,13 +1140,13 @@ const HomeSampleList = () => {
               <div className="space-y-3">
                 <button
                   disabled={!selectedLab || isLoadingLabs}
-                  onClick={handleProceedToPatient}
+                  onClick={handleProceedToDateTime}
                   className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold disabled:opacity-50 hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
                 >
-                  Continue to Patient Details
+                  Continue to Date & Slot
                 </button>
                 <button
-                  onClick={() => setViewState('TEST_DETAIL')}
+                  onClick={handleBack}
                   className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
                 >
                   Back
@@ -1148,192 +1155,22 @@ const HomeSampleList = () => {
             </section>
           )}
 
-          {/* VIEW: PATIENT */}
-          {viewState === 'PATIENT' && (
-            <section className="animate-in fade-in zoom-in-95 duration-300">
-              <h2 className="text-[18px] font-black text-slate-900 mb-1">Patient Details</h2>
-              <p className="text-[12px] text-slate-500 font-medium mb-6">
-                Sample will be collected at this location by a certified phlebotomist.
-              </p>
-
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleProceedToDateTime();
-                }}
-                className="space-y-6"
-              >
-                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-2">
-                    <User className="w-4 h-4 text-blue-600" />
-                    <h3 className="text-[13px] font-bold text-slate-800">Personal Information</h3>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                      Patient Name *
-                    </label>
-                    <input
-                      name="name"
-                      value={patientDetails.name}
-                      onChange={handlePatientChange}
-                      required
-                      type="text"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                      placeholder="Enter full name"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Age *</label>
-                      <input
-                        name="age"
-                        value={patientDetails.age}
-                        onChange={handlePatientChange}
-                        type="number"
-                        required
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                        placeholder="e.g. 30"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Gender *</label>
-                      <select
-                        name="gender"
-                        value={patientDetails.gender}
-                        onChange={handlePatientChange as any}
-                        required
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                      >
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-50 pb-3 mb-2">
-                    <MapPin className="w-4 h-4 text-blue-600" />
-                    <h3 className="text-[13px] font-bold text-slate-800">Contact & Location</h3>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                      Contact Phone Number *
-                    </label>
-                    <input
-                      name="phone"
-                      value={patientDetails.phone}
-                      onChange={handlePatientChange}
-                      required
-                      type="tel"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                      placeholder="10-digit mobile number"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Email</label>
-                    <input
-                      name="email"
-                      value={patientDetails.email}
-                      onChange={handlePatientChange}
-                      type="email"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                      placeholder="name@example.com"
-                    />
-                  </div>
-                  <div className="pt-2 border-t border-slate-50 mt-4">
-                    <label className="block text-[11px] font-bold text-slate-700 mb-3">
-                      Doorstep Home Collection Address *
-                    </label>
-                    <div className="grid grid-cols-1 gap-3">
-                      {savedAddresses.map((addr) => (
-                        <div 
-                          key={addr.id}
-                          onClick={() => { setSelectedAddressId(addr.id); setIsOtherAddress(false); handleAddressSelected(addr); }}
-                          className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedAddressId === addr.id && !isOtherAddress ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-slate-200 hover:border-blue-300'}`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="mt-0.5">
-                              {selectedAddressId === addr.id && !isOtherAddress ? (
-                                <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center"><Check className="w-3 h-3" /></div>
-                              ) : (
-                                <div className="w-4 h-4 rounded-full border-2 border-slate-300" />
-                              )}
-                            </div>
-                            <div>
-                              <h4 className="text-[13px] font-bold text-slate-900">{addr.type}</h4>
-                              <p className="text-[12px] text-slate-600 mt-1">{addr.street}</p>
-                              <p className="text-[12px] text-slate-600">{addr.city}{addr.state ? `, ${addr.state}` : ''} {addr.pincode}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {savedAddresses.length === 0 && (
-                        <div className="text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                          <p className="text-[12px] text-slate-500 mb-2">No saved addresses</p>
-                        </div>
-                      )}
-                      
-                      <div 
-                        onClick={() => { setSelectedAddressId(null); setIsOtherAddress(true); setPatientDetails(p => ({...p, address: ''})); setSelectedTime(''); }}
-                        className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${isOtherAddress ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-slate-200 hover:border-blue-300'}`}
-                      >
-                         <div className="mt-0.5">
-                            {isOtherAddress ? (
-                              <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center"><Check className="w-3 h-3" /></div>
-                            ) : (
-                              <Plus className="w-4 h-4 text-slate-400" />
-                            )}
-                          </div>
-                          <span className="text-[13px] font-bold text-slate-700">
-                            {savedAddresses.length === 0 ? 'Add Address' : 'Use Other Address'}
-                          </span>
-                      </div>
-                    </div>
-
-                    {isOtherAddress && (
-                      <div className="mt-4">
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                          Enter Address Manually *
-                        </label>
-                        <textarea
-                          name="address"
-                          value={patientDetails.address}
-                          onChange={handlePatientChange}
-                          required
-                          rows={3}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all"
-                          placeholder="House/Flat No., Building Name, Street, Area, City, PIN Code"
-                        ></textarea>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-3 mt-4 pt-2">
-                  <button
-                    type="submit"
-                    className="w-full flex items-center justify-center bg-[#0055ff] text-white py-3.5 rounded-xl text-[13px] font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/30"
-                  >
-                    Continue to Schedule Slot
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewState('HOME_COLLECTION')}
-                    className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-all"
-                  >
-                    Back
-                  </button>
-                </div>
-              </form>
-            </section>
-          )}
-
-          {/* VIEW: DATE_TIME */}
+          {/* VIEW: DATE_TIME (Step 3 - Slot and Time Selection) */}
           {viewState === 'DATE_TIME' && (
             <section className="animate-in fade-in zoom-in-95 duration-300">
+              <div className="flex items-center justify-between pb-1 mb-2">
+                <button
+                  onClick={() => setViewState('HOME_COLLECTION')}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Back to Lab Selection
+                </button>
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                  Step 3 of 5
+                </span>
+              </div>
+
               <h2 className="text-[18px] font-black text-slate-900 mb-1">Choose Collection Date & Slot</h2>
               <p className="text-[12px] text-slate-500 font-medium mb-6">
                 Select when our phlebotomist should arrive at your doorstep.
@@ -1474,7 +1311,7 @@ const HomeSampleList = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setViewState('PATIENT')}
+                  onClick={() => setViewState('HOME_COLLECTION')}
                   className="w-full flex items-center justify-center bg-white text-slate-700 border border-slate-200 py-3.5 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
                 >
                   Back
@@ -1483,9 +1320,22 @@ const HomeSampleList = () => {
             </section>
           )}
 
-          {/* VIEW: REVIEW */}
+          {/* VIEW: REVIEW (Step 4 - Review & Pay with Patient Details) */}
           {viewState === 'REVIEW' && (
             <section className="animate-in fade-in zoom-in-95 duration-300">
+              <div className="flex items-center justify-between pb-1 mb-2">
+                <button
+                  onClick={() => setViewState('DATE_TIME')}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Back to Date & Slot
+                </button>
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                  Step 4 of 5
+                </span>
+              </div>
+
               <h2 className="text-[18px] font-black text-slate-900 mb-4">Review Your Booking</h2>
 
               {bookingError && (
@@ -1495,6 +1345,7 @@ const HomeSampleList = () => {
                 </div>
               )}
 
+              {/* Booking Summary Card */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-5 overflow-hidden">
                 <div className="p-5 bg-slate-50/50 border-b border-slate-100 flex items-start gap-3">
                   <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 overflow-hidden">
@@ -1517,7 +1368,7 @@ const HomeSampleList = () => {
                   </div>
                 </div>
 
-                <div className="p-5 space-y-5">
+                <div className="p-5 space-y-4">
                   <div className="flex items-start gap-3">
                     <Building2 className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
                     <div>
@@ -1530,33 +1381,175 @@ const HomeSampleList = () => {
                   <div className="flex items-start gap-3">
                     <Calendar className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Date & Time</p>
+                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Scheduled Date & Slot</p>
                       <p className="text-[13px] font-bold text-slate-800">
                         {selectedDate} <span className="text-slate-300 mx-1">•</span> {selectedTime}
                       </p>
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  <div className="flex items-start gap-3">
-                    <User className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-[11px] font-bold text-slate-400 mb-0.5 tracking-wide uppercase">Patient Details</p>
-                      <p className="text-[13px] font-bold text-slate-800">
-                        {patientDetails.name} <span className="text-slate-400 mx-1 font-medium">({patientDetails.gender}, {patientDetails.age} yrs)</span>
-                      </p>
-                      <p className="text-[11px] font-medium text-slate-500 mt-0.5">+91 {patientDetails.phone}</p>
+              {/* Patient Details & Collection Address Form (Step 4 Review & Fill) */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm mb-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-blue-600" />
+                    <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-700">Patient Details</h3>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-medium">Verify or edit</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Patient Name <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      name="name"
+                      value={patientDetails.name}
+                      onChange={handlePatientChange}
+                      required
+                      type="text"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="Enter full name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Contact Phone Number <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      name="phone"
+                      value={patientDetails.phone}
+                      onChange={handlePatientChange}
+                      required
+                      type="tel"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="10-digit mobile number"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Age <span className="text-[10px] text-slate-400">(Optional)</span>
+                    </label>
+                    <input
+                      name="age"
+                      value={patientDetails.age}
+                      onChange={handlePatientChange}
+                      type="number"
+                      min={0}
+                      max={120}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="e.g. 30"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Gender <span className="text-[10px] text-slate-400">(Optional)</span>
+                    </label>
+                    <select
+                      name="gender"
+                      value={patientDetails.gender}
+                      onChange={handlePatientChange as any}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Email <span className="text-[10px] text-slate-400">(Optional)</span>
+                  </label>
+                  <input
+                    name="email"
+                    value={patientDetails.email}
+                    onChange={handlePatientChange}
+                    type="email"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder="name@example.com"
+                  />
+                </div>
+
+                {/* Doorstep Home Collection Address */}
+                <div className="pt-3 border-t border-slate-100">
+                  <div className="flex items-center gap-1.5 mb-2.5">
+                    <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                      Doorstep Collection Address <span className="text-rose-500">*</span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {savedAddresses.map((addr) => (
+                      <div 
+                        key={addr.id}
+                        onClick={() => { setSelectedAddressId(addr.id); setIsOtherAddress(false); handleAddressSelected(addr); }}
+                        className={`p-3 rounded-xl border cursor-pointer transition-all ${selectedAddressId === addr.id && !isOtherAddress ? 'border-blue-500 bg-blue-50/50 shadow-xs' : 'border-slate-200 hover:border-blue-300'}`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div className="mt-0.5">
+                            {selectedAddressId === addr.id && !isOtherAddress ? (
+                              <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center"><Check className="w-3 h-3" /></div>
+                            ) : (
+                              <div className="w-4 h-4 rounded-full border-2 border-slate-300" />
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="text-[12px] font-bold text-slate-900">{addr.type}</h4>
+                            <p className="text-[11px] text-slate-600 mt-0.5">{addr.street}, {addr.city}{addr.state ? `, ${addr.state}` : ''} {addr.pincode}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <div 
+                      onClick={() => { setSelectedAddressId(null); setIsOtherAddress(true); setPatientDetails(p => ({...p, address: ''})); }}
+                      className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-2.5 ${isOtherAddress ? 'border-blue-500 bg-blue-50/50 shadow-xs' : 'border-slate-200 hover:border-blue-300'}`}
+                    >
+                      <div className="mt-0.5">
+                        {isOtherAddress ? (
+                          <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center"><Check className="w-3 h-3" /></div>
+                        ) : (
+                          <Plus className="w-4 h-4 text-slate-400" />
+                        )}
+                      </div>
+                      <span className="text-[12px] font-bold text-slate-700">
+                        {savedAddresses.length === 0 ? 'Enter Address' : 'Use Other Address'}
+                      </span>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                    <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-[11px] font-bold text-slate-500 mb-1 tracking-wide uppercase">Collection Address</p>
-                      <p className="text-[12px] font-bold text-slate-800 leading-snug">
-                        {patientDetails.address}
-                      </p>
+                  {isOtherAddress && (
+                    <div className="mt-3">
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Enter Address Manually <span className="text-rose-500">*</span>
+                      </label>
+                      <textarea
+                        name="address"
+                        value={patientDetails.address}
+                        onChange={handlePatientChange}
+                        required
+                        rows={2}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all"
+                        placeholder="House/Flat No., Building Name, Street, Area, City, PIN Code"
+                      />
                     </div>
-                  </div>
+                  )}
+
+                  {!isOtherAddress && patientDetails.address && (
+                    <div className="mt-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700">
+                      <span className="font-bold text-slate-500 text-[10px] uppercase block mb-0.5">Selected Collection Address</span>
+                      {patientDetails.address}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1592,30 +1585,36 @@ const HomeSampleList = () => {
               {/* Payment Mode Selection */}
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2 mb-6">
                 <h3 className="font-bold text-slate-800 text-xs mb-2">Select Payment Mode</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('ONLINE')}
-                    className={`p-3 rounded-xl border text-left flex items-center gap-2 text-xs font-bold transition-colors ${
+                    className={`p-3 rounded-xl border text-left flex items-center justify-between text-xs font-bold transition-colors ${
                       paymentMethod === 'ONLINE'
                         ? 'border-blue-600 bg-blue-50 text-blue-700'
                         : 'border-slate-200 hover:bg-slate-50 text-slate-700'
                     }`}
                   >
-                    <CreditCard className="w-4 h-4 text-blue-600" />
-                    <span>Pay Online (UPI / Card)</span>
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-blue-600" />
+                      <span>Pay Online (UPI / Card)</span>
+                    </div>
+                    {paymentMethod === 'ONLINE' && <Check className="w-3.5 h-3.5 text-blue-600" />}
                   </button>
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('COD')}
-                    className={`p-3 rounded-xl border text-left flex items-center gap-2 text-xs font-bold transition-colors ${
+                    className={`p-3 rounded-xl border text-left flex items-center justify-between text-xs font-bold transition-colors ${
                       paymentMethod === 'COD'
                         ? 'border-blue-600 bg-blue-50 text-blue-700'
                         : 'border-slate-200 hover:bg-slate-50 text-slate-700'
                     }`}
                   >
-                    <Home className="w-4 h-4 text-emerald-600" />
-                    <span>Pay on Collection</span>
+                    <div className="flex items-center gap-2">
+                      <Home className="w-4 h-4 text-emerald-600" />
+                      <span>Pay on Collection</span>
+                    </div>
+                    {paymentMethod === 'COD' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                   </button>
                 </div>
               </div>
@@ -1648,7 +1647,12 @@ const HomeSampleList = () => {
 
           {/* VIEW: CONFIRMED */}
           {viewState === 'CONFIRMED' && (
-            <section className="animate-in fade-in zoom-in-95 duration-300 text-center pt-4">
+            <section className="animate-in fade-in zoom-in-95 duration-300 text-center pt-2">
+              <div className="flex items-center justify-end pb-1 mb-3">
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                  Step 5 of 5: Confirmed
+                </span>
+              </div>
               <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-white shadow-sm">
                 <CheckCircle className="w-10 h-10 text-emerald-600" />
               </div>

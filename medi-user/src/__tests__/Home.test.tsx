@@ -8,7 +8,7 @@ import React from 'react';
 const renderHome = () => render(<Home />);
 
 describe('Home Component', () => {
-  test('renders top booking carousel and emergency tile', () => {
+  test('renders top booking carousel and confirms emergency tile is removed', () => {
     renderHome();
     // 4 Booking carousel slides in top banner
     expect(screen.getAllByText('Book Now').length).toBeGreaterThanOrEqual(1);
@@ -16,9 +16,9 @@ describe('Home Component', () => {
     expect(screen.getByText('Book Lab Test')).toBeInTheDocument();
     expect(screen.getByText('Book Home Sample Collection')).toBeInTheDocument();
 
-    // Emergency tile
-    expect(screen.getByText('Emergency')).toBeInTheDocument();
-    expect(screen.getByText(/Immediate ambulance dispatch/i)).toBeInTheDocument();
+    // Emergency tile should be completely removed from Home
+    expect(screen.queryByText('Emergency')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Immediate ambulance dispatch/i)).not.toBeInTheDocument();
   });
 
   test('renders quick services with correct links', () => {

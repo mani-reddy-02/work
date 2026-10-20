@@ -20,7 +20,13 @@ import {
   Activity,
   Umbrella,
   Check,
-  Percent
+  Percent,
+  Bell,
+  Phone,
+  Mail,
+  User,
+  Clock,
+  CheckCheck
 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -36,6 +42,26 @@ export interface InsuranceItem {
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface InsuranceLog {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  createdAt: string;
+  metadata?: {
+    userId?: string | null;
+    userName?: string;
+    userRef?: string;
+    userPhone?: string | null;
+    userEmail?: string | null;
+    planId?: string;
+    planTitle?: string;
+    selectedAt?: string;
+    [key: string]: any;
+  };
 }
 
 const PRESET_ICONS = [
@@ -138,6 +164,122 @@ const Insurance: React.FC = () => {
       fetchInsurances();
     }
   }, [token, currentPage, debouncedSearch]);
+
+  // Tab State: PLANS or ALERTS
+  const [activeTab, setActiveTab] = useState<'PLANS' | 'ALERTS'>('PLANS');
+
+  // Logs & Alerts State
+  const [logs, setLogs] = useState<InsuranceLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState<boolean>(false);
+  const [logsSearch, setLogsSearch] = useState<string>('');
+
+  // Fetch Insurance Inquiries & Interaction Logs
+  const fetchInsuranceLogs = async () => {
+    if (!token) return;
+    try {
+      setLogsLoading(true);
+      const res = await fetch(`${API_BASE_URL}/insurance/admin/logs`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setLogs(json.data);
+      }
+    } catch (err) {
+      console.error('Error fetching insurance logs:', err);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchInsuranceLogs();
+      const interval = setInterval(fetchInsuranceLogs, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [token]);
+
+  const markLogAsRead = async (id: string) => {
+    if (!token) return;
+    try {
+      await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setLogs((prev) => prev.map((l) => (l.id === id ? { ...l, read: true } : l)));
+    } catch (err) {
+      console.error('Failed to mark log as read:', err);
+    }
+  };
+
+  const markAllLogsAsRead = async () => {
+    if (!token) return;
+    try {
+      await fetch(`${API_BASE_URL}/notifications/read-all`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setLogs((prev) => prev.map((l) => ({ ...l, read: true })));
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
+    }
+  };
+
+  const formatTimeAgo = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now.getTime() - d.getTime();
+      const diffSecs = Math.floor(diffMs / 1000);
+      if (diffSecs < 60) return 'Just now';
+      const diffMins = Math.floor(diffSecs / 60);
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      return `${diffDays}d ago`;
+    } catch {
+      return '';
+    }
+  };
+
+  const formatDateTime = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const unreadLogsCount = useMemo(() => {
+    return logs.filter((l) => !l.read).length;
+  }, [logs]);
+
+  const filteredLogs = useMemo(() => {
+    const q = logsSearch.trim().toLowerCase();
+    if (!q) return logs;
+    return logs.filter((log) => {
+      const titleMatch = log.title?.toLowerCase().includes(q);
+      const msgMatch = log.message?.toLowerCase().includes(q);
+      const meta = log.metadata || {};
+      const userMatch =
+        meta.userName?.toLowerCase().includes(q) ||
+        meta.userPhone?.toLowerCase().includes(q) ||
+        meta.userEmail?.toLowerCase().includes(q) ||
+        meta.planTitle?.toLowerCase().includes(q);
+      return titleMatch || msgMatch || userMatch;
+    });
+  }, [logs, logsSearch]);
 
   const showSuccess = (msg: string) => {
     setSuccessMsg(msg);
@@ -384,8 +526,8 @@ const Insurance: React.FC = () => {
         </div>
       )}
 
-      {/* Total Insurance Summary Tile */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI Cards Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <KpiCard
           title="Total Insurance"
           value={totalInsurancesDb}
@@ -394,10 +536,89 @@ const Insurance: React.FC = () => {
           iconBg="bg-blue-50"
           subtitle="Authoritative database records"
         />
+        <KpiCard
+          title="User Inquiries & Alerts"
+          value={logs.length}
+          icon={Bell}
+          iconColor="text-amber-600"
+          iconBg="bg-amber-50"
+          subtitle={unreadLogsCount > 0 ? `${unreadLogsCount} new unread alerts` : 'All inquiries logged'}
+          onClick={() => setActiveTab('ALERTS')}
+        />
+        <KpiCard
+          title="Active Plans"
+          value={insurances.filter(i => i.isActive).length}
+          icon={Activity}
+          iconColor="text-emerald-600"
+          iconBg="bg-emerald-50"
+          subtitle="Currently published to users"
+        />
       </div>
 
-      {/* Insurance Records Table */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab('PLANS')}
+          className={`flex items-center gap-2 py-3 px-4 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'PLANS'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Shield className="w-4 h-4" />
+          <span>Insurance Plans</span>
+          <span className="ml-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+            {totalRecords}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('ALERTS')}
+          className={`flex items-center gap-2 py-3 px-4 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'ALERTS'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Bell className="w-4 h-4" />
+          <span>User Inquiries & Interaction Alerts</span>
+          {unreadLogsCount > 0 ? (
+            <span className="ml-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-white animate-pulse">
+              {unreadLogsCount} new
+            </span>
+          ) : (
+            <span className="ml-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+              {logs.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* TAB 1: INSURANCE PLANS */}
+      {activeTab === 'PLANS' && (
+        <div className="space-y-4">
+          {/* Quick Notice Banner if there are new unread user inquiries */}
+          {unreadLogsCount > 0 && (
+            <div
+              onClick={() => setActiveTab('ALERTS')}
+              className="p-3.5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-3 text-amber-900 text-xs font-medium cursor-pointer hover:border-amber-300 transition-all shadow-2xs"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0">
+                  <Bell className="w-4 h-4 animate-bounce" />
+                </div>
+                <span>
+                  <strong>{unreadLogsCount} new user inquiry alert{unreadLogsCount > 1 ? 's' : ''}!</strong> Users have recently touched/opened insurance plans.
+                </span>
+              </div>
+              <span className="font-bold text-amber-700 flex items-center gap-1 hover:underline">
+                View Inquiries Log &rarr;
+              </span>
+            </div>
+          )}
+
+          {/* Insurance Records Table */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
           <div>
             <h3 className="font-bold text-slate-900 text-base">Insurance Plans</h3>
@@ -620,6 +841,269 @@ const Insurance: React.FC = () => {
           </div>
         </div>
       </div>
+        </div>
+      )}
+
+      {/* TAB 2: USER INQUIRIES & ALERTS LOG */}
+      {activeTab === 'ALERTS' && (
+        <div className="space-y-4">
+          {/* Header & Filter Controls Card */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-base">User Inquiries & Touch Logs</h3>
+                  {unreadLogsCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-white">
+                      {unreadLogsCount} Unread
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Real-time activity logs whenever users or patients view or interact with insurance plans in the user portal.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                {/* Search Filter */}
+                <div className="relative min-w-[220px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={logsSearch}
+                    onChange={(e) => setLogsSearch(e.target.value)}
+                    placeholder="Search user, phone, plan..."
+                    className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                  />
+                  {logsSearch && (
+                    <button
+                      onClick={() => setLogsSearch('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {unreadLogsCount > 0 && (
+                  <button
+                    onClick={markAllLogsAsRead}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    title="Mark all notifications as read"
+                  >
+                    <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Mark All Read</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={fetchInsuranceLogs}
+                  disabled={logsLoading}
+                  className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                  title="Refresh logs"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${logsLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Logs Feed */}
+          {logsLoading && logs.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
+              <RefreshCw className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-3" />
+              <p className="text-sm font-semibold text-slate-700">Loading inquiry logs...</p>
+              <p className="text-xs text-slate-400 mt-1">Fetching latest user interaction data</p>
+            </div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                <Bell className="w-6 h-6" />
+              </div>
+              <h4 className="text-base font-bold text-slate-800">
+                {logsSearch ? 'No matching logs found' : 'No insurance inquiries yet'}
+              </h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                {logsSearch
+                  ? `No logs match "${logsSearch}". Try searching with a different user name, phone number, or insurance title.`
+                  : 'When patients or visitors touch and open insurance plans in their portal, their activity and contact details will appear here as real-time alerts.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredLogs.map((log) => {
+                const meta = log.metadata || {};
+                const userName = meta.userName || 'Guest Visitor';
+                const userRef = meta.userRef;
+                const userPhone = meta.userPhone;
+                const userEmail = meta.userEmail;
+                const planTitle = meta.planTitle || log.title.replace('New Insurance Inquiry: ', '');
+
+                return (
+                  <div
+                    key={log.id}
+                    className={`border rounded-2xl p-4 sm:p-5 transition-all shadow-2xs ${
+                      log.read
+                        ? 'bg-white border-slate-200 hover:border-slate-300'
+                        : 'bg-gradient-to-r from-amber-50/50 via-white to-blue-50/30 border-amber-300/80 shadow-xs'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      {/* Left: Icon & Alert Title */}
+                      <div className="flex items-start gap-3.5">
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                            log.read ? 'bg-slate-100 text-slate-600' : 'bg-amber-500 text-white shadow-sm'
+                          }`}
+                        >
+                          <Bell className="w-5 h-5" />
+                        </div>
+
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="text-sm font-bold text-slate-900">
+                              {log.title}
+                            </h4>
+                            {!log.read && (
+                              <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider bg-amber-500 text-white rounded-md">
+                                New
+                              </span>
+                            )}
+                            <span className="text-xs text-slate-400 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              <span>{formatTimeAgo(log.createdAt)}</span>
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                            {log.message}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right: Timestamp & Mark Read action */}
+                      <div className="flex items-center sm:flex-col sm:items-end justify-between gap-2 shrink-0">
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          {formatDateTime(log.createdAt)}
+                        </span>
+                        {!log.read && (
+                          <button
+                            onClick={() => markLogAsRead(log.id)}
+                            className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Mark as read</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Details Meta Box */}
+                    <div className="mt-3.5 pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs bg-slate-50/70 p-3 rounded-xl">
+                      {/* User/Patient */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-blue-100/70 text-blue-700 flex items-center justify-center shrink-0">
+                          <User className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-slate-400 uppercase font-semibold">User / Patient</p>
+                          <p className="font-bold text-slate-800 truncate">
+                            {userName}
+                            {userRef && (
+                              <span className="ml-1.5 text-[10px] font-normal text-slate-500">
+                                ({userRef})
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Phone */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-100/70 text-emerald-700 flex items-center justify-center shrink-0">
+                          <Phone className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-slate-400 uppercase font-semibold">Phone</p>
+                          {userPhone ? (
+                            <a
+                              href={`tel:${userPhone}`}
+                              className="font-bold text-emerald-700 hover:underline truncate block"
+                            >
+                              {userPhone}
+                            </a>
+                          ) : (
+                            <p className="text-slate-400 italic">Not provided</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Email */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-purple-100/70 text-purple-700 flex items-center justify-center shrink-0">
+                          <Mail className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-slate-400 uppercase font-semibold">Email</p>
+                          {userEmail ? (
+                            <a
+                              href={`mailto:${userEmail}`}
+                              className="font-bold text-purple-700 hover:underline truncate block"
+                            >
+                              {userEmail}
+                            </a>
+                          ) : (
+                            <p className="text-slate-400 italic">Not provided</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Plan */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 flex items-center justify-center shrink-0">
+                          <Shield className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-slate-400 uppercase font-semibold">Plan Touched</p>
+                          <p className="font-bold text-slate-800 truncate" title={planTitle}>
+                            {planTitle}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Direct Action Chips */}
+                    {(userPhone || userEmail) && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="text-[11px] text-slate-400 font-medium">Quick Connect:</span>
+                        {userPhone && (
+                          <a
+                            href={`tel:${userPhone}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 transition-colors"
+                          >
+                            <Phone className="w-3 h-3" />
+                            <span>Call {userPhone}</span>
+                          </a>
+                        )}
+                        {userEmail && (
+                          <a
+                            href={`mailto:${userEmail}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold hover:bg-purple-100 transition-colors"
+                          >
+                            <Mail className="w-3 h-3" />
+                            <span>Email Patient</span>
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add / Edit Insurance Modal */}
       {isModalOpen && (

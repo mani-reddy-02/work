@@ -2,7 +2,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   ArrowRight, Hospital, Stethoscope, Shield, Home as HomeIcon, 
   TestTube, Activity, Heart, Sparkles, Smile, Plus, Minus, Bot, 
-  ShieldCheck, ChevronRight, PhoneCall, AlertCircle, Video, CheckCircle2, X
+  ShieldCheck, ChevronRight, AlertCircle, Video, CheckCircle2, X
 } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import UpcomingBookingTile from '../components/UpcomingBookingTile';
@@ -29,7 +29,6 @@ const FALLBACK_SPECIALISTS = [
 const Home = () => {
   const navigate = useNavigate();
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
-  const [isEmergencyHighlighted, setIsEmergencyHighlighted] = useState(true);
   const { notifications, markAsRead } = useNotifications();
   const location = useLocation();
   const { location: currentLocation, setLocation: setCurrentLocation } = useUIStore();
@@ -115,15 +114,6 @@ const Home = () => {
       return () => clearTimeout(timer);
     }
   }, [notifications]);
-
-  // Trigger Emergency tile highlight on every load/open, automatically clearing after noticeable pulse
-  useEffect(() => {
-    setIsEmergencyHighlighted(true);
-    const timer = setTimeout(() => {
-      setIsEmergencyHighlighted(false);
-    }, 5500);
-    return () => clearTimeout(timer);
-  }, []);
 
   // Geolocation logic
   useEffect(() => {
@@ -284,53 +274,6 @@ const Home = () => {
               </div>
               <span className="text-[10.5px] font-medium text-center text-slate-600 leading-tight">Home Sample</span>
             </Link>
-        </div>
-      </section>
-
-      {/* 1. EMERGENCY TILE — Directly below Quick Services */}
-      <section>
-        <div
-          onClick={() => navigate('/ambulance')}
-          className={`relative overflow-hidden bg-gradient-to-r from-red-500 via-rose-500 to-red-600 rounded-2xl p-4 md:p-5 text-white shadow-md cursor-pointer transition-all duration-300 hover:shadow-lg hover:brightness-105 active:scale-[0.99] border-2 ${
-            isEmergencyHighlighted ? 'emergency-highlight border-red-200' : 'border-red-400/40'
-          }`}
-          role="button"
-          tabIndex={0}
-          aria-label="Emergency medical assistance"
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate('/ambulance'); }}
-        >
-          <div className="flex items-center justify-between relative z-10">
-            <div className="flex items-center gap-3.5">
-              <div className="relative">
-                <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-inner">
-                  <PhoneCall className="w-6 h-6 text-white animate-pulse" />
-                </div>
-                <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
-                </span>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-extrabold text-[16px] text-white tracking-tight">Emergency</h3>
-                  <span className="bg-white/20 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-white/25">
-                    24/7 Available
-                  </span>
-                </div>
-                <p className="text-[11px] text-red-50 mt-0.5 font-medium leading-snug">
-                  Immediate ambulance dispatch & emergency care assistance
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-1 bg-white text-red-600 px-3.5 py-2 rounded-xl text-[11px] font-bold shadow-sm shrink-0 hover:bg-red-50 transition-colors ml-2">
-              <span>Get Help</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="absolute right-0 bottom-0 translate-x-4 translate-y-4 opacity-10 pointer-events-none">
-            <AlertCircle className="w-28 h-28 text-white" />
-          </div>
         </div>
       </section>
 

@@ -26,13 +26,19 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
     });
   }
 
-  // Handle database connection unreachable errors from Prisma
-  if (err.code === 'P1001' || err.message?.includes("Can't reach database server")) {
+  // Handle database connection unreachable or timeout errors from Prisma
+  if (
+    err.code === 'P1001' ||
+    err.message?.includes("Can't reach database server") ||
+    err.message?.includes("Connection terminated") ||
+    err.message?.includes("connection timeout") ||
+    err.message?.includes("timeout")
+  ) {
     return res.status(503).json({
       success: false,
       error: {
         code: 'DATABASE_UNAVAILABLE',
-        message: 'Database server is temporarily unreachable. Please check your network connection and try again.',
+        message: 'Database server is temporarily busy or unreachable. Please try again in a few moments.',
       },
     });
   }

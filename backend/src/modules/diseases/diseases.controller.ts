@@ -31,13 +31,37 @@ export const getDiseases = async (req: Request, res: Response, next: NextFunctio
       where.name = { contains: search as string, mode: 'insensitive' };
     }
     
+    const consultationType = typeof req.query.consultationType === 'string'
+      ? req.query.consultationType.trim().toLowerCase()
+      : (typeof req.query.type === 'string' ? req.query.type.trim().toLowerCase() : '');
+    const isVideo = consultationType === 'video' || consultationType === 'video_consultation' || consultationType === 'video-consult' || consultationType === 'doctor';
+    const isOp = consultationType === 'op' || consultationType === 'hospital-op' || consultationType === 'normal';
+
+    const doctorCondition: any = { role: 'DOCTOR', active: true };
+    if (isVideo) {
+      doctorCondition.doctorSchedules = {
+        some: {
+          isAvailable: true,
+          videoStartTime: { not: null }
+        }
+      };
+    }
+
+    const hospitalCondition: any = {};
+    if (isVideo) {
+      hospitalCondition.services = { has: 'video_consultation' };
+    } else if (isOp) {
+      hospitalCondition.services = { has: 'op_consultation' };
+    }
+
     // Fetch active diseases added explicitly by hospitals that have active doctors
     const addedDiseases = await prisma.disease.findMany({
       where: { 
         isActive: true,
         department: {
           isActive: true,
-          users: { some: { role: 'DOCTOR', active: true } }
+          hospital: hospitalCondition,
+          users: { some: doctorCondition }
         }
       },
       select: { name: true },
@@ -50,7 +74,8 @@ export const getDiseases = async (req: Request, res: Response, next: NextFunctio
       where: { 
         isActive: true, 
         specialtyId: { not: null },
-        users: { some: { role: 'DOCTOR', active: true } }
+        hospital: hospitalCondition,
+        users: { some: doctorCondition }
       },
       select: { specialtyId: true },
       distinct: ['specialtyId']

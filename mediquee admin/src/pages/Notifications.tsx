@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Bell, 
   CheckCircle,
-  RefreshCw
+  RefreshCw,
+  ExternalLink,
+  Shield,
+  User as UserIcon,
+  Clock
 } from 'lucide-react';
 import { useAdminAuth } from '../contexts/AuthContext';
 
@@ -19,6 +24,7 @@ interface NotificationItem {
 }
 
 const Notifications: React.FC = () => {
+  const navigate = useNavigate();
   const { token } = useAdminAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -26,6 +32,19 @@ const Notifications: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'UNREAD' | 'READ'>('ALL');
   const [page, setPage] = useState(1);
   const pageSize = 20;
+
+  const markSingleAsRead = async (id: string) => {
+    if (!token) return;
+    try {
+      await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    } catch (err) {
+      console.error('Failed to mark notification as read:', err);
+    }
+  };
 
   const fetchLiveFeed = useCallback(async () => {
     if (!token) return;
@@ -203,12 +222,16 @@ const Notifications: React.FC = () => {
           paginatedNotifications.map(n => (
             <div 
               key={n.id} 
-              className={`p-4 flex gap-4 hover:bg-slate-50 transition-colors ${!n.read ? 'bg-blue-50/30' : ''}`}
+              onClick={() => {
+                if (!n.read) markSingleAsRead(n.id);
+                if (n.metadata?.link) navigate(n.metadata.link);
+              }}
+              className={`p-4 flex gap-4 hover:bg-slate-50 transition-colors cursor-pointer ${!n.read ? 'bg-blue-50/30' : ''}`}
             >
               <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                 !n.read ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'
               }`}>
-                <Bell size={20} />
+                {n.type?.includes('insurance') ? <Shield size={20} className={!n.read ? 'text-blue-600' : 'text-slate-500'} /> : <Bell size={20} />}
               </div>
 
               <div className="flex-1 min-w-0">
@@ -224,6 +247,46 @@ const Notifications: React.FC = () => {
                   <span className="text-xs text-slate-400 shrink-0">{formatDateTime(n.createdAt)}</span>
                 </div>
                 <p className="text-sm text-slate-600 mt-0.5">{n.message}</p>
+
+                {n.metadata && (n.type?.includes('insurance') || n.metadata?.planTitle) && (
+                  <div className="mt-2.5 p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1.5 text-xs text-slate-700">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                      {n.metadata.userName && (
+                        <span className="flex items-center gap-1 font-semibold text-slate-900">
+                          <UserIcon size={13} className="text-blue-600" />
+                          {n.metadata.userName} {n.metadata.userPhone ? `(${n.metadata.userPhone})` : n.metadata.userEmail ? `(${n.metadata.userEmail})` : ''}
+                        </span>
+                      )}
+                      {n.metadata.planTitle && (
+                        <span className="flex items-center gap-1 text-slate-600">
+                          <Shield size={13} className="text-emerald-600" />
+                          Plan: <strong className="text-slate-800">{n.metadata.planTitle}</strong>
+                        </span>
+                      )}
+                      {n.metadata.selectedAt && (
+                        <span className="flex items-center gap-1 text-slate-500">
+                          <Clock size={13} className="text-slate-400" />
+                          Selected: {formatDateTime(n.metadata.selectedAt)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="pt-1.5 flex items-center justify-between">
+                      <span className="text-[11px] text-slate-500 font-medium">Application Status: Initial Selection / Inquiry</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!n.read) markSingleAsRead(n.id);
+                          navigate(n.metadata.link || '/admin/insurance');
+                        }}
+                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-bold text-xs"
+                      >
+                        <span>View in Insurance Management</span>
+                        <ExternalLink size={12} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {!n.read && (

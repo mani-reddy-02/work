@@ -61,7 +61,7 @@ export function isNotificationAuthorizedForUser(
   if (role === Role.SUPER_ADMIN) {
     if (notification.userId === userId) return true;
     const notifType = (notification.type || '').toLowerCase();
-    return ['marketing_request', 'camp_request', 'platform_inquiry'].includes(notifType);
+    return ['marketing_request', 'camp_request', 'platform_inquiry', 'insurance_interest', 'insurance_selection', 'insurance'].includes(notifType);
   }
 
   // 3. HOSPITAL STAFF ROLES: Must belong to a hospital
@@ -280,7 +280,7 @@ export function buildNotificationWhereClause(params: {
     case Role.SUPER_ADMIN:
       where.OR = [
         { userId },
-        { type: { in: ['marketing_request', 'camp_request', 'platform_inquiry'] } }
+        { type: { in: ['marketing_request', 'camp_request', 'platform_inquiry', 'insurance_interest', 'insurance_selection', 'insurance'] } }
       ];
       break;
 

@@ -37,7 +37,6 @@ import HomePosters from './pages/HomePosters';
 import Faqs from './pages/Faqs';
 import Insurance from './pages/Insurance';
 import NursingServices from './pages/NursingServices';
-import Reviews from './pages/Reviews';
 
 // Advanced Pages
 import Transactions from './pages/Transactions';
@@ -122,7 +121,6 @@ function App() {
                 <Route path="reports/requests-history" element={<RequestsHistory />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="requests" element={<Requests />} />
-              <Route path="reviews" element={<Reviews />} />
               <Route path="activity" element={<ActivityLog />} />
               <Route path="home-posters" element={<HomePosters />} />
               <Route path="faqs" element={<Faqs />} />

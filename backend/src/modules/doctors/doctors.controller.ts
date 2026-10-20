@@ -70,6 +70,29 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
       return res.json({ success: true, data: [] });
     }
 
+    const consultationType = typeof req.query.consultationType === 'string'
+      ? req.query.consultationType.trim().toLowerCase()
+      : (typeof req.query.type === 'string' ? req.query.type.trim().toLowerCase() : '');
+    const isVideo = consultationType === 'video' || consultationType === 'video_consultation' || consultationType === 'video-consult' || consultationType === 'doctor';
+
+    if (isVideo) {
+      whereClause.hospital = {
+        ...(whereClause.hospital || {}),
+        services: { has: 'video_consultation' }
+      };
+      whereClause.doctorSchedules = {
+        some: {
+          isAvailable: true,
+          videoStartTime: { not: null }
+        }
+      };
+    } else if (consultationType === 'op' || consultationType === 'hospital-op' || consultationType === 'normal') {
+      whereClause.hospital = {
+        ...(whereClause.hospital || {}),
+        services: { has: 'op_consultation' }
+      };
+    }
+
     if (search) {
       whereClause.AND = [
         ...(whereClause.AND || []),
@@ -138,6 +161,8 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
         hospitalId: doc.hospitalId,
         hospitalName: doc.hospital?.name || 'Not assigned',
         hospitalAddress: doc.hospital?.addressLine1 || doc.hospital?.city || 'Not specified',
+        hospitalPhone: doc.hospital?.contactPhone || undefined,
+        hospitalCity: doc.hospital?.city || undefined,
         departmentId: doc.departmentId,
         department: doc.department?.name || 'Not assigned',
         bio: doc.bio || undefined,
@@ -235,6 +260,8 @@ export const getDoctorById = async (req: Request, res: Response, next: NextFunct
         hospitalId: doctor.hospitalId,
         hospitalName: doctor.hospital?.name || 'Not assigned',
         hospitalAddress: doctor.hospital?.addressLine1 || doctor.hospital?.city || 'Not specified',
+        hospitalPhone: doctor.hospital?.contactPhone || undefined,
+        hospitalCity: doctor.hospital?.city || undefined,
         departmentId: doctor.departmentId,
         department: doctor.department?.name || 'Not assigned',
         bio: doctor.bio || undefined,

@@ -61,18 +61,27 @@ describe('InsuranceList Component', () => {
     expect(screen.getByText('HDFC ERGO Optima Secure')).toBeInTheDocument();
     expect(screen.getByText(/Success Rate: 97.2%/i)).toBeInTheDocument();
 
-    // Check Apply buttons
-    const applyButtons = screen.getAllByRole('button', { name: /Apply/i });
-    expect(applyButtons.length).toBe(2);
+    // Check that tiles are displayed WITHOUT Apply button initially
+    expect(screen.queryByRole('button', { name: /^Apply/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/View Plan Details & Benefits/i).length).toBe(2);
   });
 
-  test('apply button opens the specific application URL safely in a new tab', async () => {
+  test('opening a tile displays details and apply button which opens application URL safely', async () => {
     const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 
     render(<InsuranceList />);
 
     await waitFor(() => {
       expect(screen.getByText('Star Comprehensive Health Policy')).toBeInTheDocument();
+    });
+
+    // Opening/touching the tile opens the modal
+    const starTile = screen.getByRole('button', { name: /View details for Star Comprehensive Health Policy/i });
+    fireEvent.click(starTile);
+
+    await waitFor(() => {
+      expect(screen.getByText('Insurance Plan Details')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Apply for Star Comprehensive Health Policy/i })).toBeInTheDocument();
     });
 
     const starApplyBtn = screen.getByRole('button', { name: /Apply for Star Comprehensive Health Policy/i });
@@ -112,5 +121,55 @@ describe('InsuranceList Component', () => {
     });
 
     expect(screen.getByRole('button', { name: /Retry/i })).toBeInTheDocument();
+  });
+
+  test('notifies admin with auth token when authenticated user opens/touches an insurance plan, and prevents duplicate calls', async () => {
+    localStorage.setItem('mediquee_token', 'test-patient-jwt');
+    const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+    const fetchSpy = vi.fn().mockImplementation((url: string, opts?: any) => {
+      if (url.includes('/select')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true, data: { deduplicated: false } })
+        });
+      }
+      if (url.includes('/insurance')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true, data: mockInsurancePlans })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, data: [] }) });
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    render(<InsuranceList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Star Comprehensive Health Policy')).toBeInTheDocument();
+    });
+
+    // Page render did NOT trigger /select
+    const selectCallsBefore = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/select'));
+    expect(selectCallsBefore.length).toBe(0);
+
+    // Opening/touching the insurance plan tile notifies admin
+    const starTile = screen.getByRole('button', { name: /View details for Star Comprehensive Health Policy/i });
+    fireEvent.click(starTile);
+
+    await waitFor(() => {
+      const selectCallsAfter = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/insurance/plan-1/select'));
+      expect(selectCallsAfter.length).toBe(1);
+      expect(selectCallsAfter[0][1].headers['Authorization']).toBe('Bearer test-patient-jwt');
+      expect(selectCallsAfter[0][1].method).toBe('POST');
+    });
+
+    // Immediate second rapid open/touch should be client-deduplicated
+    fireEvent.click(starTile);
+    const selectCallsAfterSecond = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/insurance/plan-1/select'));
+    expect(selectCallsAfterSecond.length).toBe(1);
+
+    localStorage.removeItem('mediquee_token');
   });
 });

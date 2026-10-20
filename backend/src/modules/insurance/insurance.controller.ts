@@ -3,6 +3,8 @@ import { prisma } from '../../config/prisma';
 import path from 'path';
 import fs from 'fs';
 import { z } from 'zod';
+import { Role } from '@prisma/client';
+import { sendNotification } from '../notifications/notifications.service';
 
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads/icons');
 if (!fs.existsSync(UPLOADS_DIR)) {
@@ -332,3 +334,168 @@ export const deleteInsurance = async (req: Request, res: Response, next: NextFun
     next(error);
   }
 };
+
+/**
+ * User endpoint - Notify admin when an authenticated user selects/clicks an insurance plan
+ */
+export const selectInsurancePlan = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authUser = (req as any).user;
+    const id = req.params.id as string;
+    const plan = await prisma.insurance.findUnique({
+      where: { id },
+    });
+
+    if (!plan || !plan.isActive) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Insurance plan not found or inactive' }
+      });
+    }
+
+    let user: { id: string | null; name: string; phone: string | null; email: string | null } = {
+      id: null,
+      name: 'Guest Visitor',
+      phone: null,
+      email: null
+    };
+
+    if (authUser && authUser.id) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: authUser.id },
+        select: { id: true, name: true, phone: true, email: true, role: true }
+      });
+      if (dbUser) {
+        user = {
+          id: dbUser.id,
+          name: dbUser.name || 'User',
+          phone: dbUser.phone || null,
+          email: dbUser.email || null
+        };
+      }
+    }
+
+    // Deduplication rule: Check if this user clicked the same plan within the last 5 minutes (300,000ms)
+    const deduplicationWindowMs = 5 * 60 * 1000;
+    const cutoff = new Date(Date.now() - deduplicationWindowMs);
+    const recentNotifs = await prisma.notification.findMany({
+      where: {
+        type: 'insurance_interest',
+        createdAt: { gte: cutoff }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    });
+
+    const duplicate = recentNotifs.find((n: any) => {
+      const meta = n.metadata as any;
+      if (!meta) return false;
+      if (user.id) {
+        return meta.userId === user.id && meta.planId === plan.id;
+      }
+      return meta.planId === plan.id && meta.userName === 'Guest Visitor';
+    });
+
+    if (duplicate) {
+      return res.json({
+        success: true,
+        data: {
+          notificationId: duplicate.id,
+          deduplicated: true,
+          message: 'Insurance plan interaction already recorded.'
+        }
+      });
+    }
+
+    const selectedAt = new Date().toISOString();
+    const notifTitle = `Insurance Plan Opened: ${plan.title}`;
+    const notifMessage = user.id
+      ? `${user.name} (${user.phone || user.email || user.id}) opened and viewed insurance plan "${plan.title}".`
+      : `A guest visitor opened and viewed insurance plan "${plan.title}".`;
+
+    const notification = await sendNotification({
+      title: notifTitle,
+      message: notifMessage,
+      type: 'insurance_interest',
+      targetRoles: [Role.SUPER_ADMIN],
+      metadata: {
+        userId: user.id,
+        userName: user.name,
+        userRef: user.id || 'Guest',
+        userPhone: user.phone,
+        userEmail: user.email,
+        planId: plan.id,
+        planTitle: plan.title,
+        selectedAt,
+        link: '/admin/insurance',
+        targetRoles: [Role.SUPER_ADMIN]
+      }
+    });
+
+    if (!notification) {
+      return res.status(500).json({
+        success: false,
+        error: { code: 'NOTIFICATION_FAILED', message: 'Failed to create insurance interaction notification' }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        notificationId: notification.id,
+        deduplicated: false,
+        selectedAt,
+        message: 'Admin notified of insurance plan interaction'
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Admin endpoint - Get Insurance Inquiries & Alerts Logs
+ */
+export const getInsuranceLogs = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const search = (req.query.search as string) || '';
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit as string, 10) || 50));
+
+    const notifications = await prisma.notification.findMany({
+      where: {
+        OR: [
+          { type: 'insurance_interest' },
+          { type: 'insurance_selection' },
+          { type: 'insurance' }
+        ]
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit
+    });
+
+    let items = notifications;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      items = items.filter((n: any) => {
+        const titleMatch = n.title?.toLowerCase().includes(q);
+        const msgMatch = n.message?.toLowerCase().includes(q);
+        const meta = n.metadata as any;
+        const userMatch =
+          meta?.userName?.toLowerCase().includes(q) ||
+          meta?.userPhone?.toLowerCase().includes(q) ||
+          meta?.userEmail?.toLowerCase().includes(q) ||
+          meta?.planTitle?.toLowerCase().includes(q);
+        return titleMatch || msgMatch || userMatch;
+      });
+    }
+
+    res.json({
+      success: true,
+      data: items,
+      total: items.length
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

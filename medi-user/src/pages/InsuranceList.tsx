@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ArrowLeft, Shield, Search, Activity, Users, HeartPulse, ExternalLink, RefreshCw, AlertCircle, Percent } from 'lucide-react';
+import { ArrowLeft, Shield, Search, Activity, Users, HeartPulse, ExternalLink, RefreshCw, AlertCircle, Percent, ChevronRight, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -20,6 +20,7 @@ const InsuranceList: React.FC = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [insurances, setInsurances] = useState<InsurancePlan[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState<InsurancePlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,8 +77,48 @@ const InsuranceList: React.FC = () => {
     );
   }, [searchQuery, insurances]);
 
-  // Safe external URL handler for Apply button
+  const lastClickedPlanRef = useRef<{ id: string; time: number } | null>(null);
+
+  // Notify admin when user opens or touches an insurance plan
+  const notifyPlanInteraction = async (item: InsurancePlan) => {
+    const token = localStorage.getItem('mediquee_token');
+    const now = Date.now();
+    const isRapidDuplicate =
+      lastClickedPlanRef.current &&
+      lastClickedPlanRef.current.id === item.id &&
+      now - lastClickedPlanRef.current.time < 3000;
+
+    if (!isRapidDuplicate) {
+      lastClickedPlanRef.current = { id: item.id, time: now };
+      try {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        await fetch(`${API_BASE_URL}/insurance/${item.id}/select`, {
+          method: 'POST',
+          headers,
+        });
+      } catch (err) {
+        console.error('Failed to notify admin of insurance plan open/touch:', err);
+      }
+    }
+  };
+
+  // Open the insurance plan tile details and notify admin
+  const handleOpenPlan = (item: InsurancePlan) => {
+    setSelectedPlan(item);
+    notifyPlanInteraction(item);
+  };
+
+  // Safe external URL handler for Apply button inside details view
   const handleApply = (item: InsurancePlan) => {
+    // Notify admin in background if not already notified
+    notifyPlanInteraction(item).catch(() => {});
+
+    // Open external insurance application URL safely
     const rawUrl = item.applicationUrl?.trim();
     if (!rawUrl) return;
 
@@ -245,21 +286,31 @@ const InsuranceList: React.FC = () => {
               </div>
             )}
 
-            {/* Insurance Cards Grid */}
+            {/* Insurance Cards Grid (Tiles without Apply button) */}
             {!loading && !error && filteredInsurance.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredInsurance.map((item) => (
                   <div
                     key={item.id}
-                    className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-slate-200 transition-all"
+                    onClick={() => handleOpenPlan(item)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View details for ${item.title}`}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleOpenPlan(item);
+                      }
+                    }}
+                    className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group active:scale-[0.99]"
                   >
                     <div>
                       {/* 1. Insurance Title */}
-                      <h3 className="font-bold text-slate-900 text-[16px] leading-snug">
+                      <h3 className="font-bold text-slate-900 text-[16px] leading-snug group-hover:text-blue-600 transition-colors">
                         {item.title}
                       </h3>
 
-                      {/* 2. Icon (only rendered if an icon was provided) */}
+                      {/* 2. Icon (rendered if provided or fallback shield) */}
                       {item.icon ? (
                         <div className="mt-3 w-12 h-12 rounded-xl bg-blue-50/80 border border-blue-100/60 flex items-center justify-center p-2 overflow-hidden shadow-2xs">
                           <img
@@ -271,7 +322,11 @@ const InsuranceList: React.FC = () => {
                             }}
                           />
                         </div>
-                      ) : null}
+                      ) : (
+                        <div className="mt-3 w-12 h-12 rounded-xl bg-blue-50/80 border border-blue-100/60 flex items-center justify-center p-2 text-blue-600 shadow-2xs">
+                          <Shield className="w-6 h-6" />
+                        </div>
+                      )}
 
                       {/* 3. Success Rate formatted as a percentage */}
                       <div className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100/80 shadow-2xs">
@@ -282,21 +337,15 @@ const InsuranceList: React.FC = () => {
                       </div>
 
                       {/* 4. Description displayed below the success rate */}
-                      <p className="mt-3 text-xs text-slate-600 leading-relaxed font-normal">
+                      <p className="mt-3 text-xs text-slate-600 leading-relaxed font-normal line-clamp-3">
                         {item.description}
                       </p>
                     </div>
 
-                    {/* 5. Apply button at the bottom */}
-                    <div className="mt-5 pt-3 border-t border-slate-100">
-                      <button
-                        onClick={() => handleApply(item)}
-                        className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm shadow-blue-500/20 transition-all"
-                        aria-label={`Apply for ${item.title}`}
-                      >
-                        <span>Apply</span>
-                        <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                      </button>
+                    {/* View Details prompt (Tile shown WITHOUT Apply button) */}
+                    <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-blue-600 font-bold text-xs group-hover:text-blue-700">
+                      <span>View Plan Details & Benefits</span>
+                      <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                     </div>
                   </div>
                 ))}
@@ -306,6 +355,117 @@ const InsuranceList: React.FC = () => {
 
         </div>
       </div>
+
+      {/* Plan Details Modal: Displays full details and Apply button when user opens/touches the tile */}
+      {selectedPlan && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="plan-details-title"
+        >
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between rounded-t-3xl z-10">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-600" />
+                <span className="font-bold text-slate-900 text-sm">Insurance Plan Details</span>
+              </div>
+              <button
+                onClick={() => setSelectedPlan(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors"
+                aria-label="Close details"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 sm:p-6 space-y-5">
+              {/* Title & Icon */}
+              <div className="flex items-start gap-4">
+                {selectedPlan.icon ? (
+                  <div className="w-14 h-14 rounded-2xl bg-blue-50/80 border border-blue-100 flex items-center justify-center p-2.5 shrink-0 shadow-xs">
+                    <img
+                      src={selectedPlan.icon}
+                      alt={selectedPlan.title}
+                      className="w-full h-full object-contain rounded-xl"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-14 h-14 rounded-2xl bg-blue-50/80 border border-blue-100 flex items-center justify-center p-2.5 text-blue-600 shrink-0 shadow-xs">
+                    <Shield className="w-7 h-7" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <h2 id="plan-details-title" className="text-lg font-black text-slate-900 leading-snug">
+                    {selectedPlan.title}
+                  </h2>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-bold">
+                      <Percent className="w-3.5 h-3.5 text-emerald-600" />
+                      Success Rate: {selectedPlan.successRate}%
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-xs font-bold">
+                      Cashless Available
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Policy Description */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">Coverage Overview</h4>
+                <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                  {selectedPlan.description}
+                </p>
+              </div>
+
+              {/* Highlights & Benefits */}
+              <div className="space-y-2.5">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Key Benefits</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="p-3 bg-white rounded-xl border border-slate-200/80 flex items-center gap-2.5">
+                    <Activity className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span className="font-medium text-slate-700">Cashless Network Hospitals</span>
+                  </div>
+                  <div className="p-3 bg-white rounded-xl border border-slate-200/80 flex items-center gap-2.5">
+                    <Shield className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="font-medium text-slate-700">High Claim Settlement Ratio</span>
+                  </div>
+                  <div className="p-3 bg-white rounded-xl border border-slate-200/80 flex items-center gap-2.5">
+                    <Users className="w-4 h-4 text-purple-600 shrink-0" />
+                    <span className="font-medium text-slate-700">Family Floater Coverage</span>
+                  </div>
+                  <div className="p-3 bg-white rounded-xl border border-slate-200/80 flex items-center gap-2.5">
+                    <HeartPulse className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span className="font-medium text-slate-700">Pre & Post Hospitalization</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons: Apply Button & Back Button */}
+              <div className="pt-3 space-y-2.5 border-t border-slate-100">
+                <button
+                  onClick={() => handleApply(selectedPlan)}
+                  className="w-full py-3.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 transition-all"
+                  aria-label={`Apply for ${selectedPlan.title}`}
+                >
+                  <span>Apply for {selectedPlan.title}</span>
+                  <ExternalLink className="w-4 h-4 shrink-0" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPlan(null)}
+                  className="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-98 text-slate-700 font-bold text-xs transition-all"
+                >
+                  Back to Insurance Plans
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

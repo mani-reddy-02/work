@@ -162,6 +162,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
     else if (notif.type.includes('lab')) navigate('/admin/labs');
     else if (notif.type.includes('booking')) navigate('/admin/op-bookings');
     else if (notif.type.includes('verification')) navigate('/admin/verification');
+    else if (notif.type.includes('insurance')) navigate(notif.metadata?.link || '/admin/insurance');
     else navigate('/admin/notifications');
   };
 

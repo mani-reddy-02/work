@@ -37,8 +37,6 @@ export interface HospitalRecord {
   contactPhone?: string;
   services?: string[];
   departments: string[];
-  relevantDepartment?: string;
-  eligibleDoctorCount?: number;
   departmentList?: Array<{ id: string; name: string; code?: string; specialtyId?: string }>;
   verified?: boolean;
   description?: string;
@@ -56,11 +54,13 @@ export interface DoctorRecord {
   hospitalId: string;
   hospitalName: string;
   hospitalAddress?: string;
+  hospitalPhone?: string;
+  hospitalCity?: string;
   departmentId?: string;
   department: string;
   consultInfo?: string;
   fees: string;
-  rating: number;
+  rating?: number;
   bio?: string;
   licenseNumber?: string;
   consultationFee?: number;
@@ -159,7 +159,7 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 export const opAppointmentApi = {
-  async fetchDiseases(search?: string): Promise<{
+  async fetchDiseases(search?: string, consultationType?: string): Promise<{
     success: boolean;
     data?: {
       total: number;
@@ -175,6 +175,9 @@ export const opAppointmentApi = {
       if (search) {
         url.searchParams.set('search', search);
       }
+      if (consultationType) {
+        url.searchParams.set('consultationType', consultationType);
+      }
       const res = await fetch(url.toString(), {
         headers: getAuthHeaders(),
       });
@@ -188,7 +191,19 @@ export const opAppointmentApi = {
     }
   },
 
-  async fetchHospitals(search?: string, conditionId?: string, consultationType?: 'OP' | 'VIDEO'): Promise<{
+  async fetchDoctors(params?: {
+    search?: string;
+    departmentId?: string;
+    hospitalId?: string;
+    specialtyId?: string;
+    conditionId?: string;
+    consultationType?: string;
+    type?: string;
+  }): Promise<{ success: boolean; data?: DoctorRecord[]; error?: string }> {
+    return doctorApi.getDoctors(params);
+  },
+
+  async fetchHospitals(search?: string, conditionId?: string): Promise<{
     success: boolean;
     data?: HospitalRecord[];
     error?: string;
@@ -197,7 +212,6 @@ export const opAppointmentApi = {
       const url = new URL(`${API_BASE_URL}/hospitals`, window.location.origin);
       if (search) url.searchParams.set('search', search);
       if (conditionId) url.searchParams.set('conditionId', conditionId);
-      if (consultationType) url.searchParams.set('consultationType', consultationType);
 
       const res = await fetch(url.toString(), {
         headers: getAuthHeaders(),
@@ -222,7 +236,7 @@ export const opAppointmentApi = {
     }
   },
 
-  async fetchHospitalDoctors(hospitalId: string, departmentId?: string, conditionId?: string, consultationType?: 'OP' | 'VIDEO'): Promise<{
+  async fetchHospitalDoctors(hospitalId: string, departmentId?: string, conditionId?: string): Promise<{
     success: boolean;
     data?: DoctorRecord[];
     error?: string;
@@ -231,7 +245,6 @@ export const opAppointmentApi = {
       const url = new URL(`${API_BASE_URL}/hospitals/${hospitalId}/doctors`, window.location.origin);
       if (departmentId) url.searchParams.set('departmentId', departmentId);
       if (conditionId) url.searchParams.set('conditionId', conditionId);
-      if (consultationType) url.searchParams.set('consultationType', consultationType);
 
       const res = await fetch(url.toString(), {
         headers: getAuthHeaders(),

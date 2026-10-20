@@ -44,6 +44,21 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
       return res.status(400).json({ success: false, error: { code: 'INVALID_REQUEST', message: 'Missing required fields: hospital, patient, or tests' } });
     }
 
+    const paymentMethod = req.body.paymentMethod || req.body.paymentMode;
+    if (
+      (bookingType === 'WALK_IN' || req.body.collectionType === 'LAB_VISIT') &&
+      paymentMethod &&
+      ['COD', 'PAY_AT_LAB', 'PAY_ON_LAB', 'CASH', 'PAY_ON_COLLECTION'].includes(String(paymentMethod).toUpperCase())
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'PAY_AT_LAB_NOT_ALLOWED',
+          message: 'Pay on Lab is not supported for Lab Tests. Please complete online payment.'
+        }
+      });
+    }
+
     if (bookingType === 'HOME_COLLECTION' && (!collectionAddress || !collectionDate || !collectionTimeSlot)) {
       return res.status(400).json({ success: false, error: { code: 'INVALID_REQUEST', message: 'Home collection requires address, date, and slot' } });
     }

@@ -209,7 +209,7 @@ describe('BookingDetails Page (Real Database Fetch)', () => {
       expect(screen.getByText('Booking Not Found')).toBeDefined();
     });
 
-    expect(screen.getByText('Appointment not found')).toBeDefined();
+    expect(screen.getByText('Booking not found')).toBeDefined();
   });
 
   it('fetches real lab booking by ID and renders diagnostic details', async () => {

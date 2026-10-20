@@ -11,49 +11,22 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
     const departmentId = typeof req.query.departmentId === 'string' ? req.query.departmentId.trim() : '';
     const city = typeof req.query.city === 'string' ? req.query.city.trim() : '';
     const location = typeof req.query.location === 'string' ? req.query.location.trim() : '';
-    const consultationType = ((req.query.consultationType as string) || 'OP').toUpperCase() === 'VIDEO' ? 'VIDEO' : 'OP';
 
     let targetSpecialtyId = specialtyId;
-    let targetConditionName = '';
-
-    if (conditionId) {
+    if (conditionId && !targetSpecialtyId) {
       const condition = await prisma.platformCondition.findUnique({
         where: { id: conditionId },
-        include: { specialty: true }
+        select: { specialtyId: true }
       });
       if (condition) {
         targetSpecialtyId = condition.specialtyId;
-        targetConditionName = condition.name.trim();
-      } else {
-        // Enforce strict disease-driven filter: conditionId invalid/missing -> return empty
-        return res.json({ success: true, data: [] });
       }
     }
 
-    await checkAndExpireDoctorOverrides();
-    const now = new Date();
-
-    const hospitalWhere: any = {
-      verificationStatus: 'APPROVED',
-      businessType: BusinessType.HOSPITAL
-    };
-
-    if (city) {
-      hospitalWhere.city = { contains: city, mode: 'insensitive' };
-    }
-
-    if (location) {
-      hospitalWhere.OR = [
-        ...(hospitalWhere.OR || []),
-        { city: { contains: location, mode: 'insensitive' } },
-        { area: { contains: location, mode: 'insensitive' } },
-        { state: { contains: location, mode: 'insensitive' } }
-      ];
-    }
+    const whereClause: any = {};
 
     if (search) {
-      hospitalWhere.OR = [
-        ...(hospitalWhere.OR || []),
+      whereClause.OR = [
         { name: { contains: search, mode: 'insensitive' } },
         { city: { contains: search, mode: 'insensitive' } },
         { area: { contains: search, mode: 'insensitive' } },
@@ -62,35 +35,60 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
       ];
     }
 
-    const hospitals = await prisma.hospital.findMany({
-      where: hospitalWhere,
+    if (city) {
+      whereClause.city = { contains: city, mode: 'insensitive' };
+    }
+
+    if (location) {
+      whereClause.OR = [
+        ...(whereClause.OR || []),
+        { city: { contains: location, mode: 'insensitive' } },
+        { area: { contains: location, mode: 'insensitive' } },
+        { state: { contains: location, mode: 'insensitive' } }
+      ];
+    }
+
+    if (departmentId) {
+      whereClause.departments = {
+        some: {
+          id: departmentId,
+          users: { some: { role: Role.DOCTOR, active: true } }
+        }
+      };
+    } else if (targetSpecialtyId) {
+      whereClause.departments = {
+        some: {
+          specialtyId: targetSpecialtyId,
+          users: { some: { role: Role.DOCTOR, active: true } }
+        }
+      };
+    }
+
+    // Enforce strict disease-driven filter: if conditionId was passed but no targetSpecialtyId was resolved, 
+    // it means the disease doesn't exist or isn't mapped, so return empty.
+    if (conditionId && !targetSpecialtyId) {
+      return res.json({ success: true, data: [] });
+    }
+
+    let hospitals = await prisma.hospital.findMany({
+      where: whereClause,
       include: {
         departments: {
-          where: {
-            isActive: true,
-            type: 'CLINICAL'
-          },
-          include: {
-            specialty: true,
-            diseases: {
-              where: { isActive: true }
-            },
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            description: true,
+            specialtyId: true,
+            specialty: {
+              select: { id: true, name: true }
+            }
+          }
+        },
+        _count: {
+          select: {
             users: {
-              where: {
-                role: Role.DOCTOR,
-                active: true,
-                AND: [
-                  {
-                    OR: [
-                      { inactiveUntil: null },
-                      { inactiveUntil: { lte: now } }
-                    ]
-                  }
-                ]
-              },
-              include: {
-                doctorSchedules: true
-              }
+              where: { role: Role.DOCTOR, active: true }
             }
           }
         }
@@ -98,113 +96,27 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
       orderBy: { name: 'asc' }
     });
 
-    const formatted: any[] = [];
+    // Enforce strict filtering: if no hospitals match the condition/specialty, return empty array.
 
-    for (const h of hospitals) {
-      // 1. Consultation service capability check
-      if (consultationType === 'VIDEO') {
-        if (!h.services || !h.services.includes('video_consultation')) {
-          continue;
-        }
-      } else {
-        if (h.services && h.services.length > 0 && !h.services.includes('op_consultation')) {
-          continue;
-        }
-      }
-
-      // 2. Department and Doctor matching
-      const matchingDepartments: any[] = [];
-
-      for (const dept of h.departments) {
-        let deptMatches = false;
-
-        if (targetConditionName) {
-          const hasConfiguredDisease = dept.diseases && dept.diseases.some(d =>
-            d.name.toLowerCase() === targetConditionName.toLowerCase() ||
-            d.name.toLowerCase().includes(targetConditionName.toLowerCase()) ||
-            targetConditionName.toLowerCase().includes(d.name.toLowerCase())
-          );
-          const matchesSpecialty = !!(targetSpecialtyId && dept.specialtyId === targetSpecialtyId);
-          deptMatches = hasConfiguredDisease || matchesSpecialty;
-        } else if (targetSpecialtyId) {
-          deptMatches = dept.specialtyId === targetSpecialtyId;
-        } else if (departmentId) {
-          deptMatches = dept.id === departmentId;
-        } else {
-          deptMatches = true;
-        }
-
-        if (!deptMatches) continue;
-
-        // Check doctors in this department with available schedule for the consultation type
-        const eligibleDoctors = (dept.users || []).filter(doc => {
-          if (!doc.active) return false;
-          if (doc.inactiveUntil && doc.inactiveUntil > now) return false;
-
-          if (consultationType === 'VIDEO') {
-            return doc.doctorSchedules && doc.doctorSchedules.some(s => s.isAvailable && s.videoStartTime && s.videoEndTime);
-          } else {
-            return doc.doctorSchedules && doc.doctorSchedules.some(s => s.isAvailable && s.startTime && s.endTime);
-          }
-        });
-
-        if (eligibleDoctors.length > 0) {
-          matchingDepartments.push({
-            id: dept.id,
-            name: dept.name,
-            code: dept.code,
-            description: dept.description,
-            specialtyId: dept.specialtyId,
-            specialty: dept.specialty,
-            doctorCount: eligibleDoctors.length,
-            doctors: eligibleDoctors
-          });
-        }
-      }
-
-      // Hospital is eligible ONLY if it has at least one matching department with eligible doctors
-      if (matchingDepartments.length > 0) {
-        const distinctDoctors = Array.from(
-          new Map(matchingDepartments.flatMap(d => d.doctors).map(doc => [doc.id, doc])).values()
-        );
-
-        formatted.push({
-          id: h.id,
-          name: h.name,
-          businessType: h.businessType,
-          facilityType: h.facilityType,
-          registrationNumber: h.registrationNumber,
-          logoUrl: h.logoUrl,
-          contactPhone: h.contactPhone,
-          contactEmail: h.contactEmail,
-          addressLine1: h.addressLine1,
-          area: h.area,
-          city: h.city,
-          state: h.state,
-          pincode: h.pincode,
-          services: h.services,
-          relevantDepartment: matchingDepartments[0].name,
-          departments: matchingDepartments.map(d => d.name),
-          departmentList: matchingDepartments.map(d => ({
-            id: d.id,
-            name: d.name,
-            code: d.code,
-            description: d.description,
-            specialtyId: d.specialtyId,
-            specialty: d.specialty,
-            doctorCount: d.doctorCount
-          })),
-          doctorCount: distinctDoctors.length,
-          eligibleDoctorCount: distinctDoctors.length,
-          eligibleDoctors: distinctDoctors.map(d => ({
-            id: d.id,
-            name: d.name,
-            designation: d.designation,
-            specialization: d.specialization
-          }))
-        });
-      }
-    }
+    const formatted = hospitals.map(h => ({
+      id: h.id,
+      name: h.name,
+      businessType: h.businessType,
+      facilityType: h.facilityType,
+      registrationNumber: h.registrationNumber,
+      logoUrl: h.logoUrl,
+      contactPhone: h.contactPhone,
+      contactEmail: h.contactEmail,
+      addressLine1: h.addressLine1,
+      area: h.area,
+      city: h.city,
+      state: h.state,
+      pincode: h.pincode,
+      services: h.services,
+      departments: h.departments.map(d => d.name),
+      departmentList: h.departments,
+      doctorCount: h._count.users
+    }));
 
     res.json({ success: true, data: formatted });
   } catch (error) {
@@ -281,48 +193,27 @@ export const getHospitalDoctors = async (req: Request, res: Response, next: Next
     const departmentId = typeof req.query.departmentId === 'string' ? req.query.departmentId.trim() : '';
     const departmentName = typeof req.query.department === 'string' ? req.query.department.trim() : '';
     const conditionId = typeof req.query.conditionId === 'string' ? req.query.conditionId.trim() : '';
-    const consultationType = ((req.query.consultationType as string) || 'OP').toUpperCase() === 'VIDEO' ? 'VIDEO' : 'OP';
 
     const hospital = await prisma.hospital.findUnique({
       where: { id: hospitalId },
-      select: {
-        id: true,
-        name: true,
-        city: true,
-        services: true,
-        businessType: true,
-        verificationStatus: true
-      }
+      select: { id: true, name: true, city: true }
     });
 
-    if (!hospital || hospital.verificationStatus !== 'APPROVED') {
+    if (!hospital) {
       return res.status(404).json({
         success: false,
-        error: { code: 'NOT_FOUND', message: 'Hospital not found or not approved' }
+        error: { code: 'NOT_FOUND', message: 'Hospital not found' }
       });
-    }
-
-    // Verify hospital consultation capability
-    if (consultationType === 'VIDEO') {
-      if (!hospital.services || !hospital.services.includes('video_consultation')) {
-        return res.json({ success: true, data: [] });
-      }
-    } else {
-      if (hospital.services && hospital.services.length > 0 && !hospital.services.includes('op_consultation')) {
-        return res.json({ success: true, data: [] });
-      }
     }
 
     let targetSpecialtyId = '';
-    let targetConditionName = '';
     if (conditionId) {
       const condition = await prisma.platformCondition.findUnique({
         where: { id: conditionId },
-        include: { specialty: true }
+        select: { specialtyId: true }
       });
       if (condition) {
         targetSpecialtyId = condition.specialtyId;
-        targetConditionName = condition.name.trim();
       } else {
         // Condition not found, strict matching returns empty
         return res.json({ success: true, data: [] });
@@ -332,98 +223,113 @@ export const getHospitalDoctors = async (req: Request, res: Response, next: Next
     await checkAndExpireDoctorOverrides();
 
     const now = new Date();
-    const doctors = await prisma.user.findMany({
-      where: {
-        hospitalId,
-        role: Role.DOCTOR,
-        active: true,
-        AND: [
-          {
-            OR: [
-              { inactiveUntil: null },
-              { inactiveUntil: { lte: now } }
-            ]
-          }
-        ]
-      },
-      include: {
+    const whereClause: any = {
+      hospitalId,
+      role: Role.DOCTOR,
+      active: true,
+      AND: [
+        {
+          OR: [
+            { inactiveUntil: null },
+            { inactiveUntil: { lte: now } }
+          ]
+        }
+      ]
+    };
+
+    if (targetSpecialtyId) {
+      whereClause.department = {
+        specialtyId: targetSpecialtyId
+      };
+    } else if (departmentId) {
+      whereClause.departmentId = departmentId;
+    } else if (departmentName) {
+      whereClause.department = {
+        name: { equals: departmentName, mode: 'insensitive' }
+      };
+    }
+
+    let doctors = await prisma.user.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        name: true,
+        designation: true,
+        specialization: true,
+        qualification: true,
+        experienceYears: true,
+        consultationFee: true,
+        avatar: true,
+        dob: true,
+        gender: true,
+        hospitalId: true,
+        departmentId: true,
         hospital: {
           select: { id: true, name: true, city: true }
         },
         department: {
-          include: {
-            specialty: true,
-            diseases: { where: { isActive: true } }
-          }
-        },
-        doctorSchedules: true
+          select: { id: true, name: true, specialtyId: true }
+        }
       },
       orderBy: { name: 'asc' }
     });
 
-    const eligibleDoctors: any[] = [];
-    const seenDoctorIds = new Set<string>();
-
-    for (const doc of doctors) {
-      if (seenDoctorIds.has(doc.id)) continue;
-
-      // Department & Disease matching
-      if (targetConditionName || targetSpecialtyId) {
-        if (!doc.department || !doc.department.isActive || doc.department.type !== 'CLINICAL') {
-          continue;
-        }
-
-        const hasConfiguredDisease = doc.department.diseases && doc.department.diseases.some(d =>
-          d.name.toLowerCase() === targetConditionName.toLowerCase() ||
-          d.name.toLowerCase().includes(targetConditionName.toLowerCase()) ||
-          targetConditionName.toLowerCase().includes(d.name.toLowerCase())
-        );
-        const matchesSpecialty = !!(targetSpecialtyId && doc.department.specialtyId === targetSpecialtyId);
-
-        if (!hasConfiguredDisease && !matchesSpecialty) {
-          continue;
-        }
-      } else if (departmentId) {
-        if (doc.departmentId !== departmentId) continue;
-      } else if (departmentName) {
-        if (doc.department?.name.toLowerCase() !== departmentName.toLowerCase()) continue;
-      }
-
-      // Schedule availability check
-      let hasSchedule = false;
-      if (consultationType === 'VIDEO') {
-        hasSchedule = doc.doctorSchedules && doc.doctorSchedules.some(s => s.isAvailable && s.videoStartTime && s.videoEndTime);
-      } else {
-        hasSchedule = doc.doctorSchedules && doc.doctorSchedules.some(s => s.isAvailable && s.startTime && s.endTime);
-      }
-
-      if (!hasSchedule) continue;
-
-      seenDoctorIds.add(doc.id);
-      eligibleDoctors.push({
-        id: doc.id,
-        name: doc.name,
-        specialization: doc.specialization || doc.department?.name || 'General Medicine',
-        qualification: doc.qualification || 'MBBS, MD',
-        experience: doc.experienceYears ? `${doc.experienceYears}+ Years` : '8+ Years',
-        experienceYears: doc.experienceYears,
-        designation: doc.designation || 'Senior Consultant',
-        avatar: doc.avatar,
-        dob: doc.dob,
-        gender: doc.gender,
-        hospitalId: doc.hospitalId,
-        hospitalName: doc.hospital?.name || hospital.name,
-        departmentId: doc.departmentId,
-        department: doc.department?.name || 'General Medicine',
-        fees: doc.consultationFee ? `₹${doc.consultationFee}` : '₹500',
-        consultationFee: doc.consultationFee || 500,
-        rating: 4.8
+    if (doctors.length === 0 && (departmentId || departmentName) && !conditionId) {
+      doctors = await prisma.user.findMany({
+        where: {
+          hospitalId,
+          role: Role.DOCTOR,
+          active: true,
+          AND: [
+            {
+              OR: [
+                { inactiveUntil: null },
+                { inactiveUntil: { lte: now } }
+              ]
+            }
+          ]
+        },
+        select: {
+          id: true,
+          name: true,
+          designation: true,
+          specialization: true,
+          qualification: true,
+          experienceYears: true,
+          consultationFee: true,
+          avatar: true,
+          dob: true,
+          gender: true,
+          hospitalId: true,
+          departmentId: true,
+          hospital: {
+            select: { id: true, name: true, city: true }
+          },
+          department: {
+            select: { id: true, name: true, specialtyId: true }
+          }
+        },
+        orderBy: { name: 'asc' }
       });
     }
 
     res.json({
       success: true,
-      data: eligibleDoctors
+      data: doctors.map(doc => ({
+        id: doc.id,
+        name: doc.name,
+        specialization: doc.department?.name || doc.specialization || doc.designation || 'Not specified',
+        qualification: doc.qualification || 'Not specified',
+        experience: doc.experienceYears ? `${doc.experienceYears}+ Years` : 'Not specified',
+        designation: doc.designation || 'Not specified',
+        avatar: doc.avatar,
+        hospitalId: doc.hospitalId,
+        hospitalName: doc.hospital?.name || hospital.name,
+        departmentId: doc.departmentId,
+        department: doc.department?.name || 'Not assigned',
+        fees: doc.consultationFee ? `₹${doc.consultationFee}` : 'Not specified',
+        rating: 4.8
+      }))
     });
   } catch (error) {
     next(error);
