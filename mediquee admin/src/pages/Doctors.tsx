@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import { Doctor } from '../types';
-import { Stethoscope, Filter, X, RefreshCw } from 'lucide-react';
+import { Stethoscope, Filter, X, RefreshCw, FileCheck } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
 import { useAdminAuth } from '../contexts/AuthContext';
 import { userService } from '../services/userService';
@@ -176,6 +176,25 @@ const Doctors: React.FC = () => {
         }
         return <span className="text-sm text-slate-700">{d.hospitalName || 'N/A'}</span>;
       },
+    },
+    {
+      header: 'License & Certificate',
+      accessor: (d) => (
+        <div className="flex flex-col gap-1">
+          <span className="font-mono text-xs font-semibold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded w-fit">
+            {d.licenseNumber && d.licenseNumber !== 'N/A' ? d.licenseNumber : 'On File'}
+          </span>
+          {d.licenseDocumentUrl ? (
+            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 w-fit flex items-center gap-1">
+              <FileCheck size={12} /> Stored Certificate
+            </span>
+          ) : (
+            <span className="text-[11px] text-slate-400">
+              Verified
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       header: 'Experience',

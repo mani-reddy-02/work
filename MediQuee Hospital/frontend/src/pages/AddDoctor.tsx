@@ -1,5 +1,5 @@
-import { Camera, ArrowLeft, Loader2, Clock, Search, ChevronDown } from "lucide-react"
-import { useState, useEffect } from "react"
+import { Camera, ArrowLeft, Loader2, Clock, Search, ChevronDown, FileText, UploadCloud, CheckCircle2, Trash2, Eye, X, AlertCircle, ExternalLink } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { useForm } from "react-hook-form"
@@ -18,7 +18,8 @@ const doctorSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
   departmentId: z.string().min(1, "Please select a valid department"),
   experience: z.string().min(1, "Experience is required"),
-  licenseNumber: z.string().min(4, "License number is required"),
+  licenseNumber: z.string().min(3, "License number is required (min 3 characters)"),
+  licenseDocumentUrl: z.string().min(1, "Medical license certificate is mandatory"),
   consultationFee: z.string().min(1, "Consultation fee is required"),
 });
 
@@ -32,19 +33,37 @@ export function AddDoctor() {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // Certificate Document Upload State
+  const [uploadedCert, setUploadedCert] = useState<{ name: string; size: number; url: string } | null>(null);
+  const [isUploadingCert, setIsUploadingCert] = useState(false);
+  const [certUploadError, setCertUploadError] = useState<string | null>(null);
+  const [previewModalUrl, setPreviewModalUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const { register, handleSubmit, trigger, getValues, setValue, watch, formState: { errors, isDirty } } = useForm<DoctorFormValues>({
     resolver: zodResolver(doctorSchema),
     mode: "onChange",
+    defaultValues: {
+      fullName: "",
+      mobile: "",
+      email: "",
+      password: "",
+      departmentId: "",
+      experience: "",
+      licenseNumber: "",
+      licenseDocumentUrl: "",
+      consultationFee: "",
+    }
   });
-  
+
   const [departments, setDepartments] = useState<any[]>([]);
   const [isLoadingDepartments, setIsLoadingDepartments] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Filter departments based on search query
-  const filteredDepartments = departments.filter(d => 
-    d.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredDepartments = departments.filter(d =>
+    d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (d.code && d.code.toLowerCase().includes(searchQuery.toLowerCase()))
   );
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -59,10 +78,68 @@ export function AddDoctor() {
   const selectedDeptId = watch("departmentId");
   const selectedDept = departments.find(d => d.id === selectedDeptId);
 
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setCertUploadError("File size must be 10 MB or less.");
+      toast("File size must be 10 MB or less.", "error");
+      return;
+    }
+
+    const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const lowerName = file.name.toLowerCase();
+    const isValidExt = validExtensions.some(ext => lowerName.endsWith(ext));
+    if (!isValidExt) {
+      setCertUploadError("Only PDF, JPG, or PNG files are supported.");
+      toast("Only PDF, JPG, or PNG files are supported.", "error");
+      return;
+    }
+
+    setCertUploadError(null);
+    setIsUploadingCert(true);
+
+    try {
+      const uploadRes = await adminApi.uploadDoctorLicense(file);
+      setUploadedCert({
+        name: file.name,
+        size: file.size,
+        url: uploadRes.fileUrl,
+      });
+      setValue("licenseDocumentUrl", uploadRes.fileUrl, { shouldValidate: true, shouldDirty: true });
+      toast("Doctor medical license certificate uploaded successfully", "success");
+    } catch (err: any) {
+      const msg = err?.message || "Failed to upload license certificate";
+      setCertUploadError(msg);
+      toast(msg, "error");
+    } finally {
+      setIsUploadingCert(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemoveCert = () => {
+    setUploadedCert(null);
+    setValue("licenseDocumentUrl", "", { shouldValidate: true, shouldDirty: true });
+    setCertUploadError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const nextStep = async () => {
     let fieldsToValidate: any[] = [];
     if (step === 1) fieldsToValidate = ["fullName", "mobile", "email", "password"];
-    if (step === 2) fieldsToValidate = ["departmentId", "experience", "licenseNumber", "consultationFee"];
+    if (step === 2) fieldsToValidate = ["departmentId", "experience", "licenseNumber", "licenseDocumentUrl", "consultationFee"];
 
     const isStepValid = await trigger(fieldsToValidate as any);
     if (isStepValid) {
@@ -88,6 +165,7 @@ export function AddDoctor() {
         departmentId: data.departmentId,
         experienceYears: Number(data.experience) || undefined,
         licenseNumber: data.licenseNumber || undefined,
+        licenseDocumentUrl: data.licenseDocumentUrl,
         consultationFee: Number(data.consultationFee) || undefined,
         specialization: selectedDept?.name || undefined,
         designation: selectedDept?.name ? `Consultant - ${selectedDept.name}` : 'Consultant Physician',
@@ -113,7 +191,7 @@ export function AddDoctor() {
 
   return (
     <div className="flex flex-col bg-background min-h-screen">
-      
+
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md pt-4 pb-3 px-4 flex items-center gap-4 border-b border-border/50 shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
         <button onClick={handleBack} className="p-2 -ml-2 text-[#172033] interactive-element rounded-full hover:bg-gray-100">
@@ -123,7 +201,7 @@ export function AddDoctor() {
       </div>
 
       <div className="flex flex-col px-4 pt-6 pb-28 overflow-y-auto w-full max-w-md mx-auto">
-        
+
         {/* Progress Bar */}
         <div className="w-full flex items-center justify-between mb-8 px-2 relative">
           <div className="absolute top-4 left-[10%] right-[10%] h-[2px] bg-gray-200/60 -z-10 rounded-full" />
@@ -177,8 +255,8 @@ export function AddDoctor() {
           </div>
         )}
 
-        <form 
-          onSubmit={handleSubmit(onSubmit)} 
+        <form
+          onSubmit={handleSubmit(onSubmit)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
@@ -193,10 +271,10 @@ export function AddDoctor() {
               <motion.div key="step1" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="flex flex-col gap-5">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">Full Name <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("fullName")}
-                    type="text" 
-                    placeholder="e.g. Dr. John Doe" 
+                    type="text"
+                    placeholder="e.g. Dr. John Doe"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.fullName ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
@@ -207,10 +285,10 @@ export function AddDoctor() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">Mobile Number <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("mobile")}
-                    type="tel" 
-                    placeholder="e.g. 8331045500" 
+                    type="tel"
+                    placeholder="e.g. 9876543210"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.mobile ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
@@ -221,10 +299,10 @@ export function AddDoctor() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">Email Address <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("email")}
-                    type="email" 
-                    placeholder="e.g. doctor@hospital.com" 
+                    type="email"
+                    placeholder="e.g. doctor@hospital.com"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.email ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
@@ -235,10 +313,10 @@ export function AddDoctor() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">Password <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("password")}
-                    type="password" 
-                    placeholder="Create a password" 
+                    type="password"
+                    placeholder="Create a password"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.password ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
@@ -254,9 +332,9 @@ export function AddDoctor() {
               <motion.div key="step2" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="flex flex-col gap-5">
                 <div className="flex flex-col gap-1.5 relative">
                   <label className="text-[13px] font-semibold text-[#172033]">Assign to Department <span className="text-destructive">*</span></label>
-                  
+
                   {/* Custom Searchable Dropdown Trigger */}
-                  <div 
+                  <div
                     className={cn(
                       "w-full px-4 py-3 bg-surface border rounded-xl flex items-center justify-between cursor-pointer transition-all shadow-sm",
                       errors.departmentId ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 hover:border-gray-300',
@@ -267,13 +345,13 @@ export function AddDoctor() {
                     }}
                   >
                     <span className={cn("text-[15px] truncate", !selectedDept ? "text-[#98A2B3]" : "text-[#172033]")}>
-                      {isLoadingDepartments ? "Loading departments..." : 
-                       departments.length === 0 ? "Please add a department first" :
-                       (selectedDept?.name || "Search and select department...")}
+                      {isLoadingDepartments ? "Loading departments..." :
+                        departments.length === 0 ? "Please add a department first" :
+                          (selectedDept?.name || "Search and select department...")}
                     </span>
                     {isLoadingDepartments ? <Loader2 className="w-5 h-5 animate-spin text-[#98A2B3]" /> : <ChevronDown className="w-5 h-5 text-[#98A2B3]" />}
                   </div>
-                  
+
                   {/* Hidden actual input for react-hook-form */}
                   <input type="hidden" {...register("departmentId")} />
 
@@ -282,7 +360,7 @@ export function AddDoctor() {
                     <div className="absolute top-[100%] left-0 right-0 mt-2 bg-surface border border-border/60 rounded-xl shadow-lg z-50 overflow-hidden flex flex-col">
                       <div className="flex items-center px-3 py-2.5 border-b border-border bg-gray-50/50">
                         <Search className="w-4 h-4 text-muted/70 mr-2" />
-                        <input 
+                        <input
                           type="text"
                           placeholder="Search departments..."
                           className="flex-1 bg-transparent outline-none text-[14px] text-[#172033] placeholder:text-muted/70"
@@ -298,7 +376,7 @@ export function AddDoctor() {
                           </div>
                         ) : (
                           filteredDepartments.map((dept) => (
-                            <div 
+                            <div
                               key={dept.id}
                               className="px-4 py-2.5 hover:bg-blue-50/50 cursor-pointer flex items-center justify-between group transition-colors"
                               onClick={() => {
@@ -323,10 +401,10 @@ export function AddDoctor() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">Experience (Years) <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("experience")}
-                    type="number" 
-                    placeholder="e.g. 5" 
+                    type="number"
+                    placeholder="e.g. 5"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.experience ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
@@ -337,10 +415,10 @@ export function AddDoctor() {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">License Number <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("licenseNumber")}
-                    type="text" 
-                    placeholder="e.g. MD12345" 
+                    type="text"
+                    placeholder="e.g. MD12345 or TSMC/2026/9821"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.licenseNumber ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
@@ -349,12 +427,110 @@ export function AddDoctor() {
                   {errors.licenseNumber && <span className="text-destructive text-[12px] font-medium mt-0.5">{errors.licenseNumber.message}</span>}
                 </div>
 
+                {/* Mandatory Medical License Document Certificate Upload */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[13px] font-semibold text-[#172033] flex items-center gap-1.5">
+                      Medical License Certificate <span className="text-destructive">*</span>
+                    </label>
+                    {uploadedCert && (
+                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Stored in Supabase
+                      </span>
+                    )}
+                  </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+
+                  {!uploadedCert ? (
+                    <div
+                      onClick={() => !isUploadingCert && fileInputRef.current?.click()}
+                      className={cn(
+                        "border-2 border-dashed rounded-2xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all bg-surface/50 hover:bg-blue-50/30 group",
+                        errors.licenseDocumentUrl || certUploadError
+                          ? "border-destructive/60 bg-red-50/20"
+                          : "border-border/80 hover:border-primary/60"
+                      )}
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-blue-50 group-hover:bg-blue-100/80 flex items-center justify-center text-primary mb-2.5 transition-colors shadow-sm">
+                        {isUploadingCert ? (
+                          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                        ) : (
+                          <UploadCloud className="w-6 h-6" />
+                        )}
+                      </div>
+
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[14px] font-bold text-[#172033] group-hover:text-primary transition-colors">
+                          {isUploadingCert ? "Uploading & Storing to Supabase..." : "Upload Medical License Certificate *"}
+                        </span>
+                        <span className="text-[12px] text-muted">
+                          Upload official doctor council registration / license (PDF, PNG, JPG up to 10 MB)
+                        </span>
+                      </div>
+
+                      <div className="mt-3 px-3 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[11px] font-semibold text-primary transition-colors">
+                        Mandatory: Visible to Hospitals and Super Admin
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-surface border border-border/80 rounded-2xl p-3.5 shadow-sm flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-primary shrink-0">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[14px] font-bold text-[#172033] truncate">
+                            {uploadedCert.name}
+                          </span>
+                          <span className="text-[12px] text-muted">
+                            {formatFileSize(uploadedCert.size)} • Stored & Verified
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewModalUrl(uploadedCert.url)}
+                          className="px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-blue-50 border border-blue-100 rounded-lg flex items-center gap-1 transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Preview
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveCert}
+                          className="p-1.5 text-muted hover:text-destructive hover:bg-red-50 rounded-lg transition-colors"
+                          title="Remove and re-upload document"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {(errors.licenseDocumentUrl || certUploadError) && (
+                    <span className="text-destructive text-[12px] font-medium flex items-center gap-1 mt-0.5">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      {errors.licenseDocumentUrl?.message || certUploadError}
+                    </span>
+                  )}
+                </div>
+
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[13px] font-semibold text-[#172033]">Consultation Fee (₹) <span className="text-destructive">*</span></label>
-                  <input 
+                  <input
                     {...register("consultationFee")}
-                    type="number" 
-                    placeholder="e.g. 500" 
+                    type="number"
+                    placeholder="e.g. 500"
                     className={cn(
                       "px-4 py-3 bg-surface border rounded-xl outline-none transition-all text-[15px] placeholder:text-[#98A2B3] shadow-sm",
                       errors.consultationFee ? 'border-destructive focus:ring-2 focus:ring-destructive/20' : 'border-border/60 focus:border-primary focus:ring-2 focus:ring-primary/20'
@@ -382,13 +558,28 @@ export function AddDoctor() {
 
                 <div className="bg-surface p-4 rounded-2xl border border-border shadow-sm flex flex-col gap-3">
                   <h3 className="font-bold text-[#172033] border-b border-gray-50 pb-2 text-[15px]">Professional Info</h3>
-                  <div className="grid grid-cols-[100px_1fr] gap-y-2 text-[14px]">
+                  <div className="grid grid-cols-[110px_1fr] gap-y-2.5 text-[14px]">
                     <span className="text-[#667085]">Department</span>
                     <span className="font-semibold text-[#172033]">{selectedDept?.name || values.departmentId}</span>
                     <span className="text-[#667085]">Experience</span>
                     <span className="font-semibold text-[#172033]">{values.experience} years</span>
-                    <span className="text-[#667085]">License</span>
-                    <span className="font-semibold text-[#172033]">{values.licenseNumber}</span>
+                    <span className="text-[#667085]">License No</span>
+                    <span className="font-semibold font-mono text-[#172033]">{values.licenseNumber}</span>
+                    <span className="text-[#667085]">License File</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-xs border border-emerald-200 truncate max-w-[180px]">
+                        {uploadedCert?.name || 'Certificate Stored'}
+                      </span>
+                      {uploadedCert && (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewModalUrl(uploadedCert.url)}
+                          className="text-xs text-primary font-semibold hover:underline flex items-center gap-0.5 shrink-0"
+                        >
+                          <Eye className="w-3 h-3" /> View
+                        </button>
+                      )}
+                    </div>
                     <span className="text-[#667085]">Fee</span>
                     <span className="font-semibold text-[#172033]">₹{values.consultationFee}</span>
                   </div>
@@ -400,8 +591,8 @@ export function AddDoctor() {
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t border-border/50 pb-safe z-20">
             <div className="flex gap-3 max-w-md mx-auto">
               {step > 1 && (
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={prevStep}
                   disabled={isSubmitting}
                   className="flex-1 bg-surface hover:bg-gray-50 border border-border/60 text-[#172033] font-semibold py-3.5 rounded-xl transition-colors interactive-element shadow-sm"
@@ -409,10 +600,10 @@ export function AddDoctor() {
                   Back
                 </button>
               )}
-              
+
               {step < 3 ? (
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={nextStep}
                   disabled={step === 2 && departments.length === 0}
                   className="flex-[2] bg-primary hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl transition-colors interactive-element shadow-sm disabled:opacity-70 disabled:hover:bg-primary"
@@ -420,8 +611,8 @@ export function AddDoctor() {
                   Next
                 </button>
               ) : (
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={isSubmitting}
                   className="flex-[2] bg-success hover:bg-green-600 text-white font-semibold py-3.5 rounded-xl transition-colors interactive-element shadow-sm flex justify-center items-center gap-2 disabled:opacity-70"
                 >
@@ -434,7 +625,7 @@ export function AddDoctor() {
         </form>
       </div>
 
-      <ConfirmationSheet 
+      <ConfirmationSheet
         isOpen={showExitConfirm}
         onClose={() => setShowExitConfirm(false)}
         title="Discard changes?"
@@ -454,6 +645,61 @@ export function AddDoctor() {
           navigate(-1);
         }}
       />
+
+      {/* Certificate Preview Modal */}
+      {previewModalUrl && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl border border-border">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                <h3 className="font-bold text-foreground">Doctor License Certificate Preview</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewModalUrl(null)}
+                className="p-1 text-muted hover:text-foreground rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 flex-1 overflow-auto flex items-center justify-center bg-gray-50 dark:bg-gray-900 min-h-[300px]">
+              {previewModalUrl.toLowerCase().endsWith('.pdf') ? (
+                <iframe
+                  src={previewModalUrl}
+                  className="w-full h-[500px] rounded-lg border border-border"
+                  title="Doctor License PDF"
+                />
+              ) : (
+                <img
+                  src={previewModalUrl}
+                  alt="Doctor License Certificate"
+                  className="max-w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+                />
+              )}
+            </div>
+            <div className="p-3 border-t border-border flex justify-end gap-2 bg-surface">
+              <a
+                href={previewModalUrl}
+                target="_blank"
+                rel="noreferrer"
+                download
+                className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Open Original
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewModalUrl(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-[#172033] rounded-xl text-xs font-semibold transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

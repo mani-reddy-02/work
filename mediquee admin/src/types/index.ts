@@ -51,6 +51,7 @@ export interface Doctor extends BaseEntity {
   experienceYears: number;
   consultationFee: number;
   licenseNumber: string;
+  licenseDocumentUrl?: string | null;
   verificationStatus: VerificationStatus;
   status: UserStatus;
 }

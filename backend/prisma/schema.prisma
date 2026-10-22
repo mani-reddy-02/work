@@ -111,6 +111,7 @@ model User {
   consultationFee         Float?
   experienceYears         Int?
   licenseNumber           String?
+  licenseDocumentUrl      String?
   qualification           String?
   specialization          String?
   digitalSignature        String?

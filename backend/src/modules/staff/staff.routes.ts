@@ -3,7 +3,7 @@ import { authenticate } from '../../middleware/auth';
 import { requirePermission } from '../../middleware/permissions';
 import { validateRequest } from '../../middleware/validate';
 import { Role } from '@prisma/client';
-import { getStaff, createStaff, updateStaff, deactivateStaff } from './staff.controller';
+import { getStaff, createStaff, updateStaff, deactivateStaff, uploadStaffLicense } from './staff.controller';
 import { createStaffSchema, updateStaffSchema } from './staff.schema';
 
 const router = Router();
@@ -11,6 +11,7 @@ const router = Router();
 // All staff management routes require authentication
 router.use(authenticate);
 
+router.post('/upload-license', requirePermission('staff.create'), uploadStaffLicense);
 router.get('/', getStaff); // Read-only: any authenticated hospital user can view their staff list
 router.post('/', requirePermission('staff.create'), validateRequest(createStaffSchema), createStaff);
 router.patch('/:id', requirePermission('staff.update'), validateRequest(updateStaffSchema), updateStaff);

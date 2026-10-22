@@ -2,9 +2,16 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import path from 'path';
+import fs from 'fs';
 import { sendNotification } from '../notifications/notifications.service';
 
 import { checkAndExpireDoctorOverrides } from '../doctors/doctor-override.service';
+
+const UPLOADS_LICENSES_DIR = path.join(process.cwd(), 'uploads/licenses');
+if (!fs.existsSync(UPLOADS_LICENSES_DIR)) {
+  fs.mkdirSync(UPLOADS_LICENSES_DIR, { recursive: true });
+}
 
 // Staff roles that can be managed by a Hospital Admin
 const STAFF_ROLES: Role[] = [Role.DOCTOR, Role.NURSE, Role.RECEPTIONIST, Role.LAB_ADMIN];
@@ -41,6 +48,7 @@ export const getStaff = async (req: Request, res: Response, next: NextFunction) 
         experienceYears: true,
         consultationFee: true,
         licenseNumber: true,
+        licenseDocumentUrl: true,
         inactiveUntil: true,
         inactiveReason: true,
         overrideUpdatedBy: true,
@@ -77,7 +85,7 @@ export const createStaff = async (req: Request, res: Response, next: NextFunctio
 
     const { 
       name, email, password, role, phone, designation, avatar, departmentId,
-      experienceYears, licenseNumber, consultationFee, qualification, specialization,
+      experienceYears, licenseNumber, licenseDocumentUrl, consultationFee, qualification, specialization,
       bio, gender, dob, address
     } = req.body;
 
@@ -125,6 +133,7 @@ export const createStaff = async (req: Request, res: Response, next: NextFunctio
         departmentId: departmentId || null,
         experienceYears: experienceYears !== undefined && experienceYears !== null ? Number(experienceYears) : null,
         licenseNumber: licenseNumber || null,
+        licenseDocumentUrl: licenseDocumentUrl || null,
         consultationFee: consultationFee !== undefined && consultationFee !== null ? Number(consultationFee) : null,
         qualification: qualification || (role === 'DOCTOR' ? 'MBBS, MD' : null),
         specialization: specialization || (role === 'DOCTOR' && deptName ? deptName : null),
@@ -147,6 +156,7 @@ export const createStaff = async (req: Request, res: Response, next: NextFunctio
         experienceYears: true,
         consultationFee: true,
         licenseNumber: true,
+        licenseDocumentUrl: true,
         department: { select: { id: true, name: true, code: true } }
       },
     });
@@ -169,7 +179,7 @@ export const updateStaff = async (req: Request, res: Response, next: NextFunctio
     const { id } = req.params;
     const { 
       name, phone, designation, departmentId, active,
-      experienceYears, licenseNumber, consultationFee, qualification, specialization,
+      experienceYears, licenseNumber, licenseDocumentUrl, consultationFee, qualification, specialization,
       bio, gender, dob, address, avatar
     } = req.body;
 
@@ -208,6 +218,7 @@ export const updateStaff = async (req: Request, res: Response, next: NextFunctio
         ...(departmentId !== undefined && { departmentId: departmentId || null }),
         ...(experienceYears !== undefined && { experienceYears: experienceYears === null ? null : Number(experienceYears) }),
         ...(licenseNumber !== undefined && { licenseNumber }),
+        ...(licenseDocumentUrl !== undefined && { licenseDocumentUrl }),
         ...(consultationFee !== undefined && { consultationFee: consultationFee === null ? null : Number(consultationFee) }),
         ...(qualification !== undefined && { qualification }),
         ...(specialization !== undefined && { specialization }),
@@ -230,11 +241,58 @@ export const updateStaff = async (req: Request, res: Response, next: NextFunctio
         experienceYears: true,
         consultationFee: true,
         licenseNumber: true,
+        licenseDocumentUrl: true,
         department: { select: { id: true, name: true, code: true } }
       },
     });
 
     res.json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const uploadStaffLicense = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { fileData, fileName } = req.body;
+    if (!fileData || !fileName) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'fileData and fileName are required' }
+      });
+    }
+
+    // Process base64 file data
+    let base64Content = fileData;
+    const matches = fileData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (matches && matches.length === 3) {
+      base64Content = matches[2];
+    }
+
+    const fileBuffer = Buffer.from(base64Content, 'base64');
+
+    if (fileBuffer.length > 10 * 1024 * 1024) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'FILE_TOO_LARGE', message: 'File size must not exceed 10MB' }
+      });
+    }
+
+    const safeFileName = `doctor-license-${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const filePath = path.join(UPLOADS_LICENSES_DIR, safeFileName);
+
+    fs.writeFileSync(filePath, fileBuffer);
+
+    const fileUrl = `/uploads/licenses/${safeFileName}`;
+
+    res.status(201).json({
+      success: true,
+      data: {
+        fileUrl,
+        fileName: safeFileName,
+        size: fileBuffer.length
+      }
+    });
   } catch (error) {
     next(error);
   }

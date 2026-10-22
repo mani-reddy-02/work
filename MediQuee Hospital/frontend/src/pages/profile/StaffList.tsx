@@ -1,4 +1,4 @@
-import { ArrowLeft, Plus, Users, Mail, Phone, Briefcase, Calendar, CheckCircle2, Clock, Power } from "lucide-react"
+import { ArrowLeft, Plus, Users, Mail, Phone, Briefcase, Calendar, CheckCircle2, Clock, Power, ShieldCheck, FileText, ExternalLink, Eye, X } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import { EmptyState } from "@/components/ui/EmptyState"
@@ -23,6 +23,7 @@ export function StaffList() {
   const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState<any | null>(null);
+  const [previewDocUrl, setPreviewDocUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchStaff = async () => {
@@ -219,6 +220,65 @@ export function StaffList() {
                     </span>
                   </div>
                 </div>
+
+                {/* Doctor Medical License & Verification */}
+                {(selectedStaff.licenseNumber || selectedStaff.licenseDocumentUrl || selectedStaff.role === 'DOCTOR') && (
+                  <div className="flex flex-col gap-2 pt-2 border-t border-border/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                        Medical License & Credentials
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        {selectedStaff.licenseDocumentUrl ? 'Verified & Stored' : 'On File'}
+                      </span>
+                    </div>
+
+                    <div className="bg-surface border border-border/80 rounded-xl p-3 flex flex-col gap-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted">License Reg No:</span>
+                        <span className="font-mono font-bold text-foreground bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+                          {selectedStaff.licenseNumber || 'Not provided'}
+                        </span>
+                      </div>
+
+                      {selectedStaff.licenseDocumentUrl ? (
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="w-4 h-4 text-primary shrink-0" />
+                            <span className="text-xs font-medium text-foreground truncate">
+                              License Certificate Document
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewDocUrl(selectedStaff.licenseDocumentUrl)}
+                              className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-primary rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+                            >
+                              <Eye className="w-3 h-3" />
+                              View
+                            </button>
+                            <a
+                              href={selectedStaff.licenseDocumentUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              download
+                              className="p-1 text-muted hover:text-foreground bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                              title="Download certificate"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                          No certificate document uploaded.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -253,6 +313,61 @@ export function StaffList() {
         isDestructive={true}
         onConfirm={handleDelete}
       />
+
+      {/* Doctor License Certificate Preview Modal */}
+      {previewDocUrl && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl border border-border">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                <h3 className="font-bold text-foreground">Doctor License Certificate</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewDocUrl(null)}
+                className="p-1 text-muted hover:text-foreground rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 flex-1 overflow-auto flex items-center justify-center bg-gray-50 dark:bg-gray-900 min-h-[300px]">
+              {previewDocUrl.toLowerCase().endsWith('.pdf') ? (
+                <iframe
+                  src={previewDocUrl}
+                  className="w-full h-[500px] rounded-lg border border-border"
+                  title="Doctor License PDF"
+                />
+              ) : (
+                <img
+                  src={previewDocUrl}
+                  alt="Doctor License Certificate"
+                  className="max-w-full max-h-[500px] object-contain rounded-lg shadow-sm"
+                />
+              )}
+            </div>
+            <div className="p-3 border-t border-border flex justify-end gap-2 bg-surface">
+              <a
+                href={previewDocUrl}
+                target="_blank"
+                rel="noreferrer"
+                download
+                className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Open Original
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewDocUrl(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-[#172033] rounded-xl text-xs font-semibold transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

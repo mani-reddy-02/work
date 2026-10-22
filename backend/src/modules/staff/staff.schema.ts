@@ -17,6 +17,7 @@ export const createStaffSchema = z.object({
     departmentId: z.string().optional().nullable(),
     experienceYears: z.union([z.number(), z.string().transform(v => v.trim() === '' ? null : Number(v))]).optional().nullable(),
     licenseNumber: z.string().optional().nullable(),
+    licenseDocumentUrl: z.string().optional().nullable(),
     consultationFee: z.union([z.number(), z.string().transform(v => v.trim() === '' ? null : Number(v))]).optional().nullable(),
     qualification: z.string().optional().nullable(),
     specialization: z.string().optional().nullable(),
@@ -32,6 +33,22 @@ export const createStaffSchema = z.object({
   }, {
     message: "Department is required for doctors",
     path: ["departmentId"]
+  }).refine((data) => {
+    if (data.role === 'DOCTOR' && (!data.licenseNumber || data.licenseNumber.trim().length < 3)) {
+      return false;
+    }
+    return true;
+  }, {
+    message: "Doctor license number is required (min 3 characters)",
+    path: ["licenseNumber"]
+  }).refine((data) => {
+    if (data.role === 'DOCTOR' && (!data.licenseDocumentUrl || data.licenseDocumentUrl.trim().length === 0)) {
+      return false;
+    }
+    return true;
+  }, {
+    message: "Doctor license document certificate is mandatory",
+    path: ["licenseDocumentUrl"]
   }),
 });
 
@@ -44,6 +61,7 @@ export const updateStaffSchema = z.object({
     active: z.boolean().optional(),
     experienceYears: z.union([z.number(), z.string().transform(v => v.trim() === '' ? null : Number(v))]).optional().nullable(),
     licenseNumber: z.string().optional().nullable(),
+    licenseDocumentUrl: z.string().optional().nullable(),
     consultationFee: z.union([z.number(), z.string().transform(v => v.trim() === '' ? null : Number(v))]).optional().nullable(),
     qualification: z.string().optional().nullable(),
     specialization: z.string().optional().nullable(),

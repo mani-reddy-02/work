@@ -195,6 +195,38 @@ export const adminApi = {
     return data.data;
   },
 
+  /**
+   * POST /api/v1/staff/upload-license
+   * Uploads doctor/staff medical license certificate document (PDF, PNG, JPG)
+   */
+  async uploadDoctorLicense(file: File): Promise<{ fileUrl: string; fileName: string; size: number }> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64Data = reader.result as string;
+          const res = await fetch(`${API_URL}/api/v1/staff/upload-license`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+              fileName: file.name,
+              fileData: base64Data
+            })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            throw new Error(data?.error?.message || data?.message || 'Failed to upload doctor license certificate');
+          }
+          resolve(data.data);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read license certificate file'));
+      reader.readAsDataURL(file);
+    });
+  },
+
   async createStaff(payload: unknown): Promise<{ id: string }> {
     const res = await fetch(`${API_URL}/api/v1/staff`, {
       method: 'POST',
