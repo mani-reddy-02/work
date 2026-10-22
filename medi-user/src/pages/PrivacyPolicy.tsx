@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import { 
   ArrowLeft, Shield, Lock, Eye, Database, Smartphone, 
   Trash2, FileText, CheckCircle2, AlertTriangle, UserCheck, 
@@ -7,6 +8,16 @@ import {
 
 export default function PrivacyPolicy() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash === '#deletion' || location.pathname.includes('deletion')) {
+      const el = document.getElementById('deletion');
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+      }
+    }
+  }, [location]);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 overflow-x-hidden selection:bg-blue-100 selection:text-blue-900">
@@ -253,7 +264,7 @@ export default function PrivacyPolicy() {
             </section>
 
             {/* Section 5: USER DATA DELETION (IN DETAIL) */}
-            <section className="pt-8">
+            <section id="deletion" className="pt-8 scroll-mt-24">
               <div className="bg-rose-50/60 border border-rose-200/80 rounded-2xl p-5 sm:p-6 mb-4">
                 <h2 className="text-lg sm:text-xl font-bold text-rose-950 mb-2 flex items-center gap-2.5">
                   <Trash2 className="w-5 h-5 text-rose-600 shrink-0" />
