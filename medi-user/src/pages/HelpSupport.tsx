@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, HelpCircle, Phone, MessageSquare, ChevronDown, ChevronUp, Mail } from 'lucide-react';
 
 const faqs = [
@@ -108,9 +108,14 @@ export default function HelpSupport() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col items-center justify-center gap-2 text-center text-slate-500 pb-6">
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 text-center text-slate-500 pb-8">
           <Mail className="w-5 h-5 text-slate-400" />
           <p className="text-xs sm:text-sm font-medium">Still need help?<br/>Call us at <a href="tel:8331045500" className="text-blue-500 hover:underline font-bold">8331045500</a> or Email <a href="mailto:support@mediquee.com" className="text-blue-500 hover:underline font-semibold">support@mediquee.com</a></p>
+          <div className="flex items-center gap-4 text-xs font-semibold text-slate-400 pt-2 border-t border-slate-200/60 w-full justify-center">
+            <Link to="/privacy" className="hover:text-blue-600 transition-colors">Privacy Policy</Link>
+            <span>•</span>
+            <Link to="/terms" className="hover:text-blue-600 transition-colors">Terms & Conditions</Link>
+          </div>
         </div>
       </div>
     </div>

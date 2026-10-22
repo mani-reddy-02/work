@@ -39,6 +39,20 @@ const menuItems = [
     path: '/help',
     colorClass: 'text-blue-500 bg-blue-50'
   },
+  {
+    icon: ShieldCheck,
+    label: 'Privacy Policy',
+    subLabel: 'Data collection, security & deletion rights',
+    path: '/privacy',
+    colorClass: 'text-teal-600 bg-teal-50'
+  },
+  {
+    icon: FileText,
+    label: 'Terms & Conditions',
+    subLabel: 'User agreement and service terms',
+    path: '/terms',
+    colorClass: 'text-slate-600 bg-slate-100'
+  },
 ];
 
 const Profile = () => {
