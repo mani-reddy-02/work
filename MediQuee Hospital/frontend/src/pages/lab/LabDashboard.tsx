@@ -271,7 +271,7 @@ export function LabDashboard() {
 
   const { user } = useAuth()
   const labInfo = data?.labInfo
-  const isStandalone = labInfo?.isStandalone ?? (user?.hospital?.businessType === 'LABORATORY')
+  const isStandalone = Boolean(labInfo?.isStandalone ?? (user?.hospital?.businessType === 'LABORATORY'))
   const labName = labInfo?.name || user?.hospital?.name || "Laboratory"
   const labTypeLabel = labInfo?.typeLabel || (isStandalone ? "Standalone Lab" : "Hospital Lab")
   const hospitalName = labInfo?.hospitalName || user?.hospital?.name
@@ -384,7 +384,10 @@ export function LabDashboard() {
         initial={{ opacity: 0, y: 8 }} 
         animate={{ opacity: 1, y: 0 }} 
         transition={{ delay: 0.05 }} 
-        className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4"
+        className={cn(
+          "grid gap-3.5 sm:gap-4",
+          isStandalone ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+        )}
       >
         {/* Card 1: Total Orders */}
         <LabKpiCard
@@ -476,20 +479,22 @@ export function LabDashboard() {
           onClick={() => navigate('/lab/orders?status=REPORT_READY')}
         />
 
-        {/* Card 4: Total Revenue */}
-        <LabKpiCard
-          icon={IndianRupee}
-          label="Total Revenue"
-          value={isLoading ? "..." : `₹${(kpis.totalRevenue ?? (kpis.todayRevenue + kpis.weekRevenue)).toLocaleString()}`}
-          iconBg="bg-purple-50"
-          iconColor="text-purple-700"
-          trend={`Today: ₹${kpis.todayRevenue.toLocaleString()}`}
-          trendUp={true}
-          onClick={() => {
-            const chartEl = document.getElementById('lab-revenue-section')
-            if (chartEl) chartEl.scrollIntoView({ behavior: 'smooth' })
-          }}
-        />
+        {/* Card 4: Total Revenue (Only for Standalone Labs) */}
+        {isStandalone && (
+          <LabKpiCard
+            icon={IndianRupee}
+            label="Total Revenue"
+            value={isLoading ? "..." : `₹${(kpis.totalRevenue ?? (kpis.todayRevenue + kpis.weekRevenue)).toLocaleString()}`}
+            iconBg="bg-purple-50"
+            iconColor="text-purple-700"
+            trend={`Today: ₹${kpis.todayRevenue.toLocaleString()}`}
+            trendUp={true}
+            onClick={() => {
+              const chartEl = document.getElementById('lab-revenue-section')
+              if (chartEl) chartEl.scrollIntoView({ behavior: 'smooth' })
+            }}
+          />
+        )}
       </motion.div>
 
       {/* ── 2. Marketing Slides (Replaces Test Status) ───────────────────── */}
@@ -502,9 +507,10 @@ export function LabDashboard() {
         <PromoCarousel module="LABS" />
       </motion.div>
 
-      {/* ── 3. Full-Screen Revenue Section (Hospital Style with Custom Range) ── */}
-      <motion.div 
-        id="lab-revenue-section"
+      {/* ── 3. Full-Screen Revenue Section (Hospital Style with Custom Range - Standalone Labs Only) ── */}
+      {isStandalone && (
+        <motion.div 
+          id="lab-revenue-section"
         initial={{ opacity: 0, y: 8 }} 
         animate={{ opacity: 1, y: 0 }} 
         transition={{ delay: 0.11 }} 
@@ -660,6 +666,7 @@ export function LabDashboard() {
           )}
         </div>
       </motion.div>
+      )}
 
       {/* ── 4. Quick Access Tiles (Orders, Payout, Reports) ───────────────── */}
       <motion.div 
