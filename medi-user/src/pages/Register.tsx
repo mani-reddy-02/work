@@ -171,7 +171,7 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-8 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-8 sm:px-6 lg:px-8 overflow-x-hidden">
       {/* Title Header with Official Brand Logo */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md px-4 text-center">
         <Link to="/" className="inline-block mb-3 focus:outline-none">

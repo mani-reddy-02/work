@@ -656,16 +656,16 @@ const Specialties = () => {
     ];
 
     return (
-      <div className="bg-white border-b border-slate-200/80 px-4 py-3 sticky top-14 z-10 shadow-2xs">
-        <div className="max-w-md md:max-w-xl mx-auto flex items-center justify-between">
+      <div className="bg-white border-b border-slate-200/80 px-4 py-3 sticky top-[57px] z-10 shadow-2xs">
+        <div className="w-full max-w-2xl lg:max-w-3xl mx-auto flex items-center justify-between">
           {steps.map((s, idx) => {
             const isCompleted = currentStep > s.num;
             const isCurrent = currentStep === s.num;
             return (
               <React.Fragment key={s.num}>
-                <div className="flex flex-col items-center flex-1 max-w-[62px]">
+                <div className="flex flex-col items-center flex-1 max-w-[68px] sm:max-w-[90px] md:max-w-[110px]">
                   <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                       isCompleted
                         ? 'bg-emerald-600 text-white shadow-xs'
                         : isCurrent
@@ -676,7 +676,7 @@ const Specialties = () => {
                     {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : s.num}
                   </div>
                   <span
-                    className={`text-[10px] mt-1 font-semibold truncate text-center ${
+                    className={`text-[10px] sm:text-xs mt-1 font-semibold truncate text-center ${
                       isCurrent
                         ? 'text-blue-600 font-bold'
                         : isCompleted
@@ -689,7 +689,7 @@ const Specialties = () => {
                 </div>
                 {idx < steps.length - 1 && (
                   <div
-                    className={`flex-1 h-0.5 mx-1 transition-all duration-300 ${
+                    className={`flex-1 h-0.5 mx-1 sm:mx-2 transition-all duration-300 ${
                       currentStep > s.num ? 'bg-emerald-500' : 'bg-slate-200'
                     }`}
                   />
@@ -731,11 +731,11 @@ const Specialties = () => {
     const hasResults = filteredGeneral.length > 0 || filteredAdvanced.length > 0 || filteredCategorical.length > 0;
 
     return (
-      <div className="bg-slate-50 p-4 py-5 max-w-lg sm:max-w-xl mx-auto">
+      <div className="w-full space-y-6">
         {!diseaseSearchMode && (
-          <div className="mb-4">
-            <h2 className="text-[17px] font-bold text-slate-900 mb-0.5">Select Disease or Health Concern</h2>
-            <p className="text-[12px] text-slate-500">
+          <div>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 mb-0.5">Select Disease or Health Concern</h2>
+            <p className="text-xs sm:text-sm text-slate-500">
               {isVideo 
                 ? 'Select a health condition to view verified doctors available for online video consultation' 
                 : 'Choose your health condition to see available doctors at partner hospitals'}
@@ -744,14 +744,14 @@ const Specialties = () => {
         )}
 
         {/* Real-time Disease Search Bar */}
-        <div className="relative mb-5">
+        <div className="relative w-full max-w-2xl mx-auto">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder={isVideo ? "Search symptoms, diseases (e.g. Fever, Diabetes)..." : "Search disease or concern (e.g. Fever, Joint Pain)..."}
             value={diseaseSearch}
             onChange={(e) => setDiseaseSearch(e.target.value)}
-            className="w-full bg-white border border-slate-200 pl-10 pr-10 py-3 rounded-2xl text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all"
+            className="w-full bg-white border border-slate-200 pl-10 pr-10 py-3 rounded-2xl text-xs sm:text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 shadow-sm transition-all"
           />
           {diseaseSearch && (
             <button
@@ -771,21 +771,21 @@ const Specialties = () => {
         )}
 
         {!isDiseasesLoading && !hasResults ? (
-          <div className="text-center py-12 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+          <div className="text-center py-12 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm max-w-xl mx-auto">
             <Search className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-[14px] text-slate-700 font-bold">No matching conditions found</p>
             <p className="text-[12px] text-slate-400 mt-1">Try searching another medical symptom or choose a category below.</p>
           </div>
         ) : (
           <>
-            {/* Top Card: General & Advanced Tabs with 3-column Disease Grid */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mb-6">
+            {/* Top Card: General & Advanced Tabs with Responsive Disease Grid */}
+            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
               {/* Tab Header: General | Advanced side by side */}
               <div className="flex border-b border-slate-100 bg-white">
                 <button
                   type="button"
                   onClick={() => setActiveTab('general')}
-                  className={`flex-1 py-4 text-center font-bold text-[15px] transition-all relative ${
+                  className={`flex-1 py-3.5 sm:py-4 text-center font-bold text-sm sm:text-base transition-all relative ${
                     activeTab === 'general' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
@@ -798,7 +798,7 @@ const Specialties = () => {
                 <button
                   type="button"
                   onClick={() => setActiveTab('advanced')}
-                  className={`flex-1 py-4 text-center font-bold text-[15px] transition-all relative ${
+                  className={`flex-1 py-3.5 sm:py-4 text-center font-bold text-sm sm:text-base transition-all relative ${
                     activeTab === 'advanced' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
@@ -810,10 +810,10 @@ const Specialties = () => {
                 </button>
               </div>
 
-              {/* 3 diseases per row */}
-              <div className="p-4 sm:p-6">
+              {/* Responsive diseases grid */}
+              <div className="p-4 sm:p-6 lg:p-8">
                 {displayedItems.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 sm:gap-4">
                     {displayedItems.map((item) => (
                       <button
                         key={item.id}
@@ -855,7 +855,7 @@ const Specialties = () => {
                     <button
                       type="button"
                       onClick={() => activeTab === 'general' ? setShowAllGeneral(!showAllGeneral) : setShowAllAdvanced(!showAllAdvanced)}
-                      className="text-[14px] font-bold text-blue-600 hover:text-blue-700 hover:underline transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      className="text-[14px] font-bold text-blue-600 hover:text-blue-700 hover:underline transition-colors flex items-center justify-center gap-1 cursor-pointer py-1.5 px-4 rounded-xl hover:bg-blue-50"
                     >
                       {isExpanded ? 'Show Less ↑' : 'See More Diseases →'}
                     </button>
@@ -866,20 +866,20 @@ const Specialties = () => {
 
             {/* Categorical Diseases Section */}
             {displayedCategorical.length > 0 && (
-              <div className="mt-8">
-                <h2 className="text-[20px] font-extrabold text-slate-900 mb-4">
+              <div>
+                <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-slate-900 mb-4">
                   Categorical Diseases
                 </h2>
 
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                   {displayedCategorical.map((cat) => (
                     <div
                       key={cat.id}
                       onClick={() => handleCategorySelect(cat)}
                       className="bg-white rounded-2xl p-4 border border-slate-100 shadow-xs flex items-center justify-between hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
                     >
-                      <div className="flex items-center gap-4 min-w-0 pr-2">
-                        <div className={`w-14 h-14 rounded-full ${cat.bg || 'bg-emerald-50'} flex items-center justify-center shrink-0 shadow-2xs border border-emerald-100/50 p-2.5 group-hover:scale-105 transition-transform`}>
+                      <div className="flex items-center gap-3.5 min-w-0 pr-2">
+                        <div className={`w-13 h-13 sm:w-14 sm:h-14 rounded-full ${cat.bg || 'bg-emerald-50'} flex items-center justify-center shrink-0 shadow-2xs border border-emerald-100/50 p-2 group-hover:scale-105 transition-transform`}>
                           {cat.image ? (
                             <img 
                               src={cat.image} 
@@ -894,10 +894,10 @@ const Specialties = () => {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <h4 className="font-bold text-slate-900 text-[15px] mb-0.5 truncate group-hover:text-blue-600 transition-colors">
+                          <h4 className="font-bold text-slate-900 text-sm sm:text-[15px] mb-0.5 truncate group-hover:text-blue-600 transition-colors">
                             {cat.name}
                           </h4>
-                          <p className="text-[12px] text-slate-500 font-normal leading-tight truncate">
+                          <p className="text-[11px] sm:text-xs text-slate-500 font-normal leading-tight truncate">
                             {cat.desc || 'Specialized clinical care'}
                           </p>
                         </div>
@@ -912,7 +912,7 @@ const Specialties = () => {
                     <button 
                       type="button"
                       onClick={() => setShowAllCategorical(!showAllCategorical)}
-                      className="text-[14px] font-bold text-blue-600 hover:text-blue-700 hover:underline transition-colors py-2 px-4 rounded-xl"
+                      className="text-[14px] font-bold text-blue-600 hover:text-blue-700 hover:underline transition-colors py-2 px-4 rounded-xl hover:bg-blue-50"
                     >
                       {showAllCategorical ? 'Show Less ↑' : 'See More Categories →'}
                     </button>
@@ -928,21 +928,31 @@ const Specialties = () => {
 
   const renderLanding = () => {
     return (
-      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-12 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
         {!diseaseSearchMode && (
-          <div className="bg-gradient-to-r from-[#0055ff] to-[#06b6d4] pt-5 pb-8 px-4 text-white rounded-b-3xl relative overflow-hidden">
-            {isVideo && (
-              <div className="absolute right-0 top-0 opacity-10">
-                <Video className="w-32 h-32 -mr-6 -mt-4" strokeWidth={1} />
+          <div className="w-full bg-gradient-to-r from-[#0055ff] via-blue-600 to-[#06b6d4] p-5 sm:p-8 text-white rounded-2xl sm:rounded-3xl relative overflow-hidden shadow-lg shadow-blue-500/10">
+            {isVideo ? (
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-15 pointer-events-none">
+                <Video className="w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 text-white" strokeWidth={1.2} />
+              </div>
+            ) : (
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-15 pointer-events-none">
+                <Building2 className="w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 text-white" strokeWidth={1.2} />
               </div>
             )}
-            <div className="flex items-center gap-3 mb-1 relative z-10 max-w-lg sm:max-w-xl mx-auto">
-              <button onClick={() => navigate(-1)} className="p-1 hover:bg-white/20 rounded-full transition-colors -ml-1">
-                <ArrowLeft className="w-6 h-6" />
+            <div className="flex items-center gap-2.5 sm:gap-3 mb-2 relative z-10">
+              <button 
+                onClick={() => navigate(-1)} 
+                className="p-1.5 hover:bg-white/20 rounded-full transition-colors -ml-1 text-white"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
-              <h1 className="text-[20px] font-bold">{isVideo ? 'Video Consultation' : 'Book an OP Appointment'}</h1>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight">
+                {isVideo ? 'Video Consultation' : 'Book an OP Appointment'}
+              </h1>
             </div>
-            <p className="text-[11px] text-blue-100 mb-5 max-w-lg sm:max-w-xl mx-auto relative z-10">
+            <p className="text-xs sm:text-sm md:text-base text-blue-100 max-w-2xl font-medium leading-relaxed pl-8 sm:pl-9 relative z-10">
               {isVideo 
                 ? 'Select a health concern to connect with verified specialist doctors online.' 
                 : 'Select your health condition to view eligible specialists across top partner hospitals.'}
@@ -954,7 +964,7 @@ const Specialties = () => {
           <HowItWorks 
             title={isVideo ? "How Video Consultation Works" : "How OP Booking Works"}
             steps={isVideo ? videoConsultationStepsData : opBookingStepsData}
-            className="shadow-sm -mt-2 relative z-20 rounded-t-3xl mb-2 max-w-lg sm:max-w-xl mx-auto"
+            className="w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm"
           />
         )}
 
@@ -975,7 +985,7 @@ const Specialties = () => {
       : categoryDiseases;
 
     return (
-      <div className="px-4 py-4 space-y-4 max-w-4xl mx-auto animate-in fade-in duration-200">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in duration-200">
         {/* Category Header Card */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm flex items-start gap-4">
           <div className={`w-14 h-14 rounded-2xl ${selectedCategory.bg || 'bg-blue-50'} flex items-center justify-center shrink-0 shadow-sm border border-slate-100/60 p-1.5 overflow-hidden`}>
@@ -1100,7 +1110,7 @@ const Specialties = () => {
     const diseaseTitle = selectedDisease?.name || 'Selected Condition';
 
     return (
-      <div className="px-4 py-6 max-w-4xl mx-auto animate-in fade-in slide-in-from-right-4">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-in fade-in slide-in-from-right-4">
         {/* Navigation & Context Header */}
         <div className="flex items-center justify-between mb-2">
           <button
@@ -1169,7 +1179,7 @@ const Specialties = () => {
             </button>
           </div>
         ) : (
-          <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {docs.map(doc => {
               const feeDisplay = doc.fees && doc.fees !== 'Not specified' 
                 ? doc.fees 
@@ -1345,7 +1355,7 @@ const Specialties = () => {
       : (doc.consultationFee ? `₹${doc.consultationFee}` : '₹500');
 
     return (
-      <div className="px-4 py-6 max-w-md md:max-w-2xl mx-auto animate-in fade-in slide-in-from-right-4 space-y-4">
+      <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 animate-in fade-in slide-in-from-right-4 space-y-6">
         {/* Navigation Bar */}
         <div className="flex items-center justify-between pb-1">
           <button
@@ -1542,7 +1552,7 @@ const Specialties = () => {
   // --- STEP 3: SLOT BOOKING ---
   const renderSelectSlot = () => {
     return (
-      <div className="px-4 py-6 max-w-md md:max-w-2xl mx-auto animate-in fade-in slide-in-from-right-4 space-y-4">
+      <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 animate-in fade-in slide-in-from-right-4 space-y-6">
         {/* Navigation Bar */}
         <div className="flex items-center justify-between pb-1">
           <button
@@ -1707,7 +1717,7 @@ const Specialties = () => {
       : (selectedDoctor?.consultationFee ? `₹${selectedDoctor.consultationFee}` : '₹500');
 
     return (
-      <div className="px-4 py-6 max-w-md md:max-w-2xl mx-auto animate-in fade-in slide-in-from-right-4 space-y-4">
+      <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 animate-in fade-in slide-in-from-right-4 space-y-6">
         {/* Navigation Bar */}
         <div className="flex items-center justify-between pb-1">
           <button
@@ -2001,7 +2011,7 @@ const Specialties = () => {
       : (selectedDoctor?.fees && selectedDoctor.fees !== 'Not specified' ? selectedDoctor.fees : '₹500');
 
     return (
-      <div className="px-4 py-8 max-w-md md:max-w-xl mx-auto animate-in zoom-in-95 duration-500 text-center space-y-6">
+      <div className="w-full max-w-2xl lg:max-w-3xl mx-auto px-4 sm:px-6 py-8 animate-in zoom-in-95 duration-500 text-center space-y-6">
         {/* Success Icon */}
         <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto relative shadow-sm">
           <div className="absolute inset-0 bg-emerald-400 rounded-full animate-ping opacity-25" />
@@ -2220,43 +2230,45 @@ const Specialties = () => {
     <div className="flex flex-col h-full bg-slate-50 relative overflow-x-hidden min-h-screen">
       {/* Dynamic Header */}
       {view !== 'VIDEO_CALL' && (
-        <div className="bg-white px-4 py-3.5 flex items-center justify-between sticky top-0 z-20 border-b border-slate-100">
-          <div className="flex items-center gap-3 min-w-0">
-            {view !== 'LANDING' && (
-              <button 
-                type="button"
-                onClick={handleBack}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
-                aria-label="Go back"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-            )}
-            <div className="min-w-0">
-              <h1 className="text-[15px] font-bold text-slate-900 leading-tight truncate">
-                {view === 'LANDING' ? (isVideo ? 'Video Consultation' : 'OP Consultation') :
-                 view === 'CATEGORICAL_DISEASES' ? (selectedCategory?.name || 'Categorical Diseases') :
-                 view === 'DOCTOR_LIST' ? 'Select Doctor' :
-                 view === 'DOCTOR_PROFILE' ? 'Doctor Profile' :
-                 view === 'SELECT_SLOT' ? 'Slot Booking' :
-                 view === 'REVIEW_PAY' ? 'Review & Pay' :
-                 view === 'CONFIRMATION' ? 'Booking Confirmed' :
-                 view === 'APPOINTMENT_STATUS' ? 'Status' :
-                 view === 'VIDEO_UPCOMING' ? 'Upcoming' :
-                 view === 'VIDEO_COMPLETED' ? 'Summary' :
-                 ''}
-              </h1>
-              {selectedDisease && view !== 'LANDING' && view !== 'CATEGORICAL_DISEASES' && (
-                <span className="text-[10px] text-blue-600 font-bold block truncate max-w-[220px]">
-                  Condition: {selectedDisease.name}
-                </span>
+        <div className="bg-white sticky top-0 z-30 border-b border-slate-200/80 shadow-2xs backdrop-blur-md bg-white/95">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              {view !== 'LANDING' && (
+                <button 
+                  type="button"
+                  onClick={handleBack}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
+                  aria-label="Go back"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
               )}
+              <div className="min-w-0">
+                <h1 className="text-[15px] sm:text-base font-bold text-slate-900 leading-tight truncate">
+                  {view === 'LANDING' ? (isVideo ? 'Video Consultation' : 'OP Consultation') :
+                   view === 'CATEGORICAL_DISEASES' ? (selectedCategory?.name || 'Categorical Diseases') :
+                   view === 'DOCTOR_LIST' ? 'Select Doctor' :
+                   view === 'DOCTOR_PROFILE' ? 'Doctor Profile' :
+                   view === 'SELECT_SLOT' ? 'Slot Booking' :
+                   view === 'REVIEW_PAY' ? 'Review & Pay' :
+                   view === 'CONFIRMATION' ? 'Booking Confirmed' :
+                   view === 'APPOINTMENT_STATUS' ? 'Status' :
+                   view === 'VIDEO_UPCOMING' ? 'Upcoming' :
+                   view === 'VIDEO_COMPLETED' ? 'Summary' :
+                   ''}
+                </h1>
+                {selectedDisease && view !== 'LANDING' && view !== 'CATEGORICAL_DISEASES' && (
+                  <span className="text-[10px] sm:text-[11px] text-blue-600 font-bold block truncate max-w-[220px] sm:max-w-md">
+                    Condition: {selectedDisease.name}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
 
-          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 shrink-0">
-            {isVideo ? 'Online Video' : 'In-Person OP'}
-          </span>
+            <span className="text-[11px] sm:text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 shrink-0">
+              {isVideo ? 'Online Video' : 'In-Person OP'}
+            </span>
+          </div>
         </div>
       )}
 

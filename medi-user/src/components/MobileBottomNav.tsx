@@ -10,7 +10,7 @@ const MobileBottomNav = ({ className }: { className?: string }) => {
   return (
     <>
       {/* Navigation Bar */}
-      <nav className={cn("fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-6 py-3 z-50", className)}>
+      <nav className={cn("fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 sm:px-6 py-2 sm:py-3 z-50", className)}>
         <div className="flex items-center justify-between max-w-md mx-auto relative">
           <NavLink to="/" className={({ isActive }) => cn("flex flex-col items-center gap-1", isActive ? "text-primary" : "text-slate-400 hover:text-slate-600")}>
             <Home className="w-6 h-6" />

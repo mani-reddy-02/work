@@ -36,25 +36,25 @@ export default function Notifications() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto w-full flex flex-col min-h-[calc(100vh-64px)] md:px-4 md:py-6 bg-slate-50 md:bg-transparent">
+    <div className="max-w-4xl mx-auto w-full flex flex-col min-h-[calc(100vh-64px)] px-4 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-x-hidden">
       {/* Header */}
-      <div className="bg-white sticky top-0 z-20 px-4 py-4 border-b border-slate-100 flex items-center justify-between shadow-sm md:rounded-t-2xl md:border">
-        <div className="flex items-center gap-2">
+      <div className="bg-white sticky top-0 z-20 px-4 sm:px-6 py-4 border border-slate-100 flex items-center justify-between shadow-sm rounded-t-2xl">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button 
             onClick={() => navigate(-1)} 
-            className="p-1 -ml-1 text-slate-600 hover:text-primary transition-colors rounded-full hover:bg-slate-50"
+            className="p-1 -ml-1 text-slate-600 hover:text-primary transition-colors rounded-full hover:bg-slate-50 cursor-pointer shrink-0"
             aria-label="Go back"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Notifications</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Notifications</h1>
         </div>
         
         <div className="flex items-center gap-2 sm:gap-3">
           {unreadCount > 0 && (
             <button 
               onClick={markAllAsRead}
-              className="text-xs sm:text-sm font-semibold text-primary hover:text-primary/80 flex items-center gap-1.5 transition-colors px-2 py-1.5 rounded-lg hover:bg-blue-50"
+              className="text-xs sm:text-sm font-semibold text-primary hover:text-primary/80 flex items-center gap-1.5 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-blue-50 cursor-pointer shrink-0"
             >
               <CheckCheck className="w-4 h-4" />
               <span className="hidden sm:inline">Mark all as read</span>
@@ -65,7 +65,7 @@ export default function Notifications() {
           {notifications.length > 0 && (
             <button 
               onClick={() => setShowClearModal(true)}
-              className="text-xs sm:text-sm font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1.5 transition-colors px-2 py-1.5 rounded-lg hover:bg-rose-50"
+              className="text-xs sm:text-sm font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1.5 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-rose-50 cursor-pointer shrink-0"
             >
               <Trash2 className="w-4 h-4" />
               <span>Clear all</span>
@@ -75,12 +75,12 @@ export default function Notifications() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white px-4 border-b border-slate-100 md:border-x">
+      <div className="bg-white px-4 sm:px-6 border-b border-x border-slate-100">
         <div className="flex gap-6">
           <button
             onClick={() => setTab('all')}
             className={cn(
-              "pb-3 pt-4 text-sm font-semibold transition-colors relative",
+              "pb-3 pt-4 text-sm font-semibold transition-colors relative cursor-pointer",
               tab === 'all' ? "text-primary" : "text-slate-500 hover:text-slate-700"
             )}
           >
@@ -92,14 +92,14 @@ export default function Notifications() {
           <button
             onClick={() => setTab('unread')}
             className={cn(
-              "pb-3 pt-4 text-sm font-semibold transition-colors relative flex items-center gap-2",
+              "pb-3 pt-4 text-sm font-semibold transition-colors relative flex items-center gap-2 cursor-pointer",
               tab === 'unread' ? "text-primary" : "text-slate-500 hover:text-slate-700"
             )}
           >
             Unread
             {unreadCount > 0 && (
               <span className={cn(
-                "px-1.5 py-0.5 rounded-full text-[10px] leading-none",
+                "px-2 py-0.5 rounded-full text-[10px] leading-none font-bold",
                 tab === 'unread' ? "bg-primary/10 text-primary" : "bg-slate-100 text-slate-600"
               )}>
                 {unreadCount}
@@ -113,7 +113,7 @@ export default function Notifications() {
       </div>
 
       {/* Notification List */}
-      <div className="flex-1 bg-slate-50 p-4 md:p-6 md:bg-white md:border-x md:border-b md:rounded-b-2xl">
+      <div className="flex-1 bg-white p-4 sm:p-6 border-x border-b border-slate-100 rounded-b-2xl">
         {filteredNotifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4">
@@ -122,7 +122,7 @@ export default function Notifications() {
             <h3 className="text-lg font-semibold text-slate-800">
               {tab === 'all' ? "No notifications" : "No unread notifications"}
             </h3>
-            <p className="text-slate-500 mt-1 max-w-[250px]">
+            <p className="text-slate-500 mt-1 max-w-[280px] text-xs sm:text-sm">
               {tab === 'all' 
                 ? "You're all caught up. We'll notify you when something arrives." 
                 : "You have read all your notifications."}
@@ -135,14 +135,14 @@ export default function Notifications() {
                 key={notification.id}
                 onClick={() => handleNotificationClick(notification)}
                 className={cn(
-                  "flex items-start gap-4 p-4 rounded-xl text-left transition-all border shadow-sm w-full",
+                  "flex items-start gap-4 p-4 sm:p-5 rounded-2xl text-left transition-all border shadow-sm w-full cursor-pointer hover:shadow-md",
                   notification.read 
-                    ? "bg-white border-slate-200 hover:border-slate-300 shadow-slate-100/50" 
+                    ? "bg-white border-slate-100 hover:border-slate-200 shadow-slate-100/50" 
                     : "bg-blue-50/40 border-blue-100 hover:border-blue-200 shadow-blue-100/20"
                 )}
               >
                 <div className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center shrink-0 mt-0.5",
+                  "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
                   notification.read ? "bg-slate-100" : "bg-white shadow-sm"
                 )}>
                   {getNotificationIcon(notification.type)}
@@ -154,16 +154,16 @@ export default function Notifications() {
                       <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
                     )}
                     <h3 className={cn(
-                      "text-base truncate",
+                      "text-sm sm:text-base truncate",
                       notification.read ? "font-medium text-slate-700" : "font-semibold text-slate-900"
                     )}>
                       {notification.title}
                     </h3>
                   </div>
-                  <p className="text-sm text-slate-600 mb-2 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-600 mb-2 leading-relaxed break-words">
                     {notification.message}
                   </p>
-                  <p className="text-xs text-slate-400 font-medium">
+                  <p className="text-[11px] sm:text-xs text-slate-400 font-medium">
                     {new Date(notification.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                   </p>
                 </div>

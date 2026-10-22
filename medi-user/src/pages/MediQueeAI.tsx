@@ -137,7 +137,7 @@ export default function MediQueeAI() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] bg-slate-50 relative pb-16 md:pb-4">
+    <div className="flex flex-col h-[calc(100vh-64px)] bg-slate-50 relative pb-16 md:pb-4 overflow-x-hidden">
       
       {/* Top Header Bar */}
       <div className="bg-white sticky top-0 z-20 px-4 py-3.5 border-b border-slate-200/80 shadow-xs">

@@ -188,7 +188,7 @@ const Home = () => {
 
 
   return (
-    <div className={`p-4 md:p-6 lg:p-8 space-y-5 md:space-y-6 overflow-x-hidden relative transition-all max-w-5xl md:mx-auto ${hasUpcomingBooking ? 'pb-32' : 'pb-8'}`}>
+    <div className={`w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 overflow-x-hidden relative transition-all ${hasUpcomingBooking ? 'pb-32' : 'pb-8'}`}>
 
       {/* Booking Success Popup */}
       {showBookingPopup && (
@@ -198,19 +198,19 @@ const Home = () => {
               <CheckCircle2 className="w-6 h-6 text-green-600" />
             </div>
             <div className="flex-1 pr-4">
-              <h3 className="text-[14px] font-bold text-slate-800">
+              <h3 className="text-sm font-bold text-slate-800">
                 {bookingData ? `${bookingData.serviceType} Confirmed!` : 'Booking Confirmed!'}
               </h3>
               {bookingData?.message ? (
                 <div className="mt-1 space-y-0.5">
-                  <p className="text-[12px] font-medium text-slate-700 leading-snug">{bookingData.message}</p>
+                  <p className="text-xs font-medium text-slate-700 leading-snug">{bookingData.message}</p>
                 </div>
               ) : (
-                <p className="text-[12px] text-slate-500 mt-0.5">Your booking has been successfully scheduled. Check My Bookings for details.</p>
+                <p className="text-xs text-slate-500 mt-0.5">Your booking has been successfully scheduled. Check My Bookings for details.</p>
               )}
               <button 
                 onClick={() => navigate('/bookings')}
-                className="text-[12px] font-bold text-blue-600 mt-2 hover:text-blue-700 inline-block"
+                className="text-xs font-bold text-blue-600 mt-2 hover:text-blue-700 inline-block"
               >
                 View Details
               </button>
@@ -221,58 +221,58 @@ const Home = () => {
       {/* 1. FIRST LARGE BOOKING CAROUSEL */}
       <PosterCarousel module="HOME" />
 
-      {/* Quick Services - Reverted to Original */}
+      {/* Quick Services */}
       <section>
-        <h2 className="text-[15px] md:text-[18px] lg:text-[20px] font-bold mb-3 md:mb-4 text-slate-800">Quick Services</h2>
+        <h2 className="text-base sm:text-lg md:text-xl font-bold mb-3 md:mb-4 text-slate-800">Quick Services</h2>
         
         {/* Primary Large Services */}
-        <div className="grid grid-cols-2 gap-3 mb-3 md:gap-4 md:mb-4">
-          <Link to="/specialties?type=hospital-op" className="relative overflow-hidden bg-white rounded-2xl border border-slate-100 p-3.5 flex flex-col justify-between h-[115px] md:h-[130px] hover:border-blue-200 transition-colors">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
+          <Link to="/specialties?type=hospital-op" className="relative overflow-hidden bg-white rounded-2xl border border-slate-100 p-4 flex flex-col justify-between h-[120px] sm:h-[135px] hover:border-blue-200 hover:shadow-sm transition-all group">
             <div className="relative z-10">
-              <h3 className="font-bold text-slate-800 text-[15px] mb-0.5">OP Booking</h3>
-              <p className="text-[11px] text-slate-400">Book hospital visits</p>
+              <h3 className="font-bold text-slate-900 text-base mb-1 group-hover:text-blue-600 transition-colors">OP Booking</h3>
+              <p className="text-xs text-slate-500 font-medium">Book in-person hospital visits</p>
             </div>
-            <div className="absolute bottom-0 right-0 w-14 h-14 bg-blue-50 rounded-tl-full flex items-end justify-end p-3 py-3.5">
-              <Hospital className="w-6 h-6 text-[#0055ff] -mb-0.5 -mr-0.5" />
+            <div className="absolute bottom-0 right-0 w-16 h-16 bg-blue-50 rounded-tl-full flex items-end justify-end p-3 py-3.5 group-hover:bg-blue-100 transition-colors">
+              <Hospital className="w-7 h-7 text-[#0055ff] -mb-0.5 -mr-0.5" />
             </div>
           </Link>
           
-          <Link to="/specialties?type=doctor" className="relative overflow-hidden bg-white rounded-2xl border border-slate-100 p-3.5 flex flex-col justify-between h-[115px] md:h-[130px] hover:border-green-200 transition-colors">
+          <Link to="/specialties?type=doctor" className="relative overflow-hidden bg-white rounded-2xl border border-slate-100 p-4 flex flex-col justify-between h-[120px] sm:h-[135px] hover:border-green-200 hover:shadow-sm transition-all group">
             <div className="relative z-10">
-              <h3 className="font-bold text-slate-800 text-[15px] mb-0.5">Video Consultation</h3>
-              <p className="text-[11px] text-slate-400">Online doctors</p>
+              <h3 className="font-bold text-slate-900 text-base mb-1 group-hover:text-emerald-600 transition-colors">Video Consultation</h3>
+              <p className="text-xs text-slate-500 font-medium">Connect online with verified doctors</p>
             </div>
-            <div className="absolute bottom-0 right-0 w-14 h-14 bg-green-50 rounded-tl-full flex items-end justify-end p-3 py-3.5">
-              <Stethoscope className="w-6 h-6 text-green-500 -mb-0.5 -mr-0.5" />
+            <div className="absolute bottom-0 right-0 w-16 h-16 bg-green-50 rounded-tl-full flex items-end justify-end p-3 py-3.5 group-hover:bg-green-100 transition-colors">
+              <Stethoscope className="w-7 h-7 text-green-600 -mb-0.5 -mr-0.5" />
             </div>
           </Link>
         </div>
 
         {/* Secondary Standard Services */}
-        <div className="grid grid-cols-4 gap-2 md:gap-3">
-            <Link to="/services/insurance" className="flex flex-col items-center p-3 py-3.5 bg-white rounded-xl border border-slate-100 gap-1.5 hover:border-cyan-200 transition-colors">
-              <div className="w-12 h-12 rounded-full bg-cyan-50 flex items-center justify-center mb-1">
-                <Shield className="w-6 h-6 text-cyan-400" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
+            <Link to="/services/insurance" className="flex flex-col items-center p-3.5 sm:p-4 bg-white rounded-2xl border border-slate-100 gap-2 hover:border-cyan-200 hover:shadow-sm transition-all text-center">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-50 flex items-center justify-center shrink-0">
+                <Shield className="w-6 h-6 text-cyan-600" />
               </div>
-              <span className="text-[10.5px] font-medium text-center text-slate-600 leading-tight">Insurances</span>
+              <span className="text-xs font-semibold text-slate-700 leading-tight">Insurances</span>
             </Link>
-            <Link to="/services/home-nursing" className="flex flex-col items-center p-3 py-3.5 bg-white rounded-xl border border-slate-100 gap-1.5 hover:border-pink-200 transition-colors">
-              <div className="w-12 h-12 rounded-full bg-pink-50 flex items-center justify-center mb-1">
-                <HomeIcon className="w-6 h-6 text-pink-500" />
+            <Link to="/services/home-nursing" className="flex flex-col items-center p-3.5 sm:p-4 bg-white rounded-2xl border border-slate-100 gap-2 hover:border-pink-200 hover:shadow-sm transition-all text-center">
+              <div className="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center shrink-0">
+                <HomeIcon className="w-6 h-6 text-pink-600" />
               </div>
-              <span className="text-[10.5px] font-medium text-center text-slate-600 leading-tight">Home Nursing</span>
+              <span className="text-xs font-semibold text-slate-700 leading-tight">Home Nursing</span>
             </Link>
-            <Link to="/services/lab-tests" className="flex flex-col items-center p-3 py-3.5 bg-white rounded-xl border border-slate-100 gap-1.5 hover:border-indigo-200 transition-colors">
-              <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center mb-1">
-                <TestTube className="w-6 h-6 text-indigo-500" />
+            <Link to="/services/lab-tests" className="flex flex-col items-center p-3.5 sm:p-4 bg-white rounded-2xl border border-slate-100 gap-2 hover:border-indigo-200 hover:shadow-sm transition-all text-center">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center shrink-0">
+                <TestTube className="w-6 h-6 text-indigo-600" />
               </div>
-              <span className="text-[10.5px] font-medium text-center text-slate-600 leading-tight">Lab Tests</span>
+              <span className="text-xs font-semibold text-slate-700 leading-tight">Lab Tests</span>
             </Link>
-            <Link to="/services/home-sample" className="flex flex-col items-center p-3 py-3.5 bg-white rounded-xl border border-slate-100 gap-1.5 hover:border-orange-200 transition-colors">
-              <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center mb-1">
-                <Activity className="w-6 h-6 text-orange-400" />
+            <Link to="/services/home-sample" className="flex flex-col items-center p-3.5 sm:p-4 bg-white rounded-2xl border border-slate-100 gap-2 hover:border-orange-200 hover:shadow-sm transition-all text-center">
+              <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center shrink-0">
+                <Activity className="w-6 h-6 text-orange-600" />
               </div>
-              <span className="text-[10.5px] font-medium text-center text-slate-600 leading-tight">Home Sample</span>
+              <span className="text-xs font-semibold text-slate-700 leading-tight">Home Sample</span>
             </Link>
         </div>
       </section>
@@ -282,7 +282,7 @@ const Home = () => {
       {/* Consult Top Specialists */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[15px] md:text-[18px] lg:text-[20px] font-bold text-slate-800">Consult Top Specialists</h2>
+          <h2 className="text-base sm:text-lg md:text-xl font-bold text-slate-800">Consult Top Specialists</h2>
           <Link 
             to="/specialties?type=doctor" 
             className="text-[11px] text-blue-600 font-semibold cursor-pointer hover:underline flex items-center gap-0.5"
@@ -291,9 +291,9 @@ const Home = () => {
           </Link>
         </div>
         {isSpecialistsLoading ? (
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5 sm:gap-3 md:gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className={`bg-white rounded-xl border border-slate-100 p-3 h-28 md:h-32 animate-pulse flex flex-col items-center justify-center ${i > 3 ? 'hidden md:flex' : ''}`}>
+              <div key={i} className={`bg-white rounded-2xl border border-slate-100 p-3 sm:p-4 h-28 md:h-32 animate-pulse flex flex-col items-center justify-center ${i > 3 ? 'hidden sm:flex' : ''}`}>
                 <div className="w-10 h-10 bg-slate-200 rounded-full mb-2"></div>
                 <div className="h-2 w-16 bg-slate-200 rounded mb-2"></div>
                 <div className="h-2 w-12 bg-slate-200 rounded"></div>
@@ -301,18 +301,18 @@ const Home = () => {
             ))}
           </div>
         ) : specialistsError || topSpecialists.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-100 p-5 text-center text-slate-500 text-xs">
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 text-center text-slate-500 text-xs">
             No specialists currently available. Check back later!
           </div>
         ) : (
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5 sm:gap-3 md:gap-4">
             {topSpecialists.map((specialist, idx) => (
               <Link 
                 key={specialist.id} 
                 to={`/specialties?type=doctor&category=${encodeURIComponent(specialist.name)}`} 
-                className={`bg-white rounded-xl border border-slate-100 p-3 flex flex-col items-center text-center shadow-sm hover:shadow-md hover:border-blue-100 transition-all ${idx >= 3 ? 'hidden md:flex' : ''}`}
+                className={`bg-white rounded-2xl border border-slate-100 p-3 sm:p-3.5 flex flex-col items-center text-center shadow-xs hover:shadow-md hover:border-blue-100 transition-all ${idx >= 3 ? 'hidden sm:flex' : ''}`}
               >
-                  <div className={`w-10 h-10 rounded-full ${specialist.bg} flex items-center justify-center mb-2 overflow-hidden p-1`}>
+                  <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full ${specialist.bg} flex items-center justify-center mb-2 overflow-hidden p-1.5`}>
                       {specialist.image ? (
                           <img 
                             src={specialist.image} 
@@ -326,8 +326,8 @@ const Home = () => {
                           <Stethoscope className="w-5 h-5 text-slate-400" />
                       )}
                   </div>
-                  <h4 className="text-[10px] font-bold text-slate-800 mb-0.5 line-clamp-1">{specialist.name}</h4>
-                  <p className="text-[9px] text-emerald-500 font-bold">Video Call</p>
+                  <h4 className="text-[11px] sm:text-xs font-bold text-slate-900 mb-0.5 line-clamp-1">{specialist.name}</h4>
+                  <p className="text-[10px] text-emerald-600 font-bold">Video Call</p>
               </Link>
             ))}
           </div>
@@ -335,21 +335,22 @@ const Home = () => {
       </section>
 
       {/* MediAI Assistant */}
-      <section className="mt-4 mb-2 cursor-pointer transition-transform active:scale-95" onClick={() => navigate('/ai')}>
-        <div className="bg-[#1a1f2e] rounded-2xl p-4 flex items-center gap-3 shadow-md hover:shadow-lg transition-shadow">
-          <div className="w-10 h-10 rounded-full bg-[#273041] flex items-center justify-center shrink-0">
-              <Bot className="w-5 h-5 text-sky-400" />
+      <section className="mt-4 mb-2 cursor-pointer transition-transform active:scale-[0.99]" onClick={() => navigate('/ai')}>
+        <div className="bg-[#1a1f2e] rounded-2xl p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 shadow-md hover:shadow-lg transition-shadow">
+          <div className="w-11 h-11 rounded-2xl bg-[#273041] flex items-center justify-center shrink-0">
+              <Bot className="w-6 h-6 text-sky-400" />
           </div>
-          <div>
-              <h4 className="text-white text-[12px] font-bold mb-0.5">Chat with MediAI Assistant</h4>
-              <p className="text-[9px] text-slate-400">Instant symptom checker & health recommendations</p>
+          <div className="min-w-0 flex-1">
+              <h4 className="text-white text-sm sm:text-base font-bold mb-0.5 truncate">Chat with MediAI Assistant</h4>
+              <p className="text-xs text-slate-400 truncate">Instant symptom checker & health recommendations</p>
           </div>
+          <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
         </div>
       </section>
 
       {/* FAQ */}
       <section className="mt-2">
-        <h2 className="text-[15px] font-bold mb-3 text-slate-800">Frequently Asked Questions</h2>
+        <h2 className="text-base sm:text-lg md:text-xl font-bold mb-3 text-slate-800">Frequently Asked Questions</h2>
         <div className="space-y-2">
             {faqs.map((item, i) => (
                 <div key={i} className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-100">

@@ -1,5 +1,5 @@
-import { 
-  Settings, User, MapPin, CreditCard, Users, 
+import {
+  Settings, User, MapPin, CreditCard, Users,
   FileText, HelpCircle, LogOut, ChevronRight,
   ShieldCheck, Mail, Phone, Camera, Calendar, ClipboardList
 } from 'lucide-react';
@@ -9,32 +9,32 @@ import { useProfile } from '../lib/profile';
 import { useAuth } from '../lib/auth';
 
 const menuItems = [
-  { 
-    icon: User, 
-    label: 'Personal Information', 
+  {
+    icon: User,
+    label: 'Personal Information',
     subLabel: 'Manage your personal details',
     path: '/profile/personal',
     colorClass: 'text-blue-500 bg-blue-50'
   },
-  { 
-    icon: MapPin, 
-    label: 'My Addresses', 
+  {
+    icon: MapPin,
+    label: 'My Addresses',
     subLabel: 'Manage your saved addresses',
     path: '/profile/addresses',
     colorClass: 'text-emerald-500 bg-emerald-50'
   },
 
-  { 
-    icon: Settings, 
-    label: 'Language & Appearance', 
+  {
+    icon: Settings,
+    label: 'Language & Appearance',
     subLabel: 'Manage language and font preferences',
     path: '/profile/preferences',
     colorClass: 'text-indigo-500 bg-indigo-50'
   },
 
-  { 
-    icon: HelpCircle, 
-    label: 'Help & Support', 
+  {
+    icon: HelpCircle,
+    label: 'Help & Support',
     subLabel: 'Get help and contact support',
     path: '/help',
     colorClass: 'text-blue-500 bg-blue-50'
@@ -62,10 +62,10 @@ const Profile = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 pb-20">
+    <div className="flex flex-col min-h-screen bg-slate-50 pb-20 overflow-x-hidden">
       {/* Header Profile Card */}
-      <div className="bg-gradient-to-br from-blue-600 to-cyan-400 pt-6 pb-24 px-4 text-white relative rounded-b-[32px] overflow-hidden">
-        
+      <div className="bg-gradient-to-br from-blue-600 to-cyan-400 pt-6 pb-24 px-4 sm:px-6 lg:px-8 text-white relative rounded-b-[32px] overflow-hidden">
+
         {/* Background decorative elements */}
         <div className="absolute right-0 bottom-0 opacity-20 pointer-events-none">
           <svg width="200" height="150" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round">
@@ -74,44 +74,44 @@ const Profile = () => {
           </svg>
         </div>
 
-        <div className="relative z-10">
+        <div className="relative z-10 w-full max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-1">
-            <h1 className="text-2xl font-bold">My Profile</h1>
-            <button className="p-2 hover:bg-white/20 bg-white/10 rounded-full transition-colors backdrop-blur-sm">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">My Profile</h1>
+            <button className="p-2 hover:bg-white/20 bg-white/10 rounded-full transition-colors backdrop-blur-sm cursor-pointer">
               <Settings className="w-5 h-5" />
             </button>
           </div>
-          <p className="text-white/90 text-sm mb-6">Manage your personal information</p>
-          
-          <div className="flex items-center gap-4">
+          <p className="text-white/90 text-sm sm:text-base mb-6">Manage your personal information</p>
+
+          <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:gap-6">
             <div className="relative shrink-0">
-              <div className="w-24 h-24 rounded-full border-2 border-white overflow-hidden bg-white/20 shadow-lg">
-                 <img 
-                   src={profile.avatar || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80"} 
-                   alt="Profile" 
-                   className="w-full h-full object-cover" 
-                 />
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white/80 overflow-hidden bg-white/20 shadow-lg">
+                <img
+                  src={profile.avatar || ""}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <button className="absolute bottom-1 right-1 p-1.5 bg-white rounded-full text-blue-600 shadow-md">
+              <button className="absolute bottom-1 right-1 p-1.5 bg-white rounded-full text-blue-600 shadow-md hover:bg-slate-50 transition-colors cursor-pointer">
                 <Camera className="w-4 h-4" />
               </button>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold flex items-center gap-2">
+            <div className="flex flex-col items-center sm:items-start">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
                 {profile.name || 'Patient'}
               </h2>
-              <div className="flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full text-white text-xs font-medium w-fit mb-3 mt-1 backdrop-blur-sm border border-white/20">
-                <ShieldCheck className="w-3.5 h-3.5" /> 
+              <div className="flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full text-white text-xs font-medium w-fit mb-3 mt-1.5 backdrop-blur-sm border border-white/20">
+                <ShieldCheck className="w-3.5 h-3.5" />
                 <span>Verified User</span>
               </div>
               <div className="flex flex-col gap-1.5">
-                <div className="flex items-center gap-2 text-white/90 text-sm">
-                  <Mail className="w-4 h-4" />
-                  <span>{profile.email}</span>
+                <div className="flex items-center gap-2 text-white/90 text-xs sm:text-sm">
+                  <Mail className="w-4 h-4 shrink-0" />
+                  <span className="break-all">{profile.email}</span>
                 </div>
                 {profile.phone && (
-                  <div className="flex items-center gap-2 text-white/90 text-sm">
-                    <Phone className="w-4 h-4" />
+                  <div className="flex items-center gap-2 text-white/90 text-xs sm:text-sm">
+                    <Phone className="w-4 h-4 shrink-0" />
                     <span>{profile.phone}</span>
                   </div>
                 )}
@@ -121,39 +121,39 @@ const Profile = () => {
         </div>
       </div>
 
-      <div className="px-4 -mt-10 relative z-20 flex-1">
+      <div className="px-4 sm:px-6 lg:px-8 -mt-10 relative z-20 flex-1 w-full max-w-5xl mx-auto">
 
         {/* Menu Options */}
-        <div className="bg-white md:bg-transparent rounded-2xl shadow-sm md:shadow-none border border-slate-100 md:border-none overflow-hidden md:overflow-visible divide-y divide-slate-50 md:divide-y-0 mb-6 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
+        <div className="bg-white md:bg-transparent rounded-2xl shadow-sm md:shadow-none border border-slate-100 md:border-none overflow-hidden md:overflow-visible divide-y divide-slate-100 md:divide-y-0 mb-6 md:grid md:grid-cols-2 lg:grid-cols-2 gap-4">
           {menuItems.map((item, index) => (
-            <Link 
+            <Link
               key={index}
               to={item.path}
-              className="flex items-center p-4 hover:bg-slate-50 transition-colors group md:bg-white md:rounded-2xl md:border md:border-slate-100 md:shadow-sm"
+              className="flex items-center p-4 sm:p-5 hover:bg-slate-50 transition-all group md:bg-white md:rounded-2xl md:border md:border-slate-100 md:shadow-sm hover:shadow-md"
             >
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 shrink-0 transition-colors ${item.colorClass}`}>
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center mr-4 shrink-0 transition-colors ${item.colorClass}`}>
                 <item.icon className="w-5 h-5" />
               </div>
-              <div className="flex-1">
-                <p className="font-medium text-slate-800 text-[15px]">{item.label}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{item.subLabel}</p>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 text-sm sm:text-base group-hover:text-primary transition-colors truncate">{item.label}</p>
+                <p className="text-xs text-slate-500 mt-0.5 truncate">{item.subLabel}</p>
               </div>
-              <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
+              <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
             </Link>
           ))}
 
-          <button 
+          <button
             onClick={() => setShowLogoutModal(true)}
-            className="w-full flex items-center p-4 hover:bg-red-50 transition-colors group md:bg-white md:rounded-2xl md:border md:border-slate-100 md:shadow-sm"
+            className="w-full flex items-center p-4 sm:p-5 hover:bg-red-50/50 transition-all group md:bg-white md:rounded-2xl md:border md:border-slate-100 md:shadow-sm hover:shadow-md cursor-pointer text-left"
           >
-            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500 mr-4 shrink-0">
+            <div className="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center text-red-500 mr-4 shrink-0">
               <LogOut className="w-5 h-5" />
             </div>
-            <div className="flex-1 text-left">
-              <p className="font-medium text-red-600 text-[15px]">Logout</p>
-              <p className="text-xs text-slate-500 mt-0.5">Sign out from your account</p>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-red-600 text-sm sm:text-base truncate">Logout</p>
+              <p className="text-xs text-slate-500 mt-0.5 truncate">Sign out from your account</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-red-400 transition-colors" />
+            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-red-500 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
           </button>
         </div>
       </div>
@@ -165,13 +165,13 @@ const Profile = () => {
             <h3 className="text-xl font-bold text-slate-900 mb-2">Logout?</h3>
             <p className="text-slate-600 mb-6">Are you sure you want to log out?</p>
             <div className="flex gap-3">
-              <button 
+              <button
                 onClick={() => setShowLogoutModal(false)}
                 className="flex-1 py-3 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-colors"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleLogout}
                 className="flex-1 py-3 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors"
               >

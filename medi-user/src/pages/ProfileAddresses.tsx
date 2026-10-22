@@ -59,39 +59,41 @@ export default function ProfileAddresses() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
-      <div className="bg-white sticky top-0 z-20 px-4 py-4 border-b border-slate-100 flex items-center shadow-sm">
-        <button 
-          onClick={() => navigate('/profile')} 
-          className="p-1 -ml-1 mr-3 text-slate-600 hover:text-blue-600 transition-colors rounded-full hover:bg-slate-50"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight flex-1">My Addresses</h1>
+    <div className="flex flex-col min-h-screen bg-slate-50 overflow-x-hidden">
+      <div className="bg-white sticky top-0 z-20 border-b border-slate-100 shadow-sm">
+        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center">
+          <button 
+            onClick={() => navigate('/profile')} 
+            className="p-1 -ml-1 mr-3 text-slate-600 hover:text-blue-600 transition-colors rounded-full hover:bg-slate-50 cursor-pointer shrink-0"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex-1">My Addresses</h1>
+        </div>
       </div>
 
-      <div className="p-4 md:p-6 max-w-md md:max-w-4xl mx-auto w-full flex-1">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto w-full flex-1">
         {!isAdding ? (
           <>
-            <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
               {addresses.map(address => (
-                <div key={address.id} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${address.type === 'Home' ? 'bg-blue-50' : address.type === 'Work' ? 'bg-purple-50' : 'bg-emerald-50'}`}>
+                <div key={address.id} className="bg-white rounded-2xl border border-slate-100 p-5 sm:p-6 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow">
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${address.type === 'Home' ? 'bg-blue-50' : address.type === 'Work' ? 'bg-purple-50' : 'bg-emerald-50'}`}>
                     {getIcon(address.type)}
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-900 mb-1">{address.type}</h3>
-                    <p className="text-slate-600 text-sm leading-relaxed mb-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-slate-900 mb-1 text-sm sm:text-base">{address.type}</h3>
+                    <p className="text-slate-600 text-xs sm:text-sm leading-relaxed mb-3 break-words">
                       {address.street}<br/>
                       {address.city}, {address.state} {address.pincode}
                     </p>
-                    <div className="flex items-center gap-4">
-                      <button className="text-sm font-semibold text-blue-600 flex items-center gap-1 hover:text-blue-700">
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <button className="text-xs sm:text-sm font-semibold text-blue-600 flex items-center gap-1 hover:text-blue-700 cursor-pointer">
                         <Edit2 className="w-4 h-4" /> Edit
                       </button>
                       <button 
                         onClick={() => handleDelete(address.id)}
-                        className="text-sm font-semibold text-red-500 flex items-center gap-1 hover:text-red-600"
+                        className="text-xs sm:text-sm font-semibold text-red-500 flex items-center gap-1 hover:text-red-600 cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" /> Delete
                       </button>
@@ -101,11 +103,12 @@ export default function ProfileAddresses() {
               ))}
               
               {addresses.length === 0 && (
-                <div className="text-center py-10 bg-white rounded-2xl border border-slate-100 border-dashed md:col-span-2">
+                <div className="text-center py-12 bg-white rounded-2xl border border-slate-100 border-dashed md:col-span-2">
                   <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
                     <MapPin className="w-8 h-8" />
                   </div>
-                  <p className="text-slate-500">No saved addresses</p>
+                  <p className="text-slate-600 font-medium">No saved addresses</p>
+                  <p className="text-xs text-slate-400 mt-1">Add your home or work address for quick booking</p>
                 </div>
               )}
             </div>
@@ -113,15 +116,15 @@ export default function ProfileAddresses() {
             <div className="flex justify-center">
               <button 
                 onClick={() => setIsAdding(true)}
-                className="w-full md:max-w-md py-4 bg-blue-50 text-blue-600 border border-blue-100 font-bold rounded-xl hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                className="w-full sm:max-w-md py-3.5 sm:py-4 bg-blue-50 text-blue-600 border border-blue-100 font-bold rounded-xl hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 cursor-pointer text-sm sm:text-base"
               >
                 <Plus className="w-5 h-5" /> Add New Address
               </button>
             </div>
           </>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-100 p-5 md:p-6 shadow-sm space-y-4 max-w-xl mx-auto">
-            <h2 className="font-bold text-lg text-slate-900 mb-2">Add New Address</h2>
+          <div className="bg-white rounded-2xl border border-slate-100 p-5 sm:p-7 shadow-sm space-y-4 max-w-xl mx-auto">
+            <h2 className="font-bold text-lg sm:text-xl text-slate-900 mb-2">Add New Address</h2>
             
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">Address Type</label>
@@ -130,7 +133,7 @@ export default function ProfileAddresses() {
                   <button 
                     key={t}
                     onClick={() => setNewAddress({...newAddress, type: t})}
-                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors border ${newAddress.type === t ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-600'}`}
+                    className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors border cursor-pointer ${newAddress.type === t ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
                   >
                     {t}
                   </button>
@@ -145,18 +148,18 @@ export default function ProfileAddresses() {
                 value={newAddress.street || ''}
                 onChange={(e) => setNewAddress({...newAddress, street: e.target.value})}
                 placeholder="Flat No, Building Name, Street"
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">City</label>
                 <input 
                   type="text" 
                   value={newAddress.city || ''}
                   onChange={(e) => setNewAddress({...newAddress, city: e.target.value})}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base"
                 />
               </div>
               <div>
@@ -165,7 +168,7 @@ export default function ProfileAddresses() {
                   type="text" 
                   value={newAddress.pincode || ''}
                   onChange={(e) => setNewAddress({...newAddress, pincode: e.target.value})}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base"
                 />
               </div>
             </div>
@@ -176,20 +179,20 @@ export default function ProfileAddresses() {
                 type="text" 
                 value={newAddress.state || ''}
                 onChange={(e) => setNewAddress({...newAddress, state: e.target.value})}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base"
               />
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <button 
                 onClick={() => setIsAdding(false)}
-                className="flex-1 py-3.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                className="flex-1 py-3.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors cursor-pointer text-sm sm:text-base"
               >
                 Cancel
               </button>
               <button 
                 onClick={handleSave}
-                className="flex-1 py-3.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-500/20"
+                className="flex-1 py-3.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-500/20 cursor-pointer text-sm sm:text-base"
               >
                 Save Address
               </button>

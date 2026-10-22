@@ -40,45 +40,48 @@ export default function HelpSupport() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
-      <div className="bg-white sticky top-0 z-20 px-4 py-4 border-b border-slate-100 flex items-center shadow-sm">
-        <button 
-          onClick={() => navigate('/profile')} 
-          className="p-1 -ml-1 mr-3 text-slate-600 hover:text-blue-600 transition-colors rounded-full hover:bg-slate-50"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight flex-1">Help & Support</h1>
+    <div className="flex flex-col min-h-screen bg-slate-50 overflow-x-hidden">
+      <div className="bg-white sticky top-0 z-20 border-b border-slate-100 shadow-sm">
+        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center">
+          <button 
+            onClick={() => navigate('/profile')} 
+            className="p-1 -ml-1 mr-3 text-slate-600 hover:text-blue-600 transition-colors rounded-full hover:bg-slate-50 cursor-pointer shrink-0"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex-1">Help & Support</h1>
+        </div>
       </div>
 
-      <div className="p-4 md:p-6 max-w-md md:max-w-3xl mx-auto w-full flex-1">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full flex-1">
         {showToast && (
-          <div className="mb-4 bg-emerald-50 text-emerald-600 p-3 rounded-xl flex items-center justify-center gap-2 border border-emerald-100 animate-in fade-in slide-in-from-top-4">
-            <p className="text-sm font-medium">Request submitted successfully!</p>
+          <div className="mb-4 bg-emerald-50 text-emerald-600 p-3 sm:p-4 rounded-xl flex items-center justify-center gap-2 border border-emerald-100 animate-in fade-in slide-in-from-top-4">
+            <p className="text-sm sm:text-base font-medium">Request submitted successfully!</p>
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <a href="tel:8331045500" className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-blue-200 transition-colors">
-            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center">
-              <Phone className="w-5 h-5" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <a href="tel:8331045500" className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-blue-200 hover:shadow-md transition-all cursor-pointer">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center">
+              <Phone className="w-6 h-6" />
             </div>
-            <span className="font-bold text-slate-900 text-sm">Call Support</span>
-            <span className="text-xs text-blue-600 font-semibold">8331045500</span>
+            <span className="font-bold text-slate-900 text-sm sm:text-base">Call Support</span>
+            <span className="text-xs sm:text-sm text-blue-600 font-semibold">8331045500</span>
           </a>
           
-          <button onClick={triggerToast} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-orange-200 transition-colors">
-            <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center">
-              <MessageSquare className="w-5 h-5" />
+          <button onClick={triggerToast} className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-orange-200 hover:shadow-md transition-all cursor-pointer">
+            <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
+              <MessageSquare className="w-6 h-6" />
             </div>
-            <span className="font-bold text-slate-900 text-sm">Report a Problem</span>
+            <span className="font-bold text-slate-900 text-sm sm:text-base">Report a Problem</span>
+            <span className="text-xs sm:text-sm text-slate-500">Fast assistance & ticket tracking</span>
           </button>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-slate-100 flex items-center gap-2">
+          <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center gap-2">
             <HelpCircle className="w-5 h-5 text-blue-500" />
-            <h2 className="font-bold text-lg text-slate-900">Frequently Asked Questions</h2>
+            <h2 className="font-bold text-base sm:text-lg text-slate-900">Frequently Asked Questions</h2>
           </div>
           
           <div className="divide-y divide-slate-100">
@@ -86,9 +89,9 @@ export default function HelpSupport() {
               <div key={index} className="bg-white">
                 <button 
                   onClick={() => toggleFaq(index)}
-                  className="w-full text-left p-5 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors focus:outline-none"
+                  className="w-full text-left p-4 sm:p-5 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors focus:outline-none cursor-pointer"
                 >
-                  <span className="font-semibold text-slate-900 text-sm leading-tight">{faq.question}</span>
+                  <span className="font-semibold text-slate-900 text-sm sm:text-base leading-snug">{faq.question}</span>
                   {openFaqIndex === index ? (
                     <ChevronUp className="w-5 h-5 text-slate-400 shrink-0" />
                   ) : (
@@ -96,7 +99,7 @@ export default function HelpSupport() {
                   )}
                 </button>
                 {openFaqIndex === index && (
-                  <div className="px-5 pb-5 text-sm text-slate-600 leading-relaxed bg-slate-50/50">
+                  <div className="px-4 sm:px-5 pb-5 text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50/50">
                     {faq.answer}
                   </div>
                 )}
@@ -105,9 +108,9 @@ export default function HelpSupport() {
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col items-center justify-center gap-2 text-center text-slate-500 pb-4">
+        <div className="mt-8 flex flex-col items-center justify-center gap-2 text-center text-slate-500 pb-6">
           <Mail className="w-5 h-5 text-slate-400" />
-          <p className="text-xs font-medium">Still need help?<br/>Call us at <a href="tel:8331045500" className="text-blue-500 hover:underline font-bold">8331045500</a> or Email <a href="mailto:support@mediquee.com" className="text-blue-500 hover:underline">support@mediquee.com</a></p>
+          <p className="text-xs sm:text-sm font-medium">Still need help?<br/>Call us at <a href="tel:8331045500" className="text-blue-500 hover:underline font-bold">8331045500</a> or Email <a href="mailto:support@mediquee.com" className="text-blue-500 hover:underline font-semibold">support@mediquee.com</a></p>
         </div>
       </div>
     </div>

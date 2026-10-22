@@ -438,8 +438,8 @@ const HomeNursingList = () => {
               </div>
 
               <section>
-                <h2 className="text-[16px] font-bold text-slate-900 mb-4">Select Nursing Service</h2>
-                <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
+                <h2 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 mb-4">Select Nursing Service</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                   {filteredServices.map((service) => {
                     const ServiceIcon = getCategoryIcon(service.category);
                     return (
@@ -506,7 +506,7 @@ const HomeNursingList = () => {
                   <Loader2 className="w-6 h-6 animate-spin text-[#0055ff]" />
                 </div>
               ) : (
-                <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                   {searchQuery.trim() && filteredHospitals.length === 0 ? (
                     <div className="text-center py-8">
                       <p className="text-[14px] text-slate-500 font-bold">

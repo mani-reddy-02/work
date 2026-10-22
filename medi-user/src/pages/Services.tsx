@@ -51,30 +51,30 @@ const Services = () => {
       </div>
 
       {/* Service List */}
-      <div className="p-4 md:px-8 flex-1 overflow-y-auto pb-24">
-        <div className="max-w-md md:max-w-3xl mx-auto pb-8">
+      <div className="p-4 sm:p-6 md:p-8 flex-1 overflow-y-auto pb-24">
+        <div className="w-full max-w-7xl mx-auto pb-8">
           {filteredServices.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-[14px] text-slate-500 font-bold">No matching services found</p>
+            <div className="text-center py-12 bg-white rounded-2xl border border-slate-100 p-8">
+              <p className="text-sm text-slate-500 font-bold">No matching services found</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
               {filteredServices.map((service) => (
                 <Link 
                   key={service.id} 
                   to={service.path}
-                className="flex items-center p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group"
-              >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${service.bg} ${service.color} mr-4`}>
-                   <service.icon className="w-6 h-6" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-slate-800 text-sm md:text-base truncate">{service.name}</h3>
-                  <p className="text-xs md:text-sm text-slate-500 truncate mt-0.5">{service.desc}</p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-primary transition-colors shrink-0 ml-2" />
-              </Link>
-            ))}
+                  className="flex items-center p-4 sm:p-5 bg-white rounded-2xl border border-slate-100 shadow-xs hover:shadow-md hover:border-blue-200 transition-all group"
+                >
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${service.bg} ${service.color} mr-4 group-hover:scale-105 transition-transform`}>
+                     <service.icon className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0 pr-1">
+                    <h3 className="font-bold text-slate-900 text-sm sm:text-base truncate group-hover:text-blue-600 transition-colors">{service.name}</h3>
+                    <p className="text-xs text-slate-500 truncate mt-0.5">{service.desc}</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0 ml-1" />
+                </Link>
+              ))}
             </div>
           )}
         </div>

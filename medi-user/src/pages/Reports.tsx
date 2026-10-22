@@ -266,11 +266,11 @@ Verified Digital Health Record • MediQuee Healthcare Network
 
         {/* Received Reports Section */}
         {activeTab === 'received' && (
-        <div className="max-w-md md:max-w-3xl mx-auto">
+        <div className="w-full max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <h2 className="text-[15px] font-bold text-slate-900">Received Reports</h2>
-              <span className="text-[11px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900">Received Reports</h2>
+              <span className="text-xs font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
                 {filteredReports.length}
               </span>
             </div>
@@ -279,13 +279,13 @@ Verified Digital Health Record • MediQuee Healthcare Network
                 onClick={() => setShowAllReports(!showAllReports)} 
                 className="flex items-center text-blue-600 cursor-pointer hover:text-blue-700 transition-colors"
               >
-                <span className="text-[11px] font-bold">{showAllReports ? 'Show less' : 'View all'}</span>
+                <span className="text-xs font-bold">{showAllReports ? 'Show less' : 'View all'}</span>
                 <ChevronRight className={`w-4 h-4 transition-transform ${showAllReports ? '-rotate-90' : ''}`} />
               </button>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {displayedReports.map((report) => {
               const IconComponent = getIconComponent(report.iconName || report.icon);
               return (

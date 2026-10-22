@@ -719,7 +719,7 @@ const LabTestList = () => {
                           )}
                         </div>
 
-                        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-y-5 gap-x-2 px-4 relative">
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-y-5 gap-x-3 px-4 relative">
                           {displayedTests.map((item) => {
                             const displayName = item?.name || (item as any)?.testName || (item as any)?.title || 'Test';
                             const iconSrc = getTestIcon(displayName);
