@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { StatusBadge } from "@/components/lab/LabUI"
 import { labApi } from "@/services/labApi"
 import { useToast } from "@/context/ToastContext"
+import { cn } from "@/lib/utils"
 
 export function ReportView() {
   const navigate = useNavigate()

@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { useState } from "react"
 import { labApi } from "@/services/labApi"
 import { useToast } from "@/context/ToastContext"
-import { formatPatientAddress } from "@/lib/utils"
+import { formatPatientAddress, cn } from "@/lib/utils"
 
 interface LabOrderQuickModalProps {
   order: any | null

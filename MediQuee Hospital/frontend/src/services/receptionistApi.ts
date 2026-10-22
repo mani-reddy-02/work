@@ -1,4 +1,6 @@
 import { API_URL } from './apiConfig';
+import type { DoctorStatusSummary } from './doctorApi';
+export type { DoctorStatusSummary };
 
 export type QueueStatus = 'ARRIVED' | 'WAITING' | 'CALLED' | 'IN_CONSULTATION' | 'COMPLETED' | 'CANCELLED';
 

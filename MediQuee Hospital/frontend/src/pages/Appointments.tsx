@@ -13,9 +13,11 @@ import { nurseApi } from "@/services/nurseApi"
 import { labApi } from "@/services/labApi"
 import { AssignNurseModal } from "../components/appointments/AssignNurseModal"
 import { useTranslation } from "react-i18next"
+import { useToast } from "@/context/ToastContext"
 
 export function Appointments() {
   const { role } = useAuth();
+  const { toast } = useToast();
 
   // Non-admin roles should be routed to their dedicated appointment/consultation workspaces
   if (role === 'doctor') {

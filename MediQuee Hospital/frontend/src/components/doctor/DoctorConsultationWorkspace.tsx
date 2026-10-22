@@ -1112,7 +1112,7 @@ export function DoctorConsultationWorkspace({
                       >
                         <div className="flex flex-col">
                           <span className="text-[13px] font-bold leading-tight">{test.name}</span>
-                          <span className="text-[11px] text-muted">{test.specimenType}</span>
+                          <span className="text-[11px] text-muted">{((test as any).specimenType || (test as any).departmentName || '')}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-[12px] font-mono font-bold text-foreground">₹{test.price}</span>

@@ -202,10 +202,6 @@ export function Payouts() {
   const location = useLocation();
   const { user, role } = useAuth();
 
-  const isLabUser = role === 'lab' || user?.role === 'LAB_ADMIN';
-  const isHospitalLab = isLabUser && user?.hospital?.businessType !== 'LABORATORY';
-  const isStandaloneLab = (isLabUser && user?.hospital?.businessType === 'LABORATORY') || location.pathname.includes('/lab') || payoutsData?.businessType === 'LABORATORY';
-
   const [selectedPreset, setSelectedPreset] = useState<DatePreset>('week');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -216,6 +212,10 @@ export function Payouts() {
   const [tempEnd, setTempEnd] = useState<string>('');
 
   const [payoutsData, setPayoutsData] = useState<RevenueAnalyticsResponse | null>(null);
+
+  const isLabUser = role === 'lab' || user?.role === 'LAB_ADMIN';
+  const isHospitalLab = isLabUser && user?.hospital?.businessType !== 'LABORATORY';
+  const isStandaloneLab = (isLabUser && user?.hospital?.businessType === 'LABORATORY') || location.pathname.includes('/lab') || payoutsData?.businessType === 'LABORATORY';
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 

@@ -154,6 +154,7 @@ export function DoctorVideoCallRoom({
   // In-Call Prescription Drawer & Medications State
   const [isPrescriptionOpen, setIsPrescriptionOpen] = useState<boolean>(false);
   const [diagnosis, setDiagnosis] = useState<string>("");
+  const [clinicalNotes, setClinicalNotes] = useState<string>("");
   const [generalAdvice, setGeneralAdvice] = useState<string>("");
   const [followUpDate, setFollowUpDate] = useState<string>("");
   const [suggestPhysicalFollowUp, setSuggestPhysicalFollowUp] = useState<boolean>(false);
