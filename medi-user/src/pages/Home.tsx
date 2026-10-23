@@ -9,6 +9,7 @@ import UpcomingBookingTile from '../components/UpcomingBookingTile';
 import { useNotifications } from '../lib/notifications';
 import { opAppointmentApi } from '../lib/opAppointmentApi';
 import { getDiseaseIconUrl } from '../utils/diseaseIcons';
+import { getDepartmentImageUrl } from '../utils/departmentImages';
 import { useUIStore } from '../lib/uiStore';
 import PosterCarousel from '../components/PosterCarousel';
 import { departmentApi, type DepartmentRecord } from '../lib/hospitalApi';
@@ -16,12 +17,12 @@ import { departmentApi, type DepartmentRecord } from '../lib/hospitalApi';
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 const FALLBACK_SPECIALISTS = [
-  { id: '1', name: 'General Physician', icon: 'Stethoscope', image: '/optimized/Fever.webp' },
-  { id: '2', name: 'Pediatrics', icon: 'Smile', image: '/optimized/Pediatrics.webp' },
-  { id: '3', name: 'Cardiology', icon: 'Heart', image: '/optimized/Cardiology.webp' },
-  { id: '4', name: 'Dermatology', icon: 'Sparkles', image: '/optimized/Dermatology.webp' },
-  { id: '5', name: 'Neurology', icon: 'Activity', image: '/optimized/Neurology.webp' },
-  { id: '6', name: 'Orthopedics', icon: 'Shield', image: '/optimized/Orthopedics.webp' }
+  { id: '1', name: 'General Physician', icon: 'Stethoscope', image: '/images/departments/general-medicine.jpg' },
+  { id: '2', name: 'Pediatrics', icon: 'Smile', image: '/images/departments/pediatrics.jpg' },
+  { id: '3', name: 'Cardiology', icon: 'Heart', image: '/images/departments/cardiology.jpg' },
+  { id: '4', name: 'Dermatology', icon: 'Sparkles', image: '/images/departments/dermatology.jpg' },
+  { id: '5', name: 'Neurology', icon: 'Activity', image: '/images/departments/neurology.jpg' },
+  { id: '6', name: 'Orthopedics', icon: 'Shield', image: '/images/departments/orthopedics.jpg' }
 ].map((s, idx) => ({
   ...s,
   bg: ['bg-red-50', 'bg-yellow-50', 'bg-blue-50', 'bg-green-50', 'bg-purple-50', 'bg-orange-50'][idx % 6]
@@ -76,7 +77,7 @@ const Home = () => {
           if (res.data.categorical && res.data.categorical.length > 0) {
             const categorical = res.data.categorical.slice(0, 6).map((s: any, idx: number) => ({
               ...s,
-              image: getDiseaseIconUrl(s.name, s.icon),
+              image: getDepartmentImageUrl(s.name, s.icon),
               bg: ['bg-red-50', 'bg-yellow-50', 'bg-blue-50', 'bg-green-50', 'bg-purple-50', 'bg-orange-50'][idx % 6]
             }));
             setTopSpecialists(categorical);
@@ -322,38 +323,34 @@ const Home = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3 md:gap-4">
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="bg-white rounded-2xl border border-slate-100 p-3 sm:p-4 h-28 animate-pulse flex flex-col items-center justify-center">
-                <div className="w-10 h-10 bg-slate-200 rounded-full mb-2"></div>
-                <div className="h-2.5 w-16 bg-slate-200 rounded mb-1.5"></div>
-                <div className="h-2 w-12 bg-slate-200 rounded"></div>
+                <div className="w-14 h-14 bg-slate-200 rounded-2xl mb-2"></div>
+                <div className="h-3 w-16 bg-slate-200 rounded"></div>
               </div>
             ))}
           </div>
         ) : departments.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3 md:gap-4">
             {departments.slice(0, 5).map((dept) => {
-              const iconUrl = getDiseaseIconUrl(dept.name, dept.icon);
+              const imageUrl = getDepartmentImageUrl(dept.name, dept.icon);
               return (
                 <Link
                   key={dept.id}
                   to={`/departments?dept=${encodeURIComponent(dept.id)}`}
                   className="bg-white rounded-2xl border border-slate-100 p-3 sm:p-3.5 flex flex-col items-center text-center shadow-xs hover:shadow-md hover:border-blue-200 transition-all group"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-blue-50/70 p-2 mb-2 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden mb-2.5 shadow-xs border border-slate-100 group-hover:scale-105 group-hover:shadow-sm transition-all duration-300 bg-slate-50">
                     <img 
-                      src={iconUrl} 
+                      src={imageUrl} 
                       alt={dept.name} 
-                      className="w-full h-full object-contain mix-blend-multiply" 
+                      className="w-full h-full object-cover" 
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                        (e.target as HTMLImageElement).src = '/images/departments/default.jpg';
                       }}
                     />
                   </div>
-                  <h4 className="text-xs font-bold text-slate-900 mb-0.5 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                  <h4 className="text-xs font-bold text-slate-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
                     {dept.name}
                   </h4>
-                  <p className="text-[10px] text-emerald-600 font-semibold">
-                    {dept.doctorCount} {dept.doctorCount === 1 ? 'Doctor' : 'Doctors'}
-                  </p>
                 </Link>
               );
             })}
@@ -400,14 +397,14 @@ const Home = () => {
                 to={`/specialties?type=doctor&category=${encodeURIComponent(specialist.name)}`} 
                 className={`bg-white rounded-2xl border border-slate-100 p-3 sm:p-3.5 flex flex-col items-center text-center shadow-xs hover:shadow-md hover:border-blue-100 transition-all ${idx >= 3 ? 'hidden sm:flex' : ''}`}
               >
-                  <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full ${specialist.bg} flex items-center justify-center mb-2 overflow-hidden p-1.5`}>
+                  <div className="w-12 h-12 rounded-2xl overflow-hidden mb-2 shadow-xs border border-slate-100 flex items-center justify-center bg-slate-50">
                       {specialist.image ? (
                           <img 
                             src={specialist.image} 
                             alt={specialist.name} 
-                            className="w-full h-full object-contain mix-blend-multiply" 
+                            className="w-full h-full object-cover" 
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                              (e.target as HTMLImageElement).src = '/images/departments/default.jpg';
                             }}
                           />
                       ) : (

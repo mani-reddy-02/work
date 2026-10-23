@@ -100,8 +100,8 @@ describe('DepartmentBooking Component', () => {
     await waitFor(() => {
       expect(screen.getByText('General Medicine')).toBeInTheDocument();
       expect(screen.getByText('Cardiology')).toBeInTheDocument();
-      expect(screen.getByText('4 Doctors')).toBeInTheDocument();
-      expect(screen.getByText('2 Doctors')).toBeInTheDocument();
+      expect(screen.queryByText('4 Doctors')).not.toBeInTheDocument();
+      expect(screen.queryByText('2 Doctors')).not.toBeInTheDocument();
     });
   });
 

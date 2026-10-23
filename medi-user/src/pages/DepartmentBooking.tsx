@@ -8,6 +8,7 @@ import {
 import { departmentApi, type DepartmentRecord } from '../lib/hospitalApi';
 import { opAppointmentApi, type DoctorRecord } from '../lib/opAppointmentApi';
 import { getDiseaseIconUrl } from '../utils/diseaseIcons';
+import { getDepartmentImageUrl } from '../utils/departmentImages';
 import { useAuth } from '../lib/auth';
 
 export interface SlotDateOption {
@@ -436,9 +437,8 @@ const DepartmentBooking: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                 <div key={i} className="bg-white rounded-2xl border border-slate-100 p-4 h-32 animate-pulse flex flex-col items-center justify-center">
-                  <div className="w-12 h-12 bg-slate-200 rounded-full mb-2"></div>
-                  <div className="h-3 w-20 bg-slate-200 rounded mb-1.5"></div>
-                  <div className="h-2 w-14 bg-slate-200 rounded"></div>
+                  <div className="w-16 h-16 bg-slate-200 rounded-2xl mb-2"></div>
+                  <div className="h-3 w-20 bg-slate-200 rounded"></div>
                 </div>
               ))}
             </div>
@@ -453,31 +453,28 @@ const DepartmentBooking: React.FC = () => {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
               {filteredDepartments.map((dept) => {
-                const iconUrl = getDiseaseIconUrl(dept.name, dept.icon);
+                const imageUrl = getDepartmentImageUrl(dept.name, dept.icon);
                 return (
                   <button
                     key={dept.id}
                     onClick={() => handleSelectDepartment(dept)}
                     className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col items-center text-center hover:border-blue-300 hover:shadow-md transition-all group cursor-pointer text-left focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                   >
-                    <div className="w-14 h-14 rounded-2xl bg-blue-50/70 p-2 mb-3 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden mb-3 shadow-xs border border-slate-100 group-hover:scale-105 group-hover:shadow-sm transition-all duration-300 bg-slate-50">
                       <img
-                        src={iconUrl}
+                        src={imageUrl}
                         alt={dept.name}
-                        className="w-full h-full object-contain mix-blend-multiply"
+                        className="w-full h-full object-cover"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                          (e.target as HTMLImageElement).src = '/images/departments/default.jpg';
                         }}
                       />
                     </div>
                     <h3 className="font-bold text-slate-900 text-sm mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
                       {dept.name}
                     </h3>
-                    <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
-                      <span>{dept.doctorCount} {dept.doctorCount === 1 ? 'Doctor' : 'Doctors'}</span>
-                    </div>
                     {dept.hospitalName && (
-                      <p className="text-[10px] text-slate-400 mt-1 line-clamp-1">
+                      <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
                         {dept.hospitalName}
                       </p>
                     )}
@@ -495,13 +492,13 @@ const DepartmentBooking: React.FC = () => {
           {/* Selected Department Banner */}
           <div className="bg-blue-50/60 rounded-2xl border border-blue-100 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-white p-1.5 shadow-xs shrink-0 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-white shadow-xs shrink-0 overflow-hidden border border-slate-100">
                 <img
-                  src={getDiseaseIconUrl(selectedDepartment.name, selectedDepartment.icon)}
+                  src={getDepartmentImageUrl(selectedDepartment.name, selectedDepartment.icon)}
                   alt={selectedDepartment.name}
-                  className="w-full h-full object-contain mix-blend-multiply"
+                  className="w-full h-full object-cover"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                    (e.target as HTMLImageElement).src = '/images/departments/default.jpg';
                   }}
                 />
               </div>
