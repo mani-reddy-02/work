@@ -53,12 +53,20 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
       ]
     };
 
+    const departmentName = typeof req.query.departmentName === 'string' 
+      ? req.query.departmentName.trim() 
+      : (typeof req.query.department === 'string' ? req.query.department.trim() : '');
+
     if (hospitalId) {
       whereClause.hospitalId = hospitalId;
     }
 
     if (departmentId) {
       whereClause.departmentId = departmentId;
+    } else if (departmentName) {
+      whereClause.department = {
+        name: { equals: departmentName, mode: 'insensitive' }
+      };
     } else if (targetSpecialtyId) {
       whereClause.department = {
         specialtyId: targetSpecialtyId

@@ -11,6 +11,7 @@ import { opAppointmentApi } from '../lib/opAppointmentApi';
 import { getDiseaseIconUrl } from '../utils/diseaseIcons';
 import { useUIStore } from '../lib/uiStore';
 import PosterCarousel from '../components/PosterCarousel';
+import { departmentApi, type DepartmentRecord } from '../lib/hospitalApi';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -40,6 +41,31 @@ const Home = () => {
   const [commonDiseases, setCommonDiseases] = useState<any[]>([]);
   const [isSpecialistsLoading, setIsSpecialistsLoading] = useState(false);
   const [specialistsError, setSpecialistsError] = useState(false);
+
+  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
+  const [isDepartmentsLoading, setIsDepartmentsLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    departmentApi.getDepartments({ hasDoctors: true })
+      .then((res) => {
+        if (!mounted) return;
+        if (res.success && Array.isArray(res.data)) {
+          // Display only departments actually configured and supported by eligible doctors
+          const withDocs = res.data.filter((d: any) => (d.doctorCount ?? 0) > 0);
+          setDepartments(withDocs);
+        } else {
+          setDepartments([]);
+        }
+      })
+      .catch(() => {
+        if (mounted) setDepartments([]);
+      })
+      .finally(() => {
+        if (mounted) setIsDepartmentsLoading(false);
+      });
+    return () => { mounted = false; };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -275,6 +301,68 @@ const Home = () => {
               <span className="text-xs font-semibold text-slate-700 leading-tight">Home Sample</span>
             </Link>
         </div>
+      </section>
+
+      {/* 2. BROWSE DEPARTMENTS — Direct Doctor Booking (Replaces Previous Emergency Tile) */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-base sm:text-lg md:text-xl font-bold text-slate-800">Browse Departments</h2>
+            <p className="text-xs text-slate-500">Direct doctor consultation by clinical specialty</p>
+          </div>
+          <Link 
+            to="/departments" 
+            className="text-[11px] text-blue-600 font-semibold cursor-pointer hover:underline flex items-center gap-0.5"
+          >
+            View All <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {isDepartmentsLoading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3 md:gap-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="bg-white rounded-2xl border border-slate-100 p-3 sm:p-4 h-28 animate-pulse flex flex-col items-center justify-center">
+                <div className="w-10 h-10 bg-slate-200 rounded-full mb-2"></div>
+                <div className="h-2.5 w-16 bg-slate-200 rounded mb-1.5"></div>
+                <div className="h-2 w-12 bg-slate-200 rounded"></div>
+              </div>
+            ))}
+          </div>
+        ) : departments.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3 md:gap-4">
+            {departments.slice(0, 5).map((dept) => {
+              const iconUrl = getDiseaseIconUrl(dept.name, dept.icon);
+              return (
+                <Link
+                  key={dept.id}
+                  to={`/departments?dept=${encodeURIComponent(dept.id)}`}
+                  className="bg-white rounded-2xl border border-slate-100 p-3 sm:p-3.5 flex flex-col items-center text-center shadow-xs hover:shadow-md hover:border-blue-200 transition-all group"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50/70 p-2 mb-2 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden">
+                    <img 
+                      src={iconUrl} 
+                      alt={dept.name} 
+                      className="w-full h-full object-contain mix-blend-multiply" 
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
+                      }}
+                    />
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 mb-0.5 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                    {dept.name}
+                  </h4>
+                  <p className="text-[10px] text-emerald-600 font-semibold">
+                    {dept.doctorCount} {dept.doctorCount === 1 ? 'Doctor' : 'Doctors'}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-100 p-5 text-center text-slate-500 text-xs">
+            No departments currently configured with active doctors. Check back soon!
+          </div>
+        )}
       </section>
 
       <UpcomingBookingTile onLoad={handleUpcomingBookingLoad} />

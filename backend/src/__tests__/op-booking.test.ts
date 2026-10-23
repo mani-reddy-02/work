@@ -220,7 +220,32 @@ async function runTests() {
     console.log('\n[TEST GROUP: BOOKING CREATION & RELATIONS]');
     const testCondition = diseasesRes.body.data.conditions.find((c: any) => c.name.toLowerCase().includes('unexplained fever')) || diseasesRes.body.data.conditions[0];
     const testSlot = '11:00 AM';
-    const testDate = '2026-10-20';
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 3);
+    const testDate = futureDate.toISOString().split('T')[0];
+    const dayOfWeek = futureDate.toLocaleDateString('en-US', { weekday: 'long' });
+
+    await prisma.doctorSchedule.upsert({
+      where: {
+        doctorId_dayOfWeek: {
+          doctorId: testDoctor.id,
+          dayOfWeek
+        }
+      },
+      update: {
+        isAvailable: true,
+        startTime: '09:00',
+        endTime: '17:00'
+      },
+      create: {
+        doctorId: testDoctor.id,
+        hospitalId: hospitalWithDoc.id,
+        dayOfWeek,
+        isAvailable: true,
+        startTime: '09:00',
+        endTime: '17:00'
+      }
+    });
 
     // First booking
     const bookingRes = await makeRequest('/api/v1/appointments', {

@@ -16,6 +16,7 @@ import CheckMyBMI from './pages/CheckMyBMI';
 import ServiceDetails from './pages/ServiceDetails';
 import BookingDetails from './pages/BookingDetails';
 import VideoConsultationPage from './pages/VideoConsultationPage';
+import DepartmentBooking from './pages/DepartmentBooking';
 import MyBookings from './pages/MyBookings';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
@@ -87,6 +88,7 @@ function App() {
             <Route path="ai" element={<MediQueeAI />} />
             <Route path="services" element={<Services />} />
             <Route path="specialties" element={<Specialties />} />
+            <Route path="departments" element={<DepartmentBooking />} />
             <Route path="services/insurance" element={<InsuranceList />} />
             <Route path="services/home-nursing" element={<HomeNursingList />} />
             <Route path="services/lab-tests" element={<LabTestList />} />

@@ -69,11 +69,16 @@ export interface DepartmentRecord {
   name: string;
   code?: string | null;
   description?: string | null;
-  specialtyId: string;
+  specialtyId?: string | null;
   specialty?: { id: string; name: string; description?: string };
   hospitalId: string;
   hospitalName?: string;
+  hospitalCity?: string;
+  hospitalPhone?: string;
+  icon?: string | null;
+  isActive?: boolean;
   doctorCount?: number;
+  diseaseCount?: number;
 }
 
 export interface LaboratoryRecord {
@@ -275,12 +280,14 @@ export const departmentApi = {
     hospitalId?: string;
     search?: string;
     specialtyId?: string;
+    hasDoctors?: boolean;
   }): Promise<{ success: boolean; data?: DepartmentRecord[]; error?: string }> {
     try {
       const url = new URL(`${API_BASE_URL}/departments`, window.location.origin);
       if (params?.hospitalId) url.searchParams.set('hospitalId', params.hospitalId);
       if (params?.search) url.searchParams.set('search', params.search);
       if (params?.specialtyId) url.searchParams.set('specialtyId', params.specialtyId);
+      if (params?.hasDoctors) url.searchParams.set('hasDoctors', 'true');
 
       const res = await fetch(url.toString(), { headers: getAuthHeaders() });
       const json = await res.json();
@@ -306,9 +313,12 @@ export const departmentApi = {
     }
   },
 
-  async getDepartmentDoctors(id: string): Promise<{ success: boolean; data?: DoctorRecord[]; error?: string }> {
+  async getDepartmentDoctors(id: string, params?: { consultationType?: string; type?: string }): Promise<{ success: boolean; data?: DoctorRecord[]; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/departments/${id}/doctors`, { headers: getAuthHeaders() });
+      const url = new URL(`${API_BASE_URL}/departments/${id}/doctors`, window.location.origin);
+      if (params?.consultationType) url.searchParams.set('consultationType', params.consultationType);
+      if (params?.type) url.searchParams.set('type', params.type);
+      const res = await fetch(url.toString(), { headers: getAuthHeaders() });
       const json = await res.json();
       if (!res.ok || !json.success) {
         return { success: false, error: json.error?.message || 'Failed to fetch department doctors' };

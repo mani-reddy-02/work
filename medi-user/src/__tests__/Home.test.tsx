@@ -41,11 +41,18 @@ describe('Home Component', () => {
     expect(screen.getByText('Dermatology')).toBeInTheDocument();
     expect(screen.getByText('Pediatrics')).toBeInTheDocument();
 
-    const viewAllLink = screen.getByText(/View All/i).closest('a');
+    const viewAllLinks = screen.getAllByText(/View All/i);
+    const viewAllLink = viewAllLinks.find(el => el.closest('a')?.getAttribute('href') === '/specialties?type=doctor')?.closest('a');
     expect(viewAllLink).toHaveAttribute('href', '/specialties?type=doctor');
 
     const cardioLink = screen.getByText('Cardiology').closest('a');
     expect(cardioLink).toHaveAttribute('href', '/specialties?type=doctor&category=Cardiology');
+  });
+
+  test('renders Browse Departments section replacing emergency tile', () => {
+    renderHome();
+    expect(screen.getByText('Browse Departments')).toBeInTheDocument();
+    expect(screen.queryByText('Emergency')).not.toBeInTheDocument();
   });
 
   test('toggles FAQ items', () => {
