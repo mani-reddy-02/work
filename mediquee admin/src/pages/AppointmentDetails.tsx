@@ -4,6 +4,7 @@ import { ArrowLeft, Clock, Calendar, Building2, User, Stethoscope, Activity, Che
 import { useAdminAuth } from '../contexts/AuthContext';
 import { appointmentService } from '../services/appointmentService';
 import StatusBadge from '../components/ui/StatusBadge';
+import { formatAddress } from '../utils/formatAddress';
 
 const AppointmentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -11,7 +12,6 @@ const AppointmentDetails: React.FC = () => {
   const { token } = useAdminAuth();
   const [appointment, setAppointment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAppointment = async () => {
@@ -35,24 +35,6 @@ const AppointmentDetails: React.FC = () => {
   useEffect(() => {
     fetchAppointment();
   }, [id, token]);
-
-  const handleStatusUpdate = async (newStatus: string) => {
-    if (!token || !id) return;
-    try {
-      setUpdating(true);
-      const res = await appointmentService.updateAppointmentStatus(id, newStatus, token);
-      if (res.success) {
-        // Refresh appointment
-        await fetchAppointment();
-      } else {
-        alert(res.message || 'Failed to update status');
-      }
-    } catch (err) {
-      alert('Error updating status');
-    } finally {
-      setUpdating(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -184,7 +166,7 @@ const AppointmentDetails: React.FC = () => {
                  </div>
                  <div>
                     <p className="text-xs text-slate-500 font-medium">Place / Location</p>
-                    <p className="font-medium text-slate-900">{appointment.patient?.address || '—'}</p>
+                    <p className="font-medium text-slate-900">{formatAddress(appointment.patient?.address)}</p>
                  </div>
                  {appointment.patient && (
                    <button onClick={() => navigate(`/admin/patients/${appointment.patient.id}`)} className="text-sm font-medium text-blue-600 hover:text-blue-800">
@@ -317,45 +299,17 @@ const AppointmentDetails: React.FC = () => {
         {/* Sidebar Column */}
         <div className="space-y-6">
           
-          {/* Status Actions */}
+          {/* Status Overview (Read-Only) */}
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Manage Status</h3>
-            <div className="space-y-3">
-              <button 
-                onClick={() => handleStatusUpdate('CONFIRMED')}
-                disabled={updating || isCompleted || isCancelled || appointment.status === 'CONFIRMED'}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-700 font-medium hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-blue-200"
-              >
-                <CheckCircle size={18} />
-                Mark Confirmed
-              </button>
-              
-              <button 
-                onClick={() => handleStatusUpdate('COMPLETED')}
-                disabled={updating || isCompleted || isCancelled || isNoShow}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 font-medium hover:bg-emerald-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-emerald-200"
-              >
-                <Activity size={18} />
-                Mark Completed
-              </button>
-              
-              <button 
-                onClick={() => handleStatusUpdate('NO_SHOW')}
-                disabled={updating || isCompleted || isCancelled || isNoShow}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-700 font-medium hover:bg-amber-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-amber-200"
-              >
-                <User size={18} />
-                Mark No Show
-              </button>
-              
-              <button 
-                onClick={() => handleStatusUpdate('CANCELLED')}
-                disabled={updating || isCompleted || isCancelled}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-50 text-rose-700 font-medium hover:bg-rose-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-rose-200"
-              >
-                <XCircle size={18} />
-                Cancel Booking
-              </button>
+            <h3 className="text-lg font-bold text-slate-900 mb-3">Booking Status</h3>
+            <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Current Status</span>
+                <StatusBadge status={appointment.status} />
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                This outpatient booking is monitored in read-only mode. Consultation status transitions are managed via clinical and hospital workflows.
+              </p>
             </div>
           </div>
           

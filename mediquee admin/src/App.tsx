@@ -51,6 +51,7 @@ import HomeSampleDetails from './pages/HomeSampleDetails';
 import HomeNursing from './pages/HomeNursing';
 import HomeNursingDetails from './pages/HomeNursingDetails';
 import VideoConsultations from './pages/VideoConsultations';
+import VideoConsultationDetails from './pages/VideoConsultationDetails';
 import {
   ActivityLog
 } from './pages/AdvancedPlaceholders';
@@ -103,9 +104,12 @@ function App() {
               
               <Route path="op-bookings" element={<OPBookings />} />
               <Route path="op-bookings/:id" element={<AppointmentDetails />} />
+              <Route path="appointments/:id" element={<AppointmentDetails />} />
               <Route path="services/video-consultation" element={<VideoConsultations />} />
+              <Route path="services/video-consultation/:id" element={<VideoConsultationDetails />} />
               <Route path="services/lab-tests" element={<LabTests />} />
               <Route path="lab-tests/:id" element={<LabBookingDetails />} />
+              <Route path="lab-bookings/:id" element={<LabBookingDetails />} />
               <Route path="services/home-sample-collection" element={<HomeSample />} />
               <Route path="home-sample/:id" element={<HomeSampleDetails />} />
               <Route path="services/home-nursing" element={<HomeNursing />} />

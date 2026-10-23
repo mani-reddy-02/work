@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAdminAuth } from '../contexts/AuthContext';
 import { settlementService, SettlementFilterParams, PayoutFilterParams } from '../services/settlementService';
+import DateRangeFilter, { DateRangePreset } from '../components/ui/DateRangeFilter';
 
 type ActiveTab = 'settlements' | 'payouts';
 
@@ -36,6 +37,9 @@ const Settlements: React.FC = () => {
   const [search, setSearch] = useState('');
   const [partnerTypeFilter, setPartnerTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [settlementDateRange, setSettlementDateRange] = useState<{ preset: DateRangePreset; startDate?: string; endDate?: string }>({
+    preset: 'all'
+  });
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [totalSettlements, setTotalSettlements] = useState(0);
@@ -78,6 +82,8 @@ const Settlements: React.FC = () => {
         search: search.trim() || undefined,
         partnerType: partnerTypeFilter !== 'all' ? partnerTypeFilter : undefined,
         status: statusFilter !== 'all' ? statusFilter : undefined,
+        startDate: settlementDateRange.startDate,
+        endDate: settlementDateRange.endDate,
         page,
         limit: pageSize
       };
@@ -92,7 +98,7 @@ const Settlements: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, search, partnerTypeFilter, statusFilter, page]);
+  }, [token, search, partnerTypeFilter, statusFilter, page, settlementDateRange.startDate, settlementDateRange.endDate]);
 
   // Fetch payout history
   const fetchPayoutHistory = useCallback(async () => {
@@ -191,19 +197,19 @@ const Settlements: React.FC = () => {
       ),
     },
     {
-      header: 'Partner',
+      header: 'Partner / Facility',
       accessor: (s) => (
         <div className="flex flex-col">
           <button 
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/admin/hospitals/${s.partnerId}`);
+              navigate(`/admin/settlements/${s.id}`);
             }}
-            className="font-medium text-slate-900 hover:text-blue-600 text-left text-sm truncate max-w-[200px]"
+            className="font-bold text-slate-900 hover:text-blue-600 text-left text-sm truncate max-w-[220px]"
           >
-            {s.partnerName}
+            {s.partnerName || 'Healthcare Facility'}
           </button>
-          <span className="text-[11px] text-slate-400">ID: {s.partnerId.substring(0, 8)}</span>
+          <span className="text-[11px] text-slate-400 font-mono">Ref: {s.settlementNumber || s.id}</span>
         </div>
       ),
     },
@@ -457,31 +463,45 @@ const Settlements: React.FC = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-200 gap-8">
-        <button
-          onClick={() => setActiveTab('settlements')}
-          className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors ${
-            activeTab === 'settlements'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <FileText size={18} />
-          Settlement Batches ({totalSettlements})
-        </button>
+      {/* Navigation Tabs and Date Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200">
+        <div className="flex gap-8">
+          <button
+            onClick={() => setActiveTab('settlements')}
+            className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors ${
+              activeTab === 'settlements'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <FileText size={18} />
+            Settlement Batches ({totalSettlements})
+          </button>
 
-        <button
-          onClick={() => setActiveTab('payouts')}
-          className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors ${
-            activeTab === 'payouts'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <History size={18} />
-          Payout History ({totalPayouts})
-        </button>
+          <button
+            onClick={() => setActiveTab('payouts')}
+            className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors ${
+              activeTab === 'payouts'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <History size={18} />
+            Payout History ({totalPayouts})
+          </button>
+        </div>
+
+        <div className="pb-2">
+          <DateRangeFilter
+            preset={settlementDateRange.preset}
+            startDate={settlementDateRange.startDate}
+            endDate={settlementDateRange.endDate}
+            onChange={(newRange: any) => {
+              setSettlementDateRange(newRange);
+              setPage(1);
+            }}
+          />
+        </div>
       </div>
 
       {/* Tab 1: Settlements View */}

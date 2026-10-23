@@ -3,8 +3,20 @@ import { prisma } from '../../config/prisma';
 
 export const getTransactions = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
+    const dateFilter: any = {};
+    if (startDate || endDate) {
+      dateFilter.createdAt = {};
+      if (startDate) dateFilter.createdAt.gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        if (endDate.length <= 10) end.setHours(23, 59, 59, 999);
+        dateFilter.createdAt.lte = end;
+      }
+    }
+
     const opBookings = await prisma.oPBooking.findMany({
-      where: { isWalkIn: false, payoutEligible: true },
+      where: { isWalkIn: false, payoutEligible: true, ...dateFilter },
       orderBy: { createdAt: 'desc' },
       include: {
         hospital: { select: { id: true, name: true, hospitalShare: true, businessType: true } },
@@ -15,6 +27,7 @@ export const getTransactions = async (req: Request, res: Response, next: NextFun
     });
 
     const labBookings = await prisma.labBooking.findMany({
+      where: { ...dateFilter },
       orderBy: { createdAt: 'desc' },
       include: {
         hospital: { select: { id: true, name: true, hospitalShare: true, businessType: true } },
@@ -23,6 +36,7 @@ export const getTransactions = async (req: Request, res: Response, next: NextFun
     });
 
     const nursingBookings = await prisma.homeNursingBooking.findMany({
+      where: { ...dateFilter },
       orderBy: { createdAt: 'desc' },
       include: {
         hospital: { select: { id: true, name: true, hospitalShare: true, businessType: true } },
@@ -39,6 +53,7 @@ export const getTransactions = async (req: Request, res: Response, next: NextFun
         const hAmt = b.hospitalAmount ?? (gross * (hSharePct / 100));
         const mAmt = b.mediqueeAmount ?? (gross * (mSharePct / 100));
         const isVideo = Boolean(b.videoConsultation) || b.opType?.toLowerCase().includes('video') || b.opType?.toLowerCase().includes('online');
+        const directBookingUrl = isVideo ? `/admin/services/video-consultation/${b.id}` : `/admin/op-bookings/${b.id}`;
 
         return {
           id: b.id,
@@ -54,6 +69,7 @@ export const getTransactions = async (req: Request, res: Response, next: NextFun
           hospitalAmount: hAmt,
           mediqueeAmount: mAmt,
           status: b.status === 'COMPLETED' ? 'Completed' : (b.status === 'CANCELLED' ? 'Failed' : 'Pending'),
+          directBookingUrl,
           raw: b
         };
       }),
@@ -63,13 +79,15 @@ export const getTransactions = async (req: Request, res: Response, next: NextFun
         const mSharePct = b.mediqueeCommissionPercentage ?? (100 - hSharePct);
         const hAmt = b.hospitalAmount ?? (gross * (hSharePct / 100));
         const mAmt = b.mediqueeAmount ?? (gross * (mSharePct / 100));
+        const isHome = b.bookingType === 'HOME_COLLECTION';
+        const directBookingUrl = isHome ? `/admin/home-sample/${b.id}` : `/admin/lab-tests/${b.id}`;
 
         return {
           id: b.id,
           bookingId: b.id.substring(0, 8).toUpperCase(),
           date: b.createdAt,
           patientName: b.patient?.name || 'Unknown Patient',
-          service: b.bookingType === 'HOME_COLLECTION' ? 'Home Sample Collection' : 'Lab Tests',
+          service: isHome ? 'Home Sample Collection' : 'Lab Tests',
           hospitalName: b.hospital?.name || 'Unknown',
           hospitalId: b.hospital?.id,
           grossAmount: gross,
@@ -78,6 +96,7 @@ export const getTransactions = async (req: Request, res: Response, next: NextFun
           hospitalAmount: hAmt,
           mediqueeAmount: mAmt,
           status: ['REPORT_READY', 'SAMPLE_COLLECTED', 'IN_LAB_PROCESSING', 'COMPLETED'].includes(b.status) ? 'Completed' : (b.status === 'CANCELLED' ? 'Failed' : 'Pending'),
+          directBookingUrl,
           raw: b
         };
       }),
@@ -87,6 +106,7 @@ export const getTransactions = async (req: Request, res: Response, next: NextFun
         const mSharePct = b.mediqueeCommissionPercentage ?? (100 - hSharePct);
         const hAmt = b.hospitalAmount ?? (gross * (hSharePct / 100));
         const mAmt = b.mediqueeAmount ?? (gross * (mSharePct / 100));
+        const directBookingUrl = `/admin/home-nursing/${b.id}`;
 
         return {
           id: b.id,
@@ -102,6 +122,7 @@ export const getTransactions = async (req: Request, res: Response, next: NextFun
           hospitalAmount: hAmt,
           mediqueeAmount: mAmt,
           status: b.paymentStatus === 'PAID' ? 'Completed' : (b.status === 'CANCELLED' ? 'Failed' : 'Pending'),
+          directBookingUrl,
           raw: b
         };
       })
@@ -267,7 +288,7 @@ export const getTransactionById = async (req: Request, res: Response, next: Next
               status: op.videoConsultation.status,
               durationSeconds: op.videoConsultation.durationSeconds
             } : null,
-            directBookingUrl: `/admin/appointments/${op.id}`
+            directBookingUrl: isVideo ? `/admin/services/video-consultation/${op.id}` : `/admin/op-bookings/${op.id}`
           },
           commission: {
             grossAmount,
@@ -435,7 +456,7 @@ export const getTransactionById = async (req: Request, res: Response, next: Next
             homeCollectionFee: lab.homeCollectionFee || 0,
             reportUrl: lab.reportUrl,
             items: itemsList,
-            directBookingUrl: `/admin/lab-bookings/${lab.id}`
+            directBookingUrl: isHome ? `/admin/home-sample/${lab.id}` : `/admin/lab-tests/${lab.id}`
           },
           commission: {
             grossAmount,
@@ -615,11 +636,45 @@ export const getTransactionById = async (req: Request, res: Response, next: Next
 
 export const getRevenueAnalytics = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Generate analytics based on transactions
-    // Since we lack a dedicated Revenue table, we aggregate on the fly.
-    const opBookings = await prisma.oPBooking.findMany({ where: { isWalkIn: false, payoutEligible: true }, include: { hospital: true }});
-    const labBookings = await prisma.labBooking.findMany({ include: { hospital: true }});
-    const nursingBookings = await prisma.homeNursingBooking.findMany({ include: { hospital: true }});
+    const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
+    const dateFilter: any = {};
+    if (startDate || endDate) {
+      dateFilter.createdAt = {};
+      if (startDate) dateFilter.createdAt.gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        if (endDate.length <= 10) end.setHours(23, 59, 59, 999);
+        dateFilter.createdAt.lte = end;
+      }
+    }
+
+    const opBookings = await prisma.oPBooking.findMany({
+      where: { isWalkIn: false, payoutEligible: true, ...dateFilter },
+      include: {
+        hospital: true,
+        patient: { select: { id: true, name: true, phone: true } },
+        videoConsultation: { select: { id: true, status: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const labBookings = await prisma.labBooking.findMany({
+      where: { ...dateFilter },
+      include: {
+        hospital: true,
+        patient: { select: { id: true, name: true, phone: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const nursingBookings = await prisma.homeNursingBooking.findMany({
+      where: { ...dateFilter },
+      include: {
+        hospital: true,
+        user: { select: { id: true, name: true, phone: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
     let grossRevenue = 0;
     let hospitalShare = 0;
@@ -628,30 +683,71 @@ export const getRevenueAnalytics = async (req: Request, res: Response, next: Nex
 
     let revenueByHospital: any = {};
     let revenueByService: any = {
-      'OP Booking': { gross: 0, hospital: 0, mediquee: 0, count: 0 },
+      'OP Bookings': { gross: 0, hospital: 0, mediquee: 0, count: 0 },
+      'Video Consultations': { gross: 0, hospital: 0, mediquee: 0, count: 0 },
       'Lab Tests': { gross: 0, hospital: 0, mediquee: 0, count: 0 },
       'Home Sample Collection': { gross: 0, hospital: 0, mediquee: 0, count: 0 },
       'Home Nursing': { gross: 0, hospital: 0, mediquee: 0, count: 0 }
     };
 
-    const processItem = (item: any, serviceType: string, gross: number, hShare: number, mShare: number, hospName: string) => {
+    const items: any[] = [];
+
+    const processItem = (
+      id: string,
+      bookingRef: string,
+      serviceType: string,
+      gross: number,
+      hShare: number,
+      mShare: number,
+      hSharePct: number,
+      mSharePct: number,
+      hospName: string,
+      hospId: string | undefined,
+      patientName: string,
+      patientPhone: string | undefined,
+      date: Date,
+      status: string,
+      directBookingUrl: string
+    ) => {
       grossRevenue += gross;
       hospitalShare += hShare;
       mediqueeCommission += mShare;
       totalTransactions++;
 
       if (!revenueByHospital[hospName]) {
-        revenueByHospital[hospName] = { hospitalName: hospName, gross: 0, hospital: 0, mediquee: 0, count: 0 };
+        revenueByHospital[hospName] = { hospitalId: hospId, hospitalName: hospName, gross: 0, hospital: 0, mediquee: 0, count: 0 };
       }
       revenueByHospital[hospName].gross += gross;
       revenueByHospital[hospName].hospital += hShare;
       revenueByHospital[hospName].mediquee += mShare;
       revenueByHospital[hospName].count++;
 
+      if (!revenueByService[serviceType]) {
+        revenueByService[serviceType] = { gross: 0, hospital: 0, mediquee: 0, count: 0 };
+      }
       revenueByService[serviceType].gross += gross;
       revenueByService[serviceType].hospital += hShare;
       revenueByService[serviceType].mediquee += mShare;
       revenueByService[serviceType].count++;
+
+      items.push({
+        id,
+        bookingId: bookingRef,
+        serviceType,
+        hospitalName: hospName,
+        hospitalId: hospId,
+        patientName,
+        patientPhone,
+        grossAmount: gross,
+        hospitalAmount: hShare,
+        hospitalSharePercentage: hSharePct,
+        mediqueeAmount: mShare,
+        mediqueeCommissionPercentage: mSharePct,
+        date,
+        status,
+        settlementStatus: 'Pending Settlement',
+        directBookingUrl
+      });
     };
 
     opBookings.forEach(b => {
@@ -660,7 +756,27 @@ export const getRevenueAnalytics = async (req: Request, res: Response, next: Nex
       const mSharePct = b.mediqueeCommissionPercentage ?? (100 - hSharePct);
       const hShare = b.hospitalAmount ?? (gross * (hSharePct / 100));
       const mShare = b.mediqueeAmount ?? (gross * (mSharePct / 100));
-      processItem(b, 'OP Booking', gross, hShare, mShare, b.hospital?.name || 'Unknown');
+      const isVideo = Boolean(b.videoConsultation) || b.opType?.toLowerCase().includes('video') || b.opType?.toLowerCase().includes('online');
+      const sType = isVideo ? 'Video Consultations' : 'OP Bookings';
+      const directUrl = isVideo ? `/admin/services/video-consultation/${b.id}` : `/admin/op-bookings/${b.id}`;
+      const status = b.status === 'COMPLETED' ? 'Completed' : (b.status === 'CANCELLED' ? 'Failed' : 'Pending');
+      processItem(
+        b.id,
+        b.id.substring(0, 8).toUpperCase(),
+        sType,
+        gross,
+        hShare,
+        mShare,
+        hSharePct,
+        mSharePct,
+        b.hospital?.name || 'Unknown Hospital',
+        b.hospital?.id,
+        b.patientName || b.patient?.name || 'Patient',
+        b.patientPhone || b.patient?.phone || undefined,
+        b.createdAt,
+        status,
+        directUrl
+      );
     });
 
     labBookings.forEach(b => {
@@ -669,8 +785,27 @@ export const getRevenueAnalytics = async (req: Request, res: Response, next: Nex
       const mSharePct = b.mediqueeCommissionPercentage ?? (100 - hSharePct);
       const hShare = b.hospitalAmount ?? (gross * (hSharePct / 100));
       const mShare = b.mediqueeAmount ?? (gross * (mSharePct / 100));
-      const sType = b.bookingType === 'HOME_COLLECTION' ? 'Home Sample Collection' : 'Lab Tests';
-      processItem(b, sType, gross, hShare, mShare, b.hospital?.name || 'Unknown');
+      const isHome = b.bookingType === 'HOME_COLLECTION';
+      const sType = isHome ? 'Home Sample Collection' : 'Lab Tests';
+      const directUrl = isHome ? `/admin/home-sample/${b.id}` : `/admin/lab-tests/${b.id}`;
+      const status = ['REPORT_READY', 'SAMPLE_COLLECTED', 'IN_LAB_PROCESSING', 'COMPLETED'].includes(b.status) ? 'Completed' : (b.status === 'CANCELLED' ? 'Failed' : 'Pending');
+      processItem(
+        b.id,
+        b.id.substring(0, 8).toUpperCase(),
+        sType,
+        gross,
+        hShare,
+        mShare,
+        hSharePct,
+        mSharePct,
+        b.hospital?.name || 'Unknown Lab',
+        b.hospital?.id,
+        b.patient?.name || 'Patient',
+        b.patient?.phone || undefined,
+        b.createdAt,
+        status,
+        directUrl
+      );
     });
 
     nursingBookings.forEach(b => {
@@ -679,8 +814,28 @@ export const getRevenueAnalytics = async (req: Request, res: Response, next: Nex
       const mSharePct = b.mediqueeCommissionPercentage ?? (100 - hSharePct);
       const hShare = b.hospitalAmount ?? (gross * (hSharePct / 100));
       const mShare = b.mediqueeAmount ?? (gross * (mSharePct / 100));
-      processItem(b, 'Home Nursing', gross, hShare, mShare, b.hospital?.name || 'Unknown');
+      const directUrl = `/admin/home-nursing/${b.id}`;
+      const status = b.paymentStatus === 'PAID' ? 'Completed' : (b.status === 'CANCELLED' ? 'Failed' : 'Pending');
+      processItem(
+        b.id,
+        b.bookingNumber || b.id.substring(0, 8).toUpperCase(),
+        'Home Nursing',
+        gross,
+        hShare,
+        mShare,
+        hSharePct,
+        mSharePct,
+        b.hospital?.name || 'Unknown Provider',
+        b.hospital?.id,
+        b.patientName || b.user?.name || 'Patient',
+        b.patientPhone || b.user?.phone || undefined,
+        b.createdAt,
+        status,
+        directUrl
+      );
     });
+
+    items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     res.json({
       success: true,
@@ -692,8 +847,9 @@ export const getRevenueAnalytics = async (req: Request, res: Response, next: Nex
           totalTransactions,
           averageTransaction: totalTransactions ? (grossRevenue / totalTransactions) : 0
         },
-        revenueByHospital: Object.values(revenueByHospital),
-        revenueByService: Object.entries(revenueByService).map(([name, data]: any) => ({ name, ...data }))
+        revenueByHospital: Object.values(revenueByHospital).sort((a: any, b: any) => b.gross - a.gross),
+        revenueByService: Object.entries(revenueByService).map(([name, data]: any) => ({ name, ...data })),
+        items
       }
     });
   } catch (error) {

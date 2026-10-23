@@ -59,7 +59,15 @@ export interface VideoConsultationsResponse {
 export const videoConsultationService = {
   getVideoConsultations: async (
     token: string,
-    params?: { page?: number; limit?: number; status?: string; search?: string }
+    params?: {
+      page?: number;
+      limit?: number;
+      status?: string;
+      search?: string;
+      date?: string;
+      startDate?: string;
+      endDate?: string;
+    }
   ): Promise<VideoConsultationsResponse> => {
     try {
       const queryParams: Record<string, string> = {};

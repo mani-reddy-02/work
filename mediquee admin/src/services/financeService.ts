@@ -1,9 +1,14 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 export const financeService = {
-  getTransactions: async (token: string) => {
+  getTransactions: async (token: string, params?: { startDate?: string; endDate?: string }) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/finance/transactions`, {
+      const q = new URLSearchParams();
+      if (params?.startDate) q.append('startDate', params.startDate);
+      if (params?.endDate) q.append('endDate', params.endDate);
+      const queryStr = q.toString() ? `?${q.toString()}` : '';
+
+      const res = await fetch(`${API_BASE_URL}/admin/finance/transactions${queryStr}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       return await res.json();
@@ -23,9 +28,14 @@ export const financeService = {
       return { success: false, message: 'Failed to fetch transaction' };
     }
   },
-  getRevenueAnalytics: async (token: string) => {
+  getRevenueAnalytics: async (token: string, params?: { startDate?: string; endDate?: string }) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/finance/revenue`, {
+      const q = new URLSearchParams();
+      if (params?.startDate) q.append('startDate', params.startDate);
+      if (params?.endDate) q.append('endDate', params.endDate);
+      const queryStr = q.toString() ? `?${q.toString()}` : '';
+
+      const res = await fetch(`${API_BASE_URL}/admin/finance/revenue${queryStr}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       return await res.json();
@@ -34,9 +44,14 @@ export const financeService = {
       return { success: false, data: { kpis: {}, revenueByHospital: [], revenueByService: [] } };
     }
   },
-  getSettlements: async (token: string) => {
+  getSettlements: async (token: string, params?: { startDate?: string; endDate?: string }) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/finance/settlements`, {
+      const q = new URLSearchParams();
+      if (params?.startDate) q.append('startDate', params.startDate);
+      if (params?.endDate) q.append('endDate', params.endDate);
+      const queryStr = q.toString() ? `?${q.toString()}` : '';
+
+      const res = await fetch(`${API_BASE_URL}/admin/finance/settlements${queryStr}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       return await res.json();

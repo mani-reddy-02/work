@@ -4,6 +4,7 @@ import DataTable, { Column } from '../components/ui/DataTable';
 import { Activity, Clock, CheckCircle, XCircle, FileText, FlaskConical, Filter, X } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
 import { useAdminAuth } from '../contexts/AuthContext';
+import { DateRangeFilter, DateFilterValue } from '../components/ui/DateRangeFilter';
 
 const LabTests: React.FC = () => {
   const { token } = useAdminAuth();
@@ -40,6 +41,13 @@ const LabTests: React.FC = () => {
     place: 'ALL'
   });
 
+  // Date Filtering State with Presets (Today, Yesterday, This Week, This Month, Custom Range)
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({
+    preset: 'all',
+    startDate: '',
+    endDate: '',
+  });
+
   useEffect(() => {
     const s = searchParams.get('status');
     const bt = searchParams.get('bookingType');
@@ -73,7 +81,7 @@ const LabTests: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters]);
+  }, [filters, dateFilter]);
 
   const fetchOrders = useCallback(async () => {
     if (!token) return;
@@ -91,6 +99,8 @@ const LabTests: React.FC = () => {
       if (filters.status !== 'ALL') queryParams.append('status', filters.status);
       if (filters.gender !== 'ALL') queryParams.append('gender', filters.gender);
       if (filters.place !== 'ALL') queryParams.append('place', filters.place);
+      if (dateFilter.startDate) queryParams.append('startDate', dateFilter.startDate);
+      if (dateFilter.endDate) queryParams.append('endDate', dateFilter.endDate);
       
       if (filters.age !== 'ALL') {
         if (filters.age === '61+') {
@@ -138,7 +148,7 @@ const LabTests: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, currentPage, debouncedSearch, filters]);
+  }, [token, currentPage, debouncedSearch, filters, dateFilter]);
 
   useEffect(() => {
     fetchOrders();
@@ -146,6 +156,7 @@ const LabTests: React.FC = () => {
 
   const handleClearFilters = () => {
     setFilters({ ...filters, status: 'ALL', age: 'ALL', gender: 'ALL', place: 'ALL' });
+    setDateFilter({ preset: 'all', startDate: '', endDate: '' });
     setIsFilterOpen(false);
   };
 
@@ -264,6 +275,12 @@ const LabTests: React.FC = () => {
           <KpiCard title="Reports Ready" value={kpis.reportsReady} icon={FileText} iconColor="text-teal-600" iconBg="bg-teal-50" />
         </div>
       </div>
+
+      {/* Date-wise Monitoring Filter Bar */}
+      <DateRangeFilter
+        value={dateFilter}
+        onChange={setDateFilter}
+      />
 
       <div className="relative">
         {isFilterOpen && (

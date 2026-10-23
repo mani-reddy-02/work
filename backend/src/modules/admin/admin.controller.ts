@@ -1116,7 +1116,37 @@ export const getAppointments = async (req: Request, res: Response, next: NextFun
       const rawStatus = (req.query.status as string || '').trim();
       const status = (rawStatus && rawStatus !== 'ALL' && rawStatus !== 'undefined' && rawStatus !== 'null') ? rawStatus : undefined;
 
+      // Date filtering (supports single date or range YYYY-MM-DD)
+      const rawDate = (req.query.date as string || '').trim();
+      const rawStartDate = (req.query.startDate as string || '').trim();
+      const rawEndDate = (req.query.endDate as string || '').trim();
+
+      const parseDateOnly = (val: string): string | undefined => {
+        if (!val || val === 'undefined' || val === 'null' || val === 'ALL') return undefined;
+        const dStr = val.includes('T') ? val.split('T')[0] : val;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) {
+          const d = new Date(dStr + 'T00:00:00.000Z');
+          if (!isNaN(d.getTime())) return dStr;
+        }
+        return undefined;
+      };
+
+      const filterDate = parseDateOnly(rawDate);
+      const filterStartDate = parseDateOnly(rawStartDate) || (filterDate ? filterDate : undefined);
+      const filterEndDate = parseDateOnly(rawEndDate) || (filterDate ? filterDate : undefined);
+
       const where: any = { AND: [] };
+
+      if (filterStartDate || filterEndDate) {
+        const dateCond: any = {};
+        if (filterStartDate) {
+          dateCond.gte = new Date(`${filterStartDate}T00:00:00.000Z`);
+        }
+        if (filterEndDate) {
+          dateCond.lte = new Date(`${filterEndDate}T23:59:59.999Z`);
+        }
+        where.AND.push({ appointmentDate: dateCond });
+      }
 
       if (search) {
         where.AND.push({
@@ -1191,6 +1221,36 @@ export const getAppointments = async (req: Request, res: Response, next: NextFun
 
       const totalCount = await prisma.oPBooking.count({ where });
 
+      // Calculate status breakdown for current filter criteria
+      const statusCounts = await prisma.oPBooking.groupBy({
+        by: ['status'],
+        where,
+        _count: { status: true }
+      });
+
+      const statusMap: Record<string, number> = {};
+      statusCounts.forEach((sc) => {
+        statusMap[sc.status] = sc._count.status;
+      });
+
+      // Today's count (for global context or date-scoped context)
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+      const todayCount = await prisma.oPBooking.count({
+        where: { appointmentDate: { gte: todayStart, lte: todayEnd } }
+      });
+
+      const stats = {
+        total: totalCount,
+        today: (filterStartDate || filterEndDate) ? totalCount : todayCount,
+        pending: (statusMap['WAITING'] || 0) + (statusMap['PENDING'] || 0),
+        confirmed: (statusMap['CONFIRMED'] || 0) + (statusMap['IN_CONSULTATION'] || 0),
+        completed: statusMap['COMPLETED'] || 0,
+        cancelled: (statusMap['CANCELLED'] || 0) + (statusMap['NO_SHOW'] || 0),
+      };
+
       const bookings = await prisma.oPBooking.findMany({
         where,
         orderBy: { appointmentDate: 'desc' },
@@ -1239,7 +1299,8 @@ export const getAppointments = async (req: Request, res: Response, next: NextFun
           page,
           limit,
           totalPages: Math.ceil(totalCount / limit)
-        }
+        },
+        stats
       });
     } catch (error) {
       next(error);
@@ -1570,9 +1631,25 @@ export const getLabBookings = async (req: Request, res: Response, next: NextFunc
     const status = req.query.status as string;
     const bookingType = req.query.bookingType as string;
     const hospitalId = req.query.hospitalId as string;
-    const date = req.query.date as string;
+    const rawDate = (req.query.date as string || '').trim();
+    const rawStartDate = (req.query.startDate as string || '').trim();
+    const rawEndDate = (req.query.endDate as string || '').trim();
     const gender = req.query.gender as string;
     const place = req.query.place as string;
+
+    const parseDateOnly = (val: string): string | undefined => {
+      if (!val || val === 'undefined' || val === 'null' || val === 'ALL') return undefined;
+      const dStr = val.includes('T') ? val.split('T')[0] : val;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) {
+        const d = new Date(dStr + 'T00:00:00.000Z');
+        if (!isNaN(d.getTime())) return dStr;
+      }
+      return undefined;
+    };
+
+    const filterDate = parseDateOnly(rawDate);
+    const filterStartDate = parseDateOnly(rawStartDate) || (filterDate ? filterDate : undefined);
+    const filterEndDate = parseDateOnly(rawEndDate) || (filterDate ? filterDate : undefined);
 
     const where: any = { AND: [] };
 
@@ -1618,12 +1695,15 @@ export const getLabBookings = async (req: Request, res: Response, next: NextFunc
       where.AND.push({ hospitalId });
     }
 
-    if (date) {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-      where.AND.push({ createdAt: { gte: startOfDay, lte: endOfDay } });
+    if (filterStartDate || filterEndDate) {
+      const dateCond: any = {};
+      if (filterStartDate) {
+        dateCond.gte = new Date(`${filterStartDate}T00:00:00.000Z`);
+      }
+      if (filterEndDate) {
+        dateCond.lte = new Date(`${filterEndDate}T23:59:59.999Z`);
+      }
+      where.AND.push({ createdAt: dateCond });
     }
 
     if (gender && gender !== 'ALL') {
@@ -2026,7 +2106,23 @@ export const getHomeNursingBookings = async (req: Request, res: Response, next: 
       const city = req.query.city as string;
 
       const status = req.query.status as string;
-      const date = req.query.date as string;
+      const rawDate = (req.query.date as string || '').trim();
+      const rawStartDate = (req.query.startDate as string || '').trim();
+      const rawEndDate = (req.query.endDate as string || '').trim();
+
+      const parseDateOnly = (val: string): string | undefined => {
+        if (!val || val === 'undefined' || val === 'null' || val === 'ALL') return undefined;
+        const dStr = val.includes('T') ? val.split('T')[0] : val;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) {
+          const d = new Date(dStr + 'T00:00:00.000Z');
+          if (!isNaN(d.getTime())) return dStr;
+        }
+        return undefined;
+      };
+
+      const filterDate = parseDateOnly(rawDate);
+      const filterStartDate = parseDateOnly(rawStartDate) || (filterDate ? filterDate : undefined);
+      const filterEndDate = parseDateOnly(rawEndDate) || (filterDate ? filterDate : undefined);
 
       const andClauses: any[] = [];
       if (search && (search as string).trim() !== '') {
@@ -2066,12 +2162,15 @@ export const getHomeNursingBookings = async (req: Request, res: Response, next: 
         andClauses.push({ patientAge: ageCond });
       }
 
-      if (date) {
-        const startOfDay = new Date(date);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
-        andClauses.push({ serviceDate: { gte: startOfDay, lte: endOfDay } });
+      if (filterStartDate || filterEndDate) {
+        const dateCond: any = {};
+        if (filterStartDate) {
+          dateCond.gte = new Date(`${filterStartDate}T00:00:00.000Z`);
+        }
+        if (filterEndDate) {
+          dateCond.lte = new Date(`${filterEndDate}T23:59:59.999Z`);
+        }
+        andClauses.push({ serviceDate: dateCond });
       }
 
       const where: any = andClauses.length > 0 ? { AND: andClauses } : {};
@@ -2513,6 +2612,25 @@ export const getVideoConsultations = async (req: Request, res: Response, next: N
     const rawStatus = (req.query.status as string || '').trim().toUpperCase();
     const status = (rawStatus && rawStatus !== 'ALL' && rawStatus !== 'UNDEFINED') ? rawStatus : undefined;
 
+    // Date filtering (supports single date or range YYYY-MM-DD)
+    const rawDate = (req.query.date as string || '').trim();
+    const rawStartDate = (req.query.startDate as string || '').trim();
+    const rawEndDate = (req.query.endDate as string || '').trim();
+
+    const parseDateOnly = (val: string): string | undefined => {
+      if (!val || val === 'undefined' || val === 'null' || val === 'ALL') return undefined;
+      const dStr = val.includes('T') ? val.split('T')[0] : val;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) {
+        const d = new Date(dStr + 'T00:00:00.000Z');
+        if (!isNaN(d.getTime())) return dStr;
+      }
+      return undefined;
+    };
+
+    const filterDate = parseDateOnly(rawDate);
+    const filterStartDate = parseDateOnly(rawStartDate) || (filterDate ? filterDate : undefined);
+    const filterEndDate = parseDateOnly(rawEndDate) || (filterDate ? filterDate : undefined);
+
     // Base condition for all video consultations in the system
     const baseVideoCondition: any = {
       OR: [
@@ -2522,9 +2640,17 @@ export const getVideoConsultations = async (req: Request, res: Response, next: N
       ]
     };
 
-    // Calculate real backend statistics across all video consultations
+    const statsCondition: any = { ...baseVideoCondition };
+    if (filterStartDate || filterEndDate) {
+      const dateCond: any = {};
+      if (filterStartDate) dateCond.gte = new Date(`${filterStartDate}T00:00:00.000Z`);
+      if (filterEndDate) dateCond.lte = new Date(`${filterEndDate}T23:59:59.999Z`);
+      statsCondition.appointmentDate = dateCond;
+    }
+
+    // Calculate real backend statistics across video consultations
     const allVideoBookings = await prisma.oPBooking.findMany({
-      where: baseVideoCondition,
+      where: statsCondition,
       select: {
         id: true,
         status: true,
@@ -2545,6 +2671,13 @@ export const getVideoConsultations = async (req: Request, res: Response, next: N
 
     // Build filter where clause
     const where: any = { AND: [baseVideoCondition] };
+
+    if (filterStartDate || filterEndDate) {
+      const dateCond: any = {};
+      if (filterStartDate) dateCond.gte = new Date(`${filterStartDate}T00:00:00.000Z`);
+      if (filterEndDate) dateCond.lte = new Date(`${filterEndDate}T23:59:59.999Z`);
+      where.AND.push({ appointmentDate: dateCond });
+    }
 
     if (search) {
       const cleanSearch = search.toUpperCase().startsWith('VC-') ? search.substring(3).trim() : search;
@@ -2678,6 +2811,26 @@ export const getVideoConsultations = async (req: Request, res: Response, next: N
 /**
  * Get Single Video Consultation Details by ID
  */
+const formatAddressString = (raw: any): string => {
+  if (!raw) return 'N/A';
+  if (typeof raw === 'object') {
+    if (Array.isArray(raw)) {
+      if (raw.length === 0) return 'N/A';
+      return formatAddressString(raw[0]);
+    }
+    const parts = [raw.street || raw.addressLine1 || raw.address || raw.houseNo, raw.area || raw.addressLine2 || raw.locality, raw.city, raw.state, raw.pincode || raw.pinCode].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : 'N/A';
+  }
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try { return formatAddressString(JSON.parse(trimmed)); } catch { return trimmed; }
+    }
+    return trimmed;
+  }
+  return String(raw);
+};
+
 export const getVideoConsultationById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
@@ -2711,7 +2864,7 @@ export const getVideoConsultationById = async (req: Request, res: Response, next
         patientEmail: booking.patient?.email || 'N/A',
         patientGender: booking.patientGender || booking.patient?.gender || 'N/A',
         patientAge: booking.patientAge,
-        patientAddress: booking.patient?.address || 'N/A',
+        patientAddress: formatAddressString(booking.patient?.address),
         doctorName: booking.doctor?.name || 'Unknown',
         doctorSpecialization: booking.doctor?.specialization || 'General Physician',
         doctorEmail: booking.doctor?.email || 'N/A',

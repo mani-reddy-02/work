@@ -337,15 +337,27 @@ export const getSettlements = async (req: Request, res: Response, next: NextFunc
       partnerType,
       status,
       period,
+      startDate,
+      endDate,
       page = '1',
       limit = '20'
-    } = req.query;
+    } = req.query as any;
 
     const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 20));
     const skip = (pageNum - 1) * limitNum;
 
     const where: any = {};
+
+    if (startDate || endDate) {
+      where.periodStart = {};
+      if (startDate) where.periodStart.gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        if (String(endDate).length <= 10) end.setHours(23, 59, 59, 999);
+        where.periodStart.lte = end;
+      }
+    }
 
     if (search && String(search).trim()) {
       const q = String(search).trim();

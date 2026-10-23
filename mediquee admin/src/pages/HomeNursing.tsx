@@ -5,6 +5,7 @@ import StatusBadge from '../components/ui/StatusBadge';
 import { Activity, Clock, CheckCircle, HeartPulse, X } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
 import { useAdminAuth } from '../contexts/AuthContext';
+import { DateRangeFilter, DateFilterValue } from '../components/ui/DateRangeFilter';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -30,6 +31,13 @@ const HomeNursing: React.FC = () => {
     ageRange: 'all',
     city: 'all',
     status: urlStatus
+  });
+
+  // Date Filtering State with Presets (Today, Yesterday, This Week, This Month, Custom Range)
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({
+    preset: 'all',
+    startDate: '',
+    endDate: '',
   });
 
   useEffect(() => {
@@ -107,6 +115,9 @@ const HomeNursing: React.FC = () => {
           if (max && max !== '+') queryParams.append('ageMax', max);
         }
 
+        if (dateFilter.startDate) queryParams.append('startDate', dateFilter.startDate);
+        if (dateFilter.endDate) queryParams.append('endDate', dateFilter.endDate);
+
         const res = await fetch(`${API_URL}/admin/home-nursing?${queryParams.toString()}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -140,7 +151,7 @@ const HomeNursing: React.FC = () => {
       active = false;
       clearTimeout(debounceTimeout);
     };
-  }, [token, search, currentPage, filters]);
+  }, [token, search, currentPage, filters, dateFilter]);
 
   const handleSearch = (term: string) => {
     setSearch(term);
@@ -154,6 +165,7 @@ const HomeNursing: React.FC = () => {
 
   const clearFilters = () => {
     setFilters({ gender: 'all', ageRange: 'all', city: 'all', status: 'ALL' });
+    setDateFilter({ preset: 'all', startDate: '', endDate: '' });
     setCurrentPage(1);
   };
 
@@ -228,6 +240,12 @@ const HomeNursing: React.FC = () => {
         <KpiCard title="In Progress" value={kpis.inProgress} icon={Activity} iconColor="text-indigo-600" iconBg="bg-indigo-50" />
         <KpiCard title="Completed" value={kpis.completed} icon={CheckCircle} iconColor="text-emerald-600" iconBg="bg-emerald-50" />
       </div>
+
+      {/* Date-wise Monitoring Filter Bar */}
+      <DateRangeFilter
+        value={dateFilter}
+        onChange={setDateFilter}
+      />
 
       {showFilters && (
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm animate-in fade-in slide-in-from-top-4">

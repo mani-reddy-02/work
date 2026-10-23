@@ -5,6 +5,8 @@ export interface SettlementFilterParams {
   partnerType?: string;
   status?: string;
   period?: string;
+  startDate?: string;
+  endDate?: string;
   page?: number;
   limit?: number;
 }
@@ -51,6 +53,8 @@ export const settlementService = {
       if (params?.partnerType && params.partnerType !== 'all') q.append('partnerType', params.partnerType);
       if (params?.status && params.status !== 'all') q.append('status', params.status);
       if (params?.period && params.period !== 'all') q.append('period', params.period);
+      if (params?.startDate) q.append('startDate', params.startDate);
+      if (params?.endDate) q.append('endDate', params.endDate);
       if (params?.page) q.append('page', String(params.page));
       if (params?.limit) q.append('limit', String(params.limit));
 

@@ -7,6 +7,7 @@ import { Activity, Clock, CheckCircle, XCircle, Calendar, CalendarDays, Filter, 
 import KpiCard from '../components/ui/KpiCard';
 import { useAdminAuth } from '../contexts/AuthContext';
 import { appointmentService } from '../services/appointmentService';
+import { DateRangeFilter, DateFilterValue } from '../components/ui/DateRangeFilter';
 
 const OPBookings: React.FC = () => {
   const { token } = useAdminAuth();
@@ -29,6 +30,13 @@ const OPBookings: React.FC = () => {
   const [search, setSearch] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+
+  // Date Filtering State with Presets (Today, Yesterday, This Week, This Month, Custom Range)
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({
+    preset: 'all',
+    startDate: '',
+    endDate: '',
+  });
   
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -72,6 +80,11 @@ const OPBookings: React.FC = () => {
     return () => clearTimeout(handler);
   }, [search]);
 
+  // Reset to page 1 on filter or date change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, dateFilter]);
+
   const fetchBookings = useCallback(async () => {
     if (!token) return;
     setLoading(true);
@@ -97,6 +110,8 @@ const OPBookings: React.FC = () => {
       };
 
       if (debouncedSearch) params.search = debouncedSearch;
+      if (dateFilter.startDate) params.startDate = dateFilter.startDate;
+      if (dateFilter.endDate) params.endDate = dateFilter.endDate;
       if (ageMin) params.ageMin = ageMin;
       if (ageMax) params.ageMax = ageMax;
       if (filters.gender !== 'ALL') params.gender = filters.gender;
@@ -115,23 +130,17 @@ const OPBookings: React.FC = () => {
           setTotalPages(Math.ceil(res.data.length / limit) || 1);
         }
         
-        // Fetch KPI counts safely without blocking main table
-        appointmentService.getAppointments(token, { limit: 100 })
-          .then((allRes) => {
-            if (allRes?.success && Array.isArray(allRes.data)) {
-              const allB = allRes.data;
-              const todayStr = new Date().toLocaleDateString();
-              setKpis({
-                total: res.pagination?.total || allB.length,
-                today: allB.filter((b: any) => b.date === todayStr).length,
-                pending: allB.filter((b: any) => ['PENDING', 'WAITING'].includes(b.status)).length,
-                confirmed: allB.filter((b: any) => ['CONFIRMED', 'IN_CONSULTATION'].includes(b.status)).length,
-                completed: allB.filter((b: any) => b.status === 'COMPLETED').length,
-                cancelled: allB.filter((b: any) => ['CANCELLED', 'NO_SHOW'].includes(b.status)).length,
-              });
-            }
-          })
-          .catch((kpiErr) => console.warn('KPI count error:', kpiErr));
+        // Consistent KPI counts returned directly from backend
+        if (res.stats) {
+          setKpis({
+            total: res.stats.total,
+            today: res.stats.today,
+            pending: res.stats.pending,
+            confirmed: res.stats.confirmed,
+            completed: res.stats.completed,
+            cancelled: res.stats.cancelled,
+          });
+        }
       } else {
         setError(res?.error?.message || 'Unable to load OP bookings.');
       }
@@ -141,19 +150,15 @@ const OPBookings: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, currentPage, debouncedSearch, filters]);
+  }, [token, currentPage, debouncedSearch, filters, dateFilter]);
 
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
 
-  // Reset to page 1 on filter change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filters]);
-
   const handleClearFilters = () => {
     setFilters({ age: 'ALL', gender: 'ALL', place: 'ALL', status: 'ALL' });
+    setDateFilter({ preset: 'all', startDate: '', endDate: '' });
     setCurrentPage(1);
     setIsFilterOpen(false);
   };
@@ -174,7 +179,7 @@ const OPBookings: React.FC = () => {
     {
       header: 'Booking ID',
       accessor: (b: any) => (
-        <span className="font-semibold text-blue-600 hover:text-blue-700 tracking-wide">
+        <span className="font-semibold text-blue-600 hover:text-blue-700 tracking-wide font-mono">
           {b.bookingId || b.id.substring(0, 8).toUpperCase()}
         </span>
       ),
@@ -254,7 +259,7 @@ const OPBookings: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">OP Bookings</h2>
-          <p className="text-sm text-slate-500">Manage all outpatient physical consultations.</p>
+          <p className="text-sm text-slate-500">Monitor and inspect all outpatient physical consultations.</p>
         </div>
       </div>
 
@@ -266,6 +271,12 @@ const OPBookings: React.FC = () => {
         <KpiCard title="Completed" value={kpis.completed} icon={CheckCircle} iconColor="text-emerald-600" iconBg="bg-emerald-50" />
         <KpiCard title="Cancelled" value={kpis.cancelled} icon={XCircle} iconColor="text-rose-600" iconBg="bg-rose-50" />
       </div>
+
+      {/* Date-wise Monitoring Filter Bar */}
+      <DateRangeFilter
+        value={dateFilter}
+        onChange={setDateFilter}
+      />
 
       <div className="relative">
          {isFilterOpen && (
@@ -344,13 +355,13 @@ const OPBookings: React.FC = () => {
              <div className="flex gap-2 mt-6">
                 <button 
                   onClick={handleClearFilters}
-                  className="flex-1 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                  className="flex-1 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
                 >
-                  Clear
+                  Clear All
                 </button>
                 <button 
                   onClick={handleApplyFilters}
-                  className="flex-1 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                  className="flex-1 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition"
                 >
                   Apply
                 </button>
@@ -376,8 +387,8 @@ const OPBookings: React.FC = () => {
              setIsFilterOpen(!isFilterOpen);
            }}
            emptyMessage={
-             (search || Object.values(filters).some(v => v !== 'ALL')) 
-               ? "No OP bookings match the selected filters. Try adjusting your search or filters." 
+             (search || Object.values(filters).some(v => v !== 'ALL') || dateFilter.startDate || dateFilter.endDate) 
+               ? "No OP bookings match the selected date and filters. Try adjusting your search, date, or filters." 
                : "No OP bookings found."
            }
            onRowClick={(b) => navigate(`/admin/op-bookings/${b.id}`)}

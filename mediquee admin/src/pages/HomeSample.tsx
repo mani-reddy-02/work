@@ -5,6 +5,7 @@ import StatusBadge from '../components/ui/StatusBadge';
 import { Activity, Clock, CheckCircle, XCircle, FileText, FlaskConical, Filter, X } from 'lucide-react';
 import KpiCard from '../components/ui/KpiCard';
 import { useAdminAuth } from '../contexts/AuthContext';
+import { DateRangeFilter, DateFilterValue } from '../components/ui/DateRangeFilter';
 
 const HomeSample: React.FC = () => {
   const { token } = useAdminAuth();
@@ -38,6 +39,13 @@ const HomeSample: React.FC = () => {
     place: 'ALL'
   });
 
+  // Date Filtering State with Presets (Today, Yesterday, This Week, This Month, Custom Range)
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({
+    preset: 'all',
+    startDate: '',
+    endDate: '',
+  });
+
   useEffect(() => {
     const s = searchParams.get('status');
     if (s && s !== filters.status) {
@@ -65,7 +73,7 @@ const HomeSample: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters]);
+  }, [filters, dateFilter]);
 
   const fetchOrders = useCallback(async () => {
     if (!token) return;
@@ -79,6 +87,8 @@ const HomeSample: React.FC = () => {
       if (filters.status !== 'ALL') queryParams.append('status', filters.status);
       if (filters.gender !== 'ALL') queryParams.append('gender', filters.gender);
       if (filters.place !== 'ALL') queryParams.append('place', filters.place);
+      if (dateFilter.startDate) queryParams.append('startDate', dateFilter.startDate);
+      if (dateFilter.endDate) queryParams.append('endDate', dateFilter.endDate);
       queryParams.append('bookingType', 'HOME_COLLECTION');
       
       if (filters.age !== 'ALL') {
@@ -110,7 +120,7 @@ const HomeSample: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, currentPage, debouncedSearch, filters]);
+  }, [token, currentPage, debouncedSearch, filters, dateFilter]);
 
   const fetchKpis = useCallback(async () => {
     if (!token) return;
@@ -163,6 +173,7 @@ const HomeSample: React.FC = () => {
 
   const handleClearFilters = () => {
     setFilters({ status: 'ALL', age: 'ALL', gender: 'ALL', place: 'ALL' });
+    setDateFilter({ preset: 'all', startDate: '', endDate: '' });
     setIsFilterOpen(false);
   };
 
@@ -265,6 +276,12 @@ const HomeSample: React.FC = () => {
           className={filters.status === 'CANCELLED' ? 'ring-2 ring-rose-500 shadow-md' : ''}
         />
       </div>
+
+      {/* Date-wise Monitoring Filter Bar */}
+      <DateRangeFilter
+        value={dateFilter}
+        onChange={setDateFilter}
+      />
 
       <div className="relative">
         {isFilterOpen && (

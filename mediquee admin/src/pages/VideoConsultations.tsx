@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DataTable, { Column } from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import KpiCard from '../components/ui/KpiCard';
 import { useAdminAuth } from '../contexts/AuthContext';
 import { videoConsultationService, VideoConsultationItem } from '../services/videoConsultationService';
+import { DateRangeFilter, DateFilterValue } from '../components/ui/DateRangeFilter';
 import {
   Video,
   Clock,
@@ -13,16 +15,13 @@ import {
   Activity,
   AlertTriangle,
   RotateCcw,
-  User,
-  Stethoscope,
-  Building2,
   X,
   Radio,
-  FileText
 } from 'lucide-react';
 
 const VideoConsultations: React.FC = () => {
   const { token } = useAdminAuth();
+  const navigate = useNavigate();
 
   // State
   const [consultations, setConsultations] = useState<VideoConsultationItem[]>([]);
@@ -57,24 +56,29 @@ const VideoConsultations: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  // Detail Modal State
-  const [selectedConsultation, setSelectedConsultation] = useState<VideoConsultationItem | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  // Date Filtering State with Presets (Today, Yesterday, This Week, This Month, Custom Range)
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({
+    preset: 'all',
+    startDate: '',
+    endDate: '',
+  });
 
   const fetchConsultations = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await videoConsultationService.getVideoConsultations(token, {
+      const params: any = {
         page: currentPage,
         limit,
         status: statusFilter !== 'ALL' ? statusFilter : undefined,
         search: search.trim() !== '' ? search.trim() : undefined,
-      });
+      };
+
+      if (dateFilter.startDate) params.startDate = dateFilter.startDate;
+      if (dateFilter.endDate) params.endDate = dateFilter.endDate;
+
+      const res = await videoConsultationService.getVideoConsultations(token, params);
 
       if (res.success && Array.isArray(res.data)) {
         setConsultations(res.data);
@@ -100,7 +104,7 @@ const VideoConsultations: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, currentPage, limit, search, statusFilter]);
+  }, [token, currentPage, limit, search, statusFilter, dateFilter]);
 
   useEffect(() => {
     fetchConsultations();
@@ -109,53 +113,10 @@ const VideoConsultations: React.FC = () => {
   // Reset page when filter or search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, dateFilter]);
 
   const handleTileFilter = (status: string) => {
     setStatusFilter((prev) => (prev === status ? 'ALL' : status));
-  };
-
-  const handleOpenDetails = async (item: VideoConsultationItem) => {
-    if (!token) return;
-    setSelectedConsultation(item);
-    setIsDetailOpen(true);
-    setActionSuccess(null);
-    setDetailLoading(true);
-    try {
-      const res = await videoConsultationService.getVideoConsultationById(item.id, token);
-      if (res.success && res.data) {
-        setSelectedConsultation(res.data);
-      }
-    } catch (e) {
-      console.warn('Failed to fetch full consultation detail:', e);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
-  const handleStatusTransition = async (newStatus: string) => {
-    if (!token || !selectedConsultation) return;
-    setUpdatingStatus(true);
-    setActionSuccess(null);
-    try {
-      const res = await videoConsultationService.updateStatus(selectedConsultation.id, newStatus, token);
-      if (res.success) {
-        setActionSuccess(`Status transitioned to ${newStatus}`);
-        // Refresh details
-        const refreshed = await videoConsultationService.getVideoConsultationById(selectedConsultation.id, token);
-        if (refreshed.success && refreshed.data) {
-          setSelectedConsultation(refreshed.data);
-        }
-        // Refresh main listing
-        fetchConsultations();
-      } else {
-        alert(res.message || 'Failed to update status');
-      }
-    } catch (err: any) {
-      alert(err.message || 'Error updating status');
-    } finally {
-      setUpdatingStatus(false);
-    }
   };
 
   const columns: Column<VideoConsultationItem>[] = [
@@ -237,7 +198,7 @@ const VideoConsultations: React.FC = () => {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            handleOpenDetails(c);
+            navigate(`/admin/services/video-consultation/${c.id}`);
           }}
           className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200"
         >
@@ -278,7 +239,7 @@ const VideoConsultations: React.FC = () => {
             <div>
               <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Video Consultations</h2>
               <p className="text-sm text-slate-500">
-                Monitor and manage virtual teleconsultations across doctors and patients.
+                Monitor and inspect virtual teleconsultations across doctors and patients.
               </p>
             </div>
           </div>
@@ -424,6 +385,12 @@ const VideoConsultations: React.FC = () => {
         </div>
       </div>
 
+      {/* Date-Wise Monitoring Filter Bar */}
+      <DateRangeFilter
+        value={dateFilter}
+        onChange={setDateFilter}
+      />
+
       {/* Filter / Search Bar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
         <div className="w-full sm:w-80">
@@ -478,11 +445,11 @@ const VideoConsultations: React.FC = () => {
           searchPlaceholder="Search consultations..."
           onSearch={setSearch}
           emptyMessage={
-            search || statusFilter !== 'ALL'
-              ? 'No video consultations match the selected search or filter.'
+            search || statusFilter !== 'ALL' || dateFilter.startDate || dateFilter.endDate
+              ? 'No video consultations match the selected search, date, or filter.'
               : 'No video consultations found.'
           }
-          onRowClick={(c) => handleOpenDetails(c)}
+          onRowClick={(c) => navigate(`/admin/services/video-consultation/${c.id}`)}
           pagination={{
             currentPage,
             totalPages,
@@ -491,226 +458,6 @@ const VideoConsultations: React.FC = () => {
             onPageChange: setCurrentPage,
           }}
         />
-      )}
-
-      {/* Details Modal */}
-      {isDetailOpen && selectedConsultation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
-                  <Video size={20} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-slate-900 text-lg">
-                      {selectedConsultation.consultationId}
-                    </h3>
-                    <StatusBadge status={selectedConsultation.consultationStatus} />
-                  </div>
-                  <p className="text-xs text-slate-500">
-                    Booking ID: {selectedConsultation.bookingId}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsDetailOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6 space-y-6">
-              {actionSuccess && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-sm font-medium flex items-center gap-2">
-                  <CheckCircle size={16} />
-                  {actionSuccess}
-                </div>
-              )}
-
-              {/* Patient & Doctor Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Patient */}
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/70 space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    <User size={14} className="text-blue-600" />
-                    Patient Information
-                  </div>
-                  <div className="font-bold text-slate-900 text-base">
-                    {selectedConsultation.patientName}
-                  </div>
-                  <div className="text-xs text-slate-600 space-y-1">
-                    <div>
-                      <span className="text-slate-400">Phone:</span> {selectedConsultation.patientPhone}
-                    </div>
-                    {(selectedConsultation as any).patientEmail && (
-                      <div>
-                        <span className="text-slate-400">Email:</span>{' '}
-                        {(selectedConsultation as any).patientEmail}
-                      </div>
-                    )}
-                    {selectedConsultation.patientGender && (
-                      <div>
-                        <span className="text-slate-400">Gender / Age:</span>{' '}
-                        {selectedConsultation.patientGender}
-                        {selectedConsultation.patientAge ? ` • ${selectedConsultation.patientAge} yrs` : ''}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Doctor */}
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/70 space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    <Stethoscope size={14} className="text-indigo-600" />
-                    Assigned Doctor
-                  </div>
-                  <div className="font-bold text-slate-900 text-base">
-                    {selectedConsultation.doctorName}
-                  </div>
-                  <div className="text-xs text-slate-600 space-y-1">
-                    <div>
-                      <span className="text-slate-400">Specialization:</span>{' '}
-                      {selectedConsultation.doctorSpecialization}
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Department:</span>{' '}
-                      {selectedConsultation.departmentName}
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Hospital:</span>{' '}
-                      {selectedConsultation.hospitalName} ({selectedConsultation.hospitalCity})
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Schedule & Telemetry */}
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/70 space-y-3">
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  <div className="flex items-center gap-2">
-                    <Clock size={14} className="text-purple-600" />
-                    Schedule & Telemetry
-                  </div>
-                  <span className="text-slate-700 font-bold">
-                    Fee: ₹{selectedConsultation.fee}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                  <div>
-                    <span className="text-slate-400 block">Date</span>
-                    <span className="font-semibold text-slate-800">{selectedConsultation.date}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Time Slot</span>
-                    <span className="font-semibold text-slate-800">{selectedConsultation.timeSlot}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Session Status</span>
-                    <span className="font-semibold text-slate-800">{selectedConsultation.sessionStatus}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Room Name</span>
-                    <span className="font-mono text-slate-700">
-                      {selectedConsultation.roomName || 'Pending initiation'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Call Duration</span>
-                    <span className="font-semibold text-slate-800">
-                      {selectedConsultation.formattedDuration || '00:00'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Created At</span>
-                    <span className="text-slate-700">
-                      {new Date(selectedConsultation.createdAt).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status Lifecycle Actions */}
-              <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-200/70 space-y-3">
-                <div className="text-xs font-semibold text-blue-900 uppercase tracking-wider">
-                  Admin Consultation Lifecycle Actions
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {['WAITING', 'PENDING'].includes(selectedConsultation.consultationStatus) && (
-                    <>
-                      <button
-                        disabled={updatingStatus}
-                        onClick={() => handleStatusTransition('CONFIRMED')}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                      >
-                        Confirm & Schedule
-                      </button>
-                      <button
-                        disabled={updatingStatus}
-                        onClick={() => handleStatusTransition('CANCELLED')}
-                        className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                      >
-                        Cancel Consultation
-                      </button>
-                    </>
-                  )}
-
-                  {['CONFIRMED', 'SCHEDULED'].includes(selectedConsultation.consultationStatus) && (
-                    <>
-                      <button
-                        disabled={updatingStatus}
-                        onClick={() => handleStatusTransition('IN_CONSULTATION')}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                      >
-                        Start Session (In Progress)
-                      </button>
-                      <button
-                        disabled={updatingStatus}
-                        onClick={() => handleStatusTransition('CANCELLED')}
-                        className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                      >
-                        Cancel Consultation
-                      </button>
-                    </>
-                  )}
-
-                  {['IN_CONSULTATION', 'IN_PROGRESS'].includes(
-                    selectedConsultation.consultationStatus
-                  ) && (
-                    <button
-                      disabled={updatingStatus}
-                      onClick={() => handleStatusTransition('COMPLETED')}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                    >
-                      Complete Consultation
-                    </button>
-                  )}
-
-                  {['COMPLETED', 'CANCELLED'].includes(selectedConsultation.consultationStatus) && (
-                    <span className="text-xs text-slate-500 italic">
-                      This consultation is finalised as {selectedConsultation.consultationStatus}.
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-              <button
-                onClick={() => setIsDetailOpen(false)}
-                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-semibold"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

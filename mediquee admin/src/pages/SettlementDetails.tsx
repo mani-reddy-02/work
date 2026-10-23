@@ -258,10 +258,13 @@ const SettlementDetails: React.FC = () => {
             <ArrowLeft size={18} />
           </button>
           <div>
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight font-mono">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                {settlement.partnerName || partner.name || 'Healthcare Partner'}
+              </h1>
+              <span className="font-mono text-xs px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold border border-slate-200">
                 {settlement.settlementNumber || settlement.id}
-              </h2>
+              </span>
               <StatusBadge status={settlement.status} />
               <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
                 isLab ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
@@ -271,7 +274,7 @@ const SettlementDetails: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Weekly Settlement Cycle • Generated {new Date(settlement.createdAt).toLocaleString()}
+              Period: <span className="font-medium text-slate-700">{settlement.periodLabel || settlement.period}</span> • Generated {new Date(settlement.createdAt).toLocaleString()}
             </p>
           </div>
         </div>
