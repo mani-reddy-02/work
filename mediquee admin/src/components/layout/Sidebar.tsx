@@ -97,8 +97,7 @@ export const navGroups = [
     title: 'Communication',
     items: [
       { name: 'Requests', path: '/admin/requests', icon: Inbox },
-      { name: 'Notifications', path: '/admin/notifications', icon: Bell },
-      { name: 'Activity Log', path: '/admin/activity', icon: ListTodo }
+      { name: 'Notifications', path: '/admin/notifications', icon: Bell }
     ]
   },
   {

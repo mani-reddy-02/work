@@ -52,9 +52,7 @@ import HomeNursing from './pages/HomeNursing';
 import HomeNursingDetails from './pages/HomeNursingDetails';
 import VideoConsultations from './pages/VideoConsultations';
 import VideoConsultationDetails from './pages/VideoConsultationDetails';
-import {
-  ActivityLog
-} from './pages/AdvancedPlaceholders';
+
 
 function App() {
   return (
@@ -125,7 +123,6 @@ function App() {
                 <Route path="reports/requests-history" element={<RequestsHistory />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="requests" element={<Requests />} />
-              <Route path="activity" element={<ActivityLog />} />
               <Route path="home-posters" element={<HomePosters />} />
               <Route path="faqs" element={<Faqs />} />
               <Route path="insurance" element={<Insurance />} />

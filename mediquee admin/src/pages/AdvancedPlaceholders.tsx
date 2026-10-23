@@ -20,11 +20,8 @@ const VideoConsultations = () => (
 
 const Transactions = () => <div className="p-6 bg-white  rounded-xl shadow-sm border border-slate-200 "><h2 className="text-xl font-bold ">Transactions Placeholder</h2></div>;
 const Settlements = () => <div className="p-6 bg-white  rounded-xl shadow-sm border border-slate-200 "><h2 className="text-xl font-bold ">Settlements Placeholder</h2></div>;
-const ActivityLog = () => <div className="p-6 bg-white  rounded-xl shadow-sm border border-slate-200 "><h2 className="text-xl font-bold ">Activity Log Placeholder</h2></div>;
-
 export {
   VideoConsultations,
   Transactions,
-  Settlements,
-  ActivityLog
+  Settlements
 };

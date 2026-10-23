@@ -1043,7 +1043,6 @@ const Dashboard: React.FC = () => {
             <h2 className="text-lg font-bold text-slate-900 tracking-tight">Recent Platform Activity</h2>
             <p className="text-xs text-slate-500">Live feed of incoming bookings and workflow stage updates</p>
           </div>
-          <Link to="/admin/activity" className="text-xs font-semibold text-blue-600 hover:underline">View Log</Link>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100 overflow-hidden">
