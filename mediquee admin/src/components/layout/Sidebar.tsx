@@ -197,29 +197,39 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         </div>
 
         {/* Bottom Profile Area */}
-        <div className="p-4 border-t border-slate-200  transition-colors">
-           <div className={`flex items-center gap-3 ${!isOpen && 'lg:justify-center'}`}>
-             <div className="w-10 h-10 rounded-full bg-slate-200  overflow-hidden shrink-0">
-               <img 
-                 src={adminUser?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"} 
-                 alt="Admin Avatar" 
-                 className="w-full h-full object-cover"
-               />
-             </div>
-             
-             <div className={`flex-1 min-w-0 ${!isOpen && 'lg:hidden'}`}>
-               <p className="text-sm font-medium text-slate-900  truncate transition-colors">{adminUser?.name || 'Super Admin'}</p>
-               <p className="text-xs text-slate-500  truncate transition-colors">{adminUser?.email || 'admin@mediquee.com'}</p>
-             </div>
-             
-             <button 
-               onClick={logout}
-               title="Sign Out"
-               className={`p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 :text-red-400 :bg-slate-800 rounded-md transition-colors ${!isOpen && 'lg:hidden'}`}
-             >
-                <LogOut size={18} />
-             </button>
-           </div>
+        <div className="p-3 border-t border-slate-200 transition-colors">
+          <div className={`flex items-center gap-2.5 ${!isOpen && 'lg:justify-center'}`}>
+            <NavLink
+              to="/admin/settings?tab=profile"
+              title="View Profile Settings"
+              className={`flex-1 flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 transition-all group min-w-0 ${!isOpen && 'lg:p-0 lg:hover:bg-transparent'}`}
+            >
+              <div className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden shrink-0 border border-slate-200 shadow-2xs group-hover:ring-2 group-hover:ring-blue-500/30 transition-all">
+                <img 
+                  src={adminUser?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"} 
+                  alt="Admin Avatar" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              
+              <div className={`flex-1 min-w-0 ${!isOpen && 'lg:hidden'}`}>
+                <p className="text-xs font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
+                  {adminUser?.name || 'Super Admin'}
+                </p>
+                <p className="text-[11px] text-slate-400 truncate">
+                  {adminUser?.designation || 'Administrator'}
+                </p>
+              </div>
+            </NavLink>
+            
+            <button 
+              onClick={logout}
+              title="Sign Out"
+              className={`p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer ${!isOpen && 'lg:hidden'}`}
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
         </div>
       </aside>
     </>

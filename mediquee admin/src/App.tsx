@@ -127,6 +127,7 @@ function App() {
               <Route path="faqs" element={<Faqs />} />
               <Route path="insurance" element={<Insurance />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="profile" element={<Settings />} />
             </Route>
 
             {/* Catch-all */}

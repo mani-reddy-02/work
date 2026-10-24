@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, Bell, Search, PanelLeftClose, PanelLeftOpen, Sun, Moon, CheckCircle2 } from 'lucide-react';
+import { Menu, Bell, Search, PanelLeftClose, PanelLeftOpen, Sun, Moon, CheckCircle2, User, Settings, Shield, LogOut, ChevronDown } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import { navGroups } from './Sidebar';
@@ -15,7 +15,9 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const { token } = useAdminAuth();
+  const { token, adminUser, logout } = useAdminAuth();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
   
   // Basic breadcrumb logic based on path
   const getPageTitle = () => {
@@ -150,6 +152,16 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
     };
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  useEffect(() => {
+    const handleProfileOutsideClick = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleProfileOutsideClick);
+    return () => document.removeEventListener('mousedown', handleProfileOutsideClick);
   }, []);
 
   const handleNotificationClick = async (notif: Notification) => {
@@ -342,6 +354,114 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
                   className="w-full py-1.5 text-sm font-medium text-slate-700 hover:text-slate-900 text-center rounded-md hover:bg-slate-100 transition-colors"
                 >
                   View All Notifications
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Admin Profile Dropdown */}
+        <div className="relative pl-1 border-l border-slate-200" ref={profileRef}>
+          <button
+            type="button"
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer group"
+          >
+            <div className="relative w-8 h-8 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+              <img
+                src={adminUser?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"}
+                alt="Admin Avatar"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin";
+                }}
+              />
+              <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white" />
+            </div>
+
+            <div className="hidden md:flex flex-col text-left">
+              <span className="text-xs font-bold text-slate-800 leading-tight group-hover:text-blue-600 transition-colors">
+                {adminUser?.name || 'Super Admin'}
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium">
+                {adminUser?.designation || 'Administrator'}
+              </span>
+            </div>
+
+            <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 transition-transform" />
+          </button>
+
+          {/* Dropdown Menu */}
+          {isProfileOpen && (
+            <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-[70] animate-fadeIn">
+              <div className="p-4 border-b border-slate-100 bg-slate-50/70">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 shrink-0">
+                    <img
+                      src={adminUser?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"}
+                      alt="Admin"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-slate-900 truncate">{adminUser?.name || 'Super Admin'}</p>
+                    <p className="text-xs text-slate-500 truncate">{adminUser?.email || 'admin@mediquee.com'}</p>
+                    <span className="inline-block mt-1 px-2 py-0.5 text-[9px] font-bold bg-blue-100 text-blue-700 rounded-full">
+                      SUPER ADMIN
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-1.5 space-y-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    navigate('/admin/settings?tab=profile');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer text-left"
+                >
+                  <User size={15} className="text-slate-400" />
+                  Admin Profile Settings
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    navigate('/admin/settings?tab=security');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer text-left"
+                >
+                  <Shield size={15} className="text-slate-400" />
+                  Security & Password
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    navigate('/admin/settings?tab=system');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer text-left"
+                >
+                  <Settings size={15} className="text-slate-400" />
+                  Platform System Settings
+                </button>
+              </div>
+
+              <div className="p-1.5 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    logout();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer text-left"
+                >
+                  <LogOut size={15} />
+                  Sign Out
                 </button>
               </div>
             </div>

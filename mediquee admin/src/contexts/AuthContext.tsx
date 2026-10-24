@@ -6,7 +6,14 @@ export interface AdminUser {
   email: string;
   role: string;
   phone?: string;
-  avatar?: string;
+  avatar?: string | null;
+  designation?: string | null;
+  dob?: string | null;
+  gender?: string | null;
+  address?: string | null;
+  bio?: string | null;
+  createdAt?: string;
+  active?: boolean;
 }
 
 interface AuthContextType {
@@ -16,6 +23,10 @@ interface AuthContextType {
   isLoading: boolean;
   login: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+  setAdminUser: React.Dispatch<React.SetStateAction<AdminUser | null>>;
+  refreshProfile: () => Promise<void>;
+  updateProfile: (data: Partial<AdminUser>) => Promise<{ success: boolean; error?: string; message?: string; data?: AdminUser }>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string; message?: string }>;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -31,6 +42,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     setAdminUser(null);
     localStorage.removeItem('mediquee_admin_token');
+  };
+
+  const refreshProfile = async () => {
+    const storedToken = token || localStorage.getItem('mediquee_admin_token');
+    if (!storedToken) return;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/users/me`, {
+        headers: {
+          Authorization: `Bearer ${storedToken}`,
+        },
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setAdminUser(json.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to refresh admin profile:', err);
+    }
   };
 
   useEffect(() => {
@@ -109,6 +142,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateProfile = async (data: Partial<AdminUser>) => {
+    const activeToken = token || localStorage.getItem('mediquee_admin_token');
+    if (!activeToken) {
+      return { success: false, error: 'Authentication token missing. Please log in again.' };
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/users/me`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${activeToken}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        return {
+          success: false,
+          error: json.error?.message || json.message || 'Failed to update profile',
+        };
+      }
+
+      if (json.data) {
+        setAdminUser(json.data);
+      }
+
+      return {
+        success: true,
+        data: json.data,
+        message: json.message || 'Profile updated successfully',
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.message || 'Network error while updating profile',
+      };
+    }
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    const activeToken = token || localStorage.getItem('mediquee_admin_token');
+    if (!activeToken) {
+      return { success: false, error: 'Authentication token missing. Please log in again.' };
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/users/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${activeToken}`,
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        return {
+          success: false,
+          error: json.error?.message || json.message || 'Failed to change password',
+        };
+      }
+
+      return {
+        success: true,
+        message: json.message || 'Password changed successfully',
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.message || 'Network error while changing password',
+      };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -118,6 +228,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         logout,
+        setAdminUser,
+        refreshProfile,
+        updateProfile,
+        changePassword,
       }}
     >
       {children}
@@ -132,3 +246,4 @@ export const useAdminAuth = () => {
   }
   return context;
 };
+
