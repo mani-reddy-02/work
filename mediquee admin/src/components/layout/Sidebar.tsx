@@ -124,14 +124,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
 
       {/* Sidebar Container */}
       <aside 
-        className={`fixed lg:static inset-y-0 left-0 z-30 flex flex-col w-64 bg-white  border-r border-slate-200  transform transition-all duration-300 ease-in-out ${
+        className={`fixed lg:static inset-y-0 left-0 z-30 flex flex-col w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-all duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:w-20 lg:translate-x-0'
         }`}
       >
         {/* Logo Area */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200  transition-colors">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800 transition-colors">
           <div className={`flex items-center gap-2 ${!isOpen && 'lg:hidden'}`}>
-            <img src="/logo.png" alt="MediQuee" className="h-8 w-auto object-contain" />
+            <img src="/logo.png" alt="MediQuee" className="h-8 w-auto object-contain dark:brightness-110" />
           </div>
           
           {/* Logo when collapsed (desktop only) */}
@@ -141,7 +141,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
           
           <button 
             onClick={toggleSidebar} 
-            className="lg:hidden p-1.5 rounded-md text-slate-500 hover:bg-slate-100 :bg-slate-800 transition-colors"
+            className="lg:hidden p-1.5 rounded-md text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <ChevronLeft size={20} />
           </button>
@@ -151,13 +151,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         <div className="flex-1 overflow-y-auto py-4 scrollbar-thin">
           {navGroups.map((group, groupIndex) => (
             <div key={groupIndex} className="mb-6 px-3">
-              <h3 className={`px-3 mb-2 text-xs font-semibold text-slate-400  uppercase tracking-wider transition-colors ${!isOpen && 'lg:hidden'}`}>
+              <h3 className={`px-3 mb-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider transition-colors ${!isOpen && 'lg:hidden'}`}>
                 {group.title}
               </h3>
               
               {/* Divider when collapsed */}
               {!isOpen && groupIndex > 0 && (
-                <div className="hidden lg:block h-px bg-slate-200  mx-4 mb-4 transition-colors" />
+                <div className="hidden lg:block h-px bg-slate-200 dark:bg-slate-800 mx-4 mb-4 transition-colors" />
               )}
 
               <ul className="space-y-1">
@@ -170,8 +170,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                         className={({ isActive }) =>
                           `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group relative ${
                             isActive
-                              ? 'bg-blue-50 text-blue-700  '
-                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900  :bg-slate-800 :text-slate-200'
+                              ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 font-semibold shadow-2xs'
+                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-slate-200'
                           } ${!isOpen && 'lg:justify-center'}`
                         }
                         title={!isOpen ? item.name : undefined}
@@ -183,7 +183,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                         
                         {/* Tooltip for collapsed state */}
                         {!isOpen && (
-                          <div className="hidden lg:group-hover:block absolute left-full ml-2 px-2 py-1 bg-slate-800  text-white text-xs rounded whitespace-nowrap z-50">
+                          <div className="hidden lg:group-hover:block absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs rounded whitespace-nowrap z-50">
                             {item.name}
                           </div>
                         )}
@@ -197,14 +197,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         </div>
 
         {/* Bottom Profile Area */}
-        <div className="p-3 border-t border-slate-200 transition-colors">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 transition-colors">
           <div className={`flex items-center gap-2.5 ${!isOpen && 'lg:justify-center'}`}>
             <NavLink
               to="/admin/settings?tab=profile"
               title="View Profile Settings"
-              className={`flex-1 flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 transition-all group min-w-0 ${!isOpen && 'lg:p-0 lg:hover:bg-transparent'}`}
+              className={`flex-1 flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all group min-w-0 ${!isOpen && 'lg:p-0 lg:hover:bg-transparent'}`}
             >
-              <div className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden shrink-0 border border-slate-200 shadow-2xs group-hover:ring-2 group-hover:ring-blue-500/30 transition-all">
+              <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700 shadow-2xs group-hover:ring-2 group-hover:ring-blue-500/30 transition-all">
                 <img 
                   src={adminUser?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"} 
                   alt="Admin Avatar" 
@@ -213,10 +213,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
               </div>
               
               <div className={`flex-1 min-w-0 ${!isOpen && 'lg:hidden'}`}>
-                <p className="text-xs font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                   {adminUser?.name || 'Super Admin'}
                 </p>
-                <p className="text-[11px] text-slate-400 truncate">
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
                   {adminUser?.designation || 'Administrator'}
                 </p>
               </div>
@@ -225,7 +225,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
             <button 
               onClick={logout}
               title="Sign Out"
-              className={`p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer ${!isOpen && 'lg:hidden'}`}
+              className={`p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer ${!isOpen && 'lg:hidden'}`}
             >
               <LogOut size={16} />
             </button>

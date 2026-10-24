@@ -189,12 +189,12 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sticky top-0 z-50 transition-colors">
+    <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 sticky top-0 z-50 transition-colors">
       <div className="flex items-center gap-4">
         {/* Mobile menu toggle */}
         <button 
           onClick={toggleSidebar}
-          className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-md"
+          className="lg:hidden p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md"
         >
           <Menu size={20} />
         </button>
@@ -202,18 +202,18 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
         {/* Desktop sidebar toggle */}
         <button 
           onClick={toggleSidebar}
-          className="hidden lg:block p-2 text-slate-500 hover:bg-slate-100 rounded-md transition-colors"
+          className="hidden lg:block p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
         >
           {sidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
         </button>
 
         {/* Page Title & Breadcrumb */}
         <div>
-          <h1 className="text-lg font-semibold text-slate-900 transition-colors">{getPageTitle()}</h1>
-          <div className="text-xs text-slate-500 flex items-center gap-1 transition-colors">
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-white transition-colors">{getPageTitle()}</h1>
+          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 transition-colors">
             <span>Admin</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-slate-600">{getPageTitle()}</span>
+            <span className="text-slate-300 dark:text-slate-600">/</span>
+            <span className="text-slate-600 dark:text-slate-300">{getPageTitle()}</span>
           </div>
         </div>
       </div>
@@ -222,7 +222,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
         {/* Global Search */}
         <div className="hidden md:flex relative group" ref={searchRef}>
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={16} className="text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+            <Search size={16} className="text-slate-400 dark:text-slate-500 group-focus-within:text-blue-500 transition-colors" />
           </div>
           <input
             ref={searchInputRef}
@@ -232,17 +232,17 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
             onChange={e => setSearchQuery(e.target.value)}
             onFocus={() => setIsSearchOpen(true)}
             onKeyDown={handleSearchKeyDown}
-            className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all w-64 lg:w-80"
+            className="pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all w-64 lg:w-80"
           />
           <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-            <span className="text-xs text-slate-400 border border-slate-200 rounded px-1.5 py-0.5 bg-white shadow-sm transition-colors">
+            <span className="text-xs text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5 bg-white dark:bg-slate-800 shadow-sm transition-colors">
               ⌘K
             </span>
           </div>
 
           {/* Search Dropdown */}
           {isSearchOpen && searchQuery.trim() !== '' && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-2 max-h-[300px] overflow-y-auto z-[60]">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-800 py-2 max-h-[300px] overflow-y-auto z-[60]">
               {searchResults.length > 0 ? (
                 <ul className="flex flex-col">
                   {searchResults.map((result, index) => {
@@ -250,22 +250,22 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
                     return (
                       <li key={result.path}>
                         <button
-                          className={`w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition-colors ${searchSelectedIndex === index ? 'bg-slate-100' : ''}`}
+                          className={`w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${searchSelectedIndex === index ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
                           onClick={() => {
                             navigate(result.path);
                             setIsSearchOpen(false);
                             setSearchQuery('');
                           }}
                         >
-                          {Icon && <Icon size={16} className="text-slate-500" />}
-                          <span className="text-sm font-medium text-slate-700">{result.name}</span>
+                          {Icon && <Icon size={16} className="text-slate-500 dark:text-slate-400" />}
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{result.name}</span>
                         </button>
                       </li>
                     );
                   })}
                 </ul>
               ) : (
-                <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                <div className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400 text-center">
                   No menu options found
                 </div>
               )}
@@ -276,31 +276,31 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
         {/* Theme Toggle */}
         <button 
           onClick={toggleTheme}
-          className="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors"
+          className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
           title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
         >
-          {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+          {theme === 'light' ? <Moon size={20} className="hover:text-slate-800 transition-colors" /> : <Sun size={20} className="text-amber-400 hover:text-amber-300 transition-colors" />}
         </button>
 
         {/* Notifications */}
         <div className="relative" ref={notifRef}>
           <button 
-            className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors"
+            className="relative p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
           >
             <Bell size={20} />
             {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white transition-colors"></span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 transition-colors"></span>
             )}
           </button>
 
           {/* Notifications Dropdown */}
           {isNotificationsOpen && (
-            <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden z-[60]">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50">
-                <h3 className="font-semibold text-slate-800 text-sm">Notifications</h3>
+            <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden z-[60]">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Notifications</h3>
                 {unreadCount > 0 && (
-                  <button onClick={handleMarkAllRead} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                  <button onClick={handleMarkAllRead} className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium">
                     Mark all read
                   </button>
                 )}
@@ -308,31 +308,31 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
               
               <div className="max-h-[300px] overflow-y-auto">
                 {isNotificationsLoading ? (
-                  <div className="px-4 py-6 text-sm text-slate-500 text-center">
+                  <div className="px-4 py-6 text-sm text-slate-500 dark:text-slate-400 text-center">
                     Loading notifications...
                   </div>
                 ) : notificationsError ? (
-                  <div className="px-4 py-6 text-sm text-slate-500 text-center">
+                  <div className="px-4 py-6 text-sm text-slate-500 dark:text-slate-400 text-center">
                     Unable to load notifications
                     <button onClick={fetchNotifications} className="block mt-2 text-blue-500 hover:underline mx-auto">Retry</button>
                   </div>
                 ) : notifications.length > 0 ? (
-                  <ul className="divide-y divide-slate-100">
+                  <ul className="divide-y divide-slate-100 dark:divide-slate-800">
                     {notifications.map(notif => (
                       <li key={notif.id}>
                         <button
                           onClick={() => handleNotificationClick(notif)}
-                          className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-start gap-3 ${!notif.read ? 'bg-blue-50/30' : ''}`}
+                          className={`w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors flex items-start gap-3 ${!notif.read ? 'bg-blue-50/30 dark:bg-blue-950/30' : ''}`}
                         >
                           <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!notif.read ? 'bg-blue-500' : 'bg-transparent'}`} />
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm ${!notif.read ? 'font-semibold text-slate-900' : 'font-medium text-slate-700'}`}>
+                            <p className={`text-sm ${!notif.read ? 'font-semibold text-slate-900 dark:text-slate-100' : 'font-medium text-slate-700 dark:text-slate-300'}`}>
                               {notif.title}
                             </p>
-                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
                               {notif.message}
                             </p>
-                            <p className="text-[10px] text-slate-400 mt-1">
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
                               {new Date(notif.createdAt).toLocaleString()}
                             </p>
                           </div>
@@ -341,17 +341,17 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
                     ))}
                   </ul>
                 ) : (
-                  <div className="px-4 py-8 text-sm text-slate-500 text-center flex flex-col items-center">
-                    <Bell className="w-8 h-8 text-slate-300 mb-2" />
+                  <div className="px-4 py-8 text-sm text-slate-500 dark:text-slate-400 text-center flex flex-col items-center">
+                    <Bell className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-2" />
                     No notifications
                   </div>
                 )}
               </div>
 
-              <div className="p-2 border-t border-slate-100 bg-slate-50/50">
+              <div className="p-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
                 <button 
                   onClick={() => { setIsNotificationsOpen(false); navigate('/admin/notifications'); }}
-                  className="w-full py-1.5 text-sm font-medium text-slate-700 hover:text-slate-900 text-center rounded-md hover:bg-slate-100 transition-colors"
+                  className="w-full py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   View All Notifications
                 </button>
@@ -361,13 +361,13 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
         </div>
 
         {/* Admin Profile Dropdown */}
-        <div className="relative pl-1 border-l border-slate-200" ref={profileRef}>
+        <div className="relative pl-1 border-l border-slate-200 dark:border-slate-800" ref={profileRef}>
           <button
             type="button"
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer group"
+            className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
           >
-            <div className="relative w-8 h-8 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+            <div className="relative w-8 h-8 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0">
               <img
                 src={adminUser?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"}
                 alt="Admin Avatar"
@@ -376,27 +376,27 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
                   (e.target as HTMLImageElement).src = "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin";
                 }}
               />
-              <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white" />
+              <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900" />
             </div>
 
             <div className="hidden md:flex flex-col text-left">
-              <span className="text-xs font-bold text-slate-800 leading-tight group-hover:text-blue-600 transition-colors">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                 {adminUser?.name || 'Super Admin'}
               </span>
-              <span className="text-[10px] text-slate-400 font-medium">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                 {adminUser?.designation || 'Administrator'}
               </span>
             </div>
 
-            <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 transition-transform" />
+            <ChevronDown size={14} className="text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-transform" />
           </button>
 
           {/* Dropdown Menu */}
           {isProfileOpen && (
-            <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-[70] animate-fadeIn">
-              <div className="p-4 border-b border-slate-100 bg-slate-50/70">
+            <div className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden z-[70] animate-fadeIn">
+              <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/70">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 shrink-0">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 shrink-0">
                     <img
                       src={adminUser?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"}
                       alt="Admin"
@@ -404,9 +404,9 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-slate-900 truncate">{adminUser?.name || 'Super Admin'}</p>
-                    <p className="text-xs text-slate-500 truncate">{adminUser?.email || 'admin@mediquee.com'}</p>
-                    <span className="inline-block mt-1 px-2 py-0.5 text-[9px] font-bold bg-blue-100 text-blue-700 rounded-full">
+                    <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{adminUser?.name || 'Super Admin'}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{adminUser?.email || 'admin@mediquee.com'}</p>
+                    <span className="inline-block mt-1 px-2 py-0.5 text-[9px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded-full">
                       SUPER ADMIN
                     </span>
                   </div>
@@ -420,9 +420,9 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
                     setIsProfileOpen(false);
                     navigate('/admin/settings?tab=profile');
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer text-left"
                 >
-                  <User size={15} className="text-slate-400" />
+                  <User size={15} className="text-slate-400 dark:text-slate-500" />
                   Admin Profile Settings
                 </button>
 
@@ -432,9 +432,9 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
                     setIsProfileOpen(false);
                     navigate('/admin/settings?tab=security');
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer text-left"
                 >
-                  <Shield size={15} className="text-slate-400" />
+                  <Shield size={15} className="text-slate-400 dark:text-slate-500" />
                   Security & Password
                 </button>
 
@@ -444,21 +444,21 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
                     setIsProfileOpen(false);
                     navigate('/admin/settings?tab=system');
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer text-left"
                 >
-                  <Settings size={15} className="text-slate-400" />
+                  <Settings size={15} className="text-slate-400 dark:text-slate-500" />
                   Platform System Settings
                 </button>
               </div>
 
-              <div className="p-1.5 border-t border-slate-100">
+              <div className="p-1.5 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => {
                     setIsProfileOpen(false);
                     logout();
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer text-left"
                 >
                   <LogOut size={15} />
                   Sign Out

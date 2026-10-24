@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
 @variant dark (&:where(.dark, .dark *));
 
 @theme {
@@ -27,17 +28,15 @@
     --input: #e2e8f0;
   }
   
-  .dark {
-    --background: #0f172a;
+  .dark, [data-theme="dark"] {
+    --background: #090e17;
     --foreground: #f8fafc;
-    --card: #1e293b;
+    --card: #0f172a;
     --card-foreground: #f8fafc;
-    --border: #334155;
-    --input: #334155;
+    --border: #1e293b;
+    --input: #1e293b;
   }
-}
 
-@layer base {
   * {
     border-color: var(--border);
   }
@@ -46,6 +45,167 @@
     color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
 
+/* ========================================================
+   COMPREHENSIVE DARK MODE OVERRIDES FOR ADMIN MODULES
+   Ensures all 46 admin pages, cards, tables, inputs, text,
+   and modals adapt with premium contrast and styling.
+   ======================================================== */
+
+.dark, [data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* Base Canvas & Containers */
+.dark body,
+.dark main {
+  background-color: #090e17 !important;
+  color: #f1f5f9;
+}
+
+/* Cards & Modals */
+.dark .bg-white {
+  background-color: #0f172a !important;
+  color: #f1f5f9;
+}
+
+.dark .bg-slate-50 {
+  background-color: #090e17 !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/60,
+.dark .bg-slate-50\/70,
+.dark .bg-slate-50\/80 {
+  background-color: #141f36 !important;
+}
+
+/* Borders & Dividers */
+.dark .border-slate-200,
+.dark .border-slate-100,
+.dark .border-slate-300 {
+  border-color: #1e293b !important;
+}
+
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1e293b !important;
+}
+
+/* Typography Hierarchy */
+.dark .text-slate-900,
+.dark .text-slate-800 {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-slate-400 {
+  color: #64748b !important;
+}
+
+.dark .text-slate-300 {
+  color: #475569 !important;
+}
+
+/* Table Enhancements */
+.dark thead {
+  background-color: #111a2e !important;
+}
+
+.dark table tbody tr {
+  border-color: #1e293b !important;
+}
+
+.dark table tbody tr:hover,
+.dark tr.hover\:bg-slate-50:hover,
+.dark tr:hover {
+  background-color: #16223b !important;
+}
+
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover {
+  background-color: #1e293b !important;
+}
+
+/* Form Controls & Inputs */
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark select,
+.dark textarea {
+  background-color: #131d31 !important;
+  color: #f8fafc !important;
+  border-color: #26354d !important;
+}
+
+.dark input:not([type="checkbox"]):not([type="radio"]):focus,
+.dark select:focus,
+.dark textarea:focus {
+  background-color: #16223a !important;
+  border-color: #3b82f6 !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Shadows in dark mode */
+.dark .shadow-xs,
+.dark .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .shadow-md,
+.dark .shadow-lg,
+.dark .shadow-xl,
+.dark .shadow-2xl {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Preserve & Enhance Status Badges in Dark Mode */
+.dark .bg-emerald-50 {
+  background-color: rgba(6, 78, 59, 0.3) !important;
+  color: #6ee7b7 !important;
+}
+
+.dark .bg-rose-50 {
+  background-color: rgba(136, 19, 55, 0.3) !important;
+  color: #fda4af !important;
+}
+
+.dark .bg-amber-50 {
+  background-color: rgba(120, 53, 15, 0.3) !important;
+  color: #fcd34d !important;
+}
+
+.dark .bg-blue-50 {
+  background-color: rgba(30, 58, 138, 0.3) !important;
+  color: #93c5fd !important;
+}
+
+.dark .bg-indigo-50 {
+  background-color: rgba(49, 46, 129, 0.3) !important;
+  color: #a5b4fc !important;
+}
+
+.dark .bg-purple-50 {
+  background-color: rgba(88, 28, 135, 0.3) !important;
+  color: #d8b4fe !important;
+}
