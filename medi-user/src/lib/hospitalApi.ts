@@ -31,6 +31,10 @@ export interface HospitalRecord {
   verified?: boolean;
   description?: string;
   doctorCount?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  distance?: number | null;
+  distanceText?: string | null;
 }
 
 export interface DoctorRecord {
@@ -54,6 +58,20 @@ export interface DoctorRecord {
   bio?: string;
   licenseNumber?: string;
   consultationFee?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  distance?: number | null;
+  distanceText?: string | null;
+  hospital?: {
+    id: string;
+    name: string;
+    address?: string;
+    city?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    distance?: number | null;
+    distanceText?: string | null;
+  };
   doctorSchedules?: Array<{
     dayOfWeek: string;
     isAvailable: boolean;
@@ -100,6 +118,11 @@ export interface LaboratoryRecord {
   rating: number;
   time: string;
   price: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  distance?: number | null;
+  distanceText?: string | null;
+  isHomeCollectionAvailable?: boolean;
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -120,6 +143,12 @@ export const hospitalApi = {
     specialtyId?: string;
     departmentId?: string;
     city?: string;
+    businessType?: string;
+    service?: string;
+    lat?: number;
+    lng?: number;
+    radius?: number;
+    nearbyOnly?: boolean;
   }): Promise<{ success: boolean; data?: HospitalRecord[]; error?: string }> {
     try {
       const url = new URL(`${API_BASE_URL}/hospitals`, window.location.origin);
@@ -128,6 +157,14 @@ export const hospitalApi = {
       if (params?.specialtyId) url.searchParams.set('specialtyId', params.specialtyId);
       if (params?.departmentId) url.searchParams.set('departmentId', params.departmentId);
       if (params?.city) url.searchParams.set('city', params.city);
+      if (params?.businessType) url.searchParams.set('businessType', params.businessType);
+      if (params?.service) url.searchParams.set('service', params.service);
+      if (params?.lat !== undefined && params?.lng !== undefined) {
+        url.searchParams.set('lat', String(params.lat));
+        url.searchParams.set('lng', String(params.lng));
+      }
+      if (params?.radius) url.searchParams.set('radius', String(params.radius));
+      if (params?.nearbyOnly !== undefined) url.searchParams.set('nearbyOnly', String(params.nearbyOnly));
 
       const res = await fetch(url.toString(), { headers: getAuthHeaders() });
       const json = await res.json();
@@ -212,6 +249,10 @@ export const doctorApi = {
     conditionId?: string;
     consultationType?: string;
     type?: string;
+    lat?: number;
+    lng?: number;
+    radius?: number;
+    nearbyOnly?: boolean;
   }): Promise<{ success: boolean; data?: DoctorRecord[]; error?: string }> {
     try {
       const url = new URL(`${API_BASE_URL}/doctors`, window.location.origin);
@@ -222,6 +263,12 @@ export const doctorApi = {
       if (params?.conditionId) url.searchParams.set('conditionId', params.conditionId);
       if (params?.consultationType) url.searchParams.set('consultationType', params.consultationType);
       if (params?.type) url.searchParams.set('type', params.type);
+      if (params?.lat !== undefined && params?.lng !== undefined) {
+        url.searchParams.set('lat', String(params.lat));
+        url.searchParams.set('lng', String(params.lng));
+      }
+      if (params?.radius) url.searchParams.set('radius', String(params.radius));
+      if (params?.nearbyOnly !== undefined) url.searchParams.set('nearbyOnly', String(params.nearbyOnly));
 
       const res = await fetch(url.toString(), { headers: getAuthHeaders() });
       const json = await res.json();
@@ -313,11 +360,28 @@ export const departmentApi = {
     }
   },
 
-  async getDepartmentDoctors(id: string, params?: { consultationType?: string; type?: string }): Promise<{ success: boolean; data?: DoctorRecord[]; error?: string }> {
+  async getDepartmentDoctors(
+    id: string,
+    params?: {
+      consultationType?: string;
+      type?: string;
+      lat?: number;
+      lng?: number;
+      radius?: number;
+      nearbyOnly?: boolean;
+    }
+  ): Promise<{ success: boolean; data?: DoctorRecord[]; error?: string }> {
     try {
       const url = new URL(`${API_BASE_URL}/departments/${id}/doctors`, window.location.origin);
       if (params?.consultationType) url.searchParams.set('consultationType', params.consultationType);
       if (params?.type) url.searchParams.set('type', params.type);
+      if (params?.lat !== undefined && params?.lng !== undefined) {
+        url.searchParams.set('lat', String(params.lat));
+        url.searchParams.set('lng', String(params.lng));
+      }
+      if (params?.radius) url.searchParams.set('radius', String(params.radius));
+      if (params?.nearbyOnly !== undefined) url.searchParams.set('nearbyOnly', String(params.nearbyOnly));
+
       const res = await fetch(url.toString(), { headers: getAuthHeaders() });
       const json = await res.json();
       if (!res.ok || !json.success) {
@@ -335,12 +399,22 @@ export const laboratoryApi = {
     search?: string;
     hospitalId?: string;
     location?: string;
+    lat?: number;
+    lng?: number;
+    radius?: number;
+    nearbyOnly?: boolean;
   }): Promise<{ success: boolean; data?: LaboratoryRecord[]; error?: string }> {
     try {
       const url = new URL(`${API_BASE_URL}/laboratories`, window.location.origin);
       if (params?.search) url.searchParams.set('search', params.search);
       if (params?.hospitalId) url.searchParams.set('hospitalId', params.hospitalId);
       if (params?.location) url.searchParams.set('location', params.location);
+      if (params?.lat !== undefined && params?.lng !== undefined) {
+        url.searchParams.set('lat', String(params.lat));
+        url.searchParams.set('lng', String(params.lng));
+      }
+      if (params?.radius) url.searchParams.set('radius', String(params.radius));
+      if (params?.nearbyOnly !== undefined) url.searchParams.set('nearbyOnly', String(params.nearbyOnly));
 
       const res = await fetch(url.toString(), { headers: getAuthHeaders() });
       const json = await res.json();

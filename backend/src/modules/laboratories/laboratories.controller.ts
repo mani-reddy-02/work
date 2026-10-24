@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
 import { sendNotification } from '../notifications/notifications.service';
+import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams } from '../../utils/geo';
 
 export const getLaboratories = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -17,6 +18,8 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
       ? req.query.location.trim()
       : ((typeof req.query.place === 'string' && req.query.place.trim() !== '' && req.query.place !== 'ALL') ? req.query.place.trim() : '');
     const verificationStatus = req.query.verificationStatus as string;
+
+    const geo = parseGeoParams(req.query);
 
     // Fetch authoritative counts for summary tiles (laboratories only, no hospitals or unrelated users)
     const [
@@ -60,7 +63,7 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
         hospWhere.id = hospitalId;
       }
 
-      if (location) {
+      if (location && !geo.hasCoords) {
         hospWhere.OR = [
           { city: { contains: location, mode: 'insensitive' } },
           { area: { contains: location, mode: 'insensitive' } },
@@ -103,6 +106,8 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
           city: true,
           state: true,
           pincode: true,
+          latitude: true,
+          longitude: true,
           services: true,
           hospitalShare: true,
           verificationStatus: true,
@@ -112,32 +117,46 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
         orderBy: { name: 'asc' }
       });
 
-      items.push(...standaloneHospitals.map(lab => ({
-        id: lab.id,
-        name: lab.name,
-        businessType: lab.businessType,
-        facilityType: lab.facilityType || 'Standalone Laboratory',
-        type: 'STANDALONE',
-        logoUrl: lab.logoUrl,
-        contactPhone: lab.contactPhone,
-        contactEmail: lab.contactEmail,
-        addressLine1: lab.addressLine1,
-        area: lab.area,
-        city: lab.city,
-        state: lab.state,
-        pincode: lab.pincode,
-        location: [lab.area, lab.city, lab.state].filter(Boolean).join(', ') || lab.city || 'India',
-        address: [lab.addressLine1, lab.area, lab.city].filter(Boolean).join(', ') || lab.city || 'India',
-        services: lab.services,
-        hospitalShare: lab.hospitalShare ?? null,
-        verificationStatus: lab.verificationStatus || 'APPROVED',
-        createdAt: lab.createdAt.toISOString(),
-        updatedAt: lab.updatedAt.toISOString(),
-        hospitalName: null,
-        hospitalId: null,
-        rating: 4.8,
-        time: 'Within 24 Hours'
-      })));
+      items.push(...standaloneHospitals.map(lab => {
+        let distance: number | null = null;
+        let distanceText: string | null = null;
+
+        if (geo.hasCoords && lab.latitude != null && lab.longitude != null) {
+          distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, lab.latitude, lab.longitude);
+          distanceText = formatDistanceText(distance);
+        }
+
+        return {
+          id: lab.id,
+          name: lab.name,
+          businessType: lab.businessType,
+          facilityType: lab.facilityType || 'Standalone Laboratory',
+          type: 'STANDALONE',
+          logoUrl: lab.logoUrl,
+          contactPhone: lab.contactPhone,
+          contactEmail: lab.contactEmail,
+          addressLine1: lab.addressLine1,
+          area: lab.area,
+          city: lab.city,
+          state: lab.state,
+          pincode: lab.pincode,
+          latitude: lab.latitude,
+          longitude: lab.longitude,
+          distance,
+          distanceText,
+          location: [lab.area, lab.city, lab.state].filter(Boolean).join(', ') || lab.city || 'India',
+          address: [lab.addressLine1, lab.area, lab.city].filter(Boolean).join(', ') || lab.city || 'India',
+          services: lab.services,
+          hospitalShare: lab.hospitalShare ?? null,
+          verificationStatus: lab.verificationStatus || 'APPROVED',
+          createdAt: lab.createdAt.toISOString(),
+          updatedAt: lab.updatedAt.toISOString(),
+          hospitalName: null,
+          hospitalId: null,
+          rating: 4.8,
+          time: 'Within 24 Hours'
+        };
+      }));
     }
 
     // 2. Fetch Hospital-Based Labs (stored in Lab model with type = HOSPITAL_BASED)
@@ -159,7 +178,7 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
         labWhere.hospitalId = hospitalId;
       }
 
-      if (location) {
+      if (location && !geo.hasCoords) {
         labWhere.OR = [
           { city: { contains: location, mode: 'insensitive' } },
           { state: { contains: location, mode: 'insensitive' } },
@@ -189,39 +208,61 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
         where: labWhere,
         include: {
           hospital: {
-            select: { id: true, name: true, city: true, state: true, addressLine1: true, contactPhone: true, contactEmail: true, hospitalShare: true }
+            select: { id: true, name: true, city: true, state: true, addressLine1: true, contactPhone: true, contactEmail: true, hospitalShare: true, latitude: true, longitude: true }
           }
         },
         orderBy: { name: 'asc' }
       });
 
-      items.push(...hospBasedLabs.map(lab => ({
-        id: lab.id,
-        name: lab.name,
-        businessType: 'HOSPITAL',
-        facilityType: 'Hospital-Based Laboratory',
-        type: 'HOSPITAL_BASED',
-        logoUrl: null,
-        contactPhone: lab.contactPhone || lab.hospital?.contactPhone || null,
-        contactEmail: lab.email || lab.hospital?.contactEmail || null,
-        addressLine1: lab.address || lab.hospital?.addressLine1 || null,
-        area: null,
-        city: lab.city || lab.hospital?.city || null,
-        state: lab.state || lab.hospital?.state || null,
-        pincode: lab.pinCode || null,
-        location: [lab.city || lab.hospital?.city, lab.state || lab.hospital?.state].filter(Boolean).join(', ') || 'India',
-        address: [lab.address || lab.hospital?.addressLine1, lab.city || lab.hospital?.city].filter(Boolean).join(', ') || 'India',
-        services: ['lab_tests', 'diagnostics'],
-        hospitalShare: lab.hospital?.hospitalShare ?? null,
-        verificationStatus: lab.verificationStatus || 'APPROVED',
-        createdAt: lab.createdAt.toISOString(),
-        updatedAt: lab.updatedAt.toISOString(),
-        hospitalName: lab.hospital?.name || null,
-        hospitalId: lab.hospital?.id || null,
-        hospital: lab.hospital,
-        rating: 4.8,
-        time: 'Within 24 Hours'
-      })));
+      items.push(...hospBasedLabs.map(lab => {
+        const lat = lab.latitude ?? lab.hospital?.latitude ?? null;
+        const lng = lab.longitude ?? lab.hospital?.longitude ?? null;
+        let distance: number | null = null;
+        let distanceText: string | null = null;
+
+        if (geo.hasCoords && lat != null && lng != null) {
+          distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, lat, lng);
+          distanceText = formatDistanceText(distance);
+        }
+
+        return {
+          id: lab.id,
+          name: lab.name,
+          businessType: 'HOSPITAL',
+          facilityType: 'Hospital-Based Laboratory',
+          type: 'HOSPITAL_BASED',
+          logoUrl: null,
+          contactPhone: lab.contactPhone || lab.hospital?.contactPhone || null,
+          contactEmail: lab.email || lab.hospital?.contactEmail || null,
+          addressLine1: lab.address || lab.hospital?.addressLine1 || null,
+          area: null,
+          city: lab.city || lab.hospital?.city || null,
+          state: lab.state || lab.hospital?.state || null,
+          pincode: lab.pinCode || null,
+          latitude: lat,
+          longitude: lng,
+          distance,
+          distanceText,
+          location: [lab.city || lab.hospital?.city, lab.state || lab.hospital?.state].filter(Boolean).join(', ') || 'India',
+          address: [lab.address || lab.hospital?.addressLine1, lab.city || lab.hospital?.city].filter(Boolean).join(', ') || 'India',
+          services: ['lab_tests', 'diagnostics'],
+          hospitalShare: lab.hospital?.hospitalShare ?? null,
+          verificationStatus: lab.verificationStatus || 'APPROVED',
+          createdAt: lab.createdAt.toISOString(),
+          updatedAt: lab.updatedAt.toISOString(),
+          hospitalName: lab.hospital?.name || null,
+          hospitalId: lab.hospital?.id || null,
+          hospital: lab.hospital,
+          rating: 4.8,
+          time: 'Within 24 Hours'
+        };
+      }));
+    }
+
+    // Apply strict location proximity filtering when nearby filtering is active
+    if (geo.hasCoords && geo.nearbyOnly) {
+      items = items.filter(l => l.distance !== null && l.distance <= geo.radius);
+      items.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
     }
 
     // Fetch minimum test prices and test counts for each lab
@@ -274,7 +315,10 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
         total: totalItems,
         page,
         limit,
-        totalPages: Math.ceil(totalItems / limit) || 1
+        totalPages: Math.ceil(totalItems / limit) || 1,
+        nearbyRadiusKm: geo.radius,
+        hasLocationFilter: geo.hasCoords && geo.nearbyOnly,
+        userLocation: geo.hasCoords ? { lat: geo.lat, lng: geo.lng } : null
       },
       summary: {
         total: totalLabCount,
@@ -431,6 +475,8 @@ export const getLaboratoryById = async (req: Request, res: Response, next: NextF
       state: hospitalLab?.state || labRecord?.state || '—',
       pincode: hospitalLab?.pincode || labRecord?.pinCode || null,
       pinCode: hospitalLab?.pincode || labRecord?.pinCode || null,
+      latitude: baseRecord.latitude ?? baseRecord.hospital?.latitude ?? null,
+      longitude: baseRecord.longitude ?? baseRecord.hospital?.longitude ?? null,
       country: hospitalLab?.country || 'India',
       location: [hospitalLab?.area, hospitalLab?.city || labRecord?.city, hospitalLab?.state || labRecord?.state].filter(Boolean).join(', ') || 'India',
       address: [hospitalLab?.addressLine1 || labRecord?.address, hospitalLab?.city || labRecord?.city].filter(Boolean).join(', ') || 'India',

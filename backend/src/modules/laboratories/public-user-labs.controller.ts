@@ -1,10 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
+import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams } from '../../utils/geo';
 
 export const getPublicLabTests = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { search, category, concern, laboratoryId, hospitalId, homeCollectionOnly } = req.query;
     const isHomeCollectionRequest = req.originalUrl.includes('home-sample-collection') || homeCollectionOnly === 'true';
+
+    const geo = parseGeoParams(req.query);
 
     const whereClause: any = {
       hospitalOfferings: {
@@ -43,6 +46,11 @@ export const getPublicLabTests = async (req: Request, res: Response, next: NextF
               ...(isHomeCollectionRequest ? { isHomeCollectionAvailable: true } : {}),
               ...(hospitalId ? { hospitalId: String(hospitalId) } : {}),
               ...(laboratoryId ? { hospitalId: String(laboratoryId) } : {})
+            },
+            include: {
+              hospital: {
+                select: { id: true, name: true, city: true, latitude: true, longitude: true }
+              }
             }
           }
         }
@@ -51,8 +59,18 @@ export const getPublicLabTests = async (req: Request, res: Response, next: NextF
       platformTests = [];
     }
 
-    const formattedTests = platformTests.map((pt: any) => {
-      const offerings = pt.hospitalOfferings || [];
+    let formattedTests = platformTests.map((pt: any) => {
+      let offerings = pt.hospitalOfferings || [];
+
+      // Filter offerings by nearby location if nearby filtering is active
+      if (geo.hasCoords && geo.nearbyOnly) {
+        offerings = offerings.filter((o: any) => {
+          if (!o.hospital || o.hospital.latitude == null || o.hospital.longitude == null) return false;
+          const dist = calculateHaversineDistanceKm(geo.lat!, geo.lng!, o.hospital.latitude, o.hospital.longitude);
+          return dist <= geo.radius;
+        });
+      }
+
       const minPrice = offerings.length > 0 ? offerings.reduce((min: number, o: any) => Math.min(min, o.price), Infinity) : Infinity;
       const minTat = offerings.length > 0 ? offerings.reduce((min: number, o: any) => Math.min(min, o.tatHours), Infinity) : Infinity;
       const anyHomeCollection = offerings.some((o: any) => o.isHomeCollectionAvailable);
@@ -172,8 +190,10 @@ export const getPublicLabCategories = async (req: Request, res: Response, next: 
 export const getEligibleLaboratories = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params; 
-    const { search, homeCollectionOnly } = req.query;
+    const { search, homeCollectionOnly, userCity, userAddress } = req.query;
     const isHomeCollectionRequest = req.originalUrl.includes('home-sample-collection') || homeCollectionOnly === 'true';
+
+    const geo = parseGeoParams(req.query);
 
     const pkg = await prisma.labPackage.findUnique({
       where: { id: String(id), status: 'Active' },
@@ -199,6 +219,19 @@ export const getEligibleLaboratories = async (req: Request, res: Response, next:
         return res.json({ success: true, data: [] });
       }
 
+      let distance: number | null = null;
+      let distanceText: string | null = null;
+      if (geo.hasCoords && pkg.hospital.latitude != null && pkg.hospital.longitude != null) {
+        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, pkg.hospital.latitude, pkg.hospital.longitude);
+        distanceText = formatDistanceText(distance);
+      }
+
+      if (geo.hasCoords && geo.nearbyOnly) {
+        if (distance === null || distance > geo.radius) {
+          return res.json({ success: true, data: [] });
+        }
+      }
+
       const lab = {
         id: pkg.hospital.id,
         name: pkg.hospital.name,
@@ -209,6 +242,10 @@ export const getEligibleLaboratories = async (req: Request, res: Response, next:
         contactEmail: pkg.hospital.contactEmail,
         location: pkg.hospital.city || 'Unknown',
         address: pkg.hospital.addressLine1 || 'Unknown',
+        latitude: pkg.hospital.latitude,
+        longitude: pkg.hospital.longitude,
+        distance,
+        distanceText,
         rating: 4.5,
         time: 'Open 24/7',
         price: pkg.packagePrice.toString(),
@@ -233,30 +270,58 @@ export const getEligibleLaboratories = async (req: Request, res: Response, next:
       }
     });
 
-    let labs = offerings.map((o: any) => ({
-      id: o.hospital.id,
-      name: o.hospital.name,
-      businessType: o.hospital.businessType,
-      facilityType: o.hospital.facilityType,
-      logoUrl: o.hospital.logoUrl,
-      contactPhone: o.hospital.contactPhone,
-      contactEmail: o.hospital.contactEmail,
-      location: o.hospital.city || 'Unknown',
-      address: o.hospital.addressLine1 || 'Unknown',
-      rating: 4.5,
-      time: 'Open 24/7',
-      price: o.price.toString(),
-      numericPrice: o.price,
-      homeCollectionAvailable: o.isHomeCollectionAvailable,
-      homeCollectionFee: o.homeCollectionFee
-    }));
+    let labs = offerings.map((o: any) => {
+      let distance: number | null = null;
+      let distanceText: string | null = null;
+      if (geo.hasCoords && o.hospital?.latitude != null && o.hospital?.longitude != null) {
+        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, o.hospital.latitude, o.hospital.longitude);
+        distanceText = formatDistanceText(distance);
+      }
+
+      return {
+        id: o.hospital.id,
+        name: o.hospital.name,
+        businessType: o.hospital.businessType,
+        facilityType: o.hospital.facilityType,
+        logoUrl: o.hospital.logoUrl,
+        contactPhone: o.hospital.contactPhone,
+        contactEmail: o.hospital.contactEmail,
+        location: [o.hospital.area, o.hospital.city].filter(Boolean).join(', ') || o.hospital.city || 'Unknown',
+        address: [o.hospital.addressLine1, o.hospital.area, o.hospital.city].filter(Boolean).join(', ') || 'Unknown',
+        latitude: o.hospital.latitude,
+        longitude: o.hospital.longitude,
+        distance,
+        distanceText,
+        rating: 4.5,
+        time: 'Open 24/7',
+        price: o.price.toString(),
+        numericPrice: o.price,
+        homeCollectionAvailable: o.isHomeCollectionAvailable,
+        homeCollectionFee: o.homeCollectionFee
+      };
+    });
+
+    // Apply strict location proximity filtering
+    if (geo.hasCoords && geo.nearbyOnly) {
+      labs = labs.filter((l: any) => l.distance !== null && l.distance <= geo.radius);
+      labs.sort((a: any, b: any) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+    }
 
     if (search) {
       const s = String(search).toLowerCase();
-      labs = labs.filter((l: any) => l.name.toLowerCase().includes(s));
+      labs = labs.filter((l: any) => l.name.toLowerCase().includes(s) || (l.location && l.location.toLowerCase().includes(s)));
     }
 
-    res.json({ success: true, data: labs });
+    res.json({
+      success: true,
+      data: labs,
+      meta: {
+        total: labs.length,
+        nearbyRadiusKm: geo.radius,
+        hasLocationFilter: geo.hasCoords && geo.nearbyOnly,
+        userLocation: geo.hasCoords ? { lat: geo.lat, lng: geo.lng } : null
+      }
+    });
   } catch (error) {
     next(error);
   }

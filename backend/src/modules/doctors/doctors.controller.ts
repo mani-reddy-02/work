@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Role } from '@prisma/client';
 import { checkAndExpireDoctorOverrides, computeDoctorLiveStatus } from './doctor-override.service';
+import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams } from '../../utils/geo';
 
 const ALL_TIME_SLOTS = [
   '09:00 AM',
@@ -140,7 +141,9 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
             name: true,
             city: true,
             addressLine1: true,
-            contactPhone: true
+            contactPhone: true,
+            latitude: true,
+            longitude: true
           }
         },
         department: {
@@ -157,9 +160,18 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
       orderBy: { name: 'asc' }
     });
 
-    res.json({
-      success: true,
-      data: doctors.map(doc => ({
+    const geo = parseGeoParams(req.query);
+
+    let mappedDoctors = doctors.map(doc => {
+      let distance: number | null = null;
+      let distanceText: string | null = null;
+
+      if (geo.hasCoords && doc.hospital?.latitude != null && doc.hospital?.longitude != null) {
+        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, doc.hospital.latitude, doc.hospital.longitude);
+        distanceText = formatDistanceText(distance);
+      }
+
+      return {
         id: doc.id,
         name: doc.name,
         specialization: doc.department?.name || doc.specialization || doc.designation || 'Not specified',
@@ -172,6 +184,10 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
         hospitalAddress: doc.hospital?.addressLine1 || doc.hospital?.city || 'Not specified',
         hospitalPhone: doc.hospital?.contactPhone || undefined,
         hospitalCity: doc.hospital?.city || undefined,
+        hospitalLatitude: doc.hospital?.latitude ?? null,
+        hospitalLongitude: doc.hospital?.longitude ?? null,
+        distance,
+        distanceText,
         departmentId: doc.departmentId,
         department: doc.department?.name || 'Not assigned',
         bio: doc.bio || undefined,
@@ -181,7 +197,24 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
         consultInfo: doc.bio || `Specialist in ${doc.department?.name || 'their field'} with extensive clinical experience in patient diagnostics and treatment.`,
         fees: doc.consultationFee ? `₹${doc.consultationFee}` : 'Not specified',
         rating: 4.8
-      }))
+      };
+    });
+
+    // Apply strict location proximity filtering
+    if (geo.hasCoords && geo.nearbyOnly) {
+      mappedDoctors = mappedDoctors.filter(d => d.distance !== null && d.distance <= geo.radius);
+      mappedDoctors.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+    }
+
+    res.json({
+      success: true,
+      data: mappedDoctors,
+      meta: {
+        total: mappedDoctors.length,
+        nearbyRadiusKm: geo.radius,
+        hasLocationFilter: geo.hasCoords && geo.nearbyOnly,
+        userLocation: geo.hasCoords ? { lat: geo.lat, lng: geo.lng } : null
+      }
     });
   } catch (error) {
     next(error);

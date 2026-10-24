@@ -41,6 +41,10 @@ export interface LaboratoryRecord {
   numericPrice: number;
   homeCollectionAvailable?: boolean;
   homeCollectionFee?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  distance?: number | null;
+  distanceText?: string | null;
 }
 
 export interface LabSlot {
@@ -206,11 +210,23 @@ export const labTestApi = {
 
   async getLaboratoriesForTest(
     testId: string,
-    params?: { search?: string }
+    params?: {
+      search?: string;
+      lat?: number;
+      lng?: number;
+      radius?: number;
+      nearbyOnly?: boolean;
+    }
   ): Promise<{ success: boolean; data?: LaboratoryRecord[]; error?: string }> {
     try {
       const q = new URLSearchParams();
       if (params?.search) q.append('search', params.search);
+      if (params?.lat !== undefined && params?.lng !== undefined) {
+        q.append('lat', String(params.lat));
+        q.append('lng', String(params.lng));
+      }
+      if (params?.radius) q.append('radius', String(params.radius));
+      if (params?.nearbyOnly !== undefined) q.append('nearbyOnly', String(params.nearbyOnly));
       const qs = q.toString() ? `?${q.toString()}` : '';
 
       const res = await fetch(`${API_BASE_URL}/lab-tests/${testId}/laboratories${qs}`, {

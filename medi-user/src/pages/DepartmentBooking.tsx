@@ -10,6 +10,7 @@ import { opAppointmentApi, type DoctorRecord } from '../lib/opAppointmentApi';
 import { getDiseaseIconUrl } from '../utils/diseaseIcons';
 import { getDepartmentImageUrl } from '../utils/departmentImages';
 import { useAuth } from '../lib/auth';
+import { useUIStore } from '../lib/uiStore';
 
 export interface SlotDateOption {
   label: string;
@@ -58,6 +59,7 @@ const DepartmentBooking: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { userLocation, setNearbyRadiusKm } = useUIStore();
 
   // Booking Flow State
   const [currentStep, setCurrentStep] = useState<BookingStep>('DEPARTMENT');
@@ -162,7 +164,11 @@ const DepartmentBooking: React.FC = () => {
     setSubmissionError(null);
     try {
       const res = await departmentApi.getDepartmentDoctors(dept.id, {
-        consultationType: type === 'VIDEO' ? 'video' : 'op'
+        consultationType: type === 'VIDEO' ? 'video' : 'op',
+        lat: userLocation.latitude ?? undefined,
+        lng: userLocation.longitude ?? undefined,
+        radius: userLocation.radiusKm,
+        nearbyOnly: true
       });
       if (res.success && Array.isArray(res.data)) {
         setDoctors(res.data);
@@ -568,15 +574,34 @@ const DepartmentBooking: React.FC = () => {
               ))}
             </div>
           ) : doctors.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-3">
-              <Stethoscope className="w-10 h-10 text-slate-300 mx-auto" />
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-10 text-center space-y-3">
+              <Building2 className="w-10 h-10 text-slate-300 mx-auto" />
               <h3 className="text-base font-bold text-slate-800">
-                No doctors currently available for {consultationType === 'VIDEO' ? 'video consultation' : 'in-person OP'} in {selectedDepartment.name}
+                No eligible hospitals or laboratories found near your selected location.
               </h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
-                No active specialists for this consultation mode are scheduled right now. Try switching consultation mode or browse another department.
+                No active specialists in {selectedDepartment.name} are currently found near <span className="font-semibold text-slate-700">{userLocation.label}</span> within {userLocation.radiusKm} km.
               </p>
-              <div className="flex justify-center gap-2 pt-2">
+              <div className="flex flex-wrap justify-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const btn = document.getElementById('desktop-location-selector') || document.getElementById('mobile-location-selector');
+                    btn?.click();
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-xs"
+                >
+                  Change Location
+                </button>
+                {userLocation.radiusKm < 50 && (
+                  <button
+                    type="button"
+                    onClick={() => setNearbyRadiusKm(50)}
+                    className="px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold hover:bg-blue-100"
+                  >
+                    Expand Radius (50 km)
+                  </button>
+                )}
                 <button
                   onClick={() => handleConsultationTypeChange(consultationType === 'OP' ? 'VIDEO' : 'OP')}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
@@ -585,7 +610,7 @@ const DepartmentBooking: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setCurrentStep('DEPARTMENT')}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors"
+                  className="px-4 py-2 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-50"
                 >
                   Browse Other Departments
                 </button>
@@ -595,6 +620,7 @@ const DepartmentBooking: React.FC = () => {
             <div className="space-y-3">
               {doctors.map((doctor) => {
                 const hasPhone = Boolean(doctor.hospitalPhone && doctor.hospitalPhone.trim());
+
                 return (
                   <div
                     key={doctor.id}

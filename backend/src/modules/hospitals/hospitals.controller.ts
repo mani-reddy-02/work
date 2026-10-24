@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Role, BusinessType } from '@prisma/client';
 import { checkAndExpireDoctorOverrides } from '../doctors/doctor-override.service';
+import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams } from '../../utils/geo';
 
 export const getHospitals = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -11,6 +12,10 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
     const departmentId = typeof req.query.departmentId === 'string' ? req.query.departmentId.trim() : '';
     const city = typeof req.query.city === 'string' ? req.query.city.trim() : '';
     const location = typeof req.query.location === 'string' ? req.query.location.trim() : '';
+    const service = typeof req.query.service === 'string' ? req.query.service.trim() : '';
+    const businessType = typeof req.query.businessType === 'string' ? req.query.businessType.trim() : '';
+
+    const geo = parseGeoParams(req.query);
 
     let targetSpecialtyId = specialtyId;
     if (conditionId && !targetSpecialtyId) {
@@ -23,7 +28,21 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
       }
     }
 
-    const whereClause: any = {};
+    const whereClause: any = {
+      verificationStatus: { in: ['APPROVED', 'VERIFIED'] }
+    };
+
+    // Filter by businessType if provided, otherwise default to HOSPITAL for hospital endpoints
+    if (businessType && (businessType === 'HOSPITAL' || businessType === 'LABORATORY')) {
+      whereClause.businessType = businessType as BusinessType;
+    } else if (!req.query.allowAllBusinessTypes) {
+      // By default, hospital discovery only returns actual hospitals, not standalone labs
+      whereClause.businessType = BusinessType.HOSPITAL;
+    }
+
+    if (service) {
+      whereClause.services = { has: service };
+    }
 
     if (search) {
       whereClause.OR = [
@@ -39,7 +58,7 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
       whereClause.city = { contains: city, mode: 'insensitive' };
     }
 
-    if (location) {
+    if (location && !geo.hasCoords) {
       whereClause.OR = [
         ...(whereClause.OR || []),
         { city: { contains: location, mode: 'insensitive' } },
@@ -67,7 +86,7 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
     // Enforce strict disease-driven filter: if conditionId was passed but no targetSpecialtyId was resolved, 
     // it means the disease doesn't exist or isn't mapped, so return empty.
     if (conditionId && !targetSpecialtyId) {
-      return res.json({ success: true, data: [] });
+      return res.json({ success: true, data: [], meta: { total: 0 } });
     }
 
     let hospitals = await prisma.hospital.findMany({
@@ -96,29 +115,58 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
       orderBy: { name: 'asc' }
     });
 
-    // Enforce strict filtering: if no hospitals match the condition/specialty, return empty array.
+    let formatted = hospitals.map(h => {
+      let distance: number | null = null;
+      let distanceText: string | null = null;
 
-    const formatted = hospitals.map(h => ({
-      id: h.id,
-      name: h.name,
-      businessType: h.businessType,
-      facilityType: h.facilityType,
-      registrationNumber: h.registrationNumber,
-      logoUrl: h.logoUrl,
-      contactPhone: h.contactPhone,
-      contactEmail: h.contactEmail,
-      addressLine1: h.addressLine1,
-      area: h.area,
-      city: h.city,
-      state: h.state,
-      pincode: h.pincode,
-      services: h.services,
-      departments: h.departments.map(d => d.name),
-      departmentList: h.departments,
-      doctorCount: h._count.users
-    }));
+      if (geo.hasCoords && h.latitude != null && h.longitude != null) {
+        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, h.latitude, h.longitude);
+        distanceText = formatDistanceText(distance);
+      }
 
-    res.json({ success: true, data: formatted });
+      return {
+        id: h.id,
+        name: h.name,
+        businessType: h.businessType,
+        facilityType: h.facilityType,
+        registrationNumber: h.registrationNumber,
+        logoUrl: h.logoUrl,
+        contactPhone: h.contactPhone,
+        contactEmail: h.contactEmail,
+        addressLine1: h.addressLine1,
+        area: h.area,
+        city: h.city,
+        state: h.state,
+        pincode: h.pincode,
+        latitude: h.latitude,
+        longitude: h.longitude,
+        distance,
+        distanceText,
+        services: h.services,
+        departments: h.departments.map(d => d.name),
+        departmentList: h.departments,
+        doctorCount: h._count.users
+      };
+    });
+
+    // Apply strict location proximity filtering when nearby filtering is active
+    if (geo.hasCoords && geo.nearbyOnly) {
+      // Exclude providers with missing/invalid coordinates or outside configured radius
+      formatted = formatted.filter(h => h.distance !== null && h.distance <= geo.radius);
+      // Sort ascending by distance (nearest first)
+      formatted.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+    }
+
+    res.json({
+      success: true,
+      data: formatted,
+      meta: {
+        total: formatted.length,
+        nearbyRadiusKm: geo.radius,
+        hasLocationFilter: geo.hasCoords && geo.nearbyOnly,
+        userLocation: geo.hasCoords ? { lat: geo.lat, lng: geo.lng } : null
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -176,6 +224,8 @@ export const getHospitalById = async (req: Request, res: Response, next: NextFun
         city: hospital.city,
         state: hospital.state,
         pincode: hospital.pincode,
+        latitude: hospital.latitude,
+        longitude: hospital.longitude,
         services: hospital.services,
         departments: hospital.departments.map(d => d.name),
         departmentList: hospital.departments,

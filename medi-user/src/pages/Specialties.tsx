@@ -12,6 +12,7 @@ import HowItWorks from '../components/HowItWorks';
 import KnowYourDiseaseModal from '../components/KnowYourDiseaseModal';
 import { useAuth } from '../lib/auth';
 import { opAppointmentApi, doctorApi, type DoctorRecord } from '../lib/opAppointmentApi';
+import { useUIStore } from '../lib/uiStore';
 
 // --- 5-STEP HOW IT WORKS DATA ---
 const opBookingStepsData = [
@@ -226,6 +227,7 @@ const Specialties = () => {
   const isVideo = typeParam === 'video-consult' || typeParam === 'doctor' || typeParam === 'video';
   const consultationTypeQuery = isVideo ? 'video' : 'op';
   const { user } = useAuth();
+  const { userLocation, setNearbyRadiusKm } = useUIStore();
 
   // State Management
   const [view, setView] = useState<ViewState>('LANDING');
@@ -398,7 +400,7 @@ const Specialties = () => {
     return () => { mounted = false; };
   }, [consultationTypeQuery]);
 
-  // Step 2: Fetch eligible doctors directly using selected disease and consultation type
+  // Step 2: Fetch eligible doctors directly using selected disease, consultation type, and user location
   useEffect(() => {
     if (view === 'DOCTOR_LIST' || view === 'DOCTOR_PROFILE') {
       let active = true;
@@ -409,25 +411,38 @@ const Specialties = () => {
         conditionId: selectedDisease?.id,
         specialtyId: selectedDisease?.specialtyId,
         consultationType: consultationTypeQuery,
-        type: consultationTypeQuery
+        type: consultationTypeQuery,
+        lat: userLocation.latitude ?? undefined,
+        lng: userLocation.longitude ?? undefined,
+        radius: userLocation.radiusKm,
+        nearbyOnly: true
       }).then((res) => {
         if (active) {
           setIsDoctorsLoading(false);
           if (res.success && Array.isArray(res.data)) {
             setDoctorsList(res.data);
+            // Invalidate selectedDoctor if no longer nearby / eligible under new location
+            if (selectedDoctor && !res.data.some(d => d.id === selectedDoctor.id)) {
+              setSelectedDoctor(null);
+              setSelectedTime('');
+            }
           } else {
             setDoctorsList([]);
+            setSelectedDoctor(null);
+            setSelectedTime('');
           }
         }
       }).catch(() => {
         if (active) {
           setIsDoctorsLoading(false);
           setDoctorsList([]);
+          setSelectedDoctor(null);
+          setSelectedTime('');
         }
       });
       return () => { active = false; };
     }
-  }, [view, selectedDisease, doctorSearch, consultationTypeQuery]);
+  }, [view, selectedDisease, doctorSearch, consultationTypeQuery, userLocation.latitude, userLocation.longitude, userLocation.radiusKm]);
 
   // Step 3: Fetch real doctor availability when selecting slot
   useEffect(() => {
@@ -1165,18 +1180,50 @@ const Specialties = () => {
         )}
 
         {!isDoctorsLoading && docs.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
-            <User className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-[15px] text-slate-700 font-bold">No Eligible Doctors Found</p>
-            <p className="text-[12px] text-slate-500 mt-1 max-w-sm mx-auto">
-              There are currently no active doctors available for "{diseaseTitle}" under {isVideo ? 'Video Consultation' : 'OP Consultation'}.
+          <div className="text-center py-12 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm max-w-xl mx-auto">
+            <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <h3 className="text-[15px] sm:text-base text-slate-900 font-extrabold">
+              No eligible hospitals or laboratories found near your selected location.
+            </h3>
+            <p className="text-[12px] text-slate-500 mt-1.5 max-w-sm mx-auto leading-relaxed">
+              We couldn't find active specialists near <span className="font-semibold text-slate-700">{userLocation.label}</span> within {userLocation.radiusKm} km for "{diseaseTitle}".
             </p>
-            <button
-              onClick={handleBack}
-              className="mt-4 px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-colors shadow-xs"
-            >
-              Choose Different Disease
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-2.5 mt-5">
+              <button
+                type="button"
+                onClick={() => {
+                  const btn = document.getElementById('desktop-location-selector') || document.getElementById('mobile-location-selector');
+                  btn?.click();
+                }}
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-colors shadow-xs"
+              >
+                Change Location
+              </button>
+              {userLocation.radiusKm < 50 && (
+                <button
+                  type="button"
+                  onClick={() => setNearbyRadiusKm(50)}
+                  className="px-4 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 font-bold text-xs hover:bg-blue-100 transition-colors"
+                >
+                  Expand Radius (50 km)
+                </button>
+              )}
+              {userLocation.radiusKm < 100 && userLocation.radiusKm >= 50 && (
+                <button
+                  type="button"
+                  onClick={() => setNearbyRadiusKm(100)}
+                  className="px-4 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 font-bold text-xs hover:bg-blue-100 transition-colors"
+                >
+                  Expand Radius (100 km)
+                </button>
+              )}
+              <button
+                onClick={handleBack}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-colors"
+              >
+                Choose Different Disease
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
@@ -1237,11 +1284,13 @@ const Specialties = () => {
                       <div className="flex items-start gap-1.5 text-slate-700">
                         <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
                         <div className="min-w-0 flex-1">
-                          <span className="font-bold text-slate-800 text-[12px] block truncate">
-                            {doc.hospitalName}
-                          </span>
+                          <div className="flex items-center justify-between gap-1 flex-wrap">
+                            <span className="font-bold text-slate-800 text-[12px] block truncate">
+                              {doc.hospitalName}
+                            </span>
+                          </div>
                           {doc.hospitalAddress && doc.hospitalAddress !== 'Not specified' && (
-                            <span className="text-[11px] text-slate-500 flex items-center gap-1 truncate">
+                            <span className="text-[11px] text-slate-500 flex items-center gap-1 truncate mt-0.5">
                               <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
                               {doc.hospitalAddress}
                             </span>

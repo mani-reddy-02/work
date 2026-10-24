@@ -3,6 +3,7 @@ import { prisma } from '../../config/prisma';
 import { Role, Prisma } from '@prisma/client';
 import path from 'path';
 import fs from 'fs';
+import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams } from '../../utils/geo';
 
 const UPLOADS_DIR = path.join(__dirname, '../../../../uploads/icons');
 if (!fs.existsSync(UPLOADS_DIR)) {
@@ -240,6 +241,8 @@ export const getDepartmentDoctors = async (req: Request, res: Response, next: Ne
       };
     }
 
+    const geo = parseGeoParams(req.query);
+
     const doctors = await prisma.user.findMany({
       where: whereClause,
       select: {
@@ -264,7 +267,9 @@ export const getDepartmentDoctors = async (req: Request, res: Response, next: Ne
             name: true,
             city: true,
             addressLine1: true,
-            contactPhone: true
+            contactPhone: true,
+            latitude: true,
+            longitude: true
           }
         },
         department: {
@@ -277,9 +282,15 @@ export const getDepartmentDoctors = async (req: Request, res: Response, next: Ne
       orderBy: { name: 'asc' }
     });
 
-    res.json({
-      success: true,
-      data: doctors.map(doc => ({
+    let formatted = doctors.map(doc => {
+      let distance: number | null = null;
+      let distanceText: string | null = null;
+      if (geo.hasCoords && doc.hospital?.latitude != null && doc.hospital?.longitude != null) {
+        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, doc.hospital.latitude, doc.hospital.longitude);
+        distanceText = formatDistanceText(distance);
+      }
+
+      return {
         id: doc.id,
         name: doc.name,
         specialization: doc.department?.name || doc.specialization || doc.designation || 'Not specified',
@@ -300,7 +311,34 @@ export const getDepartmentDoctors = async (req: Request, res: Response, next: Ne
         consultationFee: doc.consultationFee ?? undefined,
         consultInfo: doc.bio || `Specialist in ${doc.department?.name || 'their field'} with extensive clinical experience in patient diagnostics and treatment.`,
         fees: doc.consultationFee ? `₹${doc.consultationFee}` : 'Not specified',
-      }))
+        latitude: doc.hospital?.latitude ?? null,
+        longitude: doc.hospital?.longitude ?? null,
+        distance,
+        distanceText,
+        hospital: doc.hospital ? {
+          ...doc.hospital,
+          distance,
+          distanceText
+        } : undefined
+      };
+    });
+
+    if (geo.hasCoords && geo.nearbyOnly) {
+      formatted = formatted.filter(d => d.distance !== null && d.distance <= geo.radius);
+    }
+
+    if (geo.hasCoords) {
+      formatted.sort((a, b) => {
+        if (a.distance !== null && b.distance !== null) return a.distance - b.distance;
+        if (a.distance !== null) return -1;
+        if (b.distance !== null) return 1;
+        return 0;
+      });
+    }
+
+    res.json({
+      success: true,
+      data: formatted
     });
   } catch (error) { next(error); }
 };

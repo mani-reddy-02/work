@@ -3,6 +3,7 @@ import { prisma } from '../../config/prisma';
 import { Prisma } from '@prisma/client';
 import { Role } from '@prisma/client';
 import { sendNotification } from '../notifications/notifications.service';
+import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams } from '../../utils/geo';
 
 // Generate unique human-readable booking number
 const generateBookingNumber = (): string => {
@@ -147,6 +148,8 @@ export const getNursingServiceById = async (req: Request, res: Response, next: N
       });
     }
 
+    const geo = parseGeoParams(req.query);
+
     // Fetch offering hospitals info
     const hospitalIds = service.offerings.map((o) => o.hospitalId);
     const hospitals = await prisma.hospital.findMany({
@@ -159,13 +162,23 @@ export const getNursingServiceById = async (req: Request, res: Response, next: N
         addressLine1: true,
         contactPhone: true,
         logoUrl: true,
+        latitude: true,
+        longitude: true,
       },
     });
 
     const hospitalMap = new Map(hospitals.map((h) => [h.id, h]));
 
-    const providers = service.offerings.map((o) => {
+    let providers = service.offerings.map((o) => {
       const h = hospitalMap.get(o.hospitalId);
+      let distance: number | null = null;
+      let distanceText: string | null = null;
+
+      if (geo.hasCoords && h?.latitude != null && h?.longitude != null) {
+        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, h.latitude, h.longitude);
+        distanceText = formatDistanceText(distance);
+      }
+
       return {
         id: o.hospitalId,
         offeringId: o.id,
@@ -174,12 +187,21 @@ export const getNursingServiceById = async (req: Request, res: Response, next: N
         address: h?.addressLine1 || '',
         contactPhone: h?.contactPhone || '',
         logoUrl: h?.logoUrl || null,
+        latitude: h?.latitude ?? null,
+        longitude: h?.longitude ?? null,
+        distance,
+        distanceText,
         price: `₹${o.price.toLocaleString('en-IN')}`,
         numericPrice: o.price,
         duration: o.duration || service.duration,
         serviceArea: o.serviceArea || 'Standard Service Area',
       };
     });
+
+    if (geo.hasCoords && geo.nearbyOnly) {
+      providers = providers.filter(p => p.distance !== null && p.distance <= geo.radius);
+      providers.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+    }
 
     res.json({
       success: true,

@@ -38,6 +38,7 @@ import {
 import { profileApi } from '../lib/profileApi';
 import HowItWorks from '../components/HowItWorks';
 import { getTestIcon, getHealthConcernIcon, parseDatePill } from '../lib/optimizedTestIcons';
+import { useUIStore } from '../lib/uiStore';
 
 const homeSampleStepsData = [
   { id: '01', title: 'Select Test', desc: 'Browse or search diagnostic tests for home sample collection.', icon: TestTube },
@@ -76,6 +77,7 @@ type ViewState =
 const HomeSampleList = () => {
   const navigate = useNavigate();
   const { profile } = useProfile();
+  const { userLocation, setNearbyRadiusKm } = useUIStore();
   
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
@@ -288,14 +290,19 @@ const HomeSampleList = () => {
     setIsLoadingLabs(true);
     setLabError(null);
     try {
-      const res = await homeSampleCollectionApi.getEligibleLaboratories(testId);
+      const res = await homeSampleCollectionApi.getEligibleLaboratories(testId, {
+        lat: userLocation.latitude ?? undefined,
+        lng: userLocation.longitude ?? undefined,
+        radius: userLocation.radiusKm,
+        nearbyOnly: true
+      });
       if (res.success && res.data && res.data.length > 0) {
         setLaboratories(res.data);
         setSelectedLab(res.data[0]);
       } else {
         setLaboratories([]);
         setSelectedLab(null);
-        setLabError(res.error || 'No laboratories currently offer Home Sample Collection for this test.');
+        setLabError(res.error || 'No eligible hospitals or laboratories found near your selected location.');
       }
     } catch {
       setLabError('Unable to load laboratories. Please try again.');
@@ -303,6 +310,13 @@ const HomeSampleList = () => {
       setIsLoadingLabs(false);
     }
   };
+
+  // Reload laboratories if user updates location while viewing lab list
+  useEffect(() => {
+    if (viewState === 'HOME_COLLECTION' && selectedItem?.id) {
+      loadEligibleLaboratories(selectedItem.id);
+    }
+  }, [userLocation.latitude, userLocation.longitude, userLocation.radiusKm]);
 
   // Load slots dynamically when lab or date changes
   const loadSlots = async (labId: string, dateStr: string) => {
@@ -1069,16 +1083,43 @@ const HomeSampleList = () => {
                   <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
                   <p className="text-xs text-slate-500 font-medium">Checking eligible laboratories...</p>
                 </div>
-              ) : labError ? (
-                <div className="bg-white p-6 rounded-2xl border border-amber-200 text-center space-y-3">
-                  <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
-                  <p className="text-xs text-slate-700 font-bold">{labError}</p>
-                  <button
-                    onClick={() => selectedItem?.id && loadEligibleLaboratories(selectedItem.id)}
-                    className="text-xs text-blue-600 font-bold hover:underline"
-                  >
-                    Retry
-                  </button>
+              ) : labError || laboratories.length === 0 ? (
+                <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/90 text-center space-y-3 shadow-xs">
+                  <Building2 className="w-10 h-10 text-slate-300 mx-auto" />
+                  <p className="text-sm font-bold text-slate-800">
+                    No eligible hospitals or laboratories found near your selected location.
+                  </p>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                    We couldn't find accredited laboratories providing Home Sample Collection near <span className="font-semibold text-slate-700">{userLocation.label}</span> within {userLocation.radiusKm} km.
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const btn = document.getElementById('desktop-location-selector') || document.getElementById('mobile-location-selector');
+                        btn?.click();
+                      }}
+                      className="px-3.5 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-xs"
+                    >
+                      Change Location
+                    </button>
+                    {userLocation.radiusKm < 50 && (
+                      <button
+                        type="button"
+                        onClick={() => setNearbyRadiusKm(50)}
+                        className="px-3.5 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold hover:bg-blue-100"
+                      >
+                        Expand Radius (50 km)
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => selectedItem?.id && loadEligibleLaboratories(selectedItem.id)}
+                      className="px-3.5 py-1.5 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50"
+                    >
+                      Retry
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3 mb-6">
@@ -1114,13 +1155,21 @@ const HomeSampleList = () => {
                               <Building2 className="w-5 h-5" />
                             </div>
                             <div className="flex-1">
-                              <h3 className="text-[13px] font-bold text-slate-900 leading-tight">
-                                {lab.name}
-                              </h3>
+                              <div className="flex items-start justify-between gap-2">
+                                <h3 className="text-[13px] font-bold text-slate-900 leading-tight">
+                                  {lab.name}
+                                </h3>
+                                {lab.distanceText && (
+                                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-[10px] flex items-center gap-0.5 shrink-0">
+                                    <MapPin className="w-3 h-3 text-emerald-600" />
+                                    {lab.distanceText}
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                                 {lab.location || lab.address || 'NABL Certified Lab'}
                               </p>
-                              <div className="flex items-center gap-3 mt-2 text-[11px]">
+                              <div className="flex items-center gap-3 mt-2 text-[11px] flex-wrap">
                                 <span className="font-black text-blue-600">{lab.price}</span>
                                 <span className="text-slate-400">•</span>
                                 <span className="font-semibold text-emerald-600">

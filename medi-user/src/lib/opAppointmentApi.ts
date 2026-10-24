@@ -41,6 +41,10 @@ export interface HospitalRecord {
   verified?: boolean;
   description?: string;
   doctorCount?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  distance?: number | null;
+  distanceText?: string | null;
 }
 
 export interface DoctorRecord {
@@ -64,6 +68,20 @@ export interface DoctorRecord {
   bio?: string;
   licenseNumber?: string;
   consultationFee?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  distance?: number | null;
+  distanceText?: string | null;
+  hospital?: {
+    id: string;
+    name: string;
+    address?: string;
+    city?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    distance?: number | null;
+    distanceText?: string | null;
+  };
   doctorSchedules?: Array<{
     dayOfWeek: string;
     isAvailable: boolean;
@@ -199,11 +217,26 @@ export const opAppointmentApi = {
     conditionId?: string;
     consultationType?: string;
     type?: string;
+    lat?: number;
+    lng?: number;
+    radius?: number;
+    nearbyOnly?: boolean;
   }): Promise<{ success: boolean; data?: DoctorRecord[]; error?: string }> {
     return doctorApi.getDoctors(params);
   },
 
-  async fetchHospitals(search?: string, conditionId?: string): Promise<{
+  async fetchHospitals(
+    search?: string,
+    conditionId?: string,
+    geoParams?: {
+      lat?: number;
+      lng?: number;
+      radius?: number;
+      nearbyOnly?: boolean;
+      service?: string;
+      businessType?: string;
+    }
+  ): Promise<{
     success: boolean;
     data?: HospitalRecord[];
     error?: string;
@@ -212,6 +245,14 @@ export const opAppointmentApi = {
       const url = new URL(`${API_BASE_URL}/hospitals`, window.location.origin);
       if (search) url.searchParams.set('search', search);
       if (conditionId) url.searchParams.set('conditionId', conditionId);
+      if (geoParams?.lat !== undefined && geoParams?.lng !== undefined) {
+        url.searchParams.set('lat', String(geoParams.lat));
+        url.searchParams.set('lng', String(geoParams.lng));
+      }
+      if (geoParams?.radius) url.searchParams.set('radius', String(geoParams.radius));
+      if (geoParams?.nearbyOnly !== undefined) url.searchParams.set('nearbyOnly', String(geoParams.nearbyOnly));
+      if (geoParams?.service) url.searchParams.set('service', geoParams.service);
+      if (geoParams?.businessType) url.searchParams.set('businessType', geoParams.businessType);
 
       const res = await fetch(url.toString(), {
         headers: getAuthHeaders(),
