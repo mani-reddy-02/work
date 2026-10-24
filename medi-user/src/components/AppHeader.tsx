@@ -279,6 +279,46 @@ const AppHeader = ({ className }: { className?: string }) => {
               </div>
             </div>
 
+            {/* Quick City Selector */}
+            <div className="pt-0.5">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] font-semibold text-slate-500">Popular Localities:</span>
+                {userLocation.city?.toLowerCase() === 'hyderabad' && (
+                  <span className="text-[10px] text-amber-700 font-medium">In Madanapalle? Tap below</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {[
+                  { name: 'Madanapalle, Andhra Pradesh', label: '📍 Madanapalle', lat: 13.5560, lng: 78.5010, city: 'Madanapalle' },
+                  { name: 'Near Uppal, Hyderabad', label: 'Hyderabad', lat: 17.4018, lng: 78.5602, city: 'Hyderabad' },
+                  { name: 'Tirupati, Andhra Pradesh', label: 'Tirupati', lat: 13.6288, lng: 79.4192, city: 'Tirupati' },
+                  { name: 'Alur Road, Adoni', label: 'Adoni', lat: 15.6150, lng: 77.2950, city: 'Adoni' },
+                  { name: 'Ramchandranagar, Mantralayam', label: 'Mantralayam', lat: 15.9388, lng: 77.4269, city: 'Mantralayam' }
+                ].map((c) => {
+                  const isCur = userLocation.label.includes(c.city) || (userLocation.city && userLocation.city.toLowerCase() === c.city.toLowerCase());
+                  return (
+                    <button
+                      key={c.name}
+                      type="button"
+                      onClick={() => {
+                        setManualLocation(c.name, c.lat, c.lng, c.city);
+                        setShowLocationModal(false);
+                        setLocationSearch('');
+                      }}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer",
+                        isCur
+                          ? "bg-primary text-white border-primary shadow-2xs font-bold"
+                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                      )}
+                    >
+                      {c.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Search Input */}
             <div className="relative pt-1">
               <div className="absolute inset-y-0 left-0 pl-3 pt-1 flex items-center pointer-events-none">

@@ -12,6 +12,14 @@ export interface LocalityItem {
 }
 
 export const KNOWN_LOCALITIES: LocalityItem[] = [
+  { name: 'Madanapalle, Andhra Pradesh', locality: 'Madanapalle', city: 'Madanapalle', state: 'Andhra Pradesh', lat: 13.5560, lng: 78.5010 },
+  { name: 'BT College, Madanapalle', locality: 'BT College', city: 'Madanapalle', state: 'Andhra Pradesh', lat: 13.5510, lng: 78.5030 },
+  { name: 'Neerugattuvaripalli, Madanapalle', locality: 'Neerugattuvaripalli', city: 'Madanapalle', state: 'Andhra Pradesh', lat: 13.5620, lng: 78.4980 },
+  { name: 'CTM Road, Madanapalle', locality: 'CTM Road', city: 'Madanapalle', state: 'Andhra Pradesh', lat: 13.5580, lng: 78.5050 },
+  { name: 'Basinikonda, Madanapalle', locality: 'Basinikonda', city: 'Madanapalle', state: 'Andhra Pradesh', lat: 13.5420, lng: 78.5120 },
+  { name: 'Tirupati, Andhra Pradesh', locality: 'Tirupati', city: 'Tirupati', state: 'Andhra Pradesh', lat: 13.6288, lng: 79.4192 },
+  { name: 'Chittoor, Andhra Pradesh', locality: 'Chittoor', city: 'Chittoor', state: 'Andhra Pradesh', lat: 13.2172, lng: 79.1003 },
+  { name: 'Kadapa, Andhra Pradesh', locality: 'Kadapa', city: 'Kadapa', state: 'Andhra Pradesh', lat: 14.4673, lng: 78.8242 },
   { name: 'Near Uppal, Hyderabad', locality: 'Uppal', city: 'Hyderabad', state: 'Telangana', lat: 17.4018, lng: 78.5602 },
   { name: 'Jubilee Hills, Hyderabad', locality: 'Jubilee Hills', city: 'Hyderabad', state: 'Telangana', lat: 17.4325, lng: 78.4071 },
   { name: 'Banjara Hills, Hyderabad', locality: 'Banjara Hills', city: 'Hyderabad', state: 'Telangana', lat: 17.4168, lng: 78.4485 },
@@ -25,7 +33,6 @@ export const KNOWN_LOCALITIES: LocalityItem[] = [
   { name: 'Alur Road, Adoni', locality: 'Alur Road', city: 'Adoni', state: 'Andhra Pradesh', lat: 15.6150, lng: 77.2950 },
   { name: 'Narayanapuram, Adoni', locality: 'Narayanapuram', city: 'Adoni', state: 'Andhra Pradesh', lat: 15.6322, lng: 77.2728 },
   { name: 'Ramchandranagar, Mantralayam', locality: 'Ramchandranagar', city: 'Mantralayam', state: 'Andhra Pradesh', lat: 15.9388, lng: 77.4269 },
-  { name: 'Tirupati, Andhra Pradesh', locality: 'Tirupati', city: 'Tirupati', state: 'Andhra Pradesh', lat: 13.6288, lng: 79.4192 },
   { name: 'Bengaluru, Karnataka', locality: 'Bengaluru', city: 'Bengaluru', state: 'Karnataka', lat: 12.9716, lng: 77.5946 },
   { name: 'Chennai, Tamil Nadu', locality: 'Chennai', city: 'Chennai', state: 'Tamil Nadu', lat: 13.0827, lng: 80.2707 },
   { name: 'Kurnool, Andhra Pradesh', locality: 'Kurnool', city: 'Kurnool', state: 'Andhra Pradesh', lat: 15.8281, lng: 78.0373 },
@@ -104,7 +111,20 @@ export async function reverseGeocodeCoords(
     };
   }
 
-  // 2. Fetch from OpenStreetMap Nominatim reverse geocoding API
+  // 2. Query authoritative backend reverse-geocoding service (supports Nominatim with proper User-Agent)
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/public/reverse-geocode?lat=${lat}&lng=${lng}`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data && json.data.label) {
+        return json.data;
+      }
+    }
+  } catch (e) {
+    // Continue to fallback
+  }
+
+  // 3. Direct Nominatim fallback
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4000);
@@ -171,7 +191,10 @@ export function searchKnownLocalities(query: string): LocalityItem[] {
       item.name.toLowerCase().includes(q) ||
       item.city.toLowerCase().includes(q) ||
       (item.locality && item.locality.toLowerCase().includes(q)) ||
-      (item.state && item.state.toLowerCase().includes(q))
+      (item.state && item.state.toLowerCase().includes(q)) ||
+      (q === 'mpl' && item.city.toLowerCase() === 'madanapalle') ||
+      (q === 'hyd' && item.city.toLowerCase() === 'hyderabad') ||
+      (q.startsWith('madana') && item.city.toLowerCase() === 'madanapalle')
   );
 }
 
