@@ -7,13 +7,18 @@ import { useEffect } from 'react';
 import { cn } from '../lib/utils';
 
 const Layout = () => {
-  const { isMobileMenuOpen, setMobileMenuOpen, isDesktopSidebarOpen } = useUIStore();
+  const { isMobileMenuOpen, setMobileMenuOpen, isDesktopSidebarOpen, detectLocation } = useUIStore();
   const location = useLocation();
 
   // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname, setMobileMenuOpen]);
+
+  // First take the live location automatically on entry into user module
+  useEffect(() => {
+    detectLocation(false);
+  }, [detectLocation]);
   return (
     <div className="flex flex-col h-screen overflow-hidden font-sans text-slate-900 bg-slate-50">
       <div className="flex flex-1 overflow-hidden relative">

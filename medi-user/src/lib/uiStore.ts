@@ -27,13 +27,13 @@ function getInitialLocationState(): UserLocationState {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed.label === 'string') {
         return {
-          label: parsed.label || 'Select Location',
-          latitude: parsed.latitude ?? null,
-          longitude: parsed.longitude ?? null,
-          city: parsed.city ?? null,
+          label: parsed.label || 'Hyderabad',
+          latitude: parsed.latitude ?? 17.4018,
+          longitude: parsed.longitude ?? 78.5602,
+          city: parsed.city ?? 'Hyderabad',
           locality: parsed.locality ?? null,
-          status: parsed.status || (parsed.latitude ? 'detected' : 'idle'),
-          error: parsed.error ?? null,
+          status: 'idle', // Start as idle to automatically request live location first
+          error: null,
           radiusKm: parsed.radiusKm || DEFAULT_RADIUS_KM,
         };
       }
@@ -51,32 +51,22 @@ function getInitialLocationState(): UserLocationState {
           longitude: match.lng,
           city: match.city,
           locality: match.locality || match.city,
-          status: 'manual',
+          status: 'idle',
           error: null,
           radiusKm: DEFAULT_RADIUS_KM,
         };
       }
-      return {
-        label: legacy,
-        latitude: null,
-        longitude: null,
-        city: null,
-        locality: null,
-        status: 'manual',
-        error: null,
-        radiusKm: DEFAULT_RADIUS_KM,
-      };
     }
   } catch (e) {
     // Ignore storage parse error
   }
 
   return {
-    label: 'Select Location',
-    latitude: null,
-    longitude: null,
-    city: null,
-    locality: null,
+    label: 'Hyderabad',
+    latitude: 17.4018,
+    longitude: 78.5602,
+    city: 'Hyderabad',
+    locality: 'Uppal',
     status: 'idle',
     error: null,
     radiusKm: DEFAULT_RADIUS_KM,
@@ -335,3 +325,13 @@ export const useUIStore = () => {
     toggleDesktopSidebar: () => setGlobalDesktopSidebar(!isDesktopSidebarOpen),
   };
 };
+
+// Automatically take live location first on initial module load in browser
+if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+  const isTest = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.MODE === 'test';
+  if (!isTest) {
+    setTimeout(() => {
+      triggerGlobalLocationDetection(false).catch(() => {});
+    }, 100);
+  }
+}
