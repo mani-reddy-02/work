@@ -1,20 +1,17 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  ArrowRight, Hospital, Stethoscope, Shield, Home as HomeIcon, 
-  TestTube, Activity, Heart, Sparkles, Smile, Plus, Minus, Bot, 
-  ShieldCheck, ChevronRight, AlertCircle, Video, CheckCircle2, X,
-  MapPin, Building2, Navigation, Compass
+  Hospital, Stethoscope, Shield, Home as HomeIcon, 
+  TestTube, Activity, Plus, Minus, Bot, 
+  ChevronRight, CheckCircle2
 } from 'lucide-react';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import UpcomingBookingTile from '../components/UpcomingBookingTile';
 import { useNotifications } from '../lib/notifications';
 import { opAppointmentApi } from '../lib/opAppointmentApi';
 import { getDiseaseIconUrl } from '../utils/diseaseIcons';
 import { getDepartmentImageUrl } from '../utils/departmentImages';
-import { useUIStore } from '../lib/uiStore';
 import PosterCarousel from '../components/PosterCarousel';
-import { departmentApi, hospitalApi, laboratoryApi, type DepartmentRecord, type HospitalRecord, type LaboratoryRecord } from '../lib/hospitalApi';
-import { cn } from '../lib/utils';
+import { departmentApi, type DepartmentRecord } from '../lib/hospitalApi';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -35,16 +32,7 @@ const Home = () => {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const { notifications, markAsRead } = useNotifications();
   const location = useLocation();
-  const { userLocation, detectLocation, setNearbyRadiusKm } = useUIStore();
-  const [showBookingPopup, setShowBookingPopup] = useState(false);
-  const [bookingData, setBookingData] = useState<any>(null);
-  const [hasUpcomingBooking, setHasUpcomingBooking] = useState(false);
 
-  // Nearby discovery state
-  const [nearbyHospitals, setNearbyHospitals] = useState<HospitalRecord[]>([]);
-  const [nearbyLabs, setNearbyLabs] = useState<LaboratoryRecord[]>([]);
-  const [isNearbyLoading, setIsNearbyLoading] = useState(false);
-  const [nearbyFilter, setNearbyFilter] = useState<'ALL' | 'HOSPITALS' | 'LABS'>('ALL');
 
   const [topSpecialists, setTopSpecialists] = useState<any[]>(FALLBACK_SPECIALISTS);
   const [commonDiseases, setCommonDiseases] = useState<any[]>([]);
@@ -54,56 +42,9 @@ const Home = () => {
   const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
   const [isDepartmentsLoading, setIsDepartmentsLoading] = useState(true);
 
-  // Location detection: only request if idle, without repetitive re-requests
-  useEffect(() => {
-    if (userLocation.status === 'idle') {
-      detectLocation(false);
-    }
-  }, [userLocation.status, detectLocation]);
-
-  // Fetch genuine nearby hospitals and laboratories based on user coordinates and radius
-  useEffect(() => {
-    let mounted = true;
-    setIsNearbyLoading(true);
-
-    Promise.all([
-      hospitalApi.getHospitals({
-        lat: userLocation.latitude ?? undefined,
-        lng: userLocation.longitude ?? undefined,
-        radius: userLocation.radiusKm,
-        nearbyOnly: true,
-        businessType: 'HOSPITAL',
-        service: 'op_consultation'
-      }),
-      laboratoryApi.getLaboratories({
-        lat: userLocation.latitude ?? undefined,
-        lng: userLocation.longitude ?? undefined,
-        radius: userLocation.radiusKm,
-        nearbyOnly: true
-      })
-    ]).then(([hospRes, labRes]) => {
-      if (!mounted) return;
-      if (hospRes.success && Array.isArray(hospRes.data)) {
-        setNearbyHospitals(hospRes.data);
-      } else {
-        setNearbyHospitals([]);
-      }
-      if (labRes.success && Array.isArray(labRes.data)) {
-        setNearbyLabs(labRes.data);
-      } else {
-        setNearbyLabs([]);
-      }
-    }).catch(() => {
-      if (mounted) {
-        setNearbyHospitals([]);
-        setNearbyLabs([]);
-      }
-    }).finally(() => {
-      if (mounted) setIsNearbyLoading(false);
-    });
-
-    return () => { mounted = false; };
-  }, [userLocation.latitude, userLocation.longitude, userLocation.radiusKm]);
+  const [showBookingPopup, setShowBookingPopup] = useState(false);
+  const [bookingData, setBookingData] = useState<any>(null);
+  const [hasUpcomingBooking, setHasUpcomingBooking] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -235,18 +176,6 @@ const Home = () => {
   }, []);
 
 
-  const hospitalItems = nearbyHospitals.map(h => ({ ...h, kind: 'HOSPITAL' as const }));
-  const labItems = nearbyLabs.map(l => ({ ...l, kind: 'LABORATORY' as const }));
-  const allProviders = [...hospitalItems, ...labItems].sort((a, b) => {
-    if (a.distance != null && b.distance != null) return a.distance - b.distance;
-    if (a.distance != null) return -1;
-    if (b.distance != null) return 1;
-    return 0;
-  });
-
-  const displayedProviders = 
-    nearbyFilter === 'HOSPITALS' ? hospitalItems :
-    nearbyFilter === 'LABS' ? labItems : allProviders;
 
   return (
     <div className={`w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 overflow-x-hidden relative transition-all ${hasUpcomingBooking ? 'pb-32' : 'pb-8'}`}>
@@ -338,184 +267,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* NEARBY HOSPITALS & LABORATORIES DISCOVERY */}
-      <section className="space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base sm:text-lg md:text-xl font-bold text-slate-800">
-                Nearby Hospitals & Laboratories
-              </h2>
-              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                Within {userLocation.radiusKm} km
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Genuine accredited facilities near <span className="font-semibold text-slate-700">{userLocation.label}</span>
-            </p>
-          </div>
-
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start sm:self-auto text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setNearbyFilter('ALL')}
-              className={cn(
-                "px-2.5 py-1 rounded-lg transition-all",
-                nearbyFilter === 'ALL' ? "bg-white text-primary shadow-xs font-bold" : "text-slate-600 hover:text-slate-900"
-              )}
-            >
-              All ({allProviders.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setNearbyFilter('HOSPITALS')}
-              className={cn(
-                "px-2.5 py-1 rounded-lg transition-all",
-                nearbyFilter === 'HOSPITALS' ? "bg-white text-primary shadow-xs font-bold" : "text-slate-600 hover:text-slate-900"
-              )}
-            >
-              Hospitals ({hospitalItems.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setNearbyFilter('LABS')}
-              className={cn(
-                "px-2.5 py-1 rounded-lg transition-all",
-                nearbyFilter === 'LABS' ? "bg-white text-primary shadow-xs font-bold" : "text-slate-600 hover:text-slate-900"
-              )}
-            >
-              Labs ({labItems.length})
-            </button>
-          </div>
-        </div>
-
-        {/* Location alert if permission denied */}
-        {userLocation.status === 'denied' && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between text-xs text-amber-900">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Location permission denied. Showing providers near your manually selected location.</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const btn = document.getElementById('desktop-location-selector') || document.getElementById('mobile-location-selector');
-                btn?.click();
-              }}
-              className="font-bold underline text-amber-900 hover:text-amber-950 shrink-0 ml-2"
-            >
-              Change
-            </button>
-          </div>
-        )}
-
-        {isNearbyLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-2xl border border-slate-100 p-4 h-36 animate-pulse flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="h-4 w-3/4 bg-slate-200 rounded"></div>
-                  <div className="h-3 w-1/2 bg-slate-200 rounded"></div>
-                </div>
-                <div className="h-8 w-full bg-slate-100 rounded-xl"></div>
-              </div>
-            ))}
-          </div>
-        ) : displayedProviders.length === 0 ? (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 text-center shadow-xs">
-            <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
-              <Hospital className="w-6 h-6" />
-            </div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-800">
-              No eligible hospitals or laboratories found near your selected location.
-            </h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-              We couldn't find accredited providers within {userLocation.radiusKm} km of {userLocation.label}. Try changing your location or expanding your search radius.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-2.5 mt-4">
-              <button
-                type="button"
-                onClick={() => {
-                  const btn = document.getElementById('desktop-location-selector') || document.getElementById('mobile-location-selector');
-                  btn?.click();
-                }}
-                className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/95 transition-all shadow-xs"
-              >
-                Change Location
-              </button>
-              {userLocation.radiusKm < 50 && (
-                <button
-                  type="button"
-                  onClick={() => setNearbyRadiusKm(50)}
-                  className="px-4 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold hover:bg-blue-100 transition-all"
-                >
-                  Expand Radius (50 km)
-                </button>
-              )}
-              {userLocation.radiusKm < 100 && userLocation.radiusKm >= 50 && (
-                <button
-                  type="button"
-                  onClick={() => setNearbyRadiusKm(100)}
-                  className="px-4 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold hover:bg-blue-100 transition-all"
-                >
-                  Expand Radius (100 km)
-                </button>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {displayedProviders.slice(0, 6).map((provider: any) => (
-              <div
-                key={`${provider.kind}-${provider.id}`}
-                className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs hover:shadow-md hover:border-blue-200 transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <span className={cn(
-                      "text-[10px] font-bold px-2 py-0.5 rounded-full border",
-                      provider.kind === 'HOSPITAL' 
-                        ? "bg-blue-50 text-blue-700 border-blue-200"
-                        : "bg-purple-50 text-purple-700 border-purple-200"
-                    )}>
-                      {provider.kind === 'HOSPITAL' ? 'Hospital' : 'Diagnostic Lab'}
-                    </span>
-                    {provider.distanceText && (
-                      <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        <MapPin className="w-3 h-3" />
-                        {provider.distanceText}
-                      </span>
-                    )}
-                  </div>
-
-                  <h3 className="font-extrabold text-slate-900 text-sm line-clamp-1">
-                    {provider.name}
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium line-clamp-1 mt-0.5 flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                    <span>{provider.address || provider.city || 'India'}</span>
-                  </p>
-                </div>
-
-                <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-slate-600">
-                    {provider.kind === 'HOSPITAL' 
-                      ? `${provider.doctorCount || 'Active'} Doctors`
-                      : 'NABL Certified Lab'}
-                  </span>
-                  <Link
-                    to={provider.kind === 'HOSPITAL' ? '/specialties?type=hospital-op' : '/services/lab-tests'}
-                    className="text-xs font-bold text-primary hover:text-blue-700 flex items-center gap-1"
-                  >
-                    <span>{provider.kind === 'HOSPITAL' ? 'Consult Doctor' : 'Book Tests'}</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
 
       {/* 2. BROWSE DEPARTMENTS — Direct Doctor Booking (Replaces Previous Emergency Tile) */}
       <section>
