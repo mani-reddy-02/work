@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Role } from '@prisma/client';
 import { checkAndExpireDoctorOverrides, computeDoctorLiveStatus } from './doctor-override.service';
-import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams } from '../../utils/geo';
+import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams, getEffectiveCoordinates } from '../../utils/geo';
 
 const ALL_TIME_SLOTS = [
   '09:00 AM',
@@ -38,6 +38,17 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
       }
     }
 
+    let targetSpecialtyName: string | null = null;
+    if (targetSpecialtyId) {
+      const spec = await prisma.platformSpecialty.findUnique({
+        where: { id: targetSpecialtyId },
+        select: { name: true }
+      });
+      if (spec) {
+        targetSpecialtyName = spec.name;
+      }
+    }
+
     await checkAndExpireDoctorOverrides();
 
     const now = new Date();
@@ -69,9 +80,23 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
         name: { equals: departmentName, mode: 'insensitive' }
       };
     } else if (targetSpecialtyId) {
-      whereClause.department = {
-        specialtyId: targetSpecialtyId
-      };
+      if (targetSpecialtyName) {
+        whereClause.AND = [
+          ...(whereClause.AND || []),
+          {
+            OR: [
+              { department: { specialtyId: targetSpecialtyId } },
+              { department: { name: { equals: targetSpecialtyName, mode: 'insensitive' } } },
+              { specialization: { equals: targetSpecialtyName, mode: 'insensitive' } },
+              { designation: { contains: targetSpecialtyName, mode: 'insensitive' } }
+            ]
+          }
+        ];
+      } else {
+        whereClause.department = {
+          specialtyId: targetSpecialtyId
+        };
+      }
     }
 
     // Strict disease-driven filter: if conditionId was provided but no targetSpecialtyId was resolved, return empty array immediately or set impossible where clause
@@ -166,8 +191,10 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
       let distance: number | null = null;
       let distanceText: string | null = null;
 
-      if (geo.hasCoords && doc.hospital?.latitude != null && doc.hospital?.longitude != null) {
-        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, doc.hospital.latitude, doc.hospital.longitude);
+      const effectiveCoords = getEffectiveCoordinates(doc.hospital);
+
+      if (geo.hasCoords && effectiveCoords) {
+        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, effectiveCoords.latitude, effectiveCoords.longitude);
         distanceText = formatDistanceText(distance);
       }
 
@@ -184,8 +211,8 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
         hospitalAddress: doc.hospital?.addressLine1 || doc.hospital?.city || 'Not specified',
         hospitalPhone: doc.hospital?.contactPhone || undefined,
         hospitalCity: doc.hospital?.city || undefined,
-        hospitalLatitude: doc.hospital?.latitude ?? null,
-        hospitalLongitude: doc.hospital?.longitude ?? null,
+        hospitalLatitude: effectiveCoords?.latitude ?? doc.hospital?.latitude ?? null,
+        hospitalLongitude: effectiveCoords?.longitude ?? doc.hospital?.longitude ?? null,
         distance,
         distanceText,
         departmentId: doc.departmentId,

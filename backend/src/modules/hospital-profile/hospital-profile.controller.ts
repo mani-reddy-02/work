@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { updateHospitalProfileSchema } from './hospital-profile.schema';
+import { resolveCoordinatesForLocation } from '../../utils/geo';
 
 /**
  * Format a Hospital record into the authoritative profile response structure
@@ -236,6 +237,35 @@ export const updateHospitalProfile = async (req: Request, res: Response, next: N
     if (validated.state !== undefined) updatePayload.state = validated.state ? validated.state.trim() : null;
     if (validated.country !== undefined) updatePayload.country = validated.country ? validated.country.trim() : null;
     if (validated.pincode !== undefined) updatePayload.pincode = validated.pincode ? validated.pincode.trim() : null;
+
+    if (validated.latitude !== undefined) updatePayload.latitude = validated.latitude;
+    if (validated.longitude !== undefined) updatePayload.longitude = validated.longitude;
+
+    // Auto-resolve coordinates if not explicitly passed or if address/city/pincode changed
+    if (updatePayload.latitude === undefined || updatePayload.longitude === undefined) {
+      const existing = await prisma.hospital.findUnique({
+        where: { id: hospitalId },
+        select: { latitude: true, longitude: true, pincode: true, city: true, area: true, addressLine1: true }
+      });
+
+      const targetPincode = updatePayload.pincode !== undefined ? updatePayload.pincode : existing?.pincode;
+      const targetCity = updatePayload.city !== undefined ? updatePayload.city : existing?.city;
+      const targetArea = updatePayload.area !== undefined ? updatePayload.area : existing?.area;
+      const targetAddress = updatePayload.addressLine1 !== undefined ? updatePayload.addressLine1 : existing?.addressLine1;
+
+      if (existing?.latitude == null || existing?.longitude == null || updatePayload.city !== undefined || updatePayload.pincode !== undefined) {
+        const resolved = resolveCoordinatesForLocation({
+          pincode: targetPincode,
+          city: targetCity,
+          area: targetArea,
+          address: targetAddress
+        });
+        if (resolved) {
+          updatePayload.latitude = resolved.latitude;
+          updatePayload.longitude = resolved.longitude;
+        }
+      }
+    }
 
     // Clinical services
     if (validated.services !== undefined) updatePayload.services = validated.services;

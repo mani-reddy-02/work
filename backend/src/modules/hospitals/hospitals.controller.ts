@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Role, BusinessType } from '@prisma/client';
 import { checkAndExpireDoctorOverrides } from '../doctors/doctor-override.service';
-import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams } from '../../utils/geo';
+import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams, getEffectiveCoordinates } from '../../utils/geo';
 
 export const getHospitals = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -25,6 +25,17 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
       });
       if (condition) {
         targetSpecialtyId = condition.specialtyId;
+      }
+    }
+
+    let targetSpecialtyName: string | null = null;
+    if (targetSpecialtyId) {
+      const spec = await prisma.platformSpecialty.findUnique({
+        where: { id: targetSpecialtyId },
+        select: { name: true }
+      });
+      if (spec) {
+        targetSpecialtyName = spec.name;
       }
     }
 
@@ -75,12 +86,24 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
         }
       };
     } else if (targetSpecialtyId) {
-      whereClause.departments = {
-        some: {
-          specialtyId: targetSpecialtyId,
-          users: { some: { role: Role.DOCTOR, active: true } }
-        }
-      };
+      if (targetSpecialtyName) {
+        whereClause.departments = {
+          some: {
+            OR: [
+              { specialtyId: targetSpecialtyId },
+              { name: { equals: targetSpecialtyName, mode: 'insensitive' } }
+            ],
+            users: { some: { role: Role.DOCTOR, active: true } }
+          }
+        };
+      } else {
+        whereClause.departments = {
+          some: {
+            specialtyId: targetSpecialtyId,
+            users: { some: { role: Role.DOCTOR, active: true } }
+          }
+        };
+      }
     }
 
     // Enforce strict disease-driven filter: if conditionId was passed but no targetSpecialtyId was resolved, 
@@ -119,8 +142,10 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
       let distance: number | null = null;
       let distanceText: string | null = null;
 
-      if (geo.hasCoords && h.latitude != null && h.longitude != null) {
-        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, h.latitude, h.longitude);
+      const effectiveCoords = getEffectiveCoordinates(h);
+
+      if (geo.hasCoords && effectiveCoords) {
+        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, effectiveCoords.latitude, effectiveCoords.longitude);
         distanceText = formatDistanceText(distance);
       }
 
@@ -138,8 +163,8 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
         city: h.city,
         state: h.state,
         pincode: h.pincode,
-        latitude: h.latitude,
-        longitude: h.longitude,
+        latitude: effectiveCoords?.latitude ?? h.latitude ?? null,
+        longitude: effectiveCoords?.longitude ?? h.longitude ?? null,
         distance,
         distanceText,
         services: h.services,

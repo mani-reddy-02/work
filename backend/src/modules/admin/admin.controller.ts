@@ -3,6 +3,7 @@ import { prisma } from '../../config/prisma';
 import { Role } from '@prisma/client';
 import { VideoService } from '../video/video.service';
 import { sendNotification } from '../notifications/notifications.service';
+import { resolveCoordinatesForLocation } from '../../utils/geo';
 
 export const getStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -831,6 +832,12 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
 export const createHospital = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = req.body;
+    const resolvedCoords = resolveCoordinatesForLocation({
+      pincode: data.pincode,
+      city: data.city,
+      address: data.address || data.addressLine1,
+    });
+
     const newHospital = await prisma.hospital.create({
       data: {
         name: data.name,
@@ -839,9 +846,12 @@ export const createHospital = async (req: Request, res: Response, next: NextFunc
         registrationNumber: data.registrationNumber || '',
         contactEmail: data.email,
         contactPhone: data.phone,
-        addressLine1: data.address,
+        addressLine1: data.address || data.addressLine1,
         city: data.city,
         state: data.state,
+        pincode: data.pincode || null,
+        latitude: data.latitude != null ? Number(data.latitude) : (resolvedCoords?.latitude ?? null),
+        longitude: data.longitude != null ? Number(data.longitude) : (resolvedCoords?.longitude ?? null),
         services: data.services || [],
         hospitalShare: 80
       }
@@ -856,20 +866,33 @@ export const updateHospital = async (req: Request, res: Response, next: NextFunc
   try {
     const { id } = req.params;
     const data = req.body;
+    const resolvedCoords = resolveCoordinatesForLocation({
+      pincode: data.pincode,
+      city: data.city,
+      address: data.address || data.addressLine1,
+    });
+
+    const updateData: any = {
+      name: data.name,
+      businessType: data.businessType,
+      facilityType: data.facilityType,
+      registrationNumber: data.registrationNumber,
+      contactEmail: data.email,
+      contactPhone: data.phone,
+      addressLine1: data.address || data.addressLine1,
+      city: data.city,
+      state: data.state,
+      services: data.services
+    };
+    if (data.pincode !== undefined) updateData.pincode = data.pincode;
+    if (data.latitude !== undefined) updateData.latitude = data.latitude != null ? Number(data.latitude) : null;
+    else if (resolvedCoords) updateData.latitude = resolvedCoords.latitude;
+    if (data.longitude !== undefined) updateData.longitude = data.longitude != null ? Number(data.longitude) : null;
+    else if (resolvedCoords) updateData.longitude = resolvedCoords.longitude;
+
     const updatedHospital = await prisma.hospital.update({
       where: { id: id as string },
-      data: {
-        name: data.name,
-        businessType: data.businessType,
-        facilityType: data.facilityType,
-        registrationNumber: data.registrationNumber,
-        contactEmail: data.email,
-        contactPhone: data.phone,
-        addressLine1: data.address,
-        city: data.city,
-        state: data.state,
-        services: data.services
-      }
+      data: updateData
     });
     res.json({ success: true, data: updatedHospital });
   } catch (error) {

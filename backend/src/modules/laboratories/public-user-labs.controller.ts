@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
-import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams } from '../../utils/geo';
+import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams, getEffectiveCoordinates } from '../../utils/geo';
 
 export const getPublicLabTests = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -65,8 +65,10 @@ export const getPublicLabTests = async (req: Request, res: Response, next: NextF
       // Filter offerings by nearby location if nearby filtering is active
       if (geo.hasCoords && geo.nearbyOnly) {
         offerings = offerings.filter((o: any) => {
-          if (!o.hospital || o.hospital.latitude == null || o.hospital.longitude == null) return false;
-          const dist = calculateHaversineDistanceKm(geo.lat!, geo.lng!, o.hospital.latitude, o.hospital.longitude);
+          if (!o.hospital) return false;
+          const coords = getEffectiveCoordinates(o.hospital);
+          if (!coords || coords.latitude == null || coords.longitude == null) return false;
+          const dist = calculateHaversineDistanceKm(geo.lat!, geo.lng!, coords.latitude, coords.longitude);
           return dist <= geo.radius;
         });
       }
@@ -221,8 +223,9 @@ export const getEligibleLaboratories = async (req: Request, res: Response, next:
 
       let distance: number | null = null;
       let distanceText: string | null = null;
-      if (geo.hasCoords && pkg.hospital.latitude != null && pkg.hospital.longitude != null) {
-        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, pkg.hospital.latitude, pkg.hospital.longitude);
+      const pkgCoords = getEffectiveCoordinates(pkg.hospital);
+      if (geo.hasCoords && pkgCoords && pkgCoords.latitude != null && pkgCoords.longitude != null) {
+        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, pkgCoords.latitude, pkgCoords.longitude);
         distanceText = formatDistanceText(distance);
       }
 
@@ -242,8 +245,8 @@ export const getEligibleLaboratories = async (req: Request, res: Response, next:
         contactEmail: pkg.hospital.contactEmail,
         location: pkg.hospital.city || 'Unknown',
         address: pkg.hospital.addressLine1 || 'Unknown',
-        latitude: pkg.hospital.latitude,
-        longitude: pkg.hospital.longitude,
+        latitude: pkgCoords?.latitude ?? pkg.hospital.latitude,
+        longitude: pkgCoords?.longitude ?? pkg.hospital.longitude,
         distance,
         distanceText,
         rating: 4.5,
@@ -273,8 +276,9 @@ export const getEligibleLaboratories = async (req: Request, res: Response, next:
     let labs = offerings.map((o: any) => {
       let distance: number | null = null;
       let distanceText: string | null = null;
-      if (geo.hasCoords && o.hospital?.latitude != null && o.hospital?.longitude != null) {
-        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, o.hospital.latitude, o.hospital.longitude);
+      const coords = getEffectiveCoordinates(o.hospital);
+      if (geo.hasCoords && coords && coords.latitude != null && coords.longitude != null) {
+        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, coords.latitude, coords.longitude);
         distanceText = formatDistanceText(distance);
       }
 
@@ -288,8 +292,8 @@ export const getEligibleLaboratories = async (req: Request, res: Response, next:
         contactEmail: o.hospital.contactEmail,
         location: [o.hospital.area, o.hospital.city].filter(Boolean).join(', ') || o.hospital.city || 'Unknown',
         address: [o.hospital.addressLine1, o.hospital.area, o.hospital.city].filter(Boolean).join(', ') || 'Unknown',
-        latitude: o.hospital.latitude,
-        longitude: o.hospital.longitude,
+        latitude: coords?.latitude ?? o.hospital.latitude,
+        longitude: coords?.longitude ?? o.hospital.longitude,
         distance,
         distanceText,
         rating: 4.5,

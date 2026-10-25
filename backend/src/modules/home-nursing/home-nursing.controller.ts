@@ -3,7 +3,7 @@ import { prisma } from '../../config/prisma';
 import { Prisma } from '@prisma/client';
 import { Role } from '@prisma/client';
 import { sendNotification } from '../notifications/notifications.service';
-import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams } from '../../utils/geo';
+import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams, getEffectiveCoordinates } from '../../utils/geo';
 
 // Generate unique human-readable booking number
 const generateBookingNumber = (): string => {
@@ -173,9 +173,10 @@ export const getNursingServiceById = async (req: Request, res: Response, next: N
       const h = hospitalMap.get(o.hospitalId);
       let distance: number | null = null;
       let distanceText: string | null = null;
+      const coords = getEffectiveCoordinates(h);
 
-      if (geo.hasCoords && h?.latitude != null && h?.longitude != null) {
-        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, h.latitude, h.longitude);
+      if (geo.hasCoords && coords && coords.latitude != null && coords.longitude != null) {
+        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, coords.latitude, coords.longitude);
         distanceText = formatDistanceText(distance);
       }
 
@@ -187,8 +188,8 @@ export const getNursingServiceById = async (req: Request, res: Response, next: N
         address: h?.addressLine1 || '',
         contactPhone: h?.contactPhone || '',
         logoUrl: h?.logoUrl || null,
-        latitude: h?.latitude ?? null,
-        longitude: h?.longitude ?? null,
+        latitude: coords?.latitude ?? (h?.latitude ?? null),
+        longitude: coords?.longitude ?? (h?.longitude ?? null),
         distance,
         distanceText,
         price: `₹${o.price.toLocaleString('en-IN')}`,

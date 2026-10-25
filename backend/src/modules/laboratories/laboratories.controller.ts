@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
 import { sendNotification } from '../notifications/notifications.service';
-import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams } from '../../utils/geo';
+import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams, getEffectiveCoordinates } from '../../utils/geo';
 
 export const getLaboratories = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -121,8 +121,9 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
         let distance: number | null = null;
         let distanceText: string | null = null;
 
-        if (geo.hasCoords && lab.latitude != null && lab.longitude != null) {
-          distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, lab.latitude, lab.longitude);
+        const coords = getEffectiveCoordinates(lab);
+        if (geo.hasCoords && coords && coords.latitude != null && coords.longitude != null) {
+          distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, coords.latitude, coords.longitude);
           distanceText = formatDistanceText(distance);
         }
 
@@ -140,8 +141,8 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
           city: lab.city,
           state: lab.state,
           pincode: lab.pincode,
-          latitude: lab.latitude,
-          longitude: lab.longitude,
+          latitude: coords?.latitude ?? lab.latitude,
+          longitude: coords?.longitude ?? lab.longitude,
           distance,
           distanceText,
           location: [lab.area, lab.city, lab.state].filter(Boolean).join(', ') || lab.city || 'India',
@@ -215,13 +216,12 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
       });
 
       items.push(...hospBasedLabs.map(lab => {
-        const lat = lab.latitude ?? lab.hospital?.latitude ?? null;
-        const lng = lab.longitude ?? lab.hospital?.longitude ?? null;
+        const coords = getEffectiveCoordinates(lab, lab.hospital);
         let distance: number | null = null;
         let distanceText: string | null = null;
 
-        if (geo.hasCoords && lat != null && lng != null) {
-          distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, lat, lng);
+        if (geo.hasCoords && coords && coords.latitude != null && coords.longitude != null) {
+          distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, coords.latitude, coords.longitude);
           distanceText = formatDistanceText(distance);
         }
 
@@ -239,8 +239,8 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
           city: lab.city || lab.hospital?.city || null,
           state: lab.state || lab.hospital?.state || null,
           pincode: lab.pinCode || null,
-          latitude: lat,
-          longitude: lng,
+          latitude: coords?.latitude ?? (lab.latitude ?? lab.hospital?.latitude ?? null),
+          longitude: coords?.longitude ?? (lab.longitude ?? lab.hospital?.longitude ?? null),
           distance,
           distanceText,
           location: [lab.city || lab.hospital?.city, lab.state || lab.hospital?.state].filter(Boolean).join(', ') || 'India',

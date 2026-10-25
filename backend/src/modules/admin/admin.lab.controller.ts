@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { BusinessType } from '@prisma/client';
+import { resolveCoordinatesForLocation } from '../../utils/geo';
 
 export const getLabs = async (req: any, res: any, next: any) => {
   try {
@@ -127,6 +128,11 @@ export const createLab = async (req: any, res: any, next: any) => {
       let resolvedHospitalId = hospitalId;
 
       if (labType === 'STANDALONE') {
+        const resolvedCoords = resolveCoordinatesForLocation({
+          pincode: pinCode,
+          city: city,
+          address: address,
+        });
         const createdHospital = await tx.hospital.create({
           data: {
             name,
@@ -138,6 +144,8 @@ export const createLab = async (req: any, res: any, next: any) => {
             city: city || null,
             state: state || null,
             pincode: pinCode || null,
+            latitude: resolvedCoords?.latitude ?? null,
+            longitude: resolvedCoords?.longitude ?? null,
             services: ['lab_tests', 'diagnostics', 'lab'],
             verificationStatus: 'APPROVED',
             hospitalShare: 80.0

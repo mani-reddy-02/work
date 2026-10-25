@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { env } from '../../config/env';
 import { BusinessType, Role } from '@prisma/client';
+import { resolveCoordinatesForLocation } from '../../utils/geo';
 
 // Maps the frontend UI role selector values to the authoritative database Role enum.
 const UI_ROLE_TO_DB_ROLE: Record<string, Role> = {
@@ -166,6 +167,13 @@ export class AuthService {
     const verification = payload.hospitalVerification || payload.labVerification || {};
     const bType = payload.businessType.businessType === 'hospital' ? BusinessType.HOSPITAL : BusinessType.LABORATORY;
 
+    const resolvedCoords = resolveCoordinatesForLocation({
+      pincode: loc.pincode,
+      city: loc.city,
+      area: loc.area,
+      address: loc.address1 || loc.address2,
+    });
+
     const result = await prisma.$transaction(async (tx) => {
       // 1. Create Hospital
       const hospital = await tx.hospital.create({
@@ -185,19 +193,44 @@ export class AuthService {
           state: loc.state,
           country: loc.country,
           pincode: loc.pincode,
+          latitude: loc.latitude != null ? Number(loc.latitude) : (resolvedCoords?.latitude ?? null),
+          longitude: loc.longitude != null ? Number(loc.longitude) : (resolvedCoords?.longitude ?? null),
           emergencyContact: loc.emergencyContact,
           services: services,
         },
       });
 
-      // 2. Create Departments
-      const deptData = depts.map((d: string) => ({ hospitalId: hospital.id, name: d }));
-      const customDeptData = customDepts.map((d: any) => ({
-        hospitalId: hospital.id,
-        name: d.name,
-        code: d.code,
-        description: d.description,
-      }));
+      // 2. Fetch platform specialties for automatic specialtyId linking
+      const platformSpecialties = await tx.platformSpecialty.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true },
+      });
+      const specialtyMap = new Map(
+        platformSpecialties.map((s) => [s.name.trim().toLowerCase(), s.id])
+      );
+
+      // Create Departments with auto-linked specialtyId
+      const deptData = depts.map((d: string) => {
+        const trimmed = (d || '').trim();
+        const matchedId = specialtyMap.get(trimmed.toLowerCase()) || null;
+        return {
+          hospitalId: hospital.id,
+          name: trimmed,
+          specialtyId: matchedId,
+        };
+      });
+
+      const customDeptData = customDepts.map((d: any) => {
+        const trimmed = (d.name || '').trim();
+        const matchedId = specialtyMap.get(trimmed.toLowerCase()) || null;
+        return {
+          hospitalId: hospital.id,
+          name: trimmed,
+          code: d.code,
+          description: d.description,
+          specialtyId: matchedId,
+        };
+      });
 
       if (deptData.length > 0 || customDeptData.length > 0) {
         await tx.department.createMany({

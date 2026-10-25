@@ -19,6 +19,8 @@ export const updateHospitalProfileSchema = z.object({
   state: z.string().max(100).nullable().optional(),
   country: z.string().max(100).nullable().optional(),
   pincode: z.string().max(20).nullable().optional(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
   services: z.array(z.string()).optional(),
   operatingHours: z.string().max(100).nullable().optional(),
   description: z.string().max(1000).nullable().optional(),

@@ -3,7 +3,7 @@ import { prisma } from '../../config/prisma';
 import { Role, Prisma } from '@prisma/client';
 import path from 'path';
 import fs from 'fs';
-import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams } from '../../utils/geo';
+import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams, getEffectiveCoordinates } from '../../utils/geo';
 
 const UPLOADS_DIR = path.join(__dirname, '../../../../uploads/icons');
 if (!fs.existsSync(UPLOADS_DIR)) {
@@ -110,6 +110,18 @@ export const createDepartment = async (req: Request, res: Response, next: NextFu
     }
 
     const trimmedName = name.trim();
+
+    if (!specialtyId && trimmedName) {
+      const matchingSpec = await prisma.platformSpecialty.findFirst({
+        where: { name: { equals: trimmedName, mode: 'insensitive' } }
+      });
+      if (matchingSpec) {
+        specialtyId = matchingSpec.id;
+        if (!icon && matchingSpec.icon) {
+          icon = matchingSpec.icon;
+        }
+      }
+    }
 
     const existing = await prisma.department.findFirst({
       where: {
@@ -285,8 +297,11 @@ export const getDepartmentDoctors = async (req: Request, res: Response, next: Ne
     let formatted = doctors.map(doc => {
       let distance: number | null = null;
       let distanceText: string | null = null;
-      if (geo.hasCoords && doc.hospital?.latitude != null && doc.hospital?.longitude != null) {
-        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, doc.hospital.latitude, doc.hospital.longitude);
+
+      const effectiveCoords = getEffectiveCoordinates(doc.hospital);
+
+      if (geo.hasCoords && effectiveCoords) {
+        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, effectiveCoords.latitude, effectiveCoords.longitude);
         distanceText = formatDistanceText(distance);
       }
 
@@ -311,12 +326,14 @@ export const getDepartmentDoctors = async (req: Request, res: Response, next: Ne
         consultationFee: doc.consultationFee ?? undefined,
         consultInfo: doc.bio || `Specialist in ${doc.department?.name || 'their field'} with extensive clinical experience in patient diagnostics and treatment.`,
         fees: doc.consultationFee ? `₹${doc.consultationFee}` : 'Not specified',
-        latitude: doc.hospital?.latitude ?? null,
-        longitude: doc.hospital?.longitude ?? null,
+        latitude: effectiveCoords?.latitude ?? doc.hospital?.latitude ?? null,
+        longitude: effectiveCoords?.longitude ?? doc.hospital?.longitude ?? null,
         distance,
         distanceText,
         hospital: doc.hospital ? {
           ...doc.hospital,
+          latitude: effectiveCoords?.latitude ?? doc.hospital?.latitude ?? null,
+          longitude: effectiveCoords?.longitude ?? doc.hospital?.longitude ?? null,
           distance,
           distanceText
         } : undefined
