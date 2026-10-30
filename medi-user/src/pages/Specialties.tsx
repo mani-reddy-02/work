@@ -6,13 +6,15 @@ import {
   MapPin, Phone, ShieldCheck, User, Activity, FileText, AlertCircle, 
   Mic, MicOff, Video as VideoIcon, VideoOff, PhoneOff, Info,
   ArrowLeft, Calendar, Building2, Stethoscope, CalendarClock, CalendarCheck, 
-  ActivitySquare, Bot, X, Sparkles, Copy
+  ActivitySquare, Bot, X, Sparkles, Copy, Star
 } from 'lucide-react';
 import HowItWorks from '../components/HowItWorks';
 import KnowYourDiseaseModal from '../components/KnowYourDiseaseModal';
 import { useAuth } from '../lib/auth';
 import { opAppointmentApi, doctorApi, type DoctorRecord } from '../lib/opAppointmentApi';
 import { useUIStore } from '../lib/uiStore';
+import PrePaymentReviewsSummary from '../components/PrePaymentReviewsSummary';
+import ProviderReviewsModal from '../components/ProviderReviewsModal';
 
 // --- 5-STEP HOW IT WORKS DATA ---
 const opBookingStepsData = [
@@ -263,6 +265,7 @@ const Specialties = () => {
   // Selected Doctor, Hospital, Slot State
   const [selectedHospital, setSelectedHospital] = useState<any>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<DoctorRecord | null>(null);
+  const [reviewModalDoctor, setReviewModalDoctor] = useState<DoctorRecord | null>(null);
   const [upcomingDates] = useState<SlotDateOption[]>(INITIAL_DATES);
   const [selectedDate, setSelectedDate] = useState<string>(() => INITIAL_DATES[0]?.date || 'Today');
   const [selectedDateIso, setSelectedDateIso] = useState<string>(() => INITIAL_DATES[0]?.isoDate || new Date().toISOString().split('T')[0]);
@@ -1275,6 +1278,32 @@ const Specialties = () => {
                             </span>
                           )}
                         </div>
+
+                        {/* Rating stars & review count badge */}
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          {doc.rating ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReviewModalDoctor(doc);
+                              }}
+                              className="inline-flex items-center gap-1 bg-amber-50 hover:bg-amber-100 border border-amber-200/90 px-2 py-0.5 rounded-lg text-[11px] font-bold text-amber-900 transition-colors cursor-pointer"
+                              title="Click to view patient reviews"
+                            >
+                              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                              <span>{Number(doc.rating).toFixed(1)}</span>
+                              <span className="text-amber-700 font-medium">
+                                ({doc.reviewCount || 1} {doc.reviewCount === 1 ? 'review' : 'reviews'})
+                              </span>
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-medium bg-slate-50 border border-slate-200/60 px-1.5 py-0.5 rounded-md">
+                              <Star className="w-3 h-3 text-slate-300" />
+                              <span>No reviews yet</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -1969,6 +1998,18 @@ const Specialties = () => {
           </div>
         </div>
 
+        {/* Doctor Reviews & Ratings Section (Pre-Payment Review Stage) */}
+        {selectedDoctor && (
+          <PrePaymentReviewsSummary
+            targetType="DOCTOR"
+            targetId={selectedDoctor.id}
+            providerName={selectedDoctor.name}
+            rating={selectedDoctor.rating}
+            reviewCount={selectedDoctor.reviewCount}
+            defaultVisibleCount={2}
+          />
+        )}
+
         {/* Pricing & Payment Summary */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-3">
           <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -2426,6 +2467,30 @@ const Specialties = () => {
             <span>{notification}</span>
           </div>
         </div>
+      )}
+
+      {/* Provider Reviews Modal */}
+      {reviewModalDoctor && (
+        <ProviderReviewsModal
+          isOpen={!!reviewModalDoctor}
+          onClose={() => setReviewModalDoctor(null)}
+          targetType="DOCTOR"
+          targetId={reviewModalDoctor.id}
+          providerName={`Dr. ${reviewModalDoctor.name.replace(/^Dr\.\s*/i, '')}`}
+          onSelectProvider={() => {
+            const doc = reviewModalDoctor;
+            setReviewModalDoctor(null);
+            setSelectedDoctor(doc);
+            setSelectedHospital({
+              id: doc.hospitalId,
+              name: doc.hospitalName,
+              address: doc.hospitalAddress,
+              contactPhone: doc.hospitalPhone
+            });
+            setSelectedTime('');
+            setView('SELECT_SLOT');
+          }}
+        />
       )}
     </div>
   );

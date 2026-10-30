@@ -6,6 +6,7 @@ import {
   Info, ShieldCheck, Video, Activity, RefreshCw, X, Star
 } from 'lucide-react';
 import { ProviderReviewsSection } from '../components/ProviderReviewsSection';
+import PrePaymentReviewsSummary from '../components/PrePaymentReviewsSummary';
 import { departmentApi, type DepartmentRecord } from '../lib/hospitalApi';
 import { opAppointmentApi, type DoctorRecord } from '../lib/opAppointmentApi';
 import { getDiseaseIconUrl } from '../utils/diseaseIcons';
@@ -663,13 +664,23 @@ const DepartmentBooking: React.FC = () => {
 
                         <div className="flex items-center gap-2 mt-1">
                           {doctor.rating ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewDoctor(doctor);
+                              }}
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-200 transition-colors cursor-pointer"
+                              title="Click to view doctor reviews"
+                            >
                               <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                               <span>{doctor.rating.toFixed(1)}</span>
-                              <span className="text-slate-400 font-normal">({(doctor as any).reviewCount || 0})</span>
-                            </span>
+                              <span className="text-amber-700 font-medium">({(doctor as any).reviewCount || 1} {((doctor as any).reviewCount === 1) ? 'review' : 'reviews'})</span>
+                            </button>
                           ) : (
-                            <span className="text-[11px] text-slate-400 font-medium">No reviews yet</span>
+                            <span className="text-[11px] text-slate-400 font-medium bg-slate-50 border border-slate-200/60 px-1.5 py-0.5 rounded-md">
+                              No reviews yet
+                            </span>
                           )}
                         </div>
 
@@ -1164,6 +1175,16 @@ const DepartmentBooking: React.FC = () => {
             </div>
 
           </div>
+
+          {/* Doctor Reviews & Ratings Section (Pre-Payment Review Stage) */}
+          <PrePaymentReviewsSummary
+            targetType="DOCTOR"
+            targetId={selectedDoctor.id}
+            providerName={selectedDoctor.name}
+            rating={selectedDoctor.rating}
+            reviewCount={(selectedDoctor as any).reviewCount}
+            defaultVisibleCount={2}
+          />
 
           {/* Payment & Fee Breakdown */}
           <div className="p-4 rounded-xl border border-slate-200 bg-white">

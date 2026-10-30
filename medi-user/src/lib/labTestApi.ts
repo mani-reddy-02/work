@@ -35,7 +35,8 @@ export interface LaboratoryRecord {
   contactEmail?: string;
   location: string;
   address: string;
-  rating: number;
+  rating?: number;
+  reviewCount?: number;
   time: string;
   price: string;
   numericPrice: number;

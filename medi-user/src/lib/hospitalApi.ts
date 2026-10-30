@@ -55,6 +55,7 @@ export interface DoctorRecord {
   consultInfo?: string;
   fees: string;
   rating?: number;
+  reviewCount?: number;
   bio?: string;
   licenseNumber?: string;
   consultationFee?: number;

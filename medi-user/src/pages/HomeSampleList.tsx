@@ -25,7 +25,8 @@ import {
   CreditCard,
   ShieldCheck,
   Check,
-  Plus
+  Plus,
+  Star
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../lib/profile';
@@ -39,6 +40,8 @@ import { profileApi } from '../lib/profileApi';
 import HowItWorks from '../components/HowItWorks';
 import { getTestIcon, getHealthConcernIcon, parseDatePill } from '../lib/optimizedTestIcons';
 import { useUIStore } from '../lib/uiStore';
+import PrePaymentReviewsSummary from '../components/PrePaymentReviewsSummary';
+import ProviderReviewsModal from '../components/ProviderReviewsModal';
 
 const homeSampleStepsData = [
   { id: '01', title: 'Select Test', desc: 'Browse or search diagnostic tests for home sample collection.', icon: TestTube },
@@ -144,6 +147,7 @@ const HomeSampleList = () => {
   const [labSearchQuery, setLabSearchQuery] = useState('');
   const [isLoadingLabs, setIsLoadingLabs] = useState(false);
   const [labError, setLabError] = useState<string | null>(null);
+  const [reviewModalLab, setReviewModalLab] = useState<LaboratoryRecord | null>(null);
 
   // Patient details state
   const [patientDetails, setPatientDetails] = useState({
@@ -1169,6 +1173,28 @@ const HomeSampleList = () => {
                               <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                                 {lab.location || lab.address || 'NABL Certified Lab'}
                               </p>
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                {lab.rating ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setReviewModalLab(lab);
+                                    }}
+                                    className="inline-flex items-center gap-1 bg-amber-50 hover:bg-amber-100 border border-amber-200/90 px-2 py-0.5 rounded-lg text-[11px] font-bold text-amber-900 transition-colors cursor-pointer"
+                                    title="Click to view lab reviews"
+                                  >
+                                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                    <span>{Number(lab.rating).toFixed(1)}</span>
+                                    <span className="text-amber-700 font-medium">({lab.reviewCount || 1} {lab.reviewCount === 1 ? 'review' : 'reviews'})</span>
+                                  </button>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-medium bg-slate-50 border border-slate-200/60 px-1.5 py-0.5 rounded-md">
+                                    <Star className="w-3 h-3 text-slate-300" />
+                                    <span>No reviews yet</span>
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex items-center gap-3 mt-2 text-[11px] flex-wrap">
                                 <span className="font-black text-blue-600">{lab.price}</span>
                                 <span className="text-slate-400">•</span>
@@ -1602,6 +1628,20 @@ const HomeSampleList = () => {
                 </div>
               </div>
 
+              {/* Laboratory Reviews & Ratings Section (Pre-Payment Review Stage) */}
+              {selectedLab && (
+                <div className="mb-5">
+                  <PrePaymentReviewsSummary
+                    targetType="LABORATORY"
+                    targetId={selectedLab.id}
+                    providerName={selectedLab.name}
+                    rating={selectedLab.rating}
+                    reviewCount={selectedLab.reviewCount}
+                    defaultVisibleCount={2}
+                  />
+                </div>
+              )}
+
               {/* Price Breakdown */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-5 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-4 -mt-4 opacity-50 pointer-events-none"></div>
@@ -1854,6 +1894,21 @@ const HomeSampleList = () => {
           )}
         </div>
       </div>
+
+      {reviewModalLab && (
+        <ProviderReviewsModal
+          isOpen={!!reviewModalLab}
+          onClose={() => setReviewModalLab(null)}
+          targetType="LABORATORY"
+          targetId={reviewModalLab.id}
+          providerName={reviewModalLab.name}
+          onSelectProvider={() => {
+            setSelectedLab(reviewModalLab);
+            setSelectedTime('');
+            setReviewModalLab(null);
+          }}
+        />
+      )}
     </div>
   );
 };

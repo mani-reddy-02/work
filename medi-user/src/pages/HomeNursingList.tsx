@@ -39,6 +39,8 @@ import {
   type NursingSlot,
 } from '../lib/homeNursingApi';
 import { profileApi } from '../lib/profileApi';
+import PrePaymentReviewsSummary from '../components/PrePaymentReviewsSummary';
+import ProviderReviewsModal from '../components/ProviderReviewsModal';
 
 const mockHospitals: NursingProviderRecord[] = [];
 
@@ -134,6 +136,7 @@ const HomeNursingList = () => {
 
   const [selectedHospital, setSelectedHospital] = useState<any>(null);
   const [selectedService, setSelectedService] = useState<any>(null);
+  const [reviewModalHospital, setReviewModalHospital] = useState<NursingProviderRecord | null>(null);
 
   const [patientDetails, setPatientDetails] = useState({
     name: '',
@@ -539,13 +542,21 @@ const HomeNursingList = () => {
                           </div>
                           <div className="text-right">
                             {hospital.rating ? (
-                              <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded-md text-xs font-bold justify-end mb-1 border border-amber-200">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setReviewModalHospital(hospital);
+                                }}
+                                className="flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-800 px-2 py-1 rounded-md text-xs font-bold justify-end mb-1 border border-amber-200 transition-colors cursor-pointer"
+                                title="Click to view hospital reviews"
+                              >
                                 <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                                 <span>{Number(hospital.rating).toFixed(1)}</span>
                                 {hospital.reviewCount ? (
-                                  <span className="text-[10px] text-slate-400 font-normal">({hospital.reviewCount})</span>
+                                  <span className="text-[10px] text-amber-700 font-medium">({hospital.reviewCount})</span>
                                 ) : null}
-                              </div>
+                              </button>
                             ) : (
                               <span className="text-[10px] text-slate-400 font-medium block mb-1">No reviews yet</span>
                             )}
@@ -872,6 +883,20 @@ const HomeNursingList = () => {
                 </div>
               </div>
 
+              {/* Provider Reviews & Ratings Section (Pre-Payment Review Stage) */}
+              {selectedHospital && (
+                <div className="mb-5">
+                  <PrePaymentReviewsSummary
+                    targetType="HOSPITAL"
+                    targetId={selectedHospital.id}
+                    providerName={selectedHospital.hospitalName || selectedHospital.name}
+                    rating={selectedHospital.rating}
+                    reviewCount={selectedHospital.reviewCount}
+                    defaultVisibleCount={2}
+                  />
+                </div>
+              )}
+
               {/* Price Breakdown */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-5 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-4 -mt-4 opacity-50 pointer-events-none"></div>
@@ -1060,6 +1085,21 @@ const HomeNursingList = () => {
           )}
         </div>
       </div>
+
+      {/* Provider Reviews Modal */}
+      {reviewModalHospital && (
+        <ProviderReviewsModal
+          isOpen={!!reviewModalHospital}
+          onClose={() => setReviewModalHospital(null)}
+          targetType="HOSPITAL"
+          targetId={reviewModalHospital.id}
+          providerName={reviewModalHospital.hospitalName || reviewModalHospital.name || 'Hospital'}
+          onSelectProvider={() => {
+            handleSelectHospital(reviewModalHospital);
+            setReviewModalHospital(null);
+          }}
+        />
+      )}
     </div>
   );
 };
