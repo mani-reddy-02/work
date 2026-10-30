@@ -158,6 +158,8 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
         bio: true,
         licenseNumber: true,
         licenseDocumentUrl: true,
+        rating: true,
+        reviewCount: true,
         hospitalId: true,
         departmentId: true,
         hospital: {
@@ -168,7 +170,9 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
             addressLine1: true,
             contactPhone: true,
             latitude: true,
-            longitude: true
+            longitude: true,
+            rating: true,
+            reviewCount: true
           }
         },
         department: {
@@ -223,7 +227,10 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
         consultationFee: doc.consultationFee ?? undefined,
         consultInfo: doc.bio || `Specialist in ${doc.department?.name || 'their field'} with extensive clinical experience in patient diagnostics and treatment.`,
         fees: doc.consultationFee ? `₹${doc.consultationFee}` : 'Not specified',
-        rating: 4.8
+        rating: doc.rating ?? null,
+        reviewCount: doc.reviewCount ?? 0,
+        hospitalRating: doc.hospital?.rating ?? null,
+        hospitalReviewCount: doc.hospital?.reviewCount ?? 0
       };
     });
 
@@ -274,6 +281,8 @@ export const getDoctorById = async (req: Request, res: Response, next: NextFunct
         bio: true,
         licenseNumber: true,
         licenseDocumentUrl: true,
+        rating: true,
+        reviewCount: true,
         hospitalId: true,
         departmentId: true,
         inactiveUntil: true,
@@ -285,7 +294,9 @@ export const getDoctorById = async (req: Request, res: Response, next: NextFunct
             name: true,
             city: true,
             addressLine1: true,
-            contactPhone: true
+            contactPhone: true,
+            rating: true,
+            reviewCount: true
           }
         },
         department: {
@@ -342,7 +353,10 @@ export const getDoctorById = async (req: Request, res: Response, next: NextFunct
         doctorSchedules: doctor.doctorSchedules,
         consultInfo: doctor.bio || `Specialist in ${doctor.department?.name || 'their field'} with extensive clinical experience in patient diagnostics and treatment.`,
         fees: doctor.consultationFee ? `₹${doctor.consultationFee}` : 'Not specified',
-        rating: 4.8
+        rating: doctor.rating ?? null,
+        reviewCount: doctor.reviewCount ?? 0,
+        hospitalRating: doctor.hospital?.rating ?? null,
+        hospitalReviewCount: doctor.hospital?.reviewCount ?? 0
       }
     });
   } catch (error) {

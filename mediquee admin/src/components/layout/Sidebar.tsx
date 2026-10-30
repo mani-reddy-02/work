@@ -25,7 +25,8 @@ import {
   ListTodo,
   Inbox,
   Network,
-  HelpCircle
+  HelpCircle,
+  Star
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -81,8 +82,9 @@ export const navGroups = [
     ]
   },
   {
-    title: 'Verification',
+    title: 'Governance',
     items: [
+      { name: 'Reviews & Ratings', path: '/admin/reviews', icon: Star },
       { name: 'Verification Center', path: '/admin/verification', icon: ShieldCheck }
     ]
   },

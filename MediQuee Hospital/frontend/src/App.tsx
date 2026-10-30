@@ -62,6 +62,7 @@ import { AboutMediQuee } from "./pages/marketing/AboutMediQuee"
 import { BookMedicalCamp } from "./pages/marketing/BookMedicalCamp"
 import { BookMarketing } from "./pages/marketing/BookMarketing"
 import { Requests } from "./pages/marketing/Requests"
+import { Reviews } from "./pages/Reviews"
 
 // Lab layout & pages
 import { LabLayout } from "./components/lab/LabLayout"
@@ -211,11 +212,13 @@ function AnimatedRoutes() {
           <Route path="/security/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/support" element={<Navigate to="/contact" replace />} />
           <Route path="/contact" element={<ContactSupport />} />
+          <Route path="/reviews" element={<Reviews />} />
         </Route>
 
         {/* ── LAB ROUTES ──────────────────────────────────── */}
         <Route element={<RoleProtectedRoute allowedRoles={['lab']}><LabLayout /></RoleProtectedRoute>}>
           <Route path="/lab" element={<LabDashboard />} />
+          <Route path="/lab/reviews" element={<Reviews />} />
           <Route path="/lab/orders" element={<LabOrders />} />
           <Route path="/lab/order/:id" element={<LabOrderDetail />} />
           <Route path="/lab/orders/:id" element={<LabOrderDetail />} />

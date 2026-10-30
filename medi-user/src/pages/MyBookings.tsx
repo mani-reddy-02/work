@@ -13,10 +13,12 @@ import {
   ClipboardList,
   CheckCircle2,
   Building2,
-  FileText
+  FileText,
+  Star
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import { ReviewModal } from '../components/ReviewModal';
 import { opAppointmentApi, type OpBookingRecord } from '../lib/opAppointmentApi';
 import { labBookingApi, type LabBookingRecord } from '../lib/labTestApi';
 import { homeNursingApi, type HomeNursingBookingRecord } from '../lib/homeNursingApi';
@@ -151,6 +153,7 @@ const MyBookings = () => {
   const [error, setError] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [reviewBookingId, setReviewBookingId] = useState<string | null>(null);
   const lastFetchRef = useRef<number>(0);
 
   const handleCompleteNursing = async (bookingId: string) => {
@@ -643,6 +646,20 @@ const MyBookings = () => {
                           <span>Report</span>
                         </button>
                       )}
+                      {booking.status === 'COMPLETED' && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setReviewBookingId(booking.id);
+                          }}
+                          className="flex items-center gap-1 font-bold text-[11px] px-2.5 py-1.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer"
+                          title="Rate and review your experience"
+                        >
+                          <Star className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
+                          <span>Review</span>
+                        </button>
+                      )}
                       <Link
                         to={`/booking/${booking.id}`}
                         className="flex items-center gap-1 text-[12px] font-black text-[#0055ff] hover:text-blue-700 transition-colors"
@@ -713,8 +730,17 @@ const MyBookings = () => {
                 View Past
               </button>
             )}
-          </div>
-        </div>
+      {/* Review Modal */}
+      {reviewBookingId && (
+        <ReviewModal
+          bookingId={reviewBookingId}
+          isOpen={Boolean(reviewBookingId)}
+          onClose={() => setReviewBookingId(null)}
+          onSuccess={() => {
+            setReviewBookingId(null);
+            loadBookings(true);
+          }}
+        />
       )}
     </div>
   );

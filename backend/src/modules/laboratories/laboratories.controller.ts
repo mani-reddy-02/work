@@ -154,7 +154,8 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
           updatedAt: lab.updatedAt.toISOString(),
           hospitalName: null,
           hospitalId: null,
-          rating: 4.8,
+          rating: (lab as any).rating ?? null,
+          reviewCount: (lab as any).reviewCount ?? 0,
           time: 'Within 24 Hours'
         };
       }));
@@ -253,7 +254,8 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
           hospitalName: lab.hospital?.name || null,
           hospitalId: lab.hospital?.id || null,
           hospital: lab.hospital,
-          rating: 4.8,
+          rating: (lab as any).rating ?? lab.hospital?.rating ?? null,
+          reviewCount: (lab as any).reviewCount ?? lab.hospital?.reviewCount ?? 0,
           time: 'Within 24 Hours'
         };
       }));
@@ -484,7 +486,8 @@ export const getLaboratoryById = async (req: Request, res: Response, next: NextF
       hospitalShare: hospitalLab?.hospitalShare ?? (labRecord?.hospital?.hospitalShare ?? 80),
       createdAt: baseRecord.createdAt ? baseRecord.createdAt.toISOString() : new Date().toISOString(),
       updatedAt: baseRecord.updatedAt ? baseRecord.updatedAt.toISOString() : new Date().toISOString(),
-      rating: 4.8,
+      rating: labRecord?.rating ?? hospitalLab?.rating ?? null,
+      reviewCount: labRecord?.reviewCount ?? hospitalLab?.reviewCount ?? 0,
       time: 'Within 24 Hours',
       price: `₹${Math.round(minPrice)}`,
       availableTestsCount: offerings.length,

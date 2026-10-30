@@ -52,6 +52,10 @@ model Hospital {
   medicalCampRequests MedicalCampRequest[]
   notifications       Notification[]
   settlements         Settlement[]
+  rating              Float?
+  reviewCount         Int                    @default(0)
+  reviews             Review[]
+  reviewAggregates    ReviewAggregate[]
 }
 
 model PlatformSpecialty {
@@ -133,6 +137,13 @@ model User {
   notifications           Notification[]
   patientReports          PatientReport[]
   prescriptions           Prescription[]        @relation("DoctorPrescriptions")
+  rating                  Float?
+  reviewCount             Int                   @default(0)
+  patientReviews          Review[]              @relation("PatientReviews")
+  doctorReviews           Review[]              @relation("DoctorReviews")
+  reviewResponses         ReviewResponse[]
+  reviewReports           ReviewReport[]
+  reviewModerationLogs    ReviewModerationLog[]
 }
 
 model Department {
@@ -238,6 +249,7 @@ model OPBooking {
   vitals                       PatientVitals?
   prescription                 Prescription?
   videoConsultation            VideoConsultation?
+  reviews                      Review[]
 }
 
 model VideoConsultation {
@@ -328,6 +340,7 @@ model HomeNursingBooking {
   nurse                        User?          @relation("NurseAssignedNursingBookings", fields: [nurseId], references: [id])
   service                      NursingService @relation(fields: [serviceId], references: [id])
   user                         User           @relation("PatientNursingBookings", fields: [userId], references: [id], onDelete: Cascade)
+  reviews                      Review[]
 
   @@unique([hospitalId, serviceDate, timeSlot, nurseId, userId])
   @@map("home_nursing_bookings")
@@ -604,6 +617,7 @@ model LabBooking {
   items                        LabBookingItem[]
   hospital                     Hospital         @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
   patient                      User             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  reviews                      Review[]
 
   @@map("lab_bookings")
 }
@@ -647,6 +661,9 @@ model Lab {
   schedules             LabSchedule[]
   hospital              Hospital?              @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
   platformDepartment    PlatformLabDepartment? @relation(fields: [platformDepartmentId], references: [id])
+  rating                Float?
+  reviewCount           Int                    @default(0)
+  reviews               Review[]
 
   @@map("hospital_labs")
 }
@@ -941,6 +958,179 @@ model Insurance {
   updatedAt      DateTime @updatedAt
 
   @@map("insurances")
+}
+
+enum ReviewTargetType {
+  DOCTOR
+  HOSPITAL
+  LABORATORY
+}
+
+enum ReviewBookingType {
+  OP_BOOKING
+  VIDEO_CONSULTATION
+  LAB_BOOKING
+  HOME_SAMPLE
+  HOME_NURSING
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FLAGGED
+  UNDER_REVIEW
+  REMOVED
+}
+
+enum ResponseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+model Review {
+  id                      String              @id @default(uuid())
+  userId                  String
+  targetType              ReviewTargetType
+  targetId                String
+  bookingType             ReviewBookingType
+  bookingId               String
+  opBookingId             String?
+  labBookingId            String?
+  nursingBookingId        String?
+  hospitalId              String?
+  doctorId                String?
+  labId                   String?
+  rating                  Float
+  categoryRatings         Json
+  title                   String?
+  comment                 String?
+  serviceSpecificFeedback Json?
+  isAnonymous             Boolean             @default(false)
+  isVerified              Boolean             @default(true)
+  guidelinesAcknowledged  Boolean             @default(true)
+  status                  ReviewStatus        @default(PENDING)
+  rejectionReason         String?
+  publishedAt             DateTime?
+  moderatedBy             String?
+  moderatedAt             DateTime?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  user                    User                @relation("PatientReviews", fields: [userId], references: [id], onDelete: Cascade)
+  doctor                  User?               @relation("DoctorReviews", fields: [doctorId], references: [id], onDelete: SetNull)
+  hospital                Hospital?           @relation(fields: [hospitalId], references: [id], onDelete: SetNull)
+  lab                     Lab?                @relation(fields: [labId], references: [id], onDelete: SetNull)
+  opBooking               OPBooking?          @relation(fields: [opBookingId], references: [id], onDelete: SetNull)
+  labBooking              LabBooking?         @relation(fields: [labBookingId], references: [id], onDelete: SetNull)
+  nursingBooking          HomeNursingBooking? @relation(fields: [nursingBookingId], references: [id], onDelete: SetNull)
+
+  response                ReviewResponse?
+  reports                 ReviewReport[]
+  moderationLogs          ReviewModerationLog[]
+
+  @@unique([userId, targetType, targetId, bookingId])
+  @@index([targetType, targetId, status])
+  @@index([hospitalId, status])
+  @@index([doctorId, status])
+  @@index([labId, status])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("reviews")
+}
+
+model ReviewResponse {
+  id              String         @id @default(uuid())
+  reviewId        String         @unique
+  responderId     String
+  response        String
+  status          ResponseStatus @default(PENDING)
+  rejectionReason String?
+  moderatedBy     String?
+  moderatedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  review          Review         @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  responder       User           @relation(fields: [responderId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("review_responses")
+}
+
+model ReviewReport {
+  id              String       @id @default(uuid())
+  reviewId        String
+  reporterId      String
+  reporterRole    String
+  reason          String
+  details         String?
+  status          ReportStatus @default(PENDING)
+  resolvedBy      String?
+  resolvedAt      DateTime?
+  resolutionNotes String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  review          Review       @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reporter        User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@index([status])
+  @@map("review_reports")
+}
+
+model ReviewModerationLog {
+  id             String    @id @default(uuid())
+  reviewId       String?
+  responseId     String?
+  adminId        String
+  action         String
+  previousStatus String?
+  newStatus      String
+  reason         String?
+  createdAt      DateTime  @default(now())
+
+  review         Review?   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  admin          User      @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@index([adminId])
+  @@map("review_moderation_logs")
+}
+
+model ReviewAggregate {
+  id               String           @id @default(uuid())
+  targetType       ReviewTargetType
+  targetId         String
+  hospitalId       String?
+  averageRating    Float            @default(0)
+  totalReviews     Int              @default(0)
+  oneStarCount     Int              @default(0)
+  twoStarCount     Int              @default(0)
+  threeStarCount   Int              @default(0)
+  fourStarCount    Int              @default(0)
+  fiveStarCount    Int              @default(0)
+  categoryAverages Json?
+  positiveCount    Int              @default(0)
+  neutralCount     Int              @default(0)
+  negativeCount    Int              @default(0)
+  updatedAt        DateTime         @updatedAt
+
+  hospital         Hospital?        @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@unique([targetType, targetId])
+  @@index([targetType, targetId])
+  @@index([hospitalId])
+  @@map("review_aggregates")
 }
 
 

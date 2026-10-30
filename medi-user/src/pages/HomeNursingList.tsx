@@ -537,11 +537,17 @@ const HomeNursingList = () => {
                               </p>
                             )}
                           </div>
-                          <div className="text-right">
-                            <div className="flex items-center gap-1 bg-amber-50 text-amber-600 px-2 py-1 rounded-md text-xs font-bold justify-end mb-1">
-                              <Star className="w-3.5 h-3.5 fill-current" />
-                              <span>{hospital.rating || 4.8}</span>
-                            </div>
+                            {hospital.rating ? (
+                              <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded-md text-xs font-bold justify-end mb-1 border border-amber-200">
+                                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                <span>{Number(hospital.rating).toFixed(1)}</span>
+                                {hospital.reviewCount ? (
+                                  <span className="text-[10px] text-slate-400 font-normal">({hospital.reviewCount})</span>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-medium block mb-1">No reviews yet</span>
+                            )}
                             <span className="text-[14px] font-black text-[#0055ff]">
                               {hospital.price}
                             </span>

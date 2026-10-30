@@ -170,7 +170,9 @@ export const getHospitals = async (req: Request, res: Response, next: NextFuncti
         services: h.services,
         departments: h.departments.map(d => d.name),
         departmentList: h.departments,
-        doctorCount: h._count.users
+        doctorCount: h._count.users,
+        rating: h.rating ?? null,
+        reviewCount: h.reviewCount ?? 0
       };
     });
 
@@ -254,7 +256,9 @@ export const getHospitalById = async (req: Request, res: Response, next: NextFun
         services: hospital.services,
         departments: hospital.departments.map(d => d.name),
         departmentList: hospital.departments,
-        doctorCount: hospital._count.users
+        doctorCount: hospital._count.users,
+        rating: hospital.rating ?? null,
+        reviewCount: hospital.reviewCount ?? 0
       }
     });
   } catch (error) {

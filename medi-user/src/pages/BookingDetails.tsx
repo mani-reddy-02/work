@@ -21,8 +21,10 @@ import {
   CheckCircle2,
   User,
   RefreshCw,
+  Star,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { ReviewModal } from '../components/ReviewModal';
 import { opAppointmentApi, type OpBookingRecord } from '../lib/opAppointmentApi';
 import { labBookingApi, type LabBookingRecord } from '../lib/labTestApi';
 import { homeNursingApi, type HomeNursingBookingRecord } from '../lib/homeNursingApi';
@@ -44,6 +46,7 @@ const BookingDetails = () => {
   const [isCompleting, setIsCompleting] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [doctorImgError, setDoctorImgError] = useState<boolean>(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
 
   const lastFetchRef = useRef<number>(0);
 
@@ -229,6 +232,39 @@ const BookingDetails = () => {
                 className="px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-colors"
               >
                 Back to Bookings
+              </button>
+            </div>
+          )}
+
+          {/* COMPLETED BOOKING REVIEW CARD */}
+          {!isLoading && ((appointment && appointment.status === 'COMPLETED') ||
+            (labBooking && labBooking.status === 'COMPLETED') ||
+            (nursingBooking && nursingBooking.status === 'COMPLETED')) && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 sm:p-5 rounded-3xl border border-amber-200/90 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/20">
+                  <Star className="w-6 h-6 fill-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-sm font-bold text-slate-900">Rate & Review Your Experience</h3>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-white text-amber-800 border border-amber-200">
+                      <ShieldCheck className="w-3 h-3 text-amber-600" />
+                      Verified
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 font-medium mt-0.5">
+                    Your genuine feedback directly helps other patients choose the right care.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReviewModalOpen(true)}
+                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-md shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+              >
+                <Star className="w-4 h-4 fill-white" />
+                <span>Leave / View Review</span>
               </button>
             </div>
           )}
@@ -1527,8 +1563,14 @@ const BookingDetails = () => {
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             )}
             <span>{toastMessage.message}</span>
-          </div>
-        </div>
+      {/* Review Modal */}
+      {id && (
+        <ReviewModal
+          bookingId={id}
+          isOpen={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          onSuccess={() => setIsReviewModalOpen(false)}
+        />
       )}
     </div>
   );

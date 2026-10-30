@@ -37,6 +37,7 @@ import HomePosters from './pages/HomePosters';
 import Faqs from './pages/Faqs';
 import Insurance from './pages/Insurance';
 import NursingServices from './pages/NursingServices';
+import Reviews from './pages/Reviews';
 
 // Advanced Pages
 import Transactions from './pages/Transactions';
@@ -119,6 +120,7 @@ function App() {
               <Route path="settlements" element={<Settlements />} />
               <Route path="settlements/:id" element={<SettlementDetails />} />
               <Route path="verification" element={<Verification />} />
+              <Route path="reviews" element={<Reviews />} />
               <Route path="reports" element={<Reports />} />
                 <Route path="reports/requests-history" element={<RequestsHistory />} />
               <Route path="notifications" element={<Notifications />} />

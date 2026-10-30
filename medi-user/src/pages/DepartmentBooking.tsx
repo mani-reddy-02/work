@@ -3,8 +3,9 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { 
   Building2, Stethoscope, Calendar, Clock, User, CheckCircle2, 
   ChevronRight, ArrowLeft, Phone, MapPin, Search, AlertCircle, 
-  Info, ShieldCheck, Video, Activity, RefreshCw, X
+  Info, ShieldCheck, Video, Activity, RefreshCw, X, Star
 } from 'lucide-react';
+import { ProviderReviewsSection } from '../components/ProviderReviewsSection';
 import { departmentApi, type DepartmentRecord } from '../lib/hospitalApi';
 import { opAppointmentApi, type DoctorRecord } from '../lib/opAppointmentApi';
 import { getDiseaseIconUrl } from '../utils/diseaseIcons';
@@ -659,6 +660,18 @@ const DepartmentBooking: React.FC = () => {
                           {doctor.designation || doctor.specialization}
                           {doctor.experience && doctor.experience !== 'Not specified' && ` • ${doctor.experience}`}
                         </p>
+
+                        <div className="flex items-center gap-2 mt-1">
+                          {doctor.rating ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                              <span>{doctor.rating.toFixed(1)}</span>
+                              <span className="text-slate-400 font-normal">({(doctor as any).reviewCount || 0})</span>
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 font-medium">No reviews yet</span>
+                          )}
+                        </div>
 
                         <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1.5 flex-wrap">
                           <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -1355,6 +1368,15 @@ const DepartmentBooking: React.FC = () => {
               <div className="flex justify-between items-center p-3 bg-blue-50/50 rounded-xl border border-blue-100">
                 <span className="font-semibold text-slate-700">Consultation Fee</span>
                 <span className="font-bold text-blue-600 text-sm">{previewDoctor.fees || 'Free'}</span>
+              </div>
+
+              {/* Patient Reviews Section */}
+              <div className="pt-2">
+                <ProviderReviewsSection 
+                  targetType="DOCTOR" 
+                  targetId={previewDoctor.id} 
+                  providerName={`Dr. ${previewDoctor.name}`} 
+                />
               </div>
             </div>
 
