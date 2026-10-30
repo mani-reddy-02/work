@@ -730,6 +730,10 @@ const MyBookings = () => {
                 View Past
               </button>
             )}
+          </div>
+        </div>
+      )}
+
       {/* Review Modal */}
       {reviewBookingId && (
         <ReviewModal

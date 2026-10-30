@@ -537,6 +537,7 @@ const HomeNursingList = () => {
                               </p>
                             )}
                           </div>
+                          <div className="text-right">
                             {hospital.rating ? (
                               <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded-md text-xs font-bold justify-end mb-1 border border-amber-200">
                                 <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />

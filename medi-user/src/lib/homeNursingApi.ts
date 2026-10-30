@@ -18,6 +18,7 @@ export interface NursingProviderRecord {
   contactPhone?: string;
   logoUrl?: string | null;
   rating?: number;
+  reviewCount?: number;
   registered?: boolean;
   price: string;
   numericPrice: number;

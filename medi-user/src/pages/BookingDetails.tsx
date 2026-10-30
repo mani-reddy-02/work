@@ -1563,6 +1563,10 @@ const BookingDetails = () => {
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             )}
             <span>{toastMessage.message}</span>
+          </div>
+        </div>
+      )}
+
       {/* Review Modal */}
       {id && (
         <ReviewModal

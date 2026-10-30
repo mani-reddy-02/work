@@ -1,4 +1,26 @@
-import { apiFetch } from './api';
+import { API_BASE_URL } from './apiConfig';
+
+async function apiFetch(endpoint: string, options: RequestInit = {}) {
+  const token = localStorage.getItem('mediquee_token');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> || {}),
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`, {
+    ...options,
+    headers,
+  });
+
+  const json = await res.json();
+  if (!res.ok || json.success === false) {
+    throw new Error(json.message || json.error?.message || 'Request failed');
+  }
+  return json;
+}
 
 export interface RatingDimension {
   key: string;
