@@ -89,3 +89,23 @@ export interface AdminResponseModerationDto {
   action: 'APPROVE' | 'REJECT';
   reason?: string;
 }
+
+export type ReviewInvitationStatus = 'PENDING' | 'POSTPONED' | 'SUBMITTED' | 'DISMISSED';
+
+export interface ReviewInvitationDto {
+  id: string;
+  bookingId: string;
+  bookingType: ReviewBookingType;
+  serviceTypeLabel: string;
+  serviceDate?: string | null;
+  targetType: ReviewTargetType;
+  targetId: string;
+  targetTitle: string;
+  targetSubtitle?: string | null;
+  targetAvatar?: string | null;
+  dimensions: { key: string; label: string }[];
+  status: ReviewInvitationStatus;
+  postponedUntil?: Date | string | null;
+  canReview: boolean;
+}
+

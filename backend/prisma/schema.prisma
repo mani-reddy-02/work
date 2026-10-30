@@ -144,6 +144,7 @@ model User {
   reviewResponses         ReviewResponse[]
   reviewReports           ReviewReport[]
   reviewModerationLogs    ReviewModerationLog[]
+  reviewInvitations       ReviewInvitation[]
 }
 
 model Department {
@@ -981,6 +982,8 @@ enum ReviewStatus {
   FLAGGED
   UNDER_REVIEW
   REMOVED
+  PUBLISHED
+  HIDDEN
 }
 
 enum ResponseStatus {
@@ -992,6 +995,13 @@ enum ResponseStatus {
 enum ReportStatus {
   PENDING
   RESOLVED
+  DISMISSED
+}
+
+enum ReviewInvitationStatus {
+  PENDING
+  POSTPONED
+  SUBMITTED
   DISMISSED
 }
 
@@ -1018,6 +1028,8 @@ model Review {
   guidelinesAcknowledged  Boolean             @default(true)
   status                  ReviewStatus        @default(PENDING)
   rejectionReason         String?
+  moderationNotes         String?
+  serviceType             String?
   publishedAt             DateTime?
   moderatedBy             String?
   moderatedAt             DateTime?
@@ -1131,6 +1143,32 @@ model ReviewAggregate {
   @@index([targetType, targetId])
   @@index([hospitalId])
   @@map("review_aggregates")
+}
+
+model ReviewInvitation {
+  id               String                 @id @default(uuid())
+  userId           String
+  bookingId        String
+  bookingType      ReviewBookingType
+  targetType       ReviewTargetType
+  targetId         String
+  targetTitle      String
+  targetSubtitle   String?
+  targetAvatar     String?
+  serviceTypeLabel String
+  serviceDate      String?
+  status           ReviewInvitationStatus @default(PENDING)
+  postponedUntil   DateTime?
+  submittedAt      DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookingId, targetType, targetId])
+  @@index([userId, status])
+  @@index([bookingId])
+  @@map("review_invitations")
 }
 
 

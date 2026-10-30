@@ -24,6 +24,56 @@ export class ReviewsController {
   }
 
   /**
+   * GET /api/v1/reviews/pending-invitations
+   * Fetch queued completed bookings eligible for post-service review popup
+   */
+  async getPendingInvitations(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Authentication required' });
+      }
+
+      const includePostponed = req.query.includePostponed === 'true';
+      const invitations = await reviewsService.getPendingInvitations(userId, includePostponed);
+      return res.json({ success: true, data: invitations });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || 'Failed to fetch pending invitations' });
+    }
+  }
+
+  /**
+   * POST /api/v1/reviews/postpone
+   * Postpone review invitation (e.g. user clicked Maybe Later or closed popup)
+   */
+  async postponeInvitation(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Authentication required' });
+      }
+
+      const { invitationId, bookingId, targetId, hours } = req.body || {};
+      const id = req.params.id || invitationId;
+
+      const result = await reviewsService.postponeInvitation(userId, {
+        invitationId: id,
+        bookingId,
+        targetId,
+        hours: hours ? Number(hours) : 24,
+      });
+
+      return res.json({
+        success: true,
+        message: 'Review invitation postponed successfully.',
+        data: result,
+      });
+    } catch (err: any) {
+      return res.status(400).json({ success: false, message: err.message || 'Failed to postpone invitation' });
+    }
+  }
+
+  /**
    * POST /api/v1/reviews
    * Submit a new patient review
    */

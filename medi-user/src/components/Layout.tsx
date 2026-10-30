@@ -5,6 +5,7 @@ import DesktopSidebar from './DesktopSidebar';
 import { useUIStore } from '../lib/uiStore';
 import { useEffect } from 'react';
 import { cn } from '../lib/utils';
+import PostServiceReviewPopup from './PostServiceReviewPopup';
 
 const Layout = () => {
   const { isMobileMenuOpen, setMobileMenuOpen, isDesktopSidebarOpen, detectLocation } = useUIStore();
@@ -61,6 +62,9 @@ const Layout = () => {
           <MobileBottomNav className="md:hidden" />
         </div>
       </div>
+
+      {/* Automatic Post-Service Review & Rating Popup */}
+      <PostServiceReviewPopup />
     </div>
   );
 };

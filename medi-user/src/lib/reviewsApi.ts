@@ -66,6 +66,23 @@ export interface EligibilityResponse {
   targets: ReviewTarget[];
 }
 
+export interface ReviewInvitationDto {
+  id: string;
+  bookingId: string;
+  bookingType: string;
+  serviceTypeLabel: string;
+  serviceDate: string;
+  targetType: 'DOCTOR' | 'HOSPITAL' | 'LABORATORY';
+  targetId: string;
+  targetTitle: string;
+  targetSubtitle?: string | null;
+  targetAvatar?: string | null;
+  dimensions: RatingDimension[];
+  status: 'PENDING' | 'POSTPONED' | 'SUBMITTED' | 'DISMISSED';
+  postponedUntil?: string | null;
+  canReview: boolean;
+}
+
 export interface SubmitReviewPayload {
   bookingId: string;
   bookingType: string;
@@ -184,6 +201,33 @@ export const reviewsApi = {
       return { success: true, data: res.data };
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to fetch your reviews' };
+    }
+  },
+
+  /**
+   * Get pending review invitations for completed services
+   */
+  async getPendingInvitations(includePostponed = false): Promise<{ success: boolean; data?: ReviewInvitationDto[]; error?: string }> {
+    try {
+      const res = await apiFetch(`/reviews/pending-invitations?includePostponed=${includePostponed}`);
+      return { success: true, data: res.data };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to fetch pending review invitations' };
+    }
+  },
+
+  /**
+   * Postpone a review invitation (e.g. user clicked Maybe Later or closed popup)
+   */
+  async postponeInvitation(payload: { invitationId?: string; bookingId?: string; targetId?: string; hours?: number }): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await apiFetch('/reviews/postpone', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      return { success: true, data: res.data };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to postpone invitation' };
     }
   },
 };

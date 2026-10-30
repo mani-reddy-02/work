@@ -13,6 +13,9 @@ router.get('/public', reviewsController.getPublicReviews);
 // ==========================================
 // Patient Review Submission Endpoints
 // ==========================================
+router.get('/pending-invitations', authenticate, reviewsController.getPendingInvitations);
+router.post('/postpone', authenticate, reviewsController.postponeInvitation);
+router.post('/invitations/:id/postpone', authenticate, reviewsController.postponeInvitation);
 router.get('/eligible/:bookingId', authenticate, reviewsController.getEligibleTargets);
 router.post('/', authenticate, reviewsController.submitReview);
 router.put('/:id', authenticate, reviewsController.editReview);

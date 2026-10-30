@@ -6,7 +6,9 @@ import {
   ResponseStatus, 
   ReportStatus,
   SubmitReviewDto,
-  EditReviewDto
+  EditReviewDto,
+  ReviewInvitationDto,
+  ReviewInvitationStatus
 } from './reviews.types';
 import { sendNotification } from '../notifications/notifications.service';
 
@@ -347,6 +349,322 @@ export class ReviewsService {
   }
 
   /**
+   * 1b. Get all pending review invitations for the authenticated user across all 5 services
+   */
+  async getPendingInvitations(userId: string, includePostponed = false): Promise<ReviewInvitationDto[]> {
+    // 1. Completed OP & Video bookings
+    const completedOpBookings = await prisma.oPBooking.findMany({
+      where: {
+        patientId: userId,
+        status: 'COMPLETED',
+      },
+      include: {
+        hospital: true,
+        doctor: {
+          select: {
+            id: true,
+            name: true,
+            specialization: true,
+            designation: true,
+            avatar: true,
+          }
+        },
+        videoConsultation: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    // 2. Completed Lab bookings
+    const completedLabBookings = await prisma.labBooking.findMany({
+      where: {
+        patientId: userId,
+        status: 'COMPLETED',
+      },
+      include: {
+        hospital: true,
+        items: {
+          include: {
+            labTest: {
+              include: {
+                platformTest: true,
+              }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    // 3. Completed Home Nursing bookings
+    const completedNursingBookings = await prisma.homeNursingBooking.findMany({
+      where: {
+        userId,
+        status: 'COMPLETED',
+      },
+      include: {
+        hospital: true,
+        service: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    // 4. Fetch all existing reviews by this user to verify submission status
+    const userReviews = await prisma.review.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        bookingId: true,
+        targetType: true,
+        targetId: true,
+        status: true,
+      }
+    });
+
+    const reviewedKeys = new Set(
+      userReviews.map(r => `${r.bookingId}_${r.targetType}_${r.targetId}`)
+    );
+
+    // 5. Build candidate invitations
+    interface CandidateInv {
+      bookingId: string;
+      bookingType: ReviewBookingType;
+      serviceTypeLabel: string;
+      serviceDate: string;
+      targetType: ReviewTargetType;
+      targetId: string;
+      targetTitle: string;
+      targetSubtitle?: string | null;
+      targetAvatar?: string | null;
+      dimensions: { key: string; label: string }[];
+    }
+
+    const candidates: CandidateInv[] = [];
+
+    // OP & Video
+    for (const op of completedOpBookings) {
+      const isVideo = Boolean(op.videoConsultation);
+      const bType: ReviewBookingType = isVideo ? 'VIDEO_CONSULTATION' : 'OP_BOOKING';
+      const sDate = op.appointmentDate
+        ? (typeof op.appointmentDate === 'string' ? op.appointmentDate : (op.appointmentDate as Date).toISOString())
+        : op.createdAt.toISOString();
+
+      if (op.doctorId && op.doctor) {
+        candidates.push({
+          bookingId: op.id,
+          bookingType: bType,
+          serviceTypeLabel: isVideo ? 'Online Video Consultation' : 'In-Person OP Visit',
+          serviceDate: sDate,
+          targetType: 'DOCTOR',
+          targetId: op.doctorId,
+          targetTitle: `Dr. ${op.doctor.name.replace(/^Dr\.\s*/i, '')}`,
+          targetSubtitle: op.doctor.specialization || op.doctor.designation || 'Specialist Doctor',
+          targetAvatar: op.doctor.avatar,
+          dimensions: [
+            { key: 'medicalCommunication', label: 'Medical communication & explanation' },
+            { key: 'professionalBehaviour', label: 'Professional behaviour' },
+            { key: 'consultationExperience', label: 'Consultation experience' },
+            { key: 'timeAndPunctuality', label: 'Time & punctuality' },
+            { key: 'overallDoctorExperience', label: 'Overall doctor experience' },
+          ],
+        });
+      }
+
+      if (op.hospitalId && op.hospital) {
+        candidates.push({
+          bookingId: op.id,
+          bookingType: bType,
+          serviceTypeLabel: 'Hospital Experience',
+          serviceDate: sDate,
+          targetType: 'HOSPITAL',
+          targetId: op.hospitalId,
+          targetTitle: op.hospital.name,
+          targetSubtitle: [op.hospital.area, op.hospital.city].filter(Boolean).join(', ') || 'Partner Hospital',
+          targetAvatar: op.hospital.logoUrl,
+          dimensions: [
+            { key: 'staffBehaviour', label: 'Staff behaviour' },
+            { key: 'cleanlinessAndEnvironment', label: 'Cleanliness & environment' },
+            { key: 'waitingTimeAndCoordination', label: 'Waiting time & coordination' },
+            { key: 'facilitiesAndAccessibility', label: 'Facilities & accessibility' },
+            { key: 'overallHospitalExperience', label: 'Overall hospital experience' },
+          ],
+        });
+      }
+    }
+
+    // Lab & Home Sample
+    for (const lab of completedLabBookings) {
+      const isHome = lab.bookingType === 'HOME_COLLECTION';
+      const bType: ReviewBookingType = isHome ? 'HOME_SAMPLE' : 'LAB_BOOKING';
+      const testNames = lab.items?.map(i => i.labTest?.platformTest?.name).filter(Boolean).slice(0, 2).join(', ');
+
+      if (lab.hospitalId && lab.hospital) {
+        candidates.push({
+          bookingId: lab.id,
+          bookingType: bType,
+          serviceTypeLabel: isHome ? 'Home Sample Collection' : 'Diagnostic Lab Visit',
+          serviceDate: lab.createdAt.toISOString(),
+          targetType: 'LABORATORY',
+          targetId: lab.hospitalId,
+          targetTitle: lab.hospital.name,
+          targetSubtitle: testNames ? `${isHome ? 'Home Sample: ' : 'Test: '}${testNames}` : (isHome ? 'Home Sample Collection' : 'Diagnostic Laboratory'),
+          targetAvatar: lab.hospital.logoUrl,
+          dimensions: [
+            { key: 'sampleCollectionExperience', label: 'Sample collection experience' },
+            { key: 'staffBehaviour', label: 'Staff behaviour' },
+            { key: 'servicePunctuality', label: 'Service punctuality' },
+            { key: 'reportDeliveryExperience', label: 'Report delivery experience' },
+            { key: 'overallLaboratoryExperience', label: 'Overall laboratory experience' },
+          ],
+        });
+      }
+    }
+
+    // Home Nursing
+    for (const nursing of completedNursingBookings) {
+      if (nursing.hospitalId && nursing.hospital) {
+        candidates.push({
+          bookingId: nursing.id,
+          bookingType: 'HOME_NURSING',
+          serviceTypeLabel: 'Home Nursing Care',
+          serviceDate: nursing.serviceDate
+            ? (typeof nursing.serviceDate === 'string' ? nursing.serviceDate : (nursing.serviceDate as Date).toISOString())
+            : nursing.createdAt.toISOString(),
+          targetType: 'HOSPITAL',
+          targetId: nursing.hospitalId,
+          targetTitle: nursing.hospital.name,
+          targetSubtitle: `Home Nursing: ${nursing.service?.name || 'Healthcare Service'}`,
+          targetAvatar: nursing.hospital.logoUrl,
+          dimensions: [
+            { key: 'staffBehaviour', label: 'Nurse & staff behaviour' },
+            { key: 'cleanlinessAndEnvironment', label: 'Safety & medical hygiene' },
+            { key: 'waitingTimeAndCoordination', label: 'Punctuality & scheduling' },
+            { key: 'facilitiesAndAccessibility', label: 'Care quality & equipment' },
+            { key: 'overallHospitalExperience', label: 'Overall nursing experience' },
+          ],
+        });
+      }
+    }
+
+    // 6. Synchronize with review_invitations table
+    const eligible: ReviewInvitationDto[] = [];
+    const now = new Date();
+
+    for (const cand of candidates) {
+      const key = `${cand.bookingId}_${cand.targetType}_${cand.targetId}`;
+      const isAlreadyReviewed = reviewedKeys.has(key);
+
+      const record = await prisma.reviewInvitation.upsert({
+        where: {
+          userId_bookingId_targetType_targetId: {
+            userId,
+            bookingId: cand.bookingId,
+            targetType: cand.targetType,
+            targetId: cand.targetId,
+          }
+        },
+        create: {
+          userId,
+          bookingId: cand.bookingId,
+          bookingType: cand.bookingType,
+          targetType: cand.targetType,
+          targetId: cand.targetId,
+          targetTitle: cand.targetTitle,
+          targetSubtitle: cand.targetSubtitle,
+          targetAvatar: cand.targetAvatar,
+          serviceTypeLabel: cand.serviceTypeLabel,
+          serviceDate: cand.serviceDate,
+          status: isAlreadyReviewed ? 'SUBMITTED' : 'PENDING',
+          submittedAt: isAlreadyReviewed ? now : null,
+        },
+        update: {
+          ...(isAlreadyReviewed ? { status: 'SUBMITTED', submittedAt: now } : {}),
+        }
+      });
+
+      // Filter out completed or dismissed
+      if (record.status === 'SUBMITTED' || record.status === 'DISMISSED') {
+        continue;
+      }
+
+      // Check postponed cooldown
+      if (record.status === 'POSTPONED') {
+        if (!includePostponed) {
+          if (record.postponedUntil && record.postponedUntil > now) {
+            continue; // Postponed cooldown active for popup
+          }
+        }
+      }
+
+      eligible.push({
+        id: record.id,
+        bookingId: record.bookingId,
+        bookingType: record.bookingType as any,
+        serviceTypeLabel: record.serviceTypeLabel,
+        serviceDate: record.serviceDate,
+        targetType: record.targetType as any,
+        targetId: record.targetId,
+        targetTitle: record.targetTitle,
+        targetSubtitle: record.targetSubtitle,
+        targetAvatar: record.targetAvatar,
+        dimensions: cand.dimensions,
+        status: record.status as any,
+        postponedUntil: record.postponedUntil,
+        canReview: true,
+      });
+    }
+
+    return eligible;
+  }
+
+  /**
+   * 1c. Postpone review invitation (user chose Maybe Later or closed popup)
+   */
+  async postponeInvitation(userId: string, data: { invitationId?: string; bookingId?: string; targetId?: string; hours?: number }) {
+    const hours = data.hours || 24;
+    const postponedUntil = new Date(Date.now() + hours * 3600 * 1000);
+
+    if (data.invitationId) {
+      const inv = await prisma.reviewInvitation.findUnique({
+        where: { id: data.invitationId }
+      });
+      if (!inv || inv.userId !== userId) {
+        throw new Error('Review invitation not found or unauthorized.');
+      }
+      return prisma.reviewInvitation.update({
+        where: { id: data.invitationId },
+        data: {
+          status: 'POSTPONED',
+          postponedUntil,
+        }
+      });
+    }
+
+    if (data.bookingId && data.targetId) {
+      const inv = await prisma.reviewInvitation.findFirst({
+        where: {
+          userId,
+          bookingId: data.bookingId,
+          targetId: data.targetId,
+        }
+      });
+      if (inv) {
+        return prisma.reviewInvitation.update({
+          where: { id: inv.id },
+          data: {
+            status: 'POSTPONED',
+            postponedUntil,
+          }
+        });
+      }
+    }
+
+    return { success: true, message: 'Invitation postponed successfully.' };
+  }
+
+  /**
    * 2. Submit Review
    */
   async submitReview(userId: string, data: SubmitReviewDto) {
@@ -403,13 +721,13 @@ export class ReviewsService {
         opBookingId: ['OP_BOOKING', 'VIDEO_CONSULTATION'].includes(bookingType) ? data.bookingId : null,
         labBookingId: ['LAB_BOOKING', 'HOME_SAMPLE'].includes(bookingType) ? data.bookingId : null,
         nursingBookingId: bookingType === 'HOME_NURSING' ? data.bookingId : null,
-        hospitalId: target.hospitalId || null,
-        doctorId: target.doctorId || null,
+        hospitalId: (target as any).hospitalId || null,
+        doctorId: (target as any).doctorId || null,
         rating: Math.round(data.rating),
         categoryRatings,
         title: data.title?.trim() || null,
         comment: data.comment?.trim() || null,
-        serviceSpecificFeedback: data.serviceSpecificFeedback || null,
+        serviceSpecificFeedback: data.serviceSpecificFeedback ? (data.serviceSpecificFeedback as any) : undefined,
         isAnonymous: Boolean(data.isAnonymous),
         isVerified: true,
         guidelinesAcknowledged: true,
@@ -437,13 +755,46 @@ export class ReviewsService {
       // 2. Platform Admin notification
       await sendNotification({
         title: initialStatus === 'FLAGGED' ? 'Flagged Review Needs Review' : 'New Review Awaiting Moderation',
-        message: `${review.user.name} submitted a ${data.rating}-star review for ${target.title}.`,
+        message: `${(review as any).user?.name || 'A patient'} submitted a ${data.rating}-star review for ${target.title}.`,
         type: 'review_moderation',
         targetRoles: ['SUPER_ADMIN'],
         metadata: { reviewId: review.id, targetType: data.targetType, initialStatus }
       });
     } catch (notifErr) {
       console.error('Failed to dispatch notification for review submission:', notifErr);
+    }
+
+    // Mark invitation as SUBMITTED in database
+    try {
+      await prisma.reviewInvitation.upsert({
+        where: {
+          userId_bookingId_targetType_targetId: {
+            userId,
+            bookingId: data.bookingId,
+            targetType: data.targetType,
+            targetId: data.targetId,
+          }
+        },
+        create: {
+          userId,
+          bookingId: data.bookingId,
+          bookingType,
+          targetType: data.targetType,
+          targetId: data.targetId,
+          targetTitle: target.title,
+          targetSubtitle: target.subtitle,
+          targetAvatar: target.avatar,
+          serviceTypeLabel: target.serviceTypeLabel,
+          status: 'SUBMITTED',
+          submittedAt: new Date(),
+        },
+        update: {
+          status: 'SUBMITTED',
+          submittedAt: new Date(),
+        }
+      });
+    } catch (invErr) {
+      console.error('Failed to update review invitation status on submit:', invErr);
     }
 
     return review;

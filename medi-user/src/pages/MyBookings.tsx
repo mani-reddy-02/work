@@ -22,6 +22,7 @@ import { ReviewModal } from '../components/ReviewModal';
 import { opAppointmentApi, type OpBookingRecord } from '../lib/opAppointmentApi';
 import { labBookingApi, type LabBookingRecord } from '../lib/labTestApi';
 import { homeNursingApi, type HomeNursingBookingRecord } from '../lib/homeNursingApi';
+import { reviewsApi, type ReviewInvitationDto } from '../lib/reviewsApi';
 
 interface UnifiedBooking {
   id: string;
@@ -149,6 +150,8 @@ const MyBookings = () => {
   const [opBookings, setOpBookings] = useState<OpBookingRecord[]>([]);
   const [labBookings, setLabBookings] = useState<LabBookingRecord[]>([]);
   const [nursingBookings, setNursingBookings] = useState<HomeNursingBookingRecord[]>([]);
+  const [userReviews, setUserReviews] = useState<any[]>([]);
+  const [invitations, setInvitations] = useState<ReviewInvitationDto[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
@@ -226,10 +229,12 @@ const MyBookings = () => {
     if (!silent) setIsLoading(true);
     if (!silent) setError(null);
     try {
-      const [opRes, labRes, nursingRes] = await Promise.all([
+      const [opRes, labRes, nursingRes, reviewsRes, invRes] = await Promise.all([
         opAppointmentApi.fetchMyAppointments(),
         labBookingApi.getMyLabBookings(),
         homeNursingApi.getMyBookings().catch(() => ({ success: true, data: [] })),
+        reviewsApi.getMyReviews().catch(() => ({ success: true, data: [] })),
+        reviewsApi.getPendingInvitations(true).catch(() => ({ success: true, data: [] })),
       ]);
 
       if (opRes.success && opRes.data) {
@@ -240,6 +245,12 @@ const MyBookings = () => {
       }
       if (nursingRes.success && nursingRes.data) {
         setNursingBookings(nursingRes.data);
+      }
+      if (reviewsRes.success && reviewsRes.data) {
+        setUserReviews(reviewsRes.data);
+      }
+      if (invRes.success && invRes.data) {
+        setInvitations(invRes.data);
       }
 
       if (!silent) {
@@ -289,6 +300,61 @@ const MyBookings = () => {
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
+
+  const getBookingReviewState = (bookingId: string) => {
+    // 1. Check if user already submitted a review for this booking
+    const matchingReviews = userReviews.filter((r) => r.bookingId === bookingId);
+    if (matchingReviews.length > 0) {
+      const hasApproved = matchingReviews.some((r) => r.status === 'APPROVED' || r.status === 'PUBLISHED');
+      if (hasApproved) {
+        return {
+          type: 'VIEW_REVIEW' as const,
+          label: 'View Review',
+          classes: 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100',
+          icon: Star,
+          iconFill: true,
+        };
+      }
+      const hasPending = matchingReviews.some((r) => r.status === 'PENDING' || r.status === 'UNDER_REVIEW');
+      if (hasPending) {
+        return {
+          type: 'AWAITING_APPROVAL' as const,
+          label: 'Awaiting Approval',
+          classes: 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100',
+          icon: Clock,
+          iconFill: false,
+        };
+      }
+      return {
+        type: 'REVIEW_SUBMITTED' as const,
+        label: 'Review Submitted',
+        classes: 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100',
+        icon: CheckCircle2,
+        iconFill: false,
+      };
+    }
+
+    // 2. Check invitation status (e.g. POSTPONED)
+    const matchingInv = invitations.find((inv) => inv.bookingId === bookingId);
+    if (matchingInv?.status === 'POSTPONED') {
+      return {
+        type: 'REVIEW_NOW' as const,
+        label: 'Review Now',
+        classes: 'bg-[#0055ff] text-white border-blue-600 hover:bg-blue-700 shadow-xs font-black',
+        icon: Star,
+        iconFill: true,
+      };
+    }
+
+    // 3. Default for newly completed booking eligible for review
+    return {
+      type: 'LEAVE_REVIEW' as const,
+      label: 'Leave a Review',
+      classes: 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 font-bold',
+      icon: Star,
+      iconFill: false,
+    };
+  };
 
   const { upcomingList, pastList } = useMemo(() => {
     const upcoming: UnifiedBooking[] = [];
@@ -646,20 +712,27 @@ const MyBookings = () => {
                           <span>Report</span>
                         </button>
                       )}
-                      {booking.status === 'COMPLETED' && (
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setReviewBookingId(booking.id);
-                          }}
-                          className="flex items-center gap-1 font-bold text-[11px] px-2.5 py-1.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer"
-                          title="Rate and review your experience"
-                        >
-                          <Star className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
-                          <span>Review</span>
-                        </button>
-                      )}
+                      {booking.status === 'COMPLETED' && (() => {
+                        const reviewState = getBookingReviewState(booking.id);
+                        const IconComponent = reviewState.icon;
+                        return (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setReviewBookingId(booking.id);
+                            }}
+                            className={cn(
+                              "flex items-center gap-1.5 font-bold text-[11px] px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer shadow-xs active:scale-95",
+                              reviewState.classes
+                            )}
+                            title={`${reviewState.label} for your completed ${booking.serviceTypeLabel}`}
+                          >
+                            <IconComponent className={cn("w-3.5 h-3.5", reviewState.iconFill && "fill-current")} />
+                            <span>{reviewState.label}</span>
+                          </button>
+                        );
+                      })()}
                       <Link
                         to={`/booking/${booking.id}`}
                         className="flex items-center gap-1 text-[12px] font-black text-[#0055ff] hover:text-blue-700 transition-colors"
