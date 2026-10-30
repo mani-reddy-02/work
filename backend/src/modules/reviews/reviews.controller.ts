@@ -10,7 +10,7 @@ export class ReviewsController {
   async getEligibleTargets(req: Request, res: Response) {
     try {
       const userId = (req as any).user?.id;
-      const { bookingId } = req.params;
+      const { bookingId } = req.params as { bookingId: string };
 
       if (!userId) {
         return res.status(401).json({ success: false, message: 'Authentication required' });
@@ -102,7 +102,7 @@ export class ReviewsController {
   async editReview(req: Request, res: Response) {
     try {
       const userId = (req as any).user?.id;
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
 
       if (!userId) {
         return res.status(401).json({ success: false, message: 'Authentication required' });
@@ -226,7 +226,7 @@ export class ReviewsController {
   async submitProviderResponse(req: Request, res: Response) {
     try {
       const user = (req as any).user;
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const { response } = req.body;
 
       if (!user) {
@@ -251,7 +251,7 @@ export class ReviewsController {
   async reportReview(req: Request, res: Response) {
     try {
       const user = (req as any).user;
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const { reason, details } = req.body;
 
       if (!user) {
@@ -333,7 +333,7 @@ export class ReviewsController {
   async adminModerateReview(req: Request, res: Response) {
     try {
       const adminId = (req as any).user?.id;
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const { action, reason } = req.body;
 
       if (!adminId) {
@@ -358,7 +358,7 @@ export class ReviewsController {
   async adminModerateResponse(req: Request, res: Response) {
     try {
       const adminId = (req as any).user?.id;
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const { action, reason } = req.body;
 
       if (!adminId) {
@@ -383,7 +383,7 @@ export class ReviewsController {
   async adminResolveReport(req: Request, res: Response) {
     try {
       const adminId = (req as any).user?.id;
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const { resolution, notes } = req.body;
 
       if (!adminId) {

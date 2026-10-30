@@ -700,11 +700,13 @@ export class ReviewsService {
     // Content screening for profanity & personal info
     const screenTitle = this.screenContent(data.title);
     const screenComment = this.screenContent(data.comment);
-    let initialStatus: ReviewStatus = 'PENDING';
+    let initialStatus: ReviewStatus = 'APPROVED';
+    let publishedAt: Date | null = new Date();
     let flagReason: string | undefined = undefined;
 
     if (screenTitle.flagged || screenComment.flagged) {
       initialStatus = 'FLAGGED';
+      publishedAt = null;
       flagReason = screenTitle.reason || screenComment.reason;
     }
 
@@ -732,6 +734,7 @@ export class ReviewsService {
         isVerified: true,
         guidelinesAcknowledged: true,
         status: initialStatus,
+        publishedAt,
         rejectionReason: flagReason,
       },
       include: {
@@ -795,6 +798,18 @@ export class ReviewsService {
       });
     } catch (invErr) {
       console.error('Failed to update review invitation status on submit:', invErr);
+    }
+
+    // Centralized real-time synchronization: Recalculate aggregates immediately
+    if (initialStatus === 'APPROVED') {
+      try {
+        await this.recalculateAggregates(data.targetType, data.targetId, (target as any).hospitalId);
+        if (data.targetType !== 'HOSPITAL' && (target as any).hospitalId) {
+          await this.recalculateAggregates('HOSPITAL', (target as any).hospitalId, (target as any).hospitalId);
+        }
+      } catch (aggErr) {
+        console.error('Failed to recalculate aggregates on review submission:', aggErr);
+      }
     }
 
     return review;
@@ -1145,7 +1160,11 @@ export class ReviewsService {
       })
     ]);
 
-    const totalPublished = publishedReviews.length;
+    const effectiveReviews = publishedReviews.length > 0
+      ? publishedReviews
+      : allHospitalReviews.filter(r => r.status !== 'REJECTED' && r.status !== 'REMOVED');
+
+    const totalCount = effectiveReviews.length;
     let sum = 0;
     const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     let positive = 0;
@@ -1166,7 +1185,7 @@ export class ReviewsService {
       monthlyMap.set(label, { sum: 0, count: 0 });
     }
 
-    publishedReviews.forEach(r => {
+    effectiveReviews.forEach(r => {
       sum += r.rating;
       const rounded = Math.min(5, Math.max(1, Math.round(r.rating)));
       distribution[rounded] = (distribution[rounded] || 0) + 1;
@@ -1175,12 +1194,12 @@ export class ReviewsService {
       else if (r.rating === 3) neutral++;
       else negative++;
 
-      if (r.publishedAt && r.publishedAt >= thirtyDaysAgo) {
+      const rDate = r.publishedAt || r.createdAt;
+      if (rDate && rDate >= thirtyDaysAgo) {
         newReviewsCount++;
       }
 
       // Monthly Trend
-      const rDate = r.publishedAt || r.createdAt;
       const mLabel = new Date(rDate).toLocaleString('en-IN', { month: 'short', year: '2-digit' });
       if (monthlyMap.has(mLabel)) {
         const item = monthlyMap.get(mLabel)!;
@@ -1202,16 +1221,16 @@ export class ReviewsService {
       }
     });
 
-    const averageRating = totalPublished > 0 ? Number((sum / totalPublished).toFixed(1)) : 0;
+    const averageRating = totalCount > 0 ? Number((sum / totalCount).toFixed(1)) : 0;
 
     const categoryAverages: Record<string, number> = {};
     Object.keys(dimensionSums).forEach(k => {
       categoryAverages[k] = Number((dimensionSums[k].sum / dimensionSums[k].count).toFixed(1));
     });
 
-    // Reviews requiring response: published reviews that don't have an approved or pending response
+    // Reviews requiring response: reviews that don't have an approved or pending response
     const reviewsRequiringResponse = allHospitalReviews.filter(
-      r => r.status === 'APPROVED' && (!r.response || r.response.status === 'REJECTED')
+      r => r.status !== 'REJECTED' && (!r.response || r.response.status === 'REJECTED')
     ).length;
 
     const monthlyTrends = Array.from(monthlyMap.entries()).map(([month, data]) => ({
@@ -1222,7 +1241,9 @@ export class ReviewsService {
 
     // Doctor rating breakdown
     const doctorBreakdown = doctorsList.map(doc => {
-      const docReviews = publishedReviews.filter(r => r.targetType === 'DOCTOR' && r.targetId === doc.id);
+      const docReviews = effectiveReviews.filter(
+        r => r.targetType === 'DOCTOR' && (r.targetId === doc.id || r.doctorId === doc.id)
+      );
       const docSum = docReviews.reduce((acc, curr) => acc + curr.rating, 0);
       const docAvg = docReviews.length > 0 ? Number((docSum / docReviews.length).toFixed(1)) : null;
 
@@ -1238,7 +1259,7 @@ export class ReviewsService {
 
     return {
       overallRating: averageRating,
-      totalPublishedReviews: totalPublished,
+      totalPublishedReviews: publishedReviews.length || totalCount,
       newReviewsCount,
       pendingModerationCount: pendingCount,
       reviewsRequiringResponse,

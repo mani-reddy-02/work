@@ -266,6 +266,8 @@ export const getNursingServiceProviders = async (req: Request, res: Response, ne
         addressLine1: true,
         contactPhone: true,
         logoUrl: true,
+        rating: true,
+        reviewCount: true,
         users: {
           where: { role: Role.NURSE, active: true },
           select: {

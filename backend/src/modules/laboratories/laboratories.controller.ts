@@ -210,7 +210,7 @@ export const getLaboratories = async (req: Request, res: Response, next: NextFun
         where: labWhere,
         include: {
           hospital: {
-            select: { id: true, name: true, city: true, state: true, addressLine1: true, contactPhone: true, contactEmail: true, hospitalShare: true, latitude: true, longitude: true }
+            select: { id: true, name: true, city: true, state: true, addressLine1: true, contactPhone: true, contactEmail: true, hospitalShare: true, latitude: true, longitude: true, rating: true, reviewCount: true }
           }
         },
         orderBy: { name: 'asc' }

@@ -23,7 +23,7 @@ export function Reviews() {
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('APPROVED');
+  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('ALL');
 
   // Response Modal State
@@ -76,11 +76,7 @@ export function Reviews() {
       setReviews(res.reviews);
       setPagination(res.pagination);
     } catch (err: any) {
-      toast({
-        title: 'Error loading reviews',
-        description: err.message || 'Could not fetch reviews.',
-        type: 'error',
-      });
+      toast(err.message || 'Could not fetch reviews.', 'error');
     } finally {
       setIsLoadingReviews(false);
     }
@@ -104,21 +100,13 @@ export function Reviews() {
     setIsSubmittingResponse(true);
     try {
       await reviewsApi.submitProviderResponse(respondingToReview.id, responseText.trim());
-      toast({
-        title: 'Response Submitted',
-        description: 'Your official response was submitted and is pending admin moderation approval.',
-        type: 'success',
-      });
+      toast('Your official response was submitted and is pending admin moderation approval.', 'success');
       setRespondingToReview(null);
       setResponseText('');
       fetchReviews(pagination.page);
       fetchAnalytics();
     } catch (err: any) {
-      toast({
-        title: 'Failed to Submit Response',
-        description: err.message || 'Error occurred while saving response.',
-        type: 'error',
-      });
+      toast(err.message || 'Error occurred while saving response.', 'error');
     } finally {
       setIsSubmittingResponse(false);
     }
@@ -135,21 +123,13 @@ export function Reviews() {
         reason: reportReason,
         details: reportDetails.trim() || undefined,
       });
-      toast({
-        title: 'Review Reported',
-        description: 'Review has been flagged for admin investigation.',
-        type: 'success',
-      });
+      toast('Review has been flagged for admin investigation.', 'success');
       setReportingReview(null);
       setReportDetails('');
       fetchReviews(pagination.page);
       fetchAnalytics();
     } catch (err: any) {
-      toast({
-        title: 'Report Failed',
-        description: err.message || 'Could not report review.',
-        type: 'error',
-      });
+      toast(err.message || 'Could not report review.', 'error');
     } finally {
       setIsSubmittingReport(false);
     }
@@ -494,10 +474,10 @@ export function Reviews() {
                 onChange={e => setSelectedStatus(e.target.value)}
                 className="px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               >
+                <option value="ALL">All Statuses</option>
                 <option value="APPROVED">Published Reviews</option>
                 <option value="PENDING">Pending Moderation</option>
                 <option value="FLAGGED">Reported / Under Review</option>
-                <option value="ALL">All Statuses</option>
               </select>
 
               <button
