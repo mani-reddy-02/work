@@ -3,6 +3,7 @@ import {
   DEFAULT_RADIUS_KM,
   KNOWN_LOCALITIES,
   reverseGeocodeCoords,
+  detectLocationByIp,
   type LocalityItem,
 } from './locationService';
 
@@ -167,7 +168,7 @@ export const setGlobalNearbyRadius = (radiusKm: number) => {
 };
 
 /**
- * Trigger GPS location detection with device permission check
+ * Trigger GPS location detection with device permission check and automatic IP fallback
  */
 export const triggerGlobalLocationDetection = async (force: boolean = false): Promise<void> => {
   // If already detecting, skip
@@ -185,20 +186,52 @@ export const triggerGlobalLocationDetection = async (force: boolean = false): Pr
     return;
   }
 
-  if (!('geolocation' in navigator)) {
-    persistLocationState({
-      ...globalLocationState,
-      status: 'unavailable',
-      error: 'Geolocation is not supported by your browser. Please select location manually.',
-    });
-    return;
-  }
-
   persistLocationState({
     ...globalLocationState,
     status: 'detecting',
     error: null,
   });
+
+  const tryIpFallback = async (): Promise<boolean> => {
+    try {
+      const ipResult = await detectLocationByIp();
+      if (ipResult) {
+        const resolved = await reverseGeocodeCoords(ipResult.latitude, ipResult.longitude);
+        persistLocationState({
+          label: resolved.label || ipResult.label,
+          latitude: ipResult.latitude,
+          longitude: ipResult.longitude,
+          city: resolved.city || ipResult.city || null,
+          locality: resolved.locality || ipResult.locality || null,
+          status: 'detected',
+          error: null,
+          radiusKm: globalLocationState.radiusKm || DEFAULT_RADIUS_KM,
+        });
+        return true;
+      }
+    } catch (e) {
+      // Ignore
+    }
+    return false;
+  };
+
+  const isSecure = typeof window !== 'undefined' && 
+    (window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  // Browsers block navigator.geolocation over insecure HTTP (e.g. raw IP)
+  if (!('geolocation' in navigator) || !isSecure) {
+    const success = await tryIpFallback();
+    if (success) {
+      return;
+    }
+
+    persistLocationState({
+      ...globalLocationState,
+      status: 'unavailable',
+      error: 'Device GPS requires HTTPS. Please select your location manually below.',
+    });
+    return;
+  }
 
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(
@@ -231,7 +264,14 @@ export const triggerGlobalLocationDetection = async (force: boolean = false): Pr
         }
         resolve();
       },
-      (error) => {
+      async (error) => {
+        // Fallback to IP geolocation seamlessly when browser blocks or denies GPS
+        const success = await tryIpFallback();
+        if (success) {
+          resolve();
+          return;
+        }
+
         let status: UserLocationState['status'] = 'unavailable';
         let errorMessage = 'Unable to determine your location. Please select manually.';
 
@@ -254,8 +294,8 @@ export const triggerGlobalLocationDetection = async (force: boolean = false): Pr
         resolve();
       },
       {
-        timeout: 15000,
-        maximumAge: 0,
+        timeout: 8000,
+        maximumAge: 60000,
         enableHighAccuracy: true,
       }
     );

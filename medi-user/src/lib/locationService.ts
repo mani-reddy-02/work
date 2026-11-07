@@ -221,3 +221,73 @@ export async function fetchBackendLocationConfig(): Promise<{
   }
   return null;
 }
+
+/**
+ * Detect approximate user location via IP when GPS is unavailable or blocked (e.g. over HTTP)
+ */
+export async function detectLocationByIp(): Promise<{
+  latitude: number;
+  longitude: number;
+  city: string;
+  locality?: string;
+  state?: string;
+  label: string;
+} | null> {
+  // 1. Fast reverse-geocode client
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client', {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data.latitude === 'number' && typeof data.longitude === 'number') {
+        const city = data.city || data.locality || data.principalSubdivision || 'Hyderabad';
+        const locality = data.locality && data.locality !== city ? data.locality : undefined;
+        const state = data.principalSubdivision || undefined;
+        const label = locality ? `Near ${locality}, ${city}` : `Near ${city}`;
+        return {
+          latitude: data.latitude,
+          longitude: data.longitude,
+          city,
+          locality,
+          state,
+          label,
+        };
+      }
+    }
+  } catch (e) {
+    // Continue to next fallback
+  }
+
+  // 2. Reliable secondary IP location lookup
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch('https://ipwho.is/', {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && typeof data.latitude === 'number' && typeof data.longitude === 'number') {
+        const city = data.city || data.region || 'Hyderabad';
+        const state = data.region || undefined;
+        const label = `Near ${city}`;
+        return {
+          latitude: data.latitude,
+          longitude: data.longitude,
+          city,
+          state,
+          label,
+        };
+      }
+    }
+  } catch (e) {
+    // Fallback failed
+  }
+
+  return null;
+}
