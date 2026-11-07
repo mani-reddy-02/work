@@ -35,6 +35,18 @@ export const authApi = {
       body: JSON.stringify(payload),
     });
 
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.error?.message || errData?.message || 'Login failed');
+      }
+      if (response.status === 502 || response.status === 503 || response.status === 504) {
+        throw new Error(`Backend server is currently unavailable (${response.status} Bad Gateway). Please ensure the backend service is running.`);
+      }
+      throw new Error(`Server error (${response.status}). Please try again later.`);
+    }
+
     const data = await response.json();
     if (!response.ok || !data.success) {
       throw new Error(data.error?.message || 'Login failed');

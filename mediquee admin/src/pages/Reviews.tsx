@@ -500,7 +500,9 @@ export const Reviews: React.FC = () => {
                               <div className="font-semibold text-slate-900 flex items-center gap-1.5">
                                 {review.isAnonymous ? 'Anonymous Patient' : review.user?.name || 'Verified Patient'}
                                 {review.isVerified && (
-                                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600" title="Verified Transaction" />
+                                  <span title="Verified Transaction" className="inline-flex">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                                  </span>
                                 )}
                               </div>
                               <div className="text-xs text-slate-400">

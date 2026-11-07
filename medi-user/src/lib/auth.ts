@@ -39,7 +39,7 @@ const verifySession = async () => {
       },
     });
 
-    if (res.ok) {
+    if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
       const data = await res.json();
       if (data.success && data.data) {
         currentUser = data.data;
@@ -107,8 +107,29 @@ export const useAuth = () => {
           body: JSON.stringify({ identifier, password }),
         });
 
+        if (!res.ok) {
+          const contentType = res.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const errJson = await res.json().catch(() => null);
+            return {
+              success: false,
+              error: errJson?.error?.message || errJson?.message || 'Invalid email/mobile or password.',
+            };
+          }
+          if (res.status === 502 || res.status === 503 || res.status === 504) {
+            return {
+              success: false,
+              error: `Backend server is temporarily unavailable (${res.status} Bad Gateway). Please ensure the backend Node.js service is running on the server.`,
+            };
+          }
+          return {
+            success: false,
+            error: `Server returned ${res.status} ${res.statusText || 'Error'}. Please try again later.`,
+          };
+        }
+
         const json = await res.json();
-        if (!res.ok || !json.success) {
+        if (!json.success) {
           return {
             success: false,
             error: json.error?.message || 'Invalid email/mobile or password.',

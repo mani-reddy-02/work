@@ -4,7 +4,7 @@ import path from "path"
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/MediQuee_Hospital_Dashboard/',
+  base: process.env.VITE_BASE_PATH || '/hospital/',
   plugins: [react()],
   server: {
     port: 5175,
