@@ -48,8 +48,9 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API Routes
+// API Routes (supports both direct /api/v1 and reverse-proxied /v1)
 app.use('/api/v1', apiRouter);
+app.use('/v1', apiRouter);
 
 // Global Error Handler
 app.use(errorHandler);
