@@ -1,0 +1,21 @@
+# MediQuee Healthcare Platform
+
+> MediQuee is a digital healthcare management and patient booking platform providing in-person hospital outpatient appointments, verified telemedicine video consultations, home nursing care, diagnostic lab tests with home sample collection, and cashless health insurance guidance.
+
+## Core Capabilities & Services
+
+- [Outpatient (OP) Hospital Bookings](https://mediquee.com/specialties?type=hospital-op): Schedule in-person clinical consultations with accredited doctors across partner hospitals.
+- [Video Telemedicine](https://mediquee.com/specialties?type=doctor): Connect via secure HD video calls with licensed doctors and certified specialists.
+- [Browse Hospital Clinical Departments](https://mediquee.com/departments): Browse General Medicine, Pediatrics, Cardiology, Dermatology, Neurology, Orthopedics, Gynecology, and Ophthalmology.
+- [Diagnostic Lab Tests & Home Sample Collection](https://mediquee.com/services/lab-tests): Book blood tests, complete hemograms, lipid profiles, and health packages with doorstep phlebotomy.
+- [Home Nursing Services](https://mediquee.com/services/home-nursing): Certified medical attendants for post-operative recovery, elderly assistance, and daily medication administration.
+- [Cashless Health Insurance Assistance](https://mediquee.com/services/insurance): Guidance on network hospital admissions, pre-authorizations, and claim submissions.
+- [MediAI Symptom Checker](https://mediquee.com/ai): Interactive AI assistant for initial symptom triaging and specialty recommendations.
+
+## Regional Scope & Languages
+- Primary Coverage: Andhra Pradesh, Telangana, and expanding pan-India network hospitals.
+- Languages Supported: English (`en`) and Telugu (`te`).
+
+## Medical Verification & Trust Standards
+- Doctors on MediQuee are verified through State Medical Councils and the National Medical Commission (NMC).
+- Partner hospitals are verified against regulatory health licenses and clinical establishment registries.

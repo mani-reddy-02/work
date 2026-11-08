@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../../config/prisma';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { z } from 'zod';
 
 const UPLOADS_DIR = path.join(__dirname, '../../../../uploads/reports');
@@ -10,6 +11,14 @@ const UPLOADS_DIR = path.join(__dirname, '../../../../uploads/reports');
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
+
+const ALLOWED_MIME_TYPES: Record<string, string> = {
+  'application/pdf': '.pdf',
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+};
+const MAX_REPORT_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
 
 export const getReports = async (req: Request, res: Response) => {
   try {
@@ -59,7 +68,22 @@ export const uploadReport = async (req: Request, res: Response) => {
     }
 
     const fileBuffer = Buffer.from(matches[2], 'base64');
-    const safeFileName = `${Date.now()}-${validatedData.fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    if (fileBuffer.length > MAX_REPORT_FILE_SIZE) {
+      return res.status(400).json({ success: false, message: 'File size exceeds maximum permitted limit of 10MB.' });
+    }
+
+    // Validate MIME type against strict allowlist (PDF, JPEG, PNG only)
+    const mimeType = matches[1].toLowerCase();
+    const extension = ALLOWED_MIME_TYPES[mimeType];
+    if (!extension) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid file type. Only PDF, JPEG, and PNG medical reports are allowed.',
+      });
+    }
+
+    // Cryptographically secure random filename - never trust client filename or extension
+    const safeFileName = `${crypto.randomUUID()}${extension}`;
     const filePath = path.join(UPLOADS_DIR, safeFileName);
     
     fs.writeFileSync(filePath, fileBuffer);
@@ -146,8 +170,12 @@ export const downloadReport = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Report not found' });
     }
 
-    if (report.userId !== userId) {
-      return res.status(403).json({ success: false, message: 'Forbidden: You do not own this report' });
+    const isOwner = report.userId === userId;
+    const userRole = (req as any).user?.role;
+    const isStaff = userRole === 'DOCTOR' || userRole === 'HOSPITAL_ADMIN' || userRole === 'SUPER_ADMIN';
+
+    if (!isOwner && !isStaff) {
+      return res.status(403).json({ success: false, message: 'Forbidden: You do not have permission to access this report' });
     }
 
     if (!report.fileUrl) {
@@ -161,6 +189,8 @@ export const downloadReport = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Physical file missing on server' });
     }
 
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.download(filePath, fileName);
   } catch (error) {
     console.error('Error downloading report:', error);

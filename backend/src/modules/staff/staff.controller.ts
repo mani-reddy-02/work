@@ -4,6 +4,7 @@ import { Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { sendNotification } from '../notifications/notifications.service';
 
 import { checkAndExpireDoctorOverrides } from '../doctors/doctor-override.service';
@@ -127,6 +128,7 @@ export const createStaff = async (req: Request, res: Response, next: NextFunctio
         phone: phone || null,
         passwordHash,
         role: role as Role,
+        active: role === Role.DOCTOR ? false : true, // Doctors require Super Admin verification before activation
         designation: designation || (role === 'DOCTOR' && deptName ? `Consultant - ${deptName}` : null),
         avatar: avatar || null,
         hospitalId, // ALWAYS from the authenticated admin, NEVER from the request
@@ -262,11 +264,30 @@ export const uploadStaffLicense = async (req: Request, res: Response, next: Next
       });
     }
 
-    // Process base64 file data
+    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const ext = path.extname(String(fileName)).toLowerCase();
+    if (!allowedExtensions.includes(ext)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_DOCUMENT_FORMAT', message: 'Invalid document format. Only PDF, JPEG, and PNG files are allowed.' }
+      });
+    }
+
+    // Process base64 file data & MIME check
     let base64Content = fileData;
+    let mimeType = '';
     const matches = fileData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
     if (matches && matches.length === 3) {
+      mimeType = matches[1].toLowerCase();
       base64Content = matches[2];
+    }
+
+    const allowedMimeTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (mimeType && !allowedMimeTypes.includes(mimeType)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_DOCUMENT_FORMAT', message: 'Invalid document MIME type. Only PDF, JPEG, and PNG files are allowed.' }
+      });
     }
 
     const fileBuffer = Buffer.from(base64Content, 'base64');
@@ -278,7 +299,20 @@ export const uploadStaffLicense = async (req: Request, res: Response, next: Next
       });
     }
 
-    const safeFileName = `doctor-license-${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    // Validate binary magic numbers
+    const isPdf = fileBuffer.length >= 4 && fileBuffer.toString('ascii', 0, 4) === '%PDF';
+    const isPng = fileBuffer.length >= 8 && fileBuffer[0] === 0x89 && fileBuffer[1] === 0x50 && fileBuffer[2] === 0x4E && fileBuffer[3] === 0x47;
+    const isJpg = fileBuffer.length >= 3 && fileBuffer[0] === 0xFF && fileBuffer[1] === 0xD8 && fileBuffer[2] === 0xFF;
+
+    if (!isPdf && !isPng && !isJpg) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_DOCUMENT_FORMAT', message: 'Invalid document signature. File content does not match allowed types (PDF, JPEG, PNG).' }
+      });
+    }
+
+    // Discard client-provided base filename and generate a cryptographically random filename
+    const safeFileName = `doctor-license-${crypto.randomUUID()}${ext}`;
     const filePath = path.join(UPLOADS_LICENSES_DIR, safeFileName);
 
     fs.writeFileSync(filePath, fileBuffer);

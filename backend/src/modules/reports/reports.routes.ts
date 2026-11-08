@@ -11,5 +11,6 @@ router.get('/', getReports);
 router.post('/upload', uploadReport);
 router.delete('/:id', deleteReport);
 router.get('/:id/download', downloadReport);
+router.get('/:id/file', downloadReport);
 
 export default router;

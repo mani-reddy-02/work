@@ -5,6 +5,7 @@ export const updateProfileSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters').optional(),
     email: z.string().email('Invalid email address').optional(),
     phone: z.string().min(10, 'Phone must be at least 10 digits').optional(),
+    otp: z.string().min(4, 'OTP must be at least 4 digits').optional(),
     dob: z.string().nullable().optional(),
     gender: z.string().nullable().optional(),
     avatar: z.string().nullable().optional(),

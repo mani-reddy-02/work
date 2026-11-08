@@ -46,12 +46,15 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
         throw { status: 401, code: 'UNAUTHORIZED', message: 'User account not found' };
       }
 
-      // 2. Verify hospital exists
+      // 2. Verify hospital exists and is approved/verified
       const hospital = await tx.hospital.findUnique({
         where: { id: hospitalId }
       });
       if (!hospital) {
         throw { status: 404, code: 'NOT_FOUND', message: 'Hospital not found' };
+      }
+      if (hospital.verificationStatus !== 'APPROVED') {
+        throw { status: 400, code: 'BAD_REQUEST', message: 'Target hospital is inactive, suspended, or unapproved' };
       }
 
       // 3. Verify doctor exists and has role DOCTOR
@@ -717,6 +720,15 @@ export const updateAppointmentVitals = async (req: Request, res: Response, next:
     const rawId = (req.params.id as string || '').trim();
     const cleanId = rawId.replace(/^OP-?/i, '');
     const hospitalId = req.user?.hospitalId;
+    const userRole = req.user?.role as string | undefined;
+
+    // Strict role and tenant isolation: Vitals can only be recorded by authenticated hospital staff
+    if (!hospitalId && userRole !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Hospital staff identification required' }
+      });
+    }
 
     const booking = await prisma.oPBooking.findFirst({
       where: {
@@ -725,7 +737,7 @@ export const updateAppointmentVitals = async (req: Request, res: Response, next:
           { id: { startsWith: cleanId } },
           { id: rawId }
         ],
-        ...(hospitalId ? { hospitalId } : {})
+        ...(userRole !== 'SUPER_ADMIN' ? { hospitalId: hospitalId! } : {})
       }
     });
 
@@ -789,6 +801,8 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
     const rawId = (req.params.id as string || '').trim();
     const cleanId = rawId.replace(/^OP-?/i, '');
     const hospitalId = req.user?.hospitalId;
+    const userRole = req.user?.role;
+    const currentUserId = req.user?.id;
     let { status, reason, notes } = req.body;
 
     // Normalize operational statuses to database BookingStatus enum
@@ -805,13 +819,34 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
           { id: cleanId },
           { id: { startsWith: cleanId } },
           { id: rawId }
-        ],
-        ...(hospitalId ? { hospitalId } : {})
+        ]
       }
     });
 
     if (!booking) {
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Appointment not found' } });
+    }
+
+    // Role & Tenant Authorization Enforcement
+    const isSuperAdmin = (userRole as string) === 'SUPER_ADMIN';
+    const isHospitalStaff = Boolean(hospitalId && booking.hospitalId === hospitalId);
+    const isOwnerPatient = Boolean(currentUserId && booking.patientId === currentUserId);
+
+    if (!isSuperAdmin && !isHospitalStaff && !isOwnerPatient) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'You are not authorized to modify this appointment' }
+      });
+    }
+
+    // Patients can strictly only cancel their own appointment
+    if (isOwnerPatient && !isHospitalStaff && !isSuperAdmin) {
+      if (normalizedStatus !== 'CANCELLED') {
+        return res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'Patients can only cancel their appointments' }
+        });
+      }
     }
 
     // Business rule: Terminal states cannot be transitioned

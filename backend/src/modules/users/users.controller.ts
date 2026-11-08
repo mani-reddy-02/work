@@ -166,6 +166,41 @@ export const updateMe = async (req: Request, res: Response, next: NextFunction) 
       prescriptionSettings,
     } = req.body;
 
+    // Check if phone number is being changed; if so, require verified WhatsApp OTP
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true },
+    });
+
+    if (!currentUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (phone && phone !== currentUser.phone) {
+      const { otp } = req.body;
+      if (!otp || typeof otp !== 'string' || otp.trim().length < 4) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'OTP_REQUIRED',
+            message: 'WhatsApp OTP verification is required to update mobile number. Please request and provide an OTP for the new number.',
+          },
+        });
+      }
+
+      const { WhatsAppOtpService } = await import('../whatsapp/whatsapp-otp.service');
+      const verifyResult = await WhatsAppOtpService.verifyOtp(phone, otp.trim());
+      if (!verifyResult.valid) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_OTP',
+            message: verifyResult.message || 'Invalid or expired WhatsApp OTP for the new mobile number.',
+          },
+        });
+      }
+    }
+
     // Check for duplicate email or phone if being updated
     if (email || phone) {
       const conflict = await prisma.user.findFirst({

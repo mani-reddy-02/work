@@ -2,11 +2,30 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
+import { AuditLogger } from '../../utils/auditLogger';
 
 const UPLOADS_DIR = path.join(__dirname, '../../../../uploads/settlements');
 
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+const ALLOWED_ATTACHMENT_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png'];
+
+export function isValidAttachmentFile(fileName: string, buffer: Buffer): boolean {
+  const ext = path.extname(fileName).toLowerCase();
+  if (!ALLOWED_ATTACHMENT_EXTENSIONS.includes(ext)) {
+    return false;
+  }
+  if (buffer.length < 4) return false;
+  // PDF (%PDF-)
+  if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46) return true;
+  // PNG (\x89PNG)
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) return true;
+  // JPEG (\xFF\xD8\xFF)
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) return true;
+  return false;
 }
 
 /**
@@ -50,10 +69,15 @@ export async function generateWeeklySettlementsEngine() {
   });
   const settledMap = new Set(existingItems.map(i => `${i.bookingType}_${i.bookingId}`));
 
-  // 2. Fetch all bookings
+  // 2. Fetch all completed and non-cancelled bookings eligible for payout
   const [opBookings, labBookings, nursingBookings] = await Promise.all([
     prisma.oPBooking.findMany({
-      where: { fee: { gt: 0 }, isWalkIn: false, payoutEligible: true },
+      where: {
+        fee: { gt: 0 },
+        isWalkIn: false,
+        payoutEligible: true,
+        status: 'COMPLETED'
+      },
       include: {
         hospital: { select: { id: true, name: true, hospitalShare: true, businessType: true } },
         patient: { select: { name: true } },
@@ -61,14 +85,21 @@ export async function generateWeeklySettlementsEngine() {
       }
     }),
     prisma.labBooking.findMany({
-      where: { totalAmount: { gt: 0 } },
+      where: {
+        totalAmount: { gt: 0 },
+        status: { in: ['COMPLETED', 'REPORT_READY'] }
+      },
       include: {
         hospital: { select: { id: true, name: true, hospitalShare: true, businessType: true } },
         patient: { select: { name: true } }
       }
     }),
     prisma.homeNursingBooking.findMany({
-      where: { totalAmount: { gt: 0 }, paymentStatus: 'PAID' },
+      where: {
+        totalAmount: { gt: 0 },
+        paymentStatus: 'PAID',
+        status: 'COMPLETED'
+      },
       include: {
         hospital: { select: { id: true, name: true, hospitalShare: true, businessType: true } },
         user: { select: { name: true } }
@@ -618,6 +649,14 @@ export const uploadSettlementAttachment = async (req: Request, res: Response, ne
       });
     }
 
+    const ext = path.extname(fileName).toLowerCase();
+    if (!ALLOWED_ATTACHMENT_EXTENSIONS.includes(ext)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid file extension. Allowed formats: .pdf, .jpg, .jpeg, .png'
+      });
+    }
+
     const settlement = await prisma.settlement.findUnique({
       where: { id: settlementId }
     });
@@ -636,7 +675,14 @@ export const uploadSettlementAttachment = async (req: Request, res: Response, ne
     }
 
     const fileBuffer = Buffer.from(base64Content, 'base64');
-    const safeFileName = `SETTLE_${settlement.settlementNumber}_${Date.now()}_${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    if (!isValidAttachmentFile(fileName, fileBuffer)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid file signature. File contents do not match allowed formats.'
+      });
+    }
+
+    const safeFileName = `SETTLE_${crypto.randomUUID()}${ext}`;
     const filePath = path.join(UPLOADS_DIR, safeFileName);
 
     fs.writeFileSync(filePath, fileBuffer);
@@ -652,6 +698,16 @@ export const uploadSettlementAttachment = async (req: Request, res: Response, ne
         mimeType,
         uploadedBy: req.user?.name || (req.user as any)?.email || 'Super Admin'
       }
+    });
+
+    AuditLogger.log({
+      actorId: req.user?.id || 'SYSTEM',
+      actorRole: req.user?.role || 'SUPER_ADMIN',
+      action: 'UPLOAD_SETTLEMENT_ATTACHMENT',
+      targetEntity: 'SettlementAttachment',
+      targetId: attachment.id,
+      details: { settlementId: settlement.id, fileName, documentType },
+      clientIp: req.ip || req.socket.remoteAddress
     });
 
     res.status(201).json({
@@ -693,6 +749,16 @@ export const deleteSettlementAttachment = async (req: Request, res: Response, ne
 
     await prisma.settlementAttachment.delete({
       where: { id: attachmentId as string }
+    });
+
+    AuditLogger.log({
+      actorId: req.user?.id || 'SYSTEM',
+      actorRole: req.user?.role || 'SUPER_ADMIN',
+      action: 'DELETE_SETTLEMENT_ATTACHMENT',
+      targetEntity: 'SettlementAttachment',
+      targetId: attachmentId as string,
+      details: { settlementId: id, fileName: attachment.fileName },
+      clientIp: req.ip || req.socket.remoteAddress
     });
 
     res.json({ success: true, message: 'Attachment deleted successfully' });
@@ -742,34 +808,39 @@ export const processManualPayout = async (req: Request, res: Response, next: Nex
     // Process optional proof file upload if included in request
     let proofUrl: string | undefined = undefined;
     if (proofFile && proofFile.fileData && proofFile.fileName) {
-      try {
-        let base64Content = proofFile.fileData;
-        let mimeType = 'image/png';
-        const matches = proofFile.fileData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-        if (matches && matches.length === 3) {
-          mimeType = matches[1];
-          base64Content = matches[2];
-        }
-        const fileBuffer = Buffer.from(base64Content, 'base64');
-        const safeFileName = `PROOF_${settlementId.substring(0, 8)}_${Date.now()}_${proofFile.fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-        const filePath = path.join(UPLOADS_DIR, safeFileName);
-        fs.writeFileSync(filePath, fileBuffer);
-        proofUrl = `/uploads/settlements/${safeFileName}`;
-
-        await prisma.settlementAttachment.create({
-          data: {
-            settlementId,
-            fileName: proofFile.fileName,
-            documentType: 'BANK_TRANSFER_RECEIPT',
-            fileUrl: proofUrl,
-            fileSize: fileBuffer.length,
-            mimeType,
-            uploadedBy: req.user?.name || (req.user as any)?.email || 'Super Admin'
-          }
-        });
-      } catch (err) {
-        console.error('Failed to save proof attachment during payout:', err);
+      const ext = path.extname(proofFile.fileName).toLowerCase();
+      if (!ALLOWED_ATTACHMENT_EXTENSIONS.includes(ext)) {
+        return res.status(400).json({ success: false, message: 'Invalid proof file format. Only .pdf, .jpg, .jpeg, and .png are allowed.' });
       }
+
+      let base64Content = proofFile.fileData;
+      let mimeType = 'image/png';
+      const matches = proofFile.fileData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        mimeType = matches[1];
+        base64Content = matches[2];
+      }
+      const fileBuffer = Buffer.from(base64Content, 'base64');
+      if (!isValidAttachmentFile(proofFile.fileName, fileBuffer)) {
+        return res.status(400).json({ success: false, message: 'Invalid proof file signature.' });
+      }
+
+      const safeFileName = `PROOF_${crypto.randomUUID()}${ext}`;
+      const filePath = path.join(UPLOADS_DIR, safeFileName);
+      fs.writeFileSync(filePath, fileBuffer);
+      proofUrl = `/uploads/settlements/${safeFileName}`;
+
+      await prisma.settlementAttachment.create({
+        data: {
+          settlementId,
+          fileName: proofFile.fileName,
+          documentType: 'BANK_TRANSFER_RECEIPT',
+          fileUrl: proofUrl,
+          fileSize: fileBuffer.length,
+          mimeType,
+          uploadedBy: req.user?.name || (req.user as any)?.email || 'Super Admin'
+        }
+      });
     } else if (proofAttachmentId) {
       const att = await prisma.settlementAttachment.findUnique({ where: { id: proofAttachmentId } });
       if (att) proofUrl = att.fileUrl;
@@ -861,6 +932,22 @@ export const processManualPayout = async (req: Request, res: Response, next: Nex
       }
 
       return { updatedSettlement, payoutRecord };
+    });
+
+    AuditLogger.log({
+      actorId: req.user?.id || 'SYSTEM',
+      actorRole: req.user?.role || 'SUPER_ADMIN',
+      action: 'PROCESS_MANUAL_PAYOUT',
+      targetEntity: 'Settlement',
+      targetId: settlementId,
+      details: {
+        amountPaid: payoutResult.payoutRecord.amountPaid,
+        payoutNumber: payoutResult.payoutRecord.payoutNumber,
+        transferReference: (transferReference || '').trim() || `EXCEPTION: ${(exceptionReason || '').trim()}`,
+        paymentMethod,
+        clientIp: req.ip || req.socket.remoteAddress
+      },
+      clientIp: req.ip || req.socket.remoteAddress
     });
 
     res.json({

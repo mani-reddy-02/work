@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { WhatsAppClient } from './whatsapp.client';
 import { WhatsAppOtpService } from './whatsapp-otp.service';
 import { env } from '../../config/env';
+import { authRateLimiter } from '../auth/auth.routes';
 
 const router = Router();
 
@@ -80,7 +81,7 @@ router.get('/status', (req: Request, res: Response) => {
 /**
  * 4. Send Authentication OTP
  */
-router.post('/send-otp', async (req: Request, res: Response) => {
+router.post('/send-otp', authRateLimiter, async (req: Request, res: Response) => {
   try {
     const { phone } = req.body;
     const result = await WhatsAppOtpService.requestOtp(phone);
@@ -117,7 +118,7 @@ router.post('/send-otp', async (req: Request, res: Response) => {
 /**
  * 5. Verify Authentication OTP
  */
-router.post('/verify-otp', async (req: Request, res: Response) => {
+router.post('/verify-otp', authRateLimiter, async (req: Request, res: Response) => {
   try {
     const { phone, code } = req.body;
     const result = await WhatsAppOtpService.verifyOtp(phone, code);

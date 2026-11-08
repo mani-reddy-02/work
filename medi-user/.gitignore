@@ -27,6 +27,8 @@ dist-ssr
 
 # Temporary / Scratch files
 *.txt
+!public/robots.txt
+!public/llms.txt
 scratch_strings.json
 extract.cjs
 remove_bg.py

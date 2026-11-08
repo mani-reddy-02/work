@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
 import { Prisma } from '@prisma/client';
@@ -10,27 +11,43 @@ import { LabBookingType, LabBookingStatus, Role } from '@prisma/client';
 export const createLabBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const hospitalId = req.body.hospitalId || req.body.laboratoryId || (req as any).user?.hospitalId;
-    let patientId = req.body.patientId;
+    const currentUser = (req as any).user;
+    const userRole = currentUser?.role;
+    const isStaff = userRole === Role.HOSPITAL_ADMIN ||
+      userRole === Role.RECEPTIONIST ||
+      userRole === Role.SUPER_ADMIN ||
+      userRole === Role.LAB_ADMIN ||
+      userRole === 'HOSPITAL' ||
+      userRole === 'LAB_ADMIN';
 
-    if (!patientId && (req.body.mobile || req.body.phone)) {
-      const rawPhone = String(req.body.mobile || req.body.phone).trim();
-      let patient = await prisma.user.findFirst({ where: { phone: rawPhone } });
-      if (!patient) {
-        const defaultPasswordHash = await bcrypt.hash('123456', 10);
-        patient = await prisma.user.create({
-          data: {
-            phone: rawPhone,
-            name: req.body.patientName || 'Walk-in Patient',
-            email: req.body.email || null,
-            passwordHash: defaultPasswordHash,
-            role: 'PATIENT',
-            active: true
-          }
-        });
+    let patientId: string | undefined;
+
+    if (!isStaff) {
+      // For standard patient users, strictly bind booking to authenticated caller ID
+      patientId = currentUser?.id;
+    } else {
+      // Administrative and staff users can book for walk-ins or specified patients
+      patientId = req.body.patientId;
+      if (!patientId && (req.body.mobile || req.body.phone)) {
+        const rawPhone = String(req.body.mobile || req.body.phone).trim();
+        let patient = await prisma.user.findFirst({ where: { phone: rawPhone } });
+        if (!patient) {
+          const defaultPasswordHash = await bcrypt.hash('123456', 10);
+          patient = await prisma.user.create({
+            data: {
+              phone: rawPhone,
+              name: req.body.patientName || 'Walk-in Patient',
+              email: req.body.email || null,
+              passwordHash: defaultPasswordHash,
+              role: 'PATIENT',
+              active: true
+            }
+          });
+        }
+        patientId = patient.id;
+      } else if (!patientId) {
+        patientId = currentUser?.id;
       }
-      patientId = patient.id;
-    } else if (!patientId && (req as any).user?.id) {
-      patientId = (req as any).user.id;
     }
 
     const isHomePath = req.originalUrl.includes('home-sample-collection');
@@ -653,13 +670,23 @@ export const updateLabBookingStatus = async (req: Request, res: Response, next: 
     if (req.body.reportData) {
       const matches = req.body.reportData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
       if (matches && matches.length === 3) {
+        const ALLOWED_MIME: Record<string, string> = {
+          'application/pdf': '.pdf',
+          'image/jpeg': '.jpg',
+          'image/jpg': '.jpg',
+          'image/png': '.png',
+        };
+        const rawMime = matches[1].toLowerCase();
+        const extension = ALLOWED_MIME[rawMime];
+        if (!extension) {
+          return res.status(400).json({ success: false, error: { code: 'INVALID_FILE_TYPE', message: 'Only PDF, JPEG, and PNG files are allowed.' } });
+        }
         const fileBuffer = Buffer.from(matches[2], 'base64');
         const UPLOADS_DIR = path.join(process.cwd(), 'uploads/reports');
         if (!fs.existsSync(UPLOADS_DIR)) {
           fs.mkdirSync(UPLOADS_DIR, { recursive: true });
         }
-        const originalName = req.body.reportName || 'report.pdf';
-        const safeFileName = `${Date.now()}-${originalName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const safeFileName = `${crypto.randomUUID()}${extension}`;
         uploadedFileUrl = `/uploads/reports/${safeFileName}`;
         const filePath = path.join(UPLOADS_DIR, safeFileName);
         fs.writeFileSync(filePath, fileBuffer);

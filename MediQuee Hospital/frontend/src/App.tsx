@@ -153,6 +153,9 @@ function AnimatedRoutes() {
             <Route path="/add-nursing-services" element={<AddNursingServices />} />
             <Route path="/add-receptionist" element={<AddReceptionist />} />
             <Route path="/edit-staff/:id" element={<EditStaff />} />
+            <Route path="/profile/staff" element={<StaffManagement />} />
+            <Route path="/profile/staff/add-lab" element={<AddLabStaff />} />
+            <Route path="/profile/staff/:type" element={<StaffList />} />
           </Route>
 
           {/* Shared / Marketing Routes */}
@@ -195,9 +198,6 @@ function AnimatedRoutes() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/edit" element={<ProfileEdit />} />
           <Route path="/profile/hospital" element={<HospitalInfo />} />
-          <Route path="/profile/staff" element={<StaffManagement />} />
-          <Route path="/profile/staff/add-lab" element={<AddLabStaff />} />
-          <Route path="/profile/staff/:type" element={<StaffList />} />
           <Route path="/profile/departments" element={<DepartmentsList />} />
           <Route path="/profile/nursing-services" element={<NursingServicesList />} />
           <Route path="/profile/permissions" element={<Navigate to="/profile" replace />} />

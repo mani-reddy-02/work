@@ -8,6 +8,9 @@ export interface JwtPayload {
   userId: string;
 }
 
+// Track failed administrative authorization attempts for throttling
+const failedAuthAttempts = new Map<string, { count: number; firstAttempt: number }>();
+
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
@@ -26,11 +29,43 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     // Fetch user from database to ensure they still exist and get authoritative role/hospitalId
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, name: true, phone: true, role: true, hospitalId: true, active: true }
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        role: true,
+        hospitalId: true,
+        active: true,
+        hospital: { select: { id: true, verificationStatus: true } }
+      }
     });
 
     if (!user || !user.active) {
       return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'User account is inactive or not found' } });
+    }
+
+    // Inspect hospital affiliation for hospital-scoped roles
+    const userRoleStr = user.role as string;
+    const isHospitalScopedRole = [
+      'HOSPITAL_ADMIN',
+      'DOCTOR',
+      'RECEPTIONIST',
+      'LAB_ADMIN',
+      'PHARMACIST',
+      'NURSE',
+    ].includes(userRoleStr) || (user.hospitalId != null && userRoleStr !== 'SUPER_ADMIN' && userRoleStr !== 'PATIENT');
+
+    if (isHospitalScopedRole && user.hospitalId) {
+      const vStatus = user.hospital?.verificationStatus;
+      if (!user.hospital || vStatus !== 'APPROVED') {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Account suspended: affiliated hospital is inactive or unverified'
+          }
+        });
+      }
     }
 
     req.user = user;
@@ -43,6 +78,28 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 export const requireRole = (allowedRoles: Role[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !allowedRoles.includes(req.user.role)) {
+      // Throttle excessive failed administrative authorization attempts
+      if (allowedRoles.includes(Role.SUPER_ADMIN)) {
+        const clientKey = req.ip || req.user?.id || 'unknown';
+        const now = Date.now();
+        const entry = failedAuthAttempts.get(clientKey) || { count: 0, firstAttempt: now };
+        if (now - entry.firstAttempt > 5 * 60 * 1000) {
+          entry.count = 1;
+          entry.firstAttempt = now;
+        } else {
+          entry.count += 1;
+        }
+        failedAuthAttempts.set(clientKey, entry);
+        if (entry.count > 10) {
+          return res.status(429).json({
+            success: false,
+            error: {
+              code: 'TOO_MANY_REQUESTS',
+              message: 'Too many unauthorized administrative attempts. Session temporarily throttled.'
+            }
+          });
+        }
+      }
       return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Access denied: insufficient permissions' } });
     }
     next();

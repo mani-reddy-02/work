@@ -55,7 +55,7 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
         success: false,
         error: { code: 'CONFLICT_ERROR', message: error.message },
       });
-    } else if (error.message?.includes('WhatsApp OTP')) {
+    } else if (error.message?.includes('WhatsApp OTP') || error.message?.includes('OTP')) {
       res.status(400).json({
         success: false,
         error: { code: 'OTP_ERROR', message: error.message },

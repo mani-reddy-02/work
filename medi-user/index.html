@@ -2,15 +2,55 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Lightweight SVG Favicon (replaces 624 KB PNG) -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <meta name="theme-color" content="#2563eb" />
+
     <title>MediQuee - Healthcare at Your Doorstep</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="description" content="Book hospital outpatient appointments, video consultations with verified doctors, home nursing, and lab tests on MediQuee." />
+
+    <!-- Non-Blocking Google Fonts Loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;600;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;600;700&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;600;700&display=swap"
+      />
+    </noscript>
   </head>
-  <body>
-    <div id="root"></div>
+  <body class="bg-slate-50 antialiased">
+    <!-- Crawlable Initial DOM Fallback for Search Bots Before React Hydration -->
+    <div id="root">
+      <header style="padding: 1rem; border-bottom: 1px solid #e2e8f0; text-align: center;">
+        <h1 style="font-size: 1.25rem; font-weight: bold; color: #1e293b;">MediQuee Healthcare</h1>
+        <p style="font-size: 0.875rem; color: #64748b;">Hospital Appointments, Video Consultations, Home Nursing &amp; Lab Tests</p>
+      </header>
+      <main style="padding: 1.5rem; max-width: 800px; margin: 0 auto;">
+        <h2>Healthcare Services</h2>
+        <ul>
+          <li><a href="/specialties?type=hospital-op">Hospital Outpatient (OP) Booking</a></li>
+          <li><a href="/specialties?type=doctor">Doctor Video Consultations</a></li>
+          <li><a href="/departments">Clinical Departments &amp; Specialists</a></li>
+          <li><a href="/services/lab-tests">Diagnostic Lab Tests &amp; Packages</a></li>
+          <li><a href="/services/home-nursing">Home Nursing &amp; Attendant Care</a></li>
+        </ul>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

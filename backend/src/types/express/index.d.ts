@@ -10,6 +10,7 @@ declare global {
         active: boolean;
         name?: string;
         phone?: string | null;
+        hospital?: { id: string; verificationStatus: string | null } | null;
       };
     }
   }

@@ -55,6 +55,9 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
     const whereClause: any = {
       role: Role.DOCTOR,
       active: true,
+      hospital: {
+        verificationStatus: 'APPROVED'
+      },
       AND: [
         {
           OR: [
@@ -623,9 +626,19 @@ export const updateDoctorActiveStatus = async (req: Request, res: Response, next
  */
 export const getHospitalDoctorsStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const hospitalId = (req.params.hospitalId || req.user?.hospitalId) as string;
-    if (!hospitalId) {
+    const targetHospitalId = (req.params.hospitalId || req.user?.hospitalId) as string;
+    if (!targetHospitalId) {
       return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'Hospital ID is required' } });
+    }
+
+    const userRole = req.user?.role as string | undefined;
+    const userHospitalId = req.user?.hospitalId;
+
+    if (userRole !== 'SUPER_ADMIN' && userHospitalId !== targetHospitalId) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'You are not authorized to view doctor statuses of another facility' }
+      });
     }
 
     // Lazy auto-heal any expired doctor overrides
@@ -633,7 +646,7 @@ export const getHospitalDoctorsStatus = async (req: Request, res: Response, next
 
     const doctors = await prisma.user.findMany({
       where: {
-        hospitalId,
+        hospitalId: targetHospitalId,
         role: Role.DOCTOR,
         active: true
       },

@@ -4,6 +4,27 @@ import { Role } from '@prisma/client';
 import { VideoService } from '../video/video.service';
 import { sendNotification } from '../notifications/notifications.service';
 import { resolveCoordinatesForLocation } from '../../utils/geo';
+import { AuditLogger } from '../../utils/auditLogger';
+import crypto from 'crypto';
+import path from 'path';
+import fs from 'fs';
+
+const ALLOWED_ADMIN_FILE_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png'];
+
+export function isValidAdminReportFile(fileName: string, buffer: Buffer): boolean {
+  const ext = path.extname(fileName).toLowerCase();
+  if (!ALLOWED_ADMIN_FILE_EXTENSIONS.includes(ext)) {
+    return false;
+  }
+  if (buffer.length < 4) return false;
+  // PDF (%PDF-)
+  if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46) return true;
+  // PNG (\x89PNG)
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) return true;
+  // JPEG (\xFF\xD8\xFF)
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) return true;
+  return false;
+}
 
 export const getStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -902,8 +923,8 @@ export const updateHospital = async (req: Request, res: Response, next: NextFunc
 
 export const getUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
 
     const { role, gender, ageMin, ageMax, city, hospitalId, specialization, experienceMin, experienceMax, search, status, verificationStatus } = req.query;
 
@@ -1344,6 +1365,16 @@ export const updateHospitalRevenueShare = async (req: Request, res: Response, ne
       data: { hospitalShare: hospitalSharePercentage },
     });
 
+    AuditLogger.log({
+      actorId: req.user?.id || 'SYSTEM',
+      actorRole: req.user?.role || 'SUPER_ADMIN',
+      action: 'UPDATE_HOSPITAL_REVENUE_SHARE',
+      targetEntity: 'Hospital',
+      targetId: hospitalId as string,
+      details: { hospitalSharePercentage },
+      clientIp: req.ip || req.socket.remoteAddress
+    });
+
     res.json({ 
       success: true, 
       data: {
@@ -1561,6 +1592,16 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
       }).catch(console.error);
     }
 
+    AuditLogger.log({
+      actorId: req.user?.id || 'SYSTEM',
+      actorRole: req.user?.role || 'SUPER_ADMIN',
+      action: 'UPDATE_APPOINTMENT_STATUS',
+      targetEntity: 'OPBooking',
+      targetId: existing.id,
+      details: { status, reason, notes },
+      clientIp: req.ip || req.socket.remoteAddress
+    });
+
     res.json({ 
       success: true, 
       data: {
@@ -1648,8 +1689,8 @@ export const getLabOrdersAnalytics = async (req: Request, res: Response, next: N
 
 export const getLabBookings = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
     const search = req.query.search as string;
     const status = req.query.status as string;
     const bookingType = req.query.bookingType as string;
@@ -2046,6 +2087,14 @@ export const uploadLabReport = async (req: Request, res: Response, next: NextFun
       return res.status(400).json({ success: false, message: 'File data and file name are required' });
     }
 
+    const ext = path.extname(fileName).toLowerCase();
+    if (!ALLOWED_ADMIN_FILE_EXTENSIONS.includes(ext)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid file extension. Only .pdf, .jpg, .jpeg, and .png are allowed.'
+      });
+    }
+
     const booking = await prisma.labBooking.findUnique({
       where: { id },
       include: { patient: true, hospital: true, items: { include: { labTest: { include: { platformTest: true } } } } }
@@ -2071,9 +2120,14 @@ export const uploadLabReport = async (req: Request, res: Response, next: NextFun
       return res.status(400).json({ success: false, message: 'File is too large. Maximum size is 10MB.' });
     }
 
-    const safeFileName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const fs = require('fs');
-    const path = require('path');
+    if (!isValidAdminReportFile(fileName, fileBuffer)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid file signature. File contents do not match allowed formats.'
+      });
+    }
+
+    const safeFileName = `REPORT_${crypto.randomUUID()}${ext}`;
     const UPLOADS_DIR = path.join(process.cwd(), 'uploads/reports');
     if (!fs.existsSync(UPLOADS_DIR)) {
       fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -2092,8 +2146,17 @@ export const uploadLabReport = async (req: Request, res: Response, next: NextFun
         date: new Date().toISOString().split('T')[0],
         fileUrl: relativeUrl,
         summary: `Lab report for order ${booking.id.substring(0,8).toUpperCase()}`,
-        status: 'Ready',
-      },
+      }
+    });
+
+    AuditLogger.log({
+      actorId: req.user?.id || 'SYSTEM',
+      actorRole: req.user?.role || 'SUPER_ADMIN',
+      action: 'UPLOAD_LAB_REPORT',
+      targetEntity: 'PatientReport',
+      targetId: newReport.id,
+      details: { bookingId: id, fileName, fileUrl: relativeUrl },
+      clientIp: req.ip || req.socket.remoteAddress
     });
 
     const updatedBooking = await prisma.labBooking.update({
@@ -2120,8 +2183,8 @@ export const uploadLabReport = async (req: Request, res: Response, next: NextFun
 
 export const getHomeNursingBookings = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
       const search = req.query.search as string;
       const gender = req.query.gender as string;
       const ageMin = req.query.ageMin as string;
@@ -2609,9 +2672,25 @@ export const updateVerificationStatus = async (req: Request, res: Response, next
           throw err;
         }
       }
+    } else if (type === 'doctor') {
+      const active = status === 'APPROVED';
+      updatedRecord = await prisma.user.update({
+        where: { id: String(id) },
+        data: { active }
+      });
     } else {
       return res.status(400).json({ success: false, message: 'Invalid type' });
     }
+
+    AuditLogger.log({
+      actorId: req.user?.id || 'SYSTEM',
+      actorRole: req.user?.role || 'SUPER_ADMIN',
+      action: 'UPDATE_VERIFICATION_STATUS',
+      targetEntity: type === 'doctor' ? 'User' : (type === 'hospital' ? 'Hospital' : 'Lab'),
+      targetId: String(id),
+      details: { type, status, cancellationReason, hospitalSharePercentage },
+      clientIp: req.ip || req.socket.remoteAddress
+    });
 
     res.json({
       success: true,
@@ -2629,7 +2708,7 @@ export const updateVerificationStatus = async (req: Request, res: Response, next
 export const getVideoConsultations = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.max(1, Math.min(20, parseInt(req.query.limit as string) || 20));
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 20));
     const rawSearch = (req.query.search as string || '').trim();
     const search = rawSearch !== '' && rawSearch !== 'undefined' && rawSearch !== 'null' ? rawSearch : undefined;
     const rawStatus = (req.query.status as string || '').trim().toUpperCase();

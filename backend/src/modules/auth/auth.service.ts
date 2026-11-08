@@ -16,8 +16,18 @@ const UI_ROLE_TO_DB_ROLE: Record<string, Role> = {
   patient: Role.PATIENT,
 };
 
+// Memory map for tracking failed login attempts per identifier to prevent brute force
+const failedLoginAttempts = new Map<string, { count: number; lockedUntil?: number }>();
+
 export class AuthService {
   static async login(identifier: string, password: string, selectedRole?: string) {
+    const normIdentifier = identifier.toLowerCase().trim();
+    const attemptRecord = failedLoginAttempts.get(normIdentifier);
+    if (attemptRecord?.lockedUntil && attemptRecord.lockedUntil > Date.now()) {
+      const waitMinutes = Math.ceil((attemptRecord.lockedUntil - Date.now()) / 60000);
+      throw new Error(`Too many failed login attempts. Account temporarily locked for ${waitMinutes} minute(s).`);
+    }
+
     console.log('[LOGIN_DEBUG] LOGIN REQUEST RECEIVED');
     console.log('[LOGIN_DEBUG] IDENTIFIER TYPE:', identifier.includes('@') ? 'EMAIL' : 'PHONE');
 
@@ -34,6 +44,12 @@ export class AuthService {
     console.log('[LOGIN_DEBUG] USER FOUND:', user ? 'YES' : 'NO');
 
     if (!user) {
+      const record = failedLoginAttempts.get(normIdentifier) || { count: 0 };
+      record.count += 1;
+      if (record.count >= 5) {
+        record.lockedUntil = Date.now() + 15 * 60 * 1000;
+      }
+      failedLoginAttempts.set(normIdentifier, record);
       throw new Error('Invalid credentials');
     }
 
@@ -46,8 +62,17 @@ export class AuthService {
     console.log('[LOGIN_DEBUG] PASSWORD CHECK RESULT:', isValid ? 'MATCH' : 'NO MATCH');
     
     if (!isValid) {
+      const record = failedLoginAttempts.get(normIdentifier) || { count: 0 };
+      record.count += 1;
+      if (record.count >= 5) {
+        record.lockedUntil = Date.now() + 15 * 60 * 1000;
+      }
+      failedLoginAttempts.set(normIdentifier, record);
       throw new Error('Invalid credentials');
     }
+
+    // Clear failed attempts counter on successful authentication
+    failedLoginAttempts.delete(normIdentifier);
 
     // If a role was selected on the login UI, verify it matches the database role.
     if (selectedRole) {
@@ -79,15 +104,17 @@ export class AuthService {
     password: string;
     email?: string;
     whatsappConsent?: boolean;
-    otp?: string;
+    otp: string;
   }) {
-    // If OTP is provided, verify it
-    if (payload.otp) {
-      const { WhatsAppOtpService } = await import('../whatsapp/whatsapp-otp.service');
-      const verifyResult = await WhatsAppOtpService.verifyOtp(payload.phone, payload.otp);
-      if (!verifyResult.valid) {
-        throw new Error(verifyResult.message || 'Invalid or expired WhatsApp OTP');
-      }
+    // Enforce mandatory WhatsApp OTP verification before patient registration
+    if (!payload.otp || typeof payload.otp !== 'string' || payload.otp.trim().length < 4) {
+      throw new Error('Valid WhatsApp OTP code is required for registration');
+    }
+
+    const { WhatsAppOtpService } = await import('../whatsapp/whatsapp-otp.service');
+    const verifyResult = await WhatsAppOtpService.verifyOtp(payload.phone, payload.otp.trim());
+    if (!verifyResult.valid) {
+      throw new Error(verifyResult.message || 'Invalid or expired WhatsApp OTP');
     }
 
     const searchConditions: any[] = [{ phone: payload.phone }];

@@ -102,12 +102,14 @@ export const defaultAuthContext: AuthContextType = {
   refreshUser: async () => {},
 };
 
-// Singleton context to guarantee stability across Vite Hot Module Reloading (HMR)
+// Singleton context to guarantee stability across Vite Hot Module Reloading (HMR) in development
 const AuthContext =
-  ((globalThis as unknown as Record<string, unknown>).__MEDIQUEE_AUTH_CONTEXT__ as React.Context<AuthContextType>) ||
+  (import.meta.env.DEV && (globalThis as unknown as Record<string, unknown>).__MEDIQUEE_AUTH_CONTEXT__ as React.Context<AuthContextType>) ||
   createContext<AuthContextType>(defaultAuthContext);
 
-(globalThis as unknown as Record<string, unknown>).__MEDIQUEE_AUTH_CONTEXT__ = AuthContext;
+if (import.meta.env.DEV) {
+  (globalThis as unknown as Record<string, unknown>).__MEDIQUEE_AUTH_CONTEXT__ = AuthContext;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);

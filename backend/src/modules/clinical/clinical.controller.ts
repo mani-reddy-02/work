@@ -5,6 +5,19 @@ import fs from 'fs';
 import path from 'path';
 
 /**
+ * Escapes characters for safe HTML template interpolation to prevent XSS.
+ */
+function escapeHtml(value: any): string {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
  * POST /api/v1/clinical/consultations/:bookingId/record
  * Atomically records patient vitals, diagnosis, prescriptions, and lab orders.
  * Marks the appointment as COMPLETED while strictly preserving OPBooking.reason.
@@ -578,11 +591,32 @@ export const sendPrescriptionToPatient = async (req: Request, res: Response, nex
       year: 'numeric'
     });
 
+    const safePatientName = escapeHtml(booking.patientName || 'Patient');
+    const safePatientPhone = escapeHtml(booking.patientPhone || 'Not provided');
+    const safePatientAge = escapeHtml(booking.patientAge || 'Recorded');
+    const safePatientGender = escapeHtml(booking.patientGender || 'Unspecified');
+    const safeHospitalName = escapeHtml(hospitalName);
+    const safeHospitalAddress = escapeHtml(hospital?.addressLine1 || hospital?.city || 'Healthcare Facility');
+    const safeHospitalPhone = escapeHtml(hospital?.contactPhone || 'Registered');
+    const safeRxId = escapeHtml(booking.id.slice(0, 8).toUpperCase());
+    const safeConsultDateStr = escapeHtml(consultDateStr);
+    const safeDoctorName = escapeHtml(doctorName);
+    const safeDoctorQualification = escapeHtml(doctor?.qualification || 'MBBS');
+    const safeDoctorSpecialization = escapeHtml(doctor?.specialization || 'Consultant');
+    const safeDoctorLicense = escapeHtml(doctor?.licenseNumber || 'Verified');
+    const safeDiagnosis = escapeHtml(diagnosis);
+    const safeAdvice = escapeHtml(advice);
+    const safeFollowUp = followUp ? escapeHtml(followUp) : null;
+    const safePhysicalFollowUpReason = prescription?.physicalFollowUpReason ? escapeHtml(prescription.physicalFollowUpReason) : null;
+    const safeSignature = doctor?.digitalSignature && /^(\/|https?:\/\/|data:image\/)/.test(doctor.digitalSignature)
+      ? escapeHtml(doctor.digitalSignature)
+      : null;
+
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Official E-Prescription - ${booking.patientName}</title>
+  <title>Official E-Prescription - ${safePatientName}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 30px; color: #1e293b; background: #fff; line-height: 1.5; }
     .header { border-bottom: 3px solid #1B5DF1; padding-bottom: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; }
@@ -607,39 +641,39 @@ export const sendPrescriptionToPatient = async (req: Request, res: Response, nex
 <body>
   <div class="header">
     <div>
-      <h1 class="hosp-title">${hospitalName}</h1>
-      <p class="hosp-sub">${hospital?.addressLine1 || hospital?.city || 'Healthcare Facility'} • Phone: ${hospital?.contactPhone || 'Registered'}</p>
+      <h1 class="hosp-title">${safeHospitalName}</h1>
+      <p class="hosp-sub">${safeHospitalAddress} • Phone: ${safeHospitalPhone}</p>
     </div>
     <div style="text-align: right;">
       <span class="badge">TELEMEDICINE CONSULTATION</span>
-      <p style="font-size: 11px; color: #64748b; margin: 6px 0 0 0;">Rx ID: ${booking.id.slice(0, 8).toUpperCase()}<br>Date: ${consultDateStr}</p>
+      <p style="font-size: 11px; color: #64748b; margin: 6px 0 0 0;">Rx ID: ${safeRxId}<br>Date: ${safeConsultDateStr}</p>
     </div>
   </div>
 
   <div class="grid">
     <div class="card">
       <div class="card-title">Consulting Physician</div>
-      <p class="card-name">${doctorName}</p>
-      <p class="card-meta">${doctor?.qualification || 'MBBS'} • ${doctor?.specialization || 'Consultant'}</p>
-      <p class="card-meta">Reg No: ${doctor?.licenseNumber || 'Verified'}</p>
+      <p class="card-name">${safeDoctorName}</p>
+      <p class="card-meta">${safeDoctorQualification} • ${safeDoctorSpecialization}</p>
+      <p class="card-meta">Reg No: ${safeDoctorLicense}</p>
     </div>
     <div class="card">
       <div class="card-title">Patient Details</div>
-      <p class="card-name">${booking.patientName}</p>
-      <p class="card-meta">Contact: ${booking.patientPhone || 'Not provided'}</p>
-      <p class="card-meta">Age: ${booking.patientAge || 'Recorded'} • Gender: ${booking.patientGender || 'Unspecified'}</p>
+      <p class="card-name">${safePatientName}</p>
+      <p class="card-meta">Contact: ${safePatientPhone}</p>
+      <p class="card-meta">Age: ${safePatientAge} • Gender: ${safePatientGender}</p>
     </div>
   </div>
 
   <div class="section-title">Clinical Findings & Diagnosis</div>
   <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px; border-radius: 8px; font-weight: 600; color: #1e3a8a;">
-    ${diagnosis}
+    ${safeDiagnosis}
   </div>
 
   ${vitalsParts.length > 0 ? `
   <div class="section-title">Recorded Vitals</div>
   <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; font-size: 12px; color: #334155;">
-    ${vitalsParts.join(' &nbsp;•&nbsp; ')}
+    ${vitalsParts.map(vp => escapeHtml(vp)).join(' &nbsp;•&nbsp; ')}
   </div>` : ''}
 
   <div class="section-title">Prescribed Medications</div>
@@ -657,10 +691,10 @@ export const sendPrescriptionToPatient = async (req: Request, res: Response, nex
       ${prescription?.items && prescription.items.length > 0 ? prescription.items.map((item, i) => `
         <tr>
           <td>${i + 1}</td>
-          <td><b>${item.medicineName}</b> <span style="color:#64748b; font-size:11px;">(${item.dosageForm}${item.strength ? ' ' + item.strength : ''})</span></td>
-          <td>${item.frequency}</td>
-          <td>${item.durationDays} day(s)</td>
-          <td>${item.timing || 'AFTER_FOOD'}${item.instructions ? ' • ' + item.instructions : ''}</td>
+          <td><b>${escapeHtml(item.medicineName)}</b> <span style="color:#64748b; font-size:11px;">(${escapeHtml(item.dosageForm)}${item.strength ? ' ' + escapeHtml(item.strength) : ''})</span></td>
+          <td>${escapeHtml(item.frequency)}</td>
+          <td>${Number(item.durationDays) || 1} day(s)</td>
+          <td>${escapeHtml(item.timing || 'AFTER_FOOD')}${item.instructions ? ' • ' + escapeHtml(item.instructions) : ''}</td>
         </tr>
       `).join('') : `
         <tr>
@@ -672,12 +706,12 @@ export const sendPrescriptionToPatient = async (req: Request, res: Response, nex
 
   <div class="section-title">Advice & Instructions</div>
   <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; font-size: 12px;">
-    ${advice}
-    ${followUp ? `<br><br><b>${followUp}</b>` : ''}
+    ${safeAdvice}
+    ${safeFollowUp ? `<br><br><b>${safeFollowUp}</b>` : ''}
     ${prescription?.suggestPhysicalFollowUp ? `
       <div style="margin-top: 10px; padding: 10px 12px; background: #eff6ff; border: 1.5px solid #3b82f6; border-radius: 6px;">
         <span style="color: #1d4ed8; font-weight: 700; font-size: 12px;">🏥 In-Person Physical Follow-up at Hospital Recommended</span>
-        ${prescription.physicalFollowUpReason ? `<div style="color: #1e40af; font-size: 11px; margin-top: 3px;"><b>Reason:</b> ${prescription.physicalFollowUpReason}</div>` : ''}
+        ${safePhysicalFollowUpReason ? `<div style="color: #1e40af; font-size: 11px; margin-top: 3px;"><b>Reason:</b> ${safePhysicalFollowUpReason}</div>` : ''}
       </div>
     ` : ''}
   </div>
@@ -688,9 +722,9 @@ export const sendPrescriptionToPatient = async (req: Request, res: Response, nex
       <p style="font-size: 12px; color: #64748b; margin: 0;">Prescription valid under National Telemedicine Practice Guidelines.</p>
     </div>
     <div style="text-align: right;">
-      ${doctor?.digitalSignature ? `<img src="${doctor.digitalSignature}" class="sig-img" alt="Doctor Signature" /><br>` : ''}
-      <b style="font-size: 13px; color: #0f172a;">${doctorName}</b>
-      <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Reg: ${doctor?.licenseNumber || 'Verified'}</p>
+      ${safeSignature ? `<img src="${safeSignature}" class="sig-img" alt="Doctor Signature" /><br>` : ''}
+      <b style="font-size: 13px; color: #0f172a;">${safeDoctorName}</b>
+      <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Reg: ${safeDoctorLicense}</p>
     </div>
   </div>
 

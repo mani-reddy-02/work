@@ -12,6 +12,7 @@ import { getDiseaseIconUrl } from '../utils/diseaseIcons';
 import { getDepartmentImageUrl } from '../utils/departmentImages';
 import PosterCarousel from '../components/PosterCarousel';
 import { departmentApi, type DepartmentRecord } from '../lib/hospitalApi';
+import SEOHead from '../components/SEOHead';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -175,10 +176,80 @@ const Home = () => {
     return () => { active = false; };
   }, []);
 
+  const medicalOrgSchema = {
+    "@context": "https://schema.org",
+    "@type": "MedicalOrganization",
+    "name": "MediQuee",
+    "url": "https://mediquee.com",
+    "logo": "https://mediquee.com/logo.png",
+    "description": "Comprehensive digital healthcare platform offering in-person hospital OP appointments, verified telemedicine video consultations, home nursing, and diagnostic lab tests.",
+    "telephone": "+91-9014535199",
+    "email": "support@mediquee.com",
+    "address": {
+      "@type": "PostalAddress",
+      "addressRegion": "Andhra Pradesh / Telangana",
+      "addressCountry": "IN"
+    },
+    "areaServed": {
+      "@type": "Country",
+      "name": "India"
+    },
+    "availableService": [
+      {
+        "@type": "MedicalTherapy",
+        "name": "Hospital Outpatient (OP) Consultations",
+        "description": "In-person appointment booking across certified partner hospitals."
+      },
+      {
+        "@type": "MedicalTherapy",
+        "name": "Telemedicine Video Consultations",
+        "description": "Remote consultations with verified doctors."
+      },
+      {
+        "@type": "MedicalTest",
+        "name": "Diagnostic Pathology & Home Sample Collection",
+        "description": "Routine blood, urine, and health checkup panels with doorstep phlebotomy."
+      },
+      {
+        "@type": "MedicalTherapy",
+        "name": "Home Nursing Care",
+        "description": "Post-discharge clinical nursing and elderly attendant services."
+      }
+    ]
+  };
 
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": faqs.map(item => ({
+      "@type": "Question",
+      "name": item.q,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": item.a
+      }
+    }))
+  };
 
   return (
-    <div className={`w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 overflow-x-hidden relative transition-all ${hasUpcomingBooking ? 'pb-32' : 'pb-8'}`}>
+    <>
+      <SEOHead
+        title="Healthcare at Your Doorstep | Online Doctor Consultation & OP Booking"
+        description="Book verified hospital outpatient (OP) appointments, video consultations with certified specialists, home nursing, and diagnostic lab tests with MediQuee."
+        canonicalUrl="https://mediquee.com/"
+        jsonLd={[medicalOrgSchema, faqSchema]}
+      />
+      <div className={`w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 overflow-x-hidden relative transition-all ${hasUpcomingBooking ? 'pb-32' : 'pb-8'}`}>
+
+        {/* Semantic Page Title for Search Crawlers and Patients */}
+        <header className="pt-1 pb-1">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Hospital Appointments &amp; Doctor Consultations
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Book verified outpatient visits, online video consultations, home nursing, and diagnostic lab tests at your doorstep.
+          </p>
+        </header>
 
       {/* Booking Success Popup */}
       {showBookingPopup && (
@@ -418,6 +489,7 @@ const Home = () => {
       </section>
       
     </div>
+    </>
   );
 };
 

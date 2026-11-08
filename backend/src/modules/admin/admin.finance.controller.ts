@@ -3,6 +3,8 @@ import { prisma } from '../../config/prisma';
 
 export const getTransactions = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
     const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
     const dateFilter: any = {};
     if (startDate || endDate) {
@@ -130,7 +132,20 @@ export const getTransactions = async (req: Request, res: Response, next: NextFun
 
     transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    res.json({ success: true, data: transactions });
+    const total = transactions.length;
+    const startIndex = (page - 1) * limit;
+    const paginated = transactions.slice(startIndex, startIndex + limit);
+
+    res.json({
+      success: true,
+      data: paginated,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     next(error);
   }
