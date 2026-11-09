@@ -87,8 +87,9 @@ export function ReportView() {
   const reportDate = booking.updatedAt ? new Date(booking.updatedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Today'
   const bookingDate = booking.createdAt ? new Date(booking.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Today'
 
+  const apiBase = (import.meta as any).env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000'
   const reportFileUrl = booking.reportUrl
-    ? (booking.reportUrl.startsWith('http') ? booking.reportUrl : `http://localhost:5000${booking.reportUrl.startsWith('/') ? '' : '/'}${booking.reportUrl}`)
+    ? (booking.reportUrl.startsWith('http') ? booking.reportUrl : `${apiBase}${booking.reportUrl.startsWith('/') ? '' : '/'}${booking.reportUrl}`)
     : null
   const isPdf = reportFileUrl ? reportFileUrl.toLowerCase().includes('.pdf') : false
 

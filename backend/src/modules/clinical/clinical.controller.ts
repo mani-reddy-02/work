@@ -3,6 +3,7 @@ import { prisma } from '../../config/prisma';
 import { Role, DosageTiming, DoctorPresenceStatus } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
+import { storageService } from '../../services/storage.service';
 
 /**
  * Escapes characters for safe HTML template interpolation to prevent XSS.
@@ -734,7 +735,8 @@ export const sendPrescriptionToPatient = async (req: Request, res: Response, nex
 </body>
 </html>`;
 
-    fs.writeFileSync(filePath, htmlContent, 'utf8');
+    const uploadResult = await storageService.uploadFile('reports', safeFileName, Buffer.from(htmlContent, 'utf8'), 'text/html; charset=utf-8');
+    const prescriptionFileUrl = uploadResult.fileUrl;
 
     // 5. Create or Update PatientReport in database
     const reportTitle = `E-Prescription - ${doctorName}`;
@@ -759,7 +761,7 @@ export const sendPrescriptionToPatient = async (req: Request, res: Response, nex
           status: 'Prescribed',
           statusColor: 'text-emerald-700 bg-emerald-100/70',
           summary,
-          fileUrl: `/uploads/reports/${safeFileName}`,
+          fileUrl: prescriptionFileUrl,
           updatedAt: new Date()
         }
       });
@@ -778,7 +780,7 @@ export const sendPrescriptionToPatient = async (req: Request, res: Response, nex
           iconColor: 'text-blue-600',
           bg: 'bg-blue-50',
           summary,
-          fileUrl: `/uploads/reports/${safeFileName}`,
+          fileUrl: prescriptionFileUrl,
         }
       });
     }

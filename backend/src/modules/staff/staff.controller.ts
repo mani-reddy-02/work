@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { sendNotification } from '../notifications/notifications.service';
+import { storageService } from '../../services/storage.service';
 
 import { checkAndExpireDoctorOverrides } from '../doctors/doctor-override.service';
 
@@ -313,16 +314,12 @@ export const uploadStaffLicense = async (req: Request, res: Response, next: Next
 
     // Discard client-provided base filename and generate a cryptographically random filename
     const safeFileName = `doctor-license-${crypto.randomUUID()}${ext}`;
-    const filePath = path.join(UPLOADS_LICENSES_DIR, safeFileName);
-
-    fs.writeFileSync(filePath, fileBuffer);
-
-    const fileUrl = `/uploads/licenses/${safeFileName}`;
+    const uploadResult = await storageService.uploadFile('licenses', safeFileName, fileBuffer, mimeType);
 
     res.status(201).json({
       success: true,
       data: {
-        fileUrl,
+        fileUrl: uploadResult.fileUrl,
         fileName: safeFileName,
         size: fileBuffer.length
       }

@@ -8,6 +8,7 @@ import { AuditLogger } from '../../utils/auditLogger';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
+import { storageService } from '../../services/storage.service';
 
 const ALLOWED_ADMIN_FILE_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png'];
 
@@ -2128,14 +2129,8 @@ export const uploadLabReport = async (req: Request, res: Response, next: NextFun
     }
 
     const safeFileName = `REPORT_${crypto.randomUUID()}${ext}`;
-    const UPLOADS_DIR = path.join(process.cwd(), 'uploads/reports');
-    if (!fs.existsSync(UPLOADS_DIR)) {
-      fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-    }
-    const filePath = path.join(UPLOADS_DIR, safeFileName);
-    fs.writeFileSync(filePath, fileBuffer);
-
-    const relativeUrl = `/uploads/reports/${safeFileName}`;
+    const uploadResult = await storageService.uploadFile('reports', safeFileName, fileBuffer);
+    const reportUrl = uploadResult.fileUrl;
     const testNames = booking.items.map(i => i.labTest?.platformTest?.name || 'Diagnostic Test').join(', ');
 
     const newReport = await prisma.patientReport.create({
@@ -2144,7 +2139,7 @@ export const uploadLabReport = async (req: Request, res: Response, next: NextFun
         title: `Lab Report - ${testNames}`,
         hospital: booking.hospital.name,
         date: new Date().toISOString().split('T')[0],
-        fileUrl: relativeUrl,
+        fileUrl: reportUrl,
         summary: `Lab report for order ${booking.id.substring(0,8).toUpperCase()}`,
       }
     });
@@ -2155,14 +2150,14 @@ export const uploadLabReport = async (req: Request, res: Response, next: NextFun
       action: 'UPLOAD_LAB_REPORT',
       targetEntity: 'PatientReport',
       targetId: newReport.id,
-      details: { bookingId: id, fileName, fileUrl: relativeUrl },
+      details: { bookingId: id, fileName, fileUrl: reportUrl },
       clientIp: req.ip || req.socket.remoteAddress
     });
 
     const updatedBooking = await prisma.labBooking.update({
       where: { id },
       data: {
-        reportUrl: relativeUrl,
+        reportUrl: reportUrl,
         status: 'REPORT_READY'
       }
     });
@@ -2172,7 +2167,7 @@ export const uploadLabReport = async (req: Request, res: Response, next: NextFun
       data: {
         report: newReport,
         booking: updatedBooking,
-        reportUrl: relativeUrl
+        reportUrl: reportUrl
       },
       message: 'Report uploaded and order updated to Completed successfully'
     });

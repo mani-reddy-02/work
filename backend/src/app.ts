@@ -6,6 +6,7 @@ import path from 'path';
 import apiRouter from './routes';
 import { errorHandler } from './middleware/errorHandler';
 import { env } from './config/env';
+import { viewFileHandler, universalFileProxy } from './modules/files/files.controller';
 
 const app = express();
 
@@ -46,19 +47,15 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(morgan('dev'));
 
-// Explicitly block unauthenticated direct access to patient medical reports and sensitive documents
-app.use('/uploads/reports', (req, res) => {
-  res.status(403).json({
-    success: false,
-    message: 'Access denied: Direct static access to medical reports is forbidden. Please access reports via authenticated API endpoints.',
-  });
-});
-app.use('/uploads/licenses', (req, res) => {
-  res.status(403).json({
-    success: false,
-    message: 'Access denied: Direct static access to license documents is forbidden.',
-  });
-});
+// File streaming & inline preview handlers (resolves Supabase Storage & local disk files)
+app.get('/uploads/reports/:filename', viewFileHandler('reports'));
+app.get('/uploads/licenses/:filename', viewFileHandler('licenses'));
+app.get('/uploads/attachments/:filename', viewFileHandler('attachments'));
+app.get('/uploads/avatars/:filename', viewFileHandler('avatars'));
+
+// Universal file proxy/preview endpoint
+app.get('/api/v1/files/preview', universalFileProxy);
+app.get('/api/v1/files/view', universalFileProxy);
 
 // Static files strictly for non-sensitive public uploads (e.g. icons)
 app.use('/uploads/icons', express.static(path.join(process.cwd(), 'uploads/icons')));

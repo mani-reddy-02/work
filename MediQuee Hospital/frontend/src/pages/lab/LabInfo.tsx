@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom"
 import { useToast } from "@/context/ToastContext"
 import { labApi } from "@/services/labApi"
 import { cn } from "@/lib/utils"
+import { resolveFileUrl } from "@/utils/fileUtils"
 
 interface ComplianceDoc {
   id: string;
@@ -575,7 +576,7 @@ export function LabInfo() {
                             type="button"
                             onClick={() => {
                               if (doc.fileUrl) {
-                                window.open(doc.fileUrl, '_blank')
+                                window.open(resolveFileUrl(doc.fileUrl), '_blank')
                               }
                             }}
                             className="text-xs font-bold text-primary bg-white dark:bg-gray-900 hover:bg-primary/10 border border-border px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"

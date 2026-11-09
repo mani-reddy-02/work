@@ -1,7 +1,7 @@
 import { 
   Search, Download, CloudUpload, ShieldCheck, ChevronDown, ChevronRight, 
   FileText, FlaskConical, Microscope, Activity, BadgeCheck, Calendar, 
-  Scan, ArrowLeft, Trash2, X, CheckCircle2, AlertTriangle 
+  Scan, ArrowLeft, Trash2, X, CheckCircle2, AlertTriangle, Eye, ExternalLink 
 } from 'lucide-react';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +20,7 @@ interface ReportItem {
   iconColor: string;
   bg: string;
   summary?: string;
+  fileUrl?: string;
 }
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
@@ -52,13 +53,20 @@ const Reports = () => {
   const [activeTab, setActiveTab] = useState<'received' | 'upload'>('received');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
+  const [previewReport, setPreviewReport] = useState<ReportItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [reports, setReports] = useState<ReportItem[]>([]);
-  
   const [showAllReports, setShowAllReports] = useState(false);
+
+  const getFileUrl = (url?: string) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const backendBase = (import.meta as any).env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
+    return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -329,7 +337,18 @@ Verified Digital Health Record • MediQuee Healthcare Network
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <div className="flex items-center gap-3 mt-auto">
+                  <div className="flex items-center gap-2.5 mt-auto">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPreviewReport(report);
+                      }}
+                      title="Preview report"
+                      className="flex flex-col items-center justify-center cursor-pointer hover:text-blue-700 text-blue-600 active:scale-95 transition-transform"
+                    >
+                      <Eye className="w-4 h-4 mb-0.5" strokeWidth={2} />
+                      <span className="text-[9px] font-medium text-slate-500">View</span>
+                    </button>
                     <button 
                       onClick={(e) => handleDownload(report, e)}
                       title="Download report"
@@ -487,20 +506,127 @@ Verified Digital Health Record • MediQuee Healthcare Network
               </div>
 
               {/* Modal Actions */}
-              <div className="flex gap-2.5">
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => {
+                    const r = selectedReport;
+                    setSelectedReport(null);
+                    setPreviewReport(r);
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors active:scale-98 cursor-pointer"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span>Preview Document</span>
+                </button>
                 <button 
                   onClick={() => handleDownload(selectedReport)}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors active:scale-98 cursor-pointer"
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-600 py-2.5 px-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Download Report</span>
+                  <span>Download</span>
                 </button>
                 <button 
                   onClick={() => setSelectedReport(null)}
-                  className="py-2.5 px-4 rounded-xl text-[12px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+                  className="py-2.5 px-3.5 rounded-xl text-[12px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
                 >
                   Close
                 </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Comprehensive Report Document Preview Modal */}
+      {previewReport && (() => {
+        const fileUrl = (previewReport as any).fileUrl;
+        const fullUrl = getFileUrl(fileUrl);
+        const isPdf = fileUrl ? fileUrl.toLowerCase().endsWith('.pdf') : false;
+        const isImage = fileUrl ? (fileUrl.toLowerCase().endsWith('.png') || fileUrl.toLowerCase().endsWith('.jpg') || fileUrl.toLowerCase().endsWith('.jpeg')) : false;
+
+        return (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 z-50 animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl max-w-4xl w-full h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
+              {/* Preview Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-[15px] truncate max-w-xs md:max-w-md">
+                      {previewReport.title}
+                    </h3>
+                    <p className="text-[11px] text-slate-500">{previewReport.hospital} • {previewReport.date}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {fullUrl && (
+                    <a
+                      href={fullUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Open in new tab"
+                      className="p-2 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-white border border-slate-200 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+                  <button
+                    onClick={() => handleDownload(previewReport)}
+                    title="Download file"
+                    className="p-2 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-white border border-slate-200 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setPreviewReport(null)}
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors ml-1"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Preview Viewer Body */}
+              <div className="flex-1 bg-slate-100 p-2 md:p-4 overflow-auto flex items-center justify-center">
+                {fullUrl ? (
+                  isImage ? (
+                    <div className="w-full h-full flex items-center justify-center p-2">
+                      <img
+                        src={fullUrl}
+                        alt={previewReport.title}
+                        className="max-h-full max-w-full object-contain rounded-xl shadow-md bg-white border border-slate-200"
+                      />
+                    </div>
+                  ) : (
+                    <iframe
+                      src={`${fullUrl}#toolbar=1`}
+                      className="w-full h-full rounded-2xl bg-white border border-slate-200 shadow-inner"
+                      title="Document Preview"
+                    />
+                  )
+                ) : (
+                  <div className="bg-white rounded-2xl p-8 max-w-lg w-full text-center shadow-sm border border-slate-200">
+                    <div className="w-16 h-16 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4">
+                      <ShieldCheck className="w-8 h-8" />
+                    </div>
+                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase tracking-wider">
+                      Official Digital Medical Record
+                    </span>
+                    <h2 className="text-[18px] font-bold text-slate-900 mt-3">{previewReport.title}</h2>
+                    <p className="text-[12px] text-slate-500 mt-1 mb-4">{previewReport.hospital} • {previewReport.date}</p>
+                    <div className="bg-slate-50 rounded-xl p-4 text-left text-[12px] text-slate-700 leading-relaxed border border-slate-100 mb-6 font-mono">
+                      {previewReport.summary || 'Official clinical document recorded and verified on the MediQuee network.'}
+                    </div>
+                    <button
+                      onClick={() => handleDownload(previewReport)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer"
+                    >
+                      <Download className="w-4 h-4" /> Download Official Record
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

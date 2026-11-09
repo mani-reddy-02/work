@@ -26,6 +26,7 @@ import { useAdminAuth } from '../contexts/AuthContext';
 import { settlementService, ManualPayoutPayload } from '../services/settlementService';
 import StatusBadge from '../components/ui/StatusBadge';
 import { formatCurrency } from '../utils/finance';
+import { resolveFileUrl } from '../utils/fileUtils';
 
 const SettlementDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -625,7 +626,7 @@ const SettlementDetails: React.FC = () => {
                 <div className="mt-3 pt-2.5 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500">
                   <span>{new Date(att.uploadedAt).toLocaleDateString()}</span>
                   <a
-                    href={att.fileUrl}
+                    href={resolveFileUrl(att.fileUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:underline font-medium inline-flex items-center gap-1"

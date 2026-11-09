@@ -10,6 +10,7 @@ import { useState, useEffect, useMemo } from "react"
 import { adminApi } from "@/services/adminApi"
 import { receptionistApi } from "@/services/receptionistApi"
 import { usePermissions } from "@/hooks/usePermissions"
+import { resolveFileUrl } from "@/utils/fileUtils"
 
 export function StaffList() {
   const navigate = useNavigate();
@@ -441,14 +442,14 @@ export function StaffList() {
                           <div className="flex items-center gap-1.5 shrink-0">
                             <button
                               type="button"
-                              onClick={() => setPreviewDocUrl(selectedStaff.licenseDocumentUrl)}
+                              onClick={() => setPreviewDocUrl(resolveFileUrl(selectedStaff.licenseDocumentUrl))}
                               className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-primary rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
                             >
                               <Eye className="w-3 h-3" />
                               View
                             </button>
                             <a
-                              href={selectedStaff.licenseDocumentUrl}
+                              href={resolveFileUrl(selectedStaff.licenseDocumentUrl)}
                               target="_blank"
                               rel="noreferrer"
                               download

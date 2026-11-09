@@ -5,6 +5,7 @@ import { useAdminAuth } from '../contexts/AuthContext';
 import { userService } from '../services/userService';
 import StatusBadge from '../components/ui/StatusBadge';
 import DataTable, { Column } from '../components/ui/DataTable';
+import { resolveFileUrl } from '../utils/fileUtils';
 
 const DoctorDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -207,14 +208,14 @@ const DoctorDetails: React.FC = () => {
                       <div className="flex items-center gap-2 shrink-0">
                         <button
                           type="button"
-                          onClick={() => setPreviewModalUrl(doctor.licenseDocumentUrl)}
+                          onClick={() => setPreviewModalUrl(resolveFileUrl(doctor.licenseDocumentUrl))}
                           className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors flex items-center gap-1.5 shadow-sm"
                         >
                           <Eye size={14} />
                           Inspect
                         </button>
                         <a
-                          href={doctor.licenseDocumentUrl}
+                          href={resolveFileUrl(doctor.licenseDocumentUrl)}
                           target="_blank"
                           rel="noreferrer"
                           download

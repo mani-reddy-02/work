@@ -10,6 +10,7 @@ import { useToast } from "@/context/ToastContext"
 import { ConfirmationSheet } from "@/components/ui/ConfirmationSheet"
 import { SuccessModal } from "@/components/ui/SuccessModal"
 import { adminApi } from "@/services/adminApi"
+import { resolveFileUrl } from "@/utils/fileUtils"
 
 const doctorSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
@@ -499,7 +500,7 @@ export function AddDoctor() {
                       <div className="flex items-center gap-2 shrink-0">
                         <button
                           type="button"
-                          onClick={() => setPreviewModalUrl(uploadedCert.url)}
+                          onClick={() => setPreviewModalUrl(resolveFileUrl(uploadedCert.url))}
                           className="px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-blue-50 border border-blue-100 rounded-lg flex items-center gap-1 transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />

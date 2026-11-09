@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { AuditLogger } from '../../utils/auditLogger';
+import { storageService } from '../../services/storage.service';
 
 const UPLOADS_DIR = path.join(__dirname, '../../../../uploads/settlements');
 
@@ -683,10 +684,8 @@ export const uploadSettlementAttachment = async (req: Request, res: Response, ne
     }
 
     const safeFileName = `SETTLE_${crypto.randomUUID()}${ext}`;
-    const filePath = path.join(UPLOADS_DIR, safeFileName);
-
-    fs.writeFileSync(filePath, fileBuffer);
-    const fileUrl = `/uploads/settlements/${safeFileName}`;
+    const uploadResult = await storageService.uploadFile('attachments', safeFileName, fileBuffer, mimeType);
+    const fileUrl = uploadResult.fileUrl;
 
     const attachment = await prisma.settlementAttachment.create({
       data: {
@@ -736,15 +735,11 @@ export const deleteSettlementAttachment = async (req: Request, res: Response, ne
       return res.status(404).json({ success: false, message: 'Attachment not found' });
     }
 
-    // Attempt to remove file from disk
+    // Remove file from Supabase and local storage
     try {
-      const fileName = path.basename(attachment.fileUrl);
-      const filePath = path.join(UPLOADS_DIR, fileName);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+      await storageService.deleteFile('attachments', attachment.fileUrl);
     } catch (e) {
-      // Ignore filesystem unlinking error
+      // Ignore unlinking error
     }
 
     await prisma.settlementAttachment.delete({
@@ -826,9 +821,8 @@ export const processManualPayout = async (req: Request, res: Response, next: Nex
       }
 
       const safeFileName = `PROOF_${crypto.randomUUID()}${ext}`;
-      const filePath = path.join(UPLOADS_DIR, safeFileName);
-      fs.writeFileSync(filePath, fileBuffer);
-      proofUrl = `/uploads/settlements/${safeFileName}`;
+      const uploadResult = await storageService.uploadFile('attachments', safeFileName, fileBuffer, mimeType);
+      proofUrl = uploadResult.fileUrl;
 
       await prisma.settlementAttachment.create({
         data: {

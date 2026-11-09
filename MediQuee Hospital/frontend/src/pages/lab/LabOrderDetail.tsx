@@ -277,8 +277,9 @@ export function LabOrderDetail() {
     : bookedDateStr
 
   // Report File handling
+  const apiBase = (import.meta as any).env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000'
   const reportUrl = booking.reportUrl
-    ? (booking.reportUrl.startsWith('http') ? booking.reportUrl : `http://localhost:5000${booking.reportUrl.startsWith('/') ? '' : '/'}${booking.reportUrl}`)
+    ? (booking.reportUrl.startsWith('http') ? booking.reportUrl : `${apiBase}${booking.reportUrl.startsWith('/') ? '' : '/'}${booking.reportUrl}`)
     : null
   const isReportPdf = reportUrl ? reportUrl.toLowerCase().includes('.pdf') : false
 

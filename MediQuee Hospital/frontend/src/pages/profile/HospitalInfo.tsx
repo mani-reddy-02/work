@@ -11,6 +11,7 @@ import { hospitalProfileApi, type HospitalProfile, type UpdateHospitalProfileDto
 import { useToast } from "@/context/ToastContext"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { cn } from "@/lib/utils"
+import { resolveFileUrl } from "@/utils/fileUtils"
 
 export function HospitalInfo() {
   const navigate = useNavigate();
@@ -448,7 +449,7 @@ export function HospitalInfo() {
                               <span>Preview</span>
                             </button>
                             <a
-                              href={doc.fileUrl}
+                              href={resolveFileUrl(doc.fileUrl)}
                               target="_blank"
                               rel="noreferrer"
                               download
@@ -777,7 +778,7 @@ export function HospitalInfo() {
                   <div className="w-full flex flex-col items-center gap-4">
                     <div className="w-full max-h-[55vh] overflow-auto rounded-2xl border border-border bg-white p-2 shadow-inner flex items-center justify-center">
                       <img 
-                        src={selectedDoc.fileUrl} 
+                        src={resolveFileUrl(selectedDoc.fileUrl)} 
                         alt={selectedDoc.documentType} 
                         className="max-h-[50vh] max-w-full object-contain rounded-xl"
                         onError={(e) => {
@@ -789,7 +790,7 @@ export function HospitalInfo() {
                     </div>
                     <div className="flex items-center gap-3 w-full justify-end">
                       <a
-                        href={selectedDoc.fileUrl}
+                        href={resolveFileUrl(selectedDoc.fileUrl)}
                         target="_blank"
                         rel="noreferrer"
                         className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-foreground text-xs font-semibold rounded-xl transition-colors"
@@ -798,7 +799,7 @@ export function HospitalInfo() {
                         <span>Open in New Tab</span>
                       </a>
                       <a
-                        href={selectedDoc.fileUrl}
+                        href={resolveFileUrl(selectedDoc.fileUrl)}
                         download
                         className="flex items-center gap-2 px-4 py-2 bg-[#1769E0] hover:bg-[#1255b8] text-white text-xs font-semibold rounded-xl shadow-sm transition-colors"
                       >

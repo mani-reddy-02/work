@@ -7,6 +7,7 @@ import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { sendNotification } from '../notifications/notifications.service';
 import { LabBookingType, LabBookingStatus, Role } from '@prisma/client';
+import { storageService } from '../../services/storage.service';
 
 export const createLabBooking = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -682,14 +683,9 @@ export const updateLabBookingStatus = async (req: Request, res: Response, next: 
           return res.status(400).json({ success: false, error: { code: 'INVALID_FILE_TYPE', message: 'Only PDF, JPEG, and PNG files are allowed.' } });
         }
         const fileBuffer = Buffer.from(matches[2], 'base64');
-        const UPLOADS_DIR = path.join(process.cwd(), 'uploads/reports');
-        if (!fs.existsSync(UPLOADS_DIR)) {
-          fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-        }
         const safeFileName = `${crypto.randomUUID()}${extension}`;
-        uploadedFileUrl = `/uploads/reports/${safeFileName}`;
-        const filePath = path.join(UPLOADS_DIR, safeFileName);
-        fs.writeFileSync(filePath, fileBuffer);
+        const uploadResult = await storageService.uploadFile('reports', safeFileName, fileBuffer, rawMime);
+        uploadedFileUrl = uploadResult.fileUrl;
 
         data.reportUrl = uploadedFileUrl;
         data.reportUploadedAt = new Date();

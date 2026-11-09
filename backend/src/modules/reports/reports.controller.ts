@@ -4,13 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { z } from 'zod';
-
-const UPLOADS_DIR = path.join(__dirname, '../../../../uploads/reports');
-
-// Ensure uploads directory exists
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
+import { storageService } from '../../services/storage.service';
 
 const ALLOWED_MIME_TYPES: Record<string, string> = {
   'application/pdf': '.pdf',
@@ -82,11 +76,11 @@ export const uploadReport = async (req: Request, res: Response) => {
       });
     }
 
-    // Cryptographically secure random filename - never trust client filename or extension
+    // Cryptographically secure random filename
     const safeFileName = `${crypto.randomUUID()}${extension}`;
-    const filePath = path.join(UPLOADS_DIR, safeFileName);
-    
-    fs.writeFileSync(filePath, fileBuffer);
+
+    // Upload to Supabase Storage reports bucket (with local resilient cache)
+    const uploadResult = await storageService.uploadFile('reports', safeFileName, fileBuffer, mimeType);
 
     const newReport = await prisma.patientReport.create({
       data: {
@@ -98,7 +92,7 @@ export const uploadReport = async (req: Request, res: Response) => {
         pages: validatedData.pages,
         status: validatedData.status,
         summary: validatedData.summary,
-        fileUrl: `/uploads/reports/${safeFileName}`,
+        fileUrl: uploadResult.fileUrl,
       },
     });
 
@@ -133,13 +127,9 @@ export const deleteReport = async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Forbidden: You do not own this report' });
     }
 
-    // Delete physical file if exists
+    // Delete from storage (Supabase + local)
     if (report.fileUrl) {
-      const fileName = path.basename(report.fileUrl);
-      const filePath = path.join(UPLOADS_DIR, fileName);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+      await storageService.deleteFile('reports', report.fileUrl);
     }
 
     await prisma.patientReport.delete({
@@ -182,16 +172,22 @@ export const downloadReport = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Report file not found' });
     }
 
-    const fileName = path.basename(report.fileUrl);
-    const filePath = path.join(UPLOADS_DIR, fileName);
-
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, message: 'Physical file missing on server' });
+    // If report is stored in Supabase with full URL, redirect directly
+    if (report.fileUrl.startsWith('http://') || report.fileUrl.startsWith('https://')) {
+      return res.redirect(report.fileUrl);
     }
 
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.download(filePath, fileName);
+    const fileName = path.basename(report.fileUrl);
+    const localFilePath = await storageService.getLocalFilePath('reports', fileName);
+
+    if (localFilePath && fs.existsSync(localFilePath)) {
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      return res.download(localFilePath, fileName);
+    }
+
+    // If not on disk, redirect to public Supabase bucket path or serve fallback
+    return res.redirect(`/uploads/reports/${fileName}`);
   } catch (error) {
     console.error('Error downloading report:', error);
     res.status(500).json({ success: false, message: 'Failed to download report' });

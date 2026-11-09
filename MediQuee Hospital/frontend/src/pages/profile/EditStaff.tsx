@@ -7,6 +7,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import { useToast } from "@/context/ToastContext"
 import { adminApi } from "@/services/adminApi"
 import { cn } from "@/lib/utils"
+import { resolveFileUrl } from "@/utils/fileUtils"
 
 const staffSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -375,14 +376,14 @@ export function EditStaff() {
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
-                          onClick={() => setPreviewModalUrl(uploadedCertUrl)}
+                          onClick={() => setPreviewModalUrl(resolveFileUrl(uploadedCertUrl))}
                           className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-primary rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>View</span>
                         </button>
                         <a
-                          href={uploadedCertUrl}
+                          href={resolveFileUrl(uploadedCertUrl)}
                           target="_blank"
                           rel="noreferrer"
                           download

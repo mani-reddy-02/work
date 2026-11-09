@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { sendNotification } from '../notifications/notifications.service';
 import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams, getEffectiveCoordinates } from '../../utils/geo';
+import { storageService } from '../../services/storage.service';
 
 export const getLaboratories = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -751,17 +752,14 @@ export const uploadLicenseCertificate = async (req: Request, res: Response, next
       });
     }
 
-    const safeFileName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const filePath = path.join(UPLOADS_LICENSES_DIR, safeFileName);
-
-    fs.writeFileSync(filePath, fileBuffer);
-
-    const fileUrl = `/uploads/licenses/${safeFileName}`;
+    const ext = path.extname(fileName).toLowerCase();
+    const safeFileName = `lab-license-${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const uploadResult = await storageService.uploadFile('licenses', safeFileName, fileBuffer);
 
     res.status(201).json({
       success: true,
       data: {
-        fileUrl,
+        fileUrl: uploadResult.fileUrl,
         fileName: safeFileName,
         size: fileBuffer.length
       }

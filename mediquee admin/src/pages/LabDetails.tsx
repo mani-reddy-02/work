@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAdminAuth } from '../contexts/AuthContext';
 import StatusBadge from '../components/ui/StatusBadge';
+import { resolveFileUrl } from '../utils/fileUtils';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -559,7 +560,7 @@ const LabDetails: React.FC = () => {
                   </div>
                 </div>
                 <a 
-                  href={lab.labLicenseDocumentUrl} 
+                  href={resolveFileUrl(lab.labLicenseDocumentUrl)} 
                   target="_blank" 
                   rel="noreferrer"
                   className="px-3 py-1 bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 rounded-lg font-semibold inline-flex items-center gap-1 shadow-2xs"
@@ -584,7 +585,7 @@ const LabDetails: React.FC = () => {
                   </div>
                   {v.fileUrl ? (
                     <a 
-                      href={v.fileUrl} 
+                      href={resolveFileUrl(v.fileUrl)} 
                       target="_blank" 
                       rel="noreferrer"
                       className="px-3 py-1 bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 rounded-lg font-semibold inline-flex items-center gap-1 shadow-2xs"

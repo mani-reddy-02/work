@@ -41,6 +41,7 @@ import { dashboardApi, type RevenueAnalyticsResponse, type PayoutTransaction } f
 import { payoutsApi } from "../services/payoutsApi"
 import { useTranslation } from "react-i18next"
 import { useAuth } from "@/context/AuthContext"
+import { resolveFileUrl } from "@/utils/fileUtils"
 
 type DatePreset = 'week' | 'today' | 'month' | 'custom';
 type ServiceDetailKey = 'op' | 'videoConsultation' | 'homeNursing' | 'labTests' | 'homeSampleCollection';
@@ -819,7 +820,7 @@ export function Payouts() {
                             attachments.map((att: any) => (
                               <a
                                 key={att.id}
-                                href={att.fileUrl}
+                                href={resolveFileUrl(att.fileUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-semibold shadow-xs transition-colors"
