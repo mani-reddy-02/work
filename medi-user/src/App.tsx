@@ -19,7 +19,6 @@ const ServiceDetails = lazy(() => import('./pages/ServiceDetails'));
 const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const MediQueeAI = lazy(() => import('./pages/MediQueeAI'));
-const Ambulance = lazy(() => import('./pages/Ambulance'));
 const Medicines = lazy(() => import('./pages/Medicines'));
 const HelpSupport = lazy(() => import('./pages/HelpSupport'));
 
@@ -113,7 +112,7 @@ function App() {
               <Route path="services/home-sample" element={<HomeSampleList />} />
               <Route path="services/bmi" element={<CheckMyBMI />} />
               <Route path="services/:id" element={<ServiceDetails />} />
-              <Route path="ambulance" element={<Ambulance />} />
+              <Route path="ambulance" element={<Navigate to="/" replace />} />
               <Route path="medicines" element={<Medicines />} />
               <Route path="help" element={<HelpSupport />} />
 

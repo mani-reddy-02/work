@@ -221,14 +221,14 @@ export default function MediQueeAI() {
                         href="tel:108" 
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow-sm transition-colors"
                       >
-                        <PhoneCall className="w-3.5 h-3.5" /> Call 108 Emergency Ambulance
+                        <PhoneCall className="w-3.5 h-3.5" /> Call 108 (National Emergency)
                       </a>
-                      <button
-                        onClick={() => navigate('/ambulance')}
+                      <a
+                        href="tel:8331045500"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-300 text-red-700 hover:bg-red-50 font-bold text-xs rounded-lg shadow-sm transition-colors cursor-pointer"
                       >
-                        Hospital Emergency Ward
-                      </button>
+                        <PhoneCall className="w-3.5 h-3.5" /> Call 24/7 Helpline: 8331045500
+                      </a>
                     </div>
                   )}
 

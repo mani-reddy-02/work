@@ -171,7 +171,7 @@ export default function PrivacyPolicy() {
                     B. Address & Geolocation Data
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                    Saved delivery and collection addresses (including house/apartment number, street, landmark, city, and pincode). With your explicit browser/device permission, precise GPS coordinates are utilized solely to dispatch home phlebotomists, route home nursing professionals, or direct emergency ambulance services to your location.
+                    Saved delivery and collection addresses (including house/apartment number, street, landmark, city, and pincode). With your explicit browser/device permission, precise GPS coordinates are utilized solely to dispatch home phlebotomists, route home nursing professionals, or direct healthcare services to your location.
                   </p>
                 </div>
 
