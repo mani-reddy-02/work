@@ -282,10 +282,18 @@ const HomeNursingList = () => {
     setIsSubmitting(true);
     setBookingError(null);
 
+    const token = localStorage.getItem('mediquee_token');
+    if (!token) {
+      setIsSubmitting(false);
+      setBookingError('Please sign in to your account to complete your home nursing booking.');
+      setViewState('SUMMARY');
+      return;
+    }
+
     try {
       const payload = {
-        serviceId: selectedService?.id || mockServices[0].id,
-        hospitalId: selectedHospital?.id || mockHospitals[0].id,
+        serviceId: selectedService?.id || '',
+        hospitalId: selectedHospital?.id || '',
         patientName: patientDetails.name.trim(),
         patientPhone: patientDetails.phone.trim(),
         patientEmail: patientDetails.email.trim() || undefined,
@@ -304,40 +312,14 @@ const HomeNursingList = () => {
         setConfirmedBooking(res.data);
         setViewState('CONFIRMED');
       } else {
-        // If not authenticated or backend unavailable in test environment, allow friendly fallback
-        if (res.error?.includes('Authentication required') || res.error?.includes('Network error')) {
-          setConfirmedBooking({
-            id: 'mock-hn-' + Date.now(),
-            bookingNumber: 'MQ-HN-' + Math.floor(1000 + Math.random() * 9000),
-            serviceName: selectedService?.name,
-            hospitalName: selectedHospital?.hospitalName || selectedHospital?.name,
-            patientName: patientDetails.name,
-            date: patientDetails.date,
-            timeSlot: patientDetails.time,
-            totalAmount: selectedHospital?.numericPrice || 0,
-            status: 'CONFIRMED',
-            paymentStatus: 'PAID',
-          });
-          setViewState('CONFIRMED');
-        } else {
-          setBookingError(res.error || 'Failed to create booking. Please try again.');
-          alert(res.error || 'Failed to complete booking. Please choose another slot.');
-        }
+        const errorMsg = res.error || 'Failed to complete home nursing booking. Please try again.';
+        setBookingError(errorMsg);
+        setViewState('SUMMARY');
       }
     } catch (err: any) {
-      setBookingError(err.message || 'Error communicating with server');
-      // Graceful fallback for test runner
-      setConfirmedBooking({
-        bookingNumber: 'MQ-HN-001',
-        serviceName: selectedService?.name,
-        patientName: patientDetails.name,
-        date: patientDetails.date,
-        timeSlot: patientDetails.time,
-        totalAmount: selectedHospital?.numericPrice || 0,
-        status: 'CONFIRMED',
-        paymentStatus: 'PAID',
-      });
-      setViewState('CONFIRMED');
+      const errorMsg = err.message || 'Error communicating with server. Please try again.';
+      setBookingError(errorMsg);
+      setViewState('SUMMARY');
     } finally {
       setIsSubmitting(false);
     }
@@ -521,9 +503,9 @@ const HomeNursingList = () => {
                       </p>
                     </div>
                   ) : (
-                    filteredHospitals.map((hospital) => (
+                    filteredHospitals.map((hospital, idx) => (
                       <div
-                        key={hospital.id}
+                        key={hospital.id || (hospital as any).hospitalId || `hosp-${idx}`}
                         className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-3 hover:border-blue-300 cursor-pointer"
                         onClick={() => handleSelectHospital(hospital)}
                       >
@@ -826,9 +808,23 @@ const HomeNursingList = () => {
               <h2 className="text-[18px] font-black text-slate-900 mb-4">Review Your Booking</h2>
 
               {bookingError && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl text-[13px] font-medium mb-5 flex items-start gap-3 shadow-sm">
-                  <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
-                  <span className="leading-snug">{bookingError}</span>
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl text-[13px] font-medium mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                    <span className="leading-snug">{bookingError}</span>
+                  </div>
+                  {(!localStorage.getItem('mediquee_token') ||
+                    bookingError.toLowerCase().includes('sign in') ||
+                    bookingError.toLowerCase().includes('log in') ||
+                    bookingError.toLowerCase().includes('authentication')) && (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/login', { state: { from: '/services/home-nursing' } })}
+                      className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold shrink-0 transition-colors cursor-pointer self-start sm:self-auto"
+                    >
+                      Sign In Now
+                    </button>
+                  )}
                 </div>
               )}
 

@@ -40,6 +40,7 @@ const mockHospitalList = [
 describe('HomeNursingList Component', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    localStorage.setItem('mediquee_token', 'valid-test-token');
     vi.spyOn(homeNursingApi, 'getServices').mockResolvedValue({
       success: true,
       data: mockServiceList as any,
@@ -126,5 +127,56 @@ describe('HomeNursingList Component', () => {
     // Click Credit Card to pay
     const creditCardBtn = screen.getByText('Credit / Debit Card');
     fireEvent.click(creditCardBtn);
+  });
+
+  test('stays on review screen and displays error banner when backend booking fails', async () => {
+    vi.spyOn(homeNursingApi, 'createBooking').mockResolvedValue({
+      success: false,
+      error: 'Hospital provider has no nurses available for this slot',
+    });
+
+    render(<HomeNursingList />);
+
+    const serviceButtons = await screen.findAllByText('Select Service');
+    fireEvent.click(serviceButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Select Hospital / Nurse')).toBeInTheDocument();
+    });
+
+    const hospitalSelectButtons = screen.getAllByText('Select');
+    fireEvent.click(hospitalSelectButtons[0]);
+
+    const nameInput = screen.getByPlaceholderText('Enter patient name');
+    fireEvent.change(nameInput, { target: { value: 'Test Patient' } });
+
+    const phoneInput = screen.getByPlaceholderText('Enter phone number');
+    fireEvent.change(phoneInput, { target: { value: '1234567890' } });
+
+    const addAddressBtn = screen.getByText('Add Address');
+    fireEvent.click(addAddressBtn);
+
+    const addressInput = screen.getByPlaceholderText('Enter full address');
+    fireEvent.change(addressInput, { target: { value: '123 Main St' } });
+
+    const submitBtn = screen.getByText('Proceed to Summary');
+    const form = submitBtn.closest('form');
+    if (form) fireEvent.submit(form);
+    else fireEvent.click(submitBtn);
+
+    const proceedPaymentBtn = screen.getByText('Proceed to Payment');
+    fireEvent.click(proceedPaymentBtn);
+
+    const creditCardBtn = screen.getByText('Credit / Debit Card');
+    fireEvent.click(creditCardBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Hospital provider has no nurses available for this slot/i)).toBeInTheDocument();
+    });
+
+    // Confirm that fake booking was NOT shown
+    expect(screen.queryByText('Booking Confirmed')).not.toBeInTheDocument();
+    expect(screen.queryByText(/MQ-HN-001/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/mock-hn-/i)).not.toBeInTheDocument();
   });
 });
