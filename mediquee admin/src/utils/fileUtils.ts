@@ -10,3 +10,4 @@ export function resolveFileUrl(url?: string | null): string {
   const backendBase = (import.meta as any).env?.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
   return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
 }
+

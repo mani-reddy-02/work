@@ -23,3 +23,4 @@ if (SUPABASE_KEY) {
 }
 
 export { supabaseClient, SUPABASE_URL };
+

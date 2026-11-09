@@ -14,7 +14,8 @@
     "seed:platform": "ts-node prisma/seed-platform-data.ts",
     "seed:platform-labs": "ts-node prisma/seed-platform-labs.ts",
     "storage:buckets": "ts-node --transpile-only src/scripts/create-buckets.ts",
-    "storage:migrate": "ts-node --transpile-only src/scripts/migrate-to-supabase.ts"
+    "storage:migrate": "ts-node --transpile-only src/scripts/migrate-to-supabase.ts",
+    "db:rls": "ts-node --transpile-only src/scripts/apply-supabase-rls.ts"
   },
   "keywords": [],
   "author": "",
