@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { 
-  Building2, Stethoscope, Calendar, Clock, User, CheckCircle2, 
+  Building2, Stethoscope, Calendar, Clock, User, Users, Plus, CheckCircle2, 
   ChevronRight, ArrowLeft, Phone, MapPin, Search, AlertCircle, 
   Info, ShieldCheck, Video, Activity, RefreshCw, X, Star
 } from 'lucide-react';
@@ -13,6 +13,7 @@ import { getDiseaseIconUrl } from '../utils/diseaseIcons';
 import { getDepartmentImageUrl } from '../utils/departmentImages';
 import { useAuth } from '../lib/auth';
 import { useUIStore } from '../lib/uiStore';
+import { useFamilyMembers } from '../lib/familyMembers';
 
 export interface SlotDateOption {
   label: string;
@@ -91,14 +92,42 @@ const DepartmentBooking: React.FC = () => {
   const [selectedSlot, setSelectedSlot] = useState<string>('');
   const [slotError, setSlotError] = useState<string | null>(null);
 
+  // Family Members & Consultation Recipient
+  const { members: familyMembers } = useFamilyMembers(user?.id);
+  const paramPatientName = searchParams.get('patientName');
+  const paramPatientPhone = searchParams.get('patientPhone');
+  const paramPatientAge = searchParams.get('patientAge');
+  const paramPatientGender = searchParams.get('patientGender');
+  const paramPatientId = searchParams.get('patientId');
+
+  const [selectedRecipientId, setSelectedRecipientId] = useState<string>(() => {
+    if (paramPatientId) return paramPatientId;
+    if (paramPatientName) return 'custom';
+    return 'self';
+  });
+
   // Patient Details State
-  const [patientName, setPatientName] = useState(user?.name || '');
-  const [patientPhone, setPatientPhone] = useState(user?.phone || '');
-  const [patientAge, setPatientAge] = useState<string>('');
-  const [patientGender, setPatientGender] = useState<string>('Male');
+  const [patientName, setPatientName] = useState(() => paramPatientName || user?.name || '');
+  const [patientPhone, setPatientPhone] = useState(() => paramPatientPhone || user?.phone || '');
+  const [patientAge, setPatientAge] = useState<string>(() => paramPatientAge || '');
+  const [patientGender, setPatientGender] = useState<string>(() => paramPatientGender || 'Male');
   const [patientAddress, setPatientAddress] = useState<string>('');
   const [chiefComplaint, setChiefComplaint] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Sync patient name/phone when user profile is loaded or URL params present
+  useEffect(() => {
+    if (paramPatientName) {
+      setPatientName(paramPatientName);
+      if (paramPatientPhone) setPatientPhone(paramPatientPhone);
+      if (paramPatientAge) setPatientAge(paramPatientAge);
+      if (paramPatientGender) setPatientGender(paramPatientGender);
+      setSelectedRecipientId(paramPatientId || 'custom');
+    } else if (selectedRecipientId === 'self' && user?.name) {
+      if (!patientName) setPatientName(user.name);
+      if (!patientPhone && user.phone) setPatientPhone(user.phone);
+    }
+  }, [user, paramPatientName, paramPatientPhone, paramPatientAge, paramPatientGender, paramPatientId]);
 
   // Review & Confirm State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -971,6 +1000,61 @@ const DepartmentBooking: React.FC = () => {
               <span>{formError}</span>
             </div>
           )}
+
+          {/* Consultation Recipient / Family Selector */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Consultation For:
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRecipientId('self');
+                  setPatientName(user?.name || '');
+                  setPatientPhone(user?.phone || '');
+                  setPatientAge('');
+                  setPatientGender('Male');
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                  selectedRecipientId === 'self'
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <User className="w-3.5 h-3.5" /> Myself {user?.name ? `(${user.name})` : ''}
+              </button>
+
+              {familyMembers.map((member) => (
+                <button
+                  key={member.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedRecipientId(member.id);
+                    setPatientName(member.name);
+                    if (member.phone) setPatientPhone(member.phone);
+                    setPatientAge(String(member.age));
+                    setPatientGender(member.gender || 'Male');
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                    selectedRecipientId === member.id
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" /> {member.name} ({member.relationship})
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => navigate('/family')}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-dashed border-slate-300 text-slate-600 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50/50 transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Member
+              </button>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

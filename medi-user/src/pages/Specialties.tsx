@@ -3,7 +3,7 @@ import { departmentIcons, allIcons, getDiseaseIconUrl } from '../utils/diseaseIc
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { 
   Search, Video, Clock, CheckCircle2, ChevronLeft, ChevronRight,
-  MapPin, Phone, ShieldCheck, User, Activity, FileText, AlertCircle, 
+  MapPin, Phone, ShieldCheck, User, Users, Plus, Activity, FileText, AlertCircle, 
   Mic, MicOff, Video as VideoIcon, VideoOff, PhoneOff, Info,
   ArrowLeft, Calendar, Building2, Stethoscope, CalendarClock, CalendarCheck, 
   ActivitySquare, Bot, X, Sparkles, Copy, Star
@@ -15,6 +15,7 @@ import { opAppointmentApi, doctorApi, type DoctorRecord } from '../lib/opAppoint
 import { useUIStore } from '../lib/uiStore';
 import PrePaymentReviewsSummary from '../components/PrePaymentReviewsSummary';
 import ProviderReviewsModal from '../components/ProviderReviewsModal';
+import { useFamilyMembers, type FamilyMember } from '../lib/familyMembers';
 
 // --- 5-STEP HOW IT WORKS DATA ---
 const opBookingStepsData = [
@@ -273,11 +274,25 @@ const Specialties = () => {
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [reason, setReason] = useState('');
 
+  // Family Members & Consultation Recipient
+  const { members: familyMembers } = useFamilyMembers(user?.id);
+  const paramPatientName = searchParams.get('patientName');
+  const paramPatientPhone = searchParams.get('patientPhone');
+  const paramPatientAge = searchParams.get('patientAge');
+  const paramPatientGender = searchParams.get('patientGender');
+  const paramPatientId = searchParams.get('patientId');
+
+  const [selectedRecipientId, setSelectedRecipientId] = useState<string>(() => {
+    if (paramPatientId) return paramPatientId;
+    if (paramPatientName) return 'custom';
+    return 'self';
+  });
+
   // Patient Details for Step 4 (Review & Pay)
-  const [patientName, setPatientName] = useState(() => user?.name || '');
-  const [patientPhone, setPatientPhone] = useState(() => user?.phone || '');
-  const [patientAge, setPatientAge] = useState('');
-  const [patientGender, setPatientGender] = useState('Male');
+  const [patientName, setPatientName] = useState(() => paramPatientName || user?.name || '');
+  const [patientPhone, setPatientPhone] = useState(() => paramPatientPhone || user?.phone || '');
+  const [patientAge, setPatientAge] = useState(() => paramPatientAge || '');
+  const [patientGender, setPatientGender] = useState(() => paramPatientGender || 'Male');
   
   // Booking Confirmation State
   const [bookingId, setBookingId] = useState('');
@@ -306,11 +321,19 @@ const Specialties = () => {
   const [doctorFullProfile, setDoctorFullProfile] = useState<any>(null);
   const [isDoctorProfileLoading, setIsDoctorProfileLoading] = useState(false);
 
-  // Sync patient name/phone when user profile is loaded
+  // Sync patient name/phone when user profile is loaded or URL params present
   useEffect(() => {
-    if (user?.name && !patientName) setPatientName(user.name);
-    if (user?.phone && !patientPhone) setPatientPhone(user.phone);
-  }, [user]);
+    if (paramPatientName) {
+      setPatientName(paramPatientName);
+      if (paramPatientPhone) setPatientPhone(paramPatientPhone);
+      if (paramPatientAge) setPatientAge(paramPatientAge);
+      if (paramPatientGender) setPatientGender(paramPatientGender);
+      setSelectedRecipientId(paramPatientId || 'custom');
+    } else if (selectedRecipientId === 'self' && user?.name) {
+      if (!patientName) setPatientName(user.name);
+      if (!patientPhone && user.phone) setPatientPhone(user.phone);
+    }
+  }, [user, paramPatientName, paramPatientPhone, paramPatientAge, paramPatientGender, paramPatientId]);
 
   // Step 1: AI helper button behavior
   useEffect(() => {
@@ -1924,6 +1947,61 @@ const Specialties = () => {
               Patient Information
             </h3>
             <span className="text-[10px] text-slate-400 font-medium">Verify or edit</span>
+          </div>
+
+          {/* Consultation Recipient / Family Selector */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+              Consultation For:
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRecipientId('self');
+                  setPatientName(user?.name || '');
+                  setPatientPhone(user?.phone || '');
+                  setPatientAge('');
+                  setPatientGender('Male');
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                  selectedRecipientId === 'self'
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <User className="w-3.5 h-3.5" /> Myself {user?.name ? `(${user.name})` : ''}
+              </button>
+
+              {familyMembers.map((member) => (
+                <button
+                  key={member.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedRecipientId(member.id);
+                    setPatientName(member.name);
+                    if (member.phone) setPatientPhone(member.phone);
+                    setPatientAge(String(member.age));
+                    setPatientGender(member.gender || 'Male');
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                    selectedRecipientId === member.id
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" /> {member.name} ({member.relationship})
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => navigate('/family')}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-dashed border-slate-300 text-slate-600 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50/50 transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Member
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

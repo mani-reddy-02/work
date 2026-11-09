@@ -23,6 +23,13 @@ const menuItems = [
     path: '/profile/addresses',
     colorClass: 'text-emerald-500 bg-emerald-50'
   },
+  {
+    icon: Users,
+    label: 'Family Members',
+    subLabel: 'Manage family members & dependents',
+    path: '/family',
+    colorClass: 'text-orange-500 bg-orange-50'
+  },
 
   {
     icon: Settings,

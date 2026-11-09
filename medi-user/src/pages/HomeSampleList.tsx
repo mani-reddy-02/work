@@ -28,7 +28,7 @@ import {
   Plus,
   Star
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useProfile } from '../lib/profile';
 import {
   homeSampleCollectionApi,
@@ -149,14 +149,20 @@ const HomeSampleList = () => {
   const [labError, setLabError] = useState<string | null>(null);
   const [reviewModalLab, setReviewModalLab] = useState<LaboratoryRecord | null>(null);
 
+  const [searchParams] = useSearchParams();
+  const paramPatientName = searchParams.get('patientName');
+  const paramPatientPhone = searchParams.get('patientPhone');
+  const paramPatientAge = searchParams.get('patientAge');
+  const paramPatientGender = searchParams.get('patientGender');
+
   // Patient details state
   const [patientDetails, setPatientDetails] = useState({
-    name: 'Mani Kanta',
-    age: '30',
-    gender: 'Male',
-    phone: '9876543210',
+    name: paramPatientName || '',
+    age: paramPatientAge || '',
+    gender: paramPatientGender || 'Male',
+    phone: paramPatientPhone || '',
     email: '',
-    address: 'Madhapur, Hyderabad, 500081',
+    address: '',
   });
 
   // Standard 7-day booking horizon independent from slot availability

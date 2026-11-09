@@ -28,7 +28,7 @@ import {
   Check,
   Plus
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import HowItWorks from '../components/HowItWorks';
 import { useProfile } from '../lib/profile';
 import {
@@ -138,9 +138,13 @@ const HomeNursingList = () => {
   const [selectedService, setSelectedService] = useState<any>(null);
   const [reviewModalHospital, setReviewModalHospital] = useState<NursingProviderRecord | null>(null);
 
+  const [searchParams] = useSearchParams();
+  const paramPatientName = searchParams.get('patientName');
+  const paramPatientPhone = searchParams.get('patientPhone');
+
   const [patientDetails, setPatientDetails] = useState({
-    name: '',
-    phone: '',
+    name: paramPatientName || '',
+    phone: paramPatientPhone || '',
     email: '',
     date: getTomorrowDateString(),
     time: '10:00 AM - 12:00 PM',
