@@ -1,5 +1,6 @@
-# Dependencies
-node_modules/
+# Personal notes
+CloudCommands.txt
+
 */node_modules/
 */*/node_modules/
 
@@ -35,8 +36,9 @@ __pycache__/
 
 # Vercel / Deploy caches
 .vercel/
-# Dependencies
-node_modules/
+# Personal notes
+CloudCommands.txt
+
 */node_modules/
 */*/node_modules/
 

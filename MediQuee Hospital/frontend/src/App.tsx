@@ -86,6 +86,7 @@ import { LabAvailability } from "./pages/lab/LabAvailability"
 // Auth pages
 import { Login } from "./pages/Login"
 import { Register } from "./pages/Register"
+import { ForgotPassword } from "./pages/ForgotPassword"
 import './index.css'
 
 import { type ReactNode } from "react"
@@ -130,6 +131,11 @@ function AnimatedRoutes() {
         <Route path="/register" element={
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <Register />
+          </motion.div>
+        } />
+        <Route path="/forgot-password" element={
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <ForgotPassword />
           </motion.div>
         } />
 

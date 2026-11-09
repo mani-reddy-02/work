@@ -61,10 +61,9 @@ export function Login() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="flex flex-col items-center mb-2"
+            className="flex flex-col items-center mb-3"
           >
-            <img src={import.meta.env.BASE_URL + 'logo-icon.png'} alt="MediQuee" className="w-16 h-16 rounded-2xl shadow-md object-contain mb-3" />
-            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="MediQuee" className="h-7 w-auto object-contain" />
+            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="MediQuee Hospital" className="h-10 w-auto object-contain" />
           </motion.div>
           <h1 className="text-xl font-bold text-foreground">Welcome Back</h1>
           <p className="text-muted text-xs mt-0.5">Log in to your account</p>
@@ -111,7 +110,7 @@ export function Login() {
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }} className="flex flex-col gap-1.5">
             <div className="flex justify-between items-center ml-1">
               <label className="text-xs font-semibold text-foreground/80">Password</label>
-              <a href="#" className="text-xs text-primary font-bold hover:underline">Forgot?</a>
+              <Link to="/forgot-password" className="text-xs text-primary font-bold hover:underline">Forgot?</Link>
             </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-muted/70">
