@@ -72,27 +72,31 @@ export function StepReview({ onEditStep }: StepReviewProps) {
           </div>
           <div className="p-4 flex flex-col gap-2 text-[14px]">
             <div className="flex justify-between"><span className="text-muted">Address</span><span className="font-semibold text-right line-clamp-2 w-1/2">{entityLocation?.address1}, {entityLocation?.city}</span></div>
-            <div className="flex justify-between"><span className="text-muted">Contact</span><span className="font-semibold text-right">{entityLocation?.contactNumber}</span></div>
+            {(entityLocation?.contactNumber || (entityInfo as any)?.hospitalPhone || (entityInfo as any)?.labPhone) && (
+              <div className="flex justify-between"><span className="text-muted">Contact</span><span className="font-semibold text-right">{entityLocation?.contactNumber || (entityInfo as any)?.hospitalPhone || (entityInfo as any)?.labPhone}</span></div>
+            )}
           </div>
         </div>
 
         {/* Services Summary */}
-        <div className="bg-surface border border-border rounded-[20px] overflow-hidden">
-          <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-border">
-            <div className="flex items-center gap-2">
-              {isHospital ? <Stethoscope className="w-5 h-5 text-[#1769E0]" /> : <Microscope className="w-5 h-5 text-[#1769E0]" />}
-              <h3 className="font-bold text-[#172033]">Services</h3>
+        {entityServices?.length ? (
+          <div className="bg-surface border border-border rounded-[20px] overflow-hidden">
+            <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-border">
+              <div className="flex items-center gap-2">
+                {isHospital ? <Stethoscope className="w-5 h-5 text-[#1769E0]" /> : <Microscope className="w-5 h-5 text-[#1769E0]" />}
+                <h3 className="font-bold text-[#172033]">Services</h3>
+              </div>
+              <button type="button" onClick={() => onEditStep("services")} className="text-[12px] font-bold text-[#1769E0] hover:underline">Edit</button>
             </div>
-            <button type="button" onClick={() => onEditStep("services")} className="text-[12px] font-bold text-[#1769E0] hover:underline">Edit</button>
-          </div>
-          <div className="p-4">
-            <div className="flex flex-wrap gap-2">
-              {entityServices?.map(s => (
-                <span key={s} className="px-2.5 py-1 bg-gray-100 text-foreground/80 text-[12px] font-semibold rounded-lg">{s.replace('_', ' ')}</span>
-              ))}
+            <div className="p-4">
+              <div className="flex flex-wrap gap-2">
+                {entityServices.map(s => (
+                  <span key={s} className="px-2.5 py-1 bg-gray-100 text-foreground/80 text-[12px] font-semibold rounded-lg">{s.replace('_', ' ')}</span>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        ) : null}
 
         {/* Departments Summary */}
         {(values.hospitalDepartments?.departments?.length || values.labDepartments?.departments?.length) ? (
@@ -158,19 +162,21 @@ export function StepReview({ onEditStep }: StepReviewProps) {
         </div>
 
         {/* Admin Summary */}
-        <div className="bg-surface border border-border rounded-[20px] overflow-hidden">
-          <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-border">
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-[#1769E0]" />
-              <h3 className="font-bold text-[#172033]">Administrator</h3>
+        {entityAdmin?.adminName ? (
+          <div className="bg-surface border border-border rounded-[20px] overflow-hidden">
+            <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-[#1769E0]" />
+                <h3 className="font-bold text-[#172033]">Administrator</h3>
+              </div>
+              <button type="button" onClick={() => onEditStep("admin")} className="text-[12px] font-bold text-[#1769E0] hover:underline">Edit</button>
             </div>
-            <button type="button" onClick={() => onEditStep("admin")} className="text-[12px] font-bold text-[#1769E0] hover:underline">Edit</button>
+            <div className="p-4 flex flex-col gap-2 text-[14px]">
+              <div className="flex justify-between"><span className="text-muted">Name</span><span className="font-semibold text-right">{entityAdmin.adminName}</span></div>
+              <div className="flex justify-between"><span className="text-muted">Role</span><span className="font-semibold text-right">{entityAdmin.adminRole}</span></div>
+            </div>
           </div>
-          <div className="p-4 flex flex-col gap-2 text-[14px]">
-            <div className="flex justify-between"><span className="text-muted">Name</span><span className="font-semibold text-right">{entityAdmin?.adminName}</span></div>
-            <div className="flex justify-between"><span className="text-muted">Role</span><span className="font-semibold text-right">{entityAdmin?.adminRole}</span></div>
-          </div>
-        </div>
+        ) : null}
 
       </div>
     </div>

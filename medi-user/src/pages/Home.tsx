@@ -53,9 +53,16 @@ const Home = () => {
       .then((res) => {
         if (!mounted) return;
         if (res.success && Array.isArray(res.data)) {
-          // Display only departments actually configured and supported by eligible doctors
+          // Display only departments actually configured and supported by eligible doctors, grouped by clinical department
           const withDocs = res.data.filter((d: any) => (d.doctorCount ?? 0) > 0);
-          setDepartments(withDocs);
+          const groupedMap = new Map<string, any>();
+          for (const d of withDocs) {
+            const key = d.name.trim().toLowerCase();
+            if (!groupedMap.has(key)) {
+              groupedMap.set(key, { ...d, hospitalName: undefined });
+            }
+          }
+          setDepartments(Array.from(groupedMap.values()));
         } else {
           setDepartments([]);
         }

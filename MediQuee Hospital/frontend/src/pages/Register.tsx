@@ -79,9 +79,9 @@ export function Register() {
   // Determine flow configuration
   const isHospital = businessType === "hospital";
   
-  // Hospital: 9 steps total
+  // Hospital: 6 steps total (Account, BusinessType, HospitalInfo, Location, Verification, Review)
   // Lab: 10 steps total
-  const totalSteps = businessType ? (isHospital ? 9 : 10) : 2; 
+  const totalSteps = businessType ? (isHospital ? 6 : 10) : 2; 
 
   const handleNext = async () => {
     let fieldsToValidate: string[] = [];
@@ -91,14 +91,15 @@ export function Register() {
     else if (currentStep === 2) fieldsToValidate = ["businessType"];
     else if (currentStep === 3) fieldsToValidate = [isHospital ? "hospitalInfo" : "labInfo"];
     else if (currentStep === 4) fieldsToValidate = [isHospital ? "hospitalLocation" : "labLocation"];
-    else if (currentStep === 5) fieldsToValidate = [isHospital ? "hospitalServices" : "labServices"];
-    else if (isHospital && currentStep === 6) fieldsToValidate = ["hospitalDepartments"];
-    else if (isHospital && currentStep === 7) fieldsToValidate = ["hospitalVerification"];
-    else if (!isHospital && currentStep === 6) fieldsToValidate = ["labDepartments"];
-    else if (!isHospital && currentStep === 7) fieldsToValidate = ["labTests"];
-    else if (!isHospital && currentStep === 8) fieldsToValidate = ["labVerification"];
-    else if (isHospital && currentStep === 8) fieldsToValidate = ["hospitalAdmin"];
-    else if (!isHospital && currentStep === 9) fieldsToValidate = ["labAdmin"];
+    else if (isHospital) {
+      if (currentStep === 5) fieldsToValidate = ["hospitalVerification"];
+    } else {
+      if (currentStep === 5) fieldsToValidate = ["labServices"];
+      else if (currentStep === 6) fieldsToValidate = ["labDepartments"];
+      else if (currentStep === 7) fieldsToValidate = ["labTests"];
+      else if (currentStep === 8) fieldsToValidate = ["labVerification"];
+      else if (currentStep === 9) fieldsToValidate = ["labAdmin"];
+    }
 
     const isStepValid = await trigger(fieldsToValidate as any);
 
@@ -121,7 +122,7 @@ export function Register() {
   };
 
   const jumpToStep = (stepName: string) => {
-    const mapHospital: Record<string, number> = { account: 1, info: 3, location: 4, services: 5, departments: 6, verification: 7, admin: 8 };
+    const mapHospital: Record<string, number> = { account: 1, info: 3, location: 4, verification: 5 };
     const mapLab: Record<string, number> = { account: 1, info: 3, location: 4, services: 5, departments: 6, tests: 7, verification: 8, admin: 9 };
     const target = isHospital ? mapHospital[stepName] : mapLab[stepName];
     if (target) {
@@ -161,14 +162,11 @@ export function Register() {
     if (currentStep === 2) return <Step2BusinessType />;
     
     if (isHospital) {
-      // Hospital Flow
+      // Hospital Flow (Simplified 6 steps)
       if (currentStep === 3) return <Step3Hospital />;
       if (currentStep === 4) return <Step4Location />;
-      if (currentStep === 5) return <Step5HospitalServices />;
-      if (currentStep === 6) return <Step6Departments />;
-      if (currentStep === 7) return <Step7Verification />;
-      if (currentStep === 8) return <StepAdmin />;
-      if (currentStep === 9) return <StepReview onEditStep={jumpToStep} />;
+      if (currentStep === 5) return <Step7Verification />;
+      if (currentStep === 6) return <StepReview onEditStep={jumpToStep} />;
     } else {
       // Laboratory Flow
       if (currentStep === 3) return <Step3Laboratory />;

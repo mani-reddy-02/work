@@ -1,7 +1,8 @@
-import { Building2, UserPlus, FlaskConical, Stethoscope, UserCog, ChevronRight, Calendar, HeartHandshake } from "lucide-react"
+import { Building2, UserPlus, FlaskConical, Stethoscope, UserCog, ChevronRight, Calendar, HeartHandshake, Lock } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { BottomSheet } from "../ui/BottomSheet"
 import { useAuth } from "@/context/AuthContext"
+import { useToast } from "@/context/ToastContext"
 import { useTranslation } from "react-i18next"
 
 type QuickAddMenuProps = {
@@ -12,15 +13,27 @@ type QuickAddMenuProps = {
 export function QuickAddMenu({ isOpen, onClose }: QuickAddMenuProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { toast } = useToast();
+  const { role, user } = useAuth();
+
+  const vStatus = user?.hospital?.verificationStatus;
+  const isPending = Boolean(
+    user?.hospital &&
+    vStatus !== 'APPROVED' &&
+    vStatus !== 'VERIFIED'
+  );
 
   const handleNavigate = (path: string) => {
+    if (isPending) {
+      toast("Action Restricted: Your facility is pending verification by MediQuee Admin. Operations are locked until approval.", "error");
+      onClose();
+      return;
+    }
     onClose();
     setTimeout(() => {
       navigate(path);
     }, 150); // wait for bottom sheet animation
   }
-
-  const { role } = useAuth();
 
   let options: any[] = [];
 
@@ -107,10 +120,22 @@ export function QuickAddMenu({ isOpen, onClose }: QuickAddMenuProps) {
                 <opt.icon className="w-5 h-5" />
               </div>
               <div className="flex-1 flex flex-col gap-0.5">
-                <h3 className="font-semibold text-[15px] text-foreground">{opt.title}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-[15px] text-foreground">{opt.title}</h3>
+                  {isPending && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700">
+                      <Lock className="w-2.5 h-2.5" />
+                      Locked
+                    </span>
+                  )}
+                </div>
                 <p className="text-[12px] text-muted">{opt.description}</p>
               </div>
-              <ChevronRight className="w-5 h-5 text-muted" />
+              {isPending ? (
+                <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+              ) : (
+                <ChevronRight className="w-5 h-5 text-muted" />
+              )}
             </button>
           ))}
         </div>

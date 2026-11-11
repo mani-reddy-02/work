@@ -111,7 +111,14 @@ export function Step1Account() {
       </div>
       
       <p className="text-[12px] text-muted text-center mt-2 px-4">
-        By continuing, you agree to our <a href="#" className="text-[#1769E0] font-semibold hover:underline">Terms of Service</a> and <a href="#" className="text-[#1769E0] font-semibold hover:underline">Privacy Policy</a>.
+        By continuing, you agree to our{" "}
+        <Link to="/terms-of-service" target="_blank" className="text-[#1769E0] font-semibold hover:underline">
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link to="/privacy-policy" target="_blank" className="text-[#1769E0] font-semibold hover:underline">
+          Privacy Policy
+        </Link>.
       </p>
 
       <div className="flex items-center justify-center mt-2">

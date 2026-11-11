@@ -31,6 +31,7 @@ import { labApi } from "@/services/labApi"
 import { LabOrderQuickModal } from "@/components/lab/LabOrderQuickModal"
 import { useToast } from "@/context/ToastContext"
 import { useAuth } from "@/context/AuthContext"
+import { VerificationBanner } from "@/components/verification/VerificationBanner"
 
 interface DashboardData {
   labInfo?: {
@@ -315,6 +316,9 @@ export function LabDashboard() {
 
   return (
     <div className="flex flex-col gap-6 md:gap-7 px-4 md:px-0 pt-4 md:pt-2 pb-16 w-full max-w-7xl mx-auto">
+      {/* Verification Alert Banner */}
+      <VerificationBanner />
+
       {/* Top Greeting & Live Pulse Bar */}
       <motion.div 
         initial={{ opacity: 0, y: 6 }} 

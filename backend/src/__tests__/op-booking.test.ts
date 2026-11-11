@@ -93,24 +93,27 @@ async function runTests() {
     let hospitalWithDoc: any = null;
     let testDoctor: any = null;
 
-    for (const h of hospRes.body.data) {
-      const docRes = await makeRequest(`/api/v1/hospitals/${h.id}/doctors`);
-      if (docRes.status === 200 && docRes.body.data.length > 0) {
-        hospitalWithDoc = h;
-        testDoctor = docRes.body.data[0];
-        break;
-      }
-    }
+    // Find an active doctor whose hospital and department are configured for general medicine
+    const docWithDept: any = await prisma.user.findFirst({
+      where: {
+        role: Role.DOCTOR,
+        active: true,
+        department: { is: { name: { contains: 'General Medicine' } } }
+      } as any,
+      include: { hospital: true, department: true }
+    });
 
-    if (!testDoctor) {
-      // If none, find any active doctor in db and use their hospital
-      const d = await prisma.user.findFirst({
-        where: { role: Role.DOCTOR, active: true },
-        include: { hospital: true }
-      });
-      if (d && d.hospital) {
-        hospitalWithDoc = d.hospital;
-        testDoctor = { id: d.id, name: d.name, hospitalId: d.hospitalId };
+    if (docWithDept && docWithDept.hospital) {
+      hospitalWithDoc = docWithDept.hospital;
+      testDoctor = { id: docWithDept.id, name: docWithDept.name, hospitalId: docWithDept.hospitalId };
+    } else {
+      for (const h of hospRes.body.data) {
+        const docRes = await makeRequest(`/api/v1/hospitals/${h.id}/doctors`);
+        if (docRes.status === 200 && docRes.body.data.length > 0) {
+          hospitalWithDoc = h;
+          testDoctor = docRes.body.data[0];
+          break;
+        }
       }
     }
 

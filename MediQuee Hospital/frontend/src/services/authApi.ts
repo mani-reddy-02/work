@@ -22,6 +22,51 @@ export function normalizeRole(backendRole: string): Role {
   return role.toLowerCase() as Role;
 }
 
+async function serializeVerificationPayload(payload: any): Promise<any> {
+  if (!payload || typeof payload !== 'object') return payload;
+  const clone = { ...payload };
+
+  const convertFile = (file: any): Promise<{ fileName: string; fileData: string; mimeType: string } | any> => {
+    if (typeof window !== 'undefined' && file instanceof File) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          resolve({
+            fileName: file.name,
+            fileData: reader.result as string,
+            mimeType: file.type || 'application/octet-stream',
+          });
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      });
+    }
+    return Promise.resolve(file);
+  };
+
+  if (clone.hospitalVerification && typeof clone.hospitalVerification === 'object') {
+    const serializedHosp: Record<string, any> = {};
+    for (const [key, val] of Object.entries(clone.hospitalVerification)) {
+      if (val) {
+        serializedHosp[key] = await convertFile(val);
+      }
+    }
+    clone.hospitalVerification = serializedHosp;
+  }
+
+  if (clone.labVerification && typeof clone.labVerification === 'object') {
+    const serializedLab: Record<string, any> = {};
+    for (const [key, val] of Object.entries(clone.labVerification)) {
+      if (val) {
+        serializedLab[key] = await convertFile(val);
+      }
+    }
+    clone.labVerification = serializedLab;
+  }
+
+  return clone;
+}
+
 export const authApi = {
   /**
    * POST /api/v1/auth/login
@@ -63,10 +108,12 @@ export const authApi = {
    * Submits a facility registration.
    */
   async register(payload: unknown): Promise<Session & { id: string }> {
+    const serializedPayload = await serializeVerificationPayload(payload);
+
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(serializedPayload),
     });
 
     const data = await response.json();

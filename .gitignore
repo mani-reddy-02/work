@@ -1,6 +1,8 @@
 # Personal notes
 CloudCommands.txt
 
+# Dependencies
+node_modules/
 */node_modules/
 */*/node_modules/
 
@@ -39,6 +41,8 @@ __pycache__/
 # Personal notes
 CloudCommands.txt
 
+# Dependencies
+node_modules/
 */node_modules/
 */*/node_modules/
 

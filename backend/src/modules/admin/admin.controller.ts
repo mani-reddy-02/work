@@ -2529,12 +2529,18 @@ export const getPendingVerifications = async (req: Request, res: Response, next:
   try {
     const hospitals = await prisma.hospital.findMany({
       where: { verificationStatus: 'PENDING', businessType: 'HOSPITAL' },
+      include: {
+        verifications: true
+      },
       orderBy: { createdAt: 'desc' }
     });
     
     // Also include Labs that are created as HOSPITAL businessType
     const standaloneLabs = await prisma.hospital.findMany({
       where: { verificationStatus: 'PENDING', businessType: 'LABORATORY' },
+      include: {
+        verifications: true
+      },
       orderBy: { createdAt: 'desc' }
     });
 

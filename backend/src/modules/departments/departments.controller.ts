@@ -213,20 +213,65 @@ export const getDepartmentDoctors = async (req: Request, res: Response, next: Ne
       ? req.query.consultationType.trim().toLowerCase()
       : (typeof req.query.type === 'string' ? req.query.type.trim().toLowerCase() : '');
     const isVideo = consultationType === 'video' || consultationType === 'video_consultation' || consultationType === 'video-consult' || consultationType === 'doctor';
+    const departmentNameQuery = typeof req.query.departmentName === 'string' ? req.query.departmentName.trim() : '';
+    const hospitalIdQuery = typeof req.query.hospitalId === 'string' ? req.query.hospitalId.trim() : '';
 
-    const department = await prisma.department.findUnique({
-      where: { id: String(id) },
-      include: { hospital: true }
+    // 1. Resolve department name and specialty to find doctors across all hospitals
+    let targetName = departmentNameQuery;
+    let targetSpecialtyId: string | null = null;
+
+    // Check if `id` is a specific department
+    const directDept = await prisma.department.findFirst({
+      where: {
+        OR: [
+          { id: String(id) },
+          { name: { equals: String(id), mode: 'insensitive' } }
+        ]
+      },
+      select: { id: true, name: true, specialtyId: true }
     });
-    if (!department) {
-      return res.status(404).json({ success: false, error: { message: 'Department not found' } });
+
+    if (directDept) {
+      if (!targetName) targetName = directDept.name;
+      targetSpecialtyId = directDept.specialtyId;
+    } else {
+      // Check if `id` matches a PlatformSpecialty
+      const specialty = await prisma.platformSpecialty.findFirst({
+        where: {
+          OR: [
+            { id: String(id) },
+            { name: { equals: String(id), mode: 'insensitive' } }
+          ]
+        },
+        select: { id: true, name: true }
+      });
+      if (specialty) {
+        if (!targetName) targetName = specialty.name;
+        targetSpecialtyId = specialty.id;
+      } else if (!targetName) {
+        targetName = String(id);
+      }
     }
+
+    // 2. Find ALL matching departments across accredited hospitals
+    const matchingDepts = await prisma.department.findMany({
+      where: {
+        OR: [
+          { id: String(id) },
+          ...(targetName ? [{ name: { equals: targetName, mode: 'insensitive' as const } }] : []),
+          ...(targetSpecialtyId ? [{ specialtyId: targetSpecialtyId }] : [])
+        ]
+      },
+      select: { id: true }
+    });
+
+    const matchingDeptIds = Array.from(new Set(matchingDepts.map(d => d.id)));
 
     const now = new Date();
     const whereClause: any = {
       role: Role.DOCTOR,
       active: true,
-      departmentId: String(id),
+      departmentId: { in: matchingDeptIds.length > 0 ? matchingDeptIds : [String(id)] },
       AND: [
         {
           OR: [
@@ -237,9 +282,15 @@ export const getDepartmentDoctors = async (req: Request, res: Response, next: Ne
       ]
     };
 
+    if (hospitalIdQuery) {
+      whereClause.hospitalId = hospitalIdQuery;
+    }
+
     if (isVideo) {
       whereClause.hospital = {
-        services: { has: 'video_consultation' }
+        ...(whereClause.hospital || {}),
+        services: { has: 'video_consultation' },
+        cancelledAt: null
       };
       whereClause.doctorSchedules = {
         some: {
@@ -249,7 +300,17 @@ export const getDepartmentDoctors = async (req: Request, res: Response, next: Ne
       };
     } else if (consultationType === 'op' || consultationType === 'hospital-op' || consultationType === 'normal') {
       whereClause.hospital = {
-        services: { has: 'op_consultation' }
+        ...(whereClause.hospital || {}),
+        OR: [
+          { services: { has: 'op_consultation' } },
+          { services: { isEmpty: true } }
+        ],
+        cancelledAt: null
+      };
+    } else {
+      whereClause.hospital = {
+        ...(whereClause.hospital || {}),
+        cancelledAt: null
       };
     }
 

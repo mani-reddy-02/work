@@ -20,7 +20,7 @@ export const KNOWN_LOCALITIES: LocalityItem[] = [
   { name: 'Tirupati, Andhra Pradesh', locality: 'Tirupati', city: 'Tirupati', state: 'Andhra Pradesh', lat: 13.6288, lng: 79.4192 },
   { name: 'Chittoor, Andhra Pradesh', locality: 'Chittoor', city: 'Chittoor', state: 'Andhra Pradesh', lat: 13.2172, lng: 79.1003 },
   { name: 'Kadapa, Andhra Pradesh', locality: 'Kadapa', city: 'Kadapa', state: 'Andhra Pradesh', lat: 14.4673, lng: 78.8242 },
-  { name: 'Near Uppal, Hyderabad', locality: 'Uppal', city: 'Hyderabad', state: 'Telangana', lat: 17.4018, lng: 78.5602 },
+  { name: 'Uppal, Hyderabad', locality: 'Uppal', city: 'Hyderabad', state: 'Telangana', lat: 17.4018, lng: 78.5602 },
   { name: 'Jubilee Hills, Hyderabad', locality: 'Jubilee Hills', city: 'Hyderabad', state: 'Telangana', lat: 17.4325, lng: 78.4071 },
   { name: 'Banjara Hills, Hyderabad', locality: 'Banjara Hills', city: 'Hyderabad', state: 'Telangana', lat: 17.4168, lng: 78.4485 },
   { name: 'Madhapur, Hyderabad', locality: 'Madhapur', city: 'Hyderabad', state: 'Telangana', lat: 17.4435, lng: 78.3772 },
@@ -30,9 +30,9 @@ export const KNOWN_LOCALITIES: LocalityItem[] = [
   { name: 'Kukatpally, Hyderabad', locality: 'Kukatpally', city: 'Hyderabad', state: 'Telangana', lat: 17.4849, lng: 78.4138 },
   { name: 'Begumpet, Hyderabad', locality: 'Begumpet', city: 'Hyderabad', state: 'Telangana', lat: 17.4447, lng: 78.4664 },
   { name: 'Charminar, Hyderabad', locality: 'Charminar', city: 'Hyderabad', state: 'Telangana', lat: 17.3616, lng: 78.4747 },
+  { name: 'Adoni, Andhra Pradesh', locality: 'Adoni', city: 'Adoni', state: 'Andhra Pradesh', lat: 15.6322, lng: 77.2728 },
   { name: 'Alur Road, Adoni', locality: 'Alur Road', city: 'Adoni', state: 'Andhra Pradesh', lat: 15.6150, lng: 77.2950 },
-  { name: 'Narayanapuram, Adoni', locality: 'Narayanapuram', city: 'Adoni', state: 'Andhra Pradesh', lat: 15.6322, lng: 77.2728 },
-  { name: 'Ramchandranagar, Mantralayam', locality: 'Ramchandranagar', city: 'Mantralayam', state: 'Andhra Pradesh', lat: 15.9388, lng: 77.4269 },
+  { name: 'Mantralayam, Andhra Pradesh', locality: 'Mantralayam', city: 'Mantralayam', state: 'Andhra Pradesh', lat: 15.9388, lng: 77.4269 },
   { name: 'Bengaluru, Karnataka', locality: 'Bengaluru', city: 'Bengaluru', state: 'Karnataka', lat: 12.9716, lng: 77.5946 },
   { name: 'Chennai, Tamil Nadu', locality: 'Chennai', city: 'Chennai', state: 'Tamil Nadu', lat: 13.0827, lng: 80.2707 },
   { name: 'Kurnool, Andhra Pradesh', locality: 'Kurnool', city: 'Kurnool', state: 'Andhra Pradesh', lat: 15.8281, lng: 78.0373 },
@@ -90,28 +90,7 @@ export async function reverseGeocodeCoords(
   lat: number,
   lng: number
 ): Promise<{ label: string; city: string | null; locality: string | null; state: string | null }> {
-  // 1. Check if it's very close to one of our verified platform localities (within 5 km)
-  let closestLoc: LocalityItem | null = null;
-  let minDistance = Infinity;
-
-  for (const loc of KNOWN_LOCALITIES) {
-    const dist = calculateDistanceKm(lat, lng, loc.lat, loc.lng);
-    if (dist < minDistance) {
-      minDistance = dist;
-      closestLoc = loc;
-    }
-  }
-
-  if (closestLoc && minDistance <= 6) {
-    return {
-      label: closestLoc.name.startsWith('Near') ? closestLoc.name : `Near ${closestLoc.name}`,
-      city: closestLoc.city,
-      locality: closestLoc.locality || closestLoc.city,
-      state: closestLoc.state || null
-    };
-  }
-
-  // 2. Query authoritative backend reverse-geocoding service (supports Nominatim with proper User-Agent)
+  // 1. Query authoritative backend reverse-geocoding service (supports Nominatim with proper User-Agent)
   try {
     const res = await fetch(`${API_BASE_URL}/api/v1/public/reverse-geocode?lat=${lat}&lng=${lng}`);
     if (res.ok) {
@@ -124,7 +103,7 @@ export async function reverseGeocodeCoords(
     // Continue to fallback
   }
 
-  // 3. Direct Nominatim fallback
+  // 2. Direct Nominatim fallback
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4000);
@@ -138,21 +117,45 @@ export async function reverseGeocodeCoords(
       const data = await res.json();
       if (data && data.address) {
         const addr = data.address;
-        const locality =
+        let rawLocality =
           addr.suburb ||
           addr.neighbourhood ||
           addr.residential ||
           addr.quarter ||
+          addr.subdistrict ||
           addr.village ||
           addr.town ||
-          addr.county ||
+          addr.city_district ||
+          addr.road ||
           '';
-        const city = addr.city || addr.town || addr.county || addr.state_district || 'Hyderabad';
-        const state = addr.state || '';
 
-        const label = locality && locality !== city
-          ? `Near ${locality}, ${city}`
-          : `Near ${city}${state ? `, ${state}` : ''}`;
+        rawLocality = rawLocality.replace(/^Ward\s+\d+\s*/i, '').replace(/\s+mandal$/i, '').trim();
+
+        let rawCity =
+          addr.city ||
+          addr.town ||
+          addr.municipality ||
+          addr.village ||
+          addr.county ||
+          addr.state_district ||
+          '';
+
+        rawCity = rawCity.replace(/\s+mandal$/i, '').replace(/\s+district$/i, '').trim();
+
+        const state = addr.state ? addr.state.trim() : null;
+        const locality = rawLocality && rawLocality.toLowerCase() !== rawCity.toLowerCase() ? rawLocality : null;
+        const city = rawCity || locality || state || 'Hyderabad';
+
+        let label = '';
+        if (locality && city) {
+          label = `${locality}, ${city}`;
+        } else if (city && state && city.toLowerCase() !== state.toLowerCase()) {
+          label = `${city}, ${state}`;
+        } else if (city) {
+          label = city;
+        } else {
+          label = 'Location Detected';
+        }
 
         return { label, city, locality, state };
       }
@@ -161,12 +164,23 @@ export async function reverseGeocodeCoords(
     // Fallback if nominatim network is slow or offline
   }
 
-  // 3. Fallback to closest known city even if > 6 km
-  if (closestLoc) {
+  // 3. Fallback to closest known verified locality if network geocoding failed
+  let closestLoc: LocalityItem | null = null;
+  let minDistance = Infinity;
+
+  for (const loc of KNOWN_LOCALITIES) {
+    const dist = calculateDistanceKm(lat, lng, loc.lat, loc.lng);
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestLoc = loc;
+    }
+  }
+
+  if (closestLoc && minDistance <= 25) {
     return {
-      label: `Near ${closestLoc.city}`,
+      label: closestLoc.name,
       city: closestLoc.city,
-      locality: closestLoc.locality || null,
+      locality: closestLoc.locality || closestLoc.city,
       state: closestLoc.state || null
     };
   }
@@ -247,7 +261,7 @@ export async function detectLocationByIp(): Promise<{
         const city = data.city || data.locality || data.principalSubdivision || 'Hyderabad';
         const locality = data.locality && data.locality !== city ? data.locality : undefined;
         const state = data.principalSubdivision || undefined;
-        const label = locality ? `Near ${locality}, ${city}` : `Near ${city}`;
+        const label = locality ? `${locality}, ${city}` : state ? `${city}, ${state}` : city;
         return {
           latitude: data.latitude,
           longitude: data.longitude,
@@ -275,7 +289,7 @@ export async function detectLocationByIp(): Promise<{
       if (data && data.success && typeof data.latitude === 'number' && typeof data.longitude === 'number') {
         const city = data.city || data.region || 'Hyderabad';
         const state = data.region || undefined;
-        const label = `Near ${city}`;
+        const label = state ? `${city}, ${state}` : city;
         return {
           latitude: data.latitude,
           longitude: data.longitude,

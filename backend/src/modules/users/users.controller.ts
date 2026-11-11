@@ -46,6 +46,7 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
             city: true,
             state: true,
             pincode: true,
+            verificationStatus: true,
           },
         },
         department: {
@@ -287,6 +288,7 @@ export const updateMe = async (req: Request, res: Response, next: NextFunction) 
             city: true,
             state: true,
             pincode: true,
+            verificationStatus: true,
           },
         },
         department: {

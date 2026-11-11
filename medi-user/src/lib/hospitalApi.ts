@@ -370,12 +370,14 @@ export const departmentApi = {
       lng?: number;
       radius?: number;
       nearbyOnly?: boolean;
+      departmentName?: string;
     }
   ): Promise<{ success: boolean; data?: DoctorRecord[]; error?: string }> {
     try {
       const url = new URL(`${API_BASE_URL}/departments/${id}/doctors`, window.location.origin);
       if (params?.consultationType) url.searchParams.set('consultationType', params.consultationType);
       if (params?.type) url.searchParams.set('type', params.type);
+      if (params?.departmentName) url.searchParams.set('departmentName', params.departmentName);
       if (params?.lat !== undefined && params?.lng !== undefined) {
         url.searchParams.set('lat', String(params.lat));
         url.searchParams.set('lng', String(params.lng));

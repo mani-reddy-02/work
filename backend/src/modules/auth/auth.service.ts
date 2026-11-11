@@ -1,9 +1,25 @@
 import { prisma } from '../../config/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import path from 'path';
 import { env } from '../../config/env';
 import { BusinessType, Role } from '@prisma/client';
 import { resolveCoordinatesForLocation } from '../../utils/geo';
+import { storageService } from '../../services/storage.service';
+
+const DOC_TITLES: Record<string, string> = {
+  registrationCertificate: 'Hospital Registration Certificate',
+  clinicalEstablishment: 'Clinical Establishment Registration',
+  nabh: 'NABH Accreditation Certificate',
+  nabl: 'NABL Accreditation Certificate',
+  fireSafety: 'Fire Safety Certificate / NOC',
+  bioWaste: 'Biomedical Waste Authorization',
+  gst: 'GST Registration Certificate',
+  pan: 'PAN / Business Tax Document',
+  pharmacyLicense: 'Pharmacy License',
+  iso: 'ISO Certification',
+  otherCertifications: 'Other Certification',
+};
 
 // Maps the frontend UI role selector values to the authoritative database Role enum.
 const UI_ROLE_TO_DB_ROLE: Record<string, Role> = {
@@ -201,9 +217,10 @@ export class AuthService {
       address: loc.address1 || loc.address2,
     });
 
-    const result = await prisma.$transaction(async (tx) => {
+    let createdHospitalId: string | null = null;
+    try {
       // 1. Create Hospital
-      const hospital = await tx.hospital.create({
+      const hospital = await prisma.hospital.create({
         data: {
           name: info.hospitalName || info.labName || payload.account.name,
           businessType: bType,
@@ -226,64 +243,132 @@ export class AuthService {
           services: services,
         },
       });
+      createdHospitalId = hospital.id;
 
-      // 2. Fetch platform specialties for automatic specialtyId linking
-      const platformSpecialties = await tx.platformSpecialty.findMany({
-        where: { isActive: true },
-        select: { id: true, name: true },
-      });
-      const specialtyMap = new Map(
-        platformSpecialties.map((s) => [s.name.trim().toLowerCase(), s.id])
-      );
+      // 2. Fetch platform specialties for automatic specialtyId linking (only if departments provided)
+      if (depts.length > 0 || customDepts.length > 0) {
+        const platformSpecialties = await prisma.platformSpecialty.findMany({
+          where: { isActive: true },
+          select: { id: true, name: true },
+        });
+        const specialtyMap = new Map(
+          platformSpecialties.map((s) => [s.name.trim().toLowerCase(), s.id])
+        );
 
-      // Create Departments with auto-linked specialtyId
-      const deptData = depts.map((d: string) => {
-        const trimmed = (d || '').trim();
-        const matchedId = specialtyMap.get(trimmed.toLowerCase()) || null;
-        return {
-          hospitalId: hospital.id,
-          name: trimmed,
-          specialtyId: matchedId,
-        };
-      });
+        // Create Departments with auto-linked specialtyId
+        const deptData = depts.map((d: string) => {
+          const trimmed = (d || '').trim();
+          const matchedId = specialtyMap.get(trimmed.toLowerCase()) || null;
+          return {
+            hospitalId: hospital.id,
+            name: trimmed,
+            specialtyId: matchedId,
+          };
+        });
 
-      const customDeptData = customDepts.map((d: any) => {
-        const trimmed = (d.name || '').trim();
-        const matchedId = specialtyMap.get(trimmed.toLowerCase()) || null;
-        return {
-          hospitalId: hospital.id,
-          name: trimmed,
-          code: d.code,
-          description: d.description,
-          specialtyId: matchedId,
-        };
-      });
+        const customDeptData = customDepts.map((d: any) => {
+          const trimmed = (d.name || '').trim();
+          const matchedId = specialtyMap.get(trimmed.toLowerCase()) || null;
+          return {
+            hospitalId: hospital.id,
+            name: trimmed,
+            code: d.code,
+            description: d.description,
+            specialtyId: matchedId,
+          };
+        });
 
-      if (deptData.length > 0 || customDeptData.length > 0) {
-        await tx.department.createMany({
+        await prisma.department.createMany({
           data: [...deptData, ...customDeptData],
           skipDuplicates: true,
         });
       }
 
       // 3. Create Admin User
-      const user = await tx.user.create({
+      const user = await prisma.user.create({
         data: {
           name: admin.adminName || payload.account.name,
           email: payload.account.email,
           phone: payload.account.phone,
           passwordHash,
           role: bType === BusinessType.LABORATORY ? Role.LAB_ADMIN : Role.HOSPITAL_ADMIN,
-          designation: admin.adminRole,
+          designation: admin.adminRole || (bType === BusinessType.LABORATORY ? 'Lab Administrator' : 'Hospital Administrator'),
           hospitalId: hospital.id,
         },
       });
 
+      // 4. Process & Persist Verification Documents
+      for (const [key, docValue] of Object.entries(verification)) {
+        if (!docValue) continue;
+
+        let fileBuffer: Buffer | null = null;
+        let originalFileName = `${key}.pdf`;
+        let mimeType = 'application/pdf';
+
+        if (typeof docValue === 'string') {
+          if (docValue.startsWith('data:')) {
+            const matches = docValue.match(/^data:([^;]+);base64,(.+)$/);
+            if (matches) {
+              mimeType = matches[1];
+              fileBuffer = Buffer.from(matches[2], 'base64');
+            }
+          } else if (docValue.startsWith('http://') || docValue.startsWith('https://') || docValue.startsWith('/uploads/')) {
+            await prisma.hospitalVerification.create({
+              data: {
+                hospitalId: hospital.id,
+                documentType: DOC_TITLES[key] || key,
+                fileUrl: docValue,
+              }
+            });
+            continue;
+          }
+        } else if (typeof docValue === 'object' && docValue !== null) {
+          const docObj = docValue as any;
+          if (docObj.fileData && typeof docObj.fileData === 'string') {
+            const matches = docObj.fileData.match(/^data:([^;]+);base64,(.+)$/);
+            if (matches) {
+              mimeType = matches[1] || docObj.mimeType || 'application/pdf';
+              fileBuffer = Buffer.from(matches[2], 'base64');
+            }
+          }
+          if (docObj.fileName) {
+            originalFileName = docObj.fileName;
+          }
+        }
+
+        if (fileBuffer) {
+          try {
+            const ext = path.extname(originalFileName) || (mimeType.includes('pdf') ? '.pdf' : '.png');
+            const cleanFileName = `hosp_verif_${hospital.id}_${key}_${Date.now()}${ext}`;
+            const uploadResult = await storageService.uploadFile('licenses', cleanFileName, fileBuffer, mimeType);
+
+            await prisma.hospitalVerification.create({
+              data: {
+                hospitalId: hospital.id,
+                documentType: DOC_TITLES[key] || key,
+                fileUrl: uploadResult.fileUrl,
+              }
+            });
+          } catch (uploadErr) {
+            console.error(`[Verification Upload Failed for ${key}]:`, uploadErr);
+          }
+        }
+      }
+
       const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN as any });
 
       return { user, hospital, token };
-    });
-
-    return result;
+    } catch (error) {
+      if (createdHospitalId) {
+        try {
+          await prisma.hospitalVerification.deleteMany({ where: { hospitalId: createdHospitalId } });
+          await prisma.department.deleteMany({ where: { hospitalId: createdHospitalId } });
+          await prisma.hospital.delete({ where: { id: createdHospitalId } });
+        } catch (cleanupErr) {
+          console.error('[Registration Rollback Error]:', cleanupErr);
+        }
+      }
+      throw error;
+    }
   }
 }

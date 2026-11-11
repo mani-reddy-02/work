@@ -145,12 +145,30 @@ const DepartmentBooking: React.FC = () => {
         if (res.success && Array.isArray(res.data)) {
           // Filter to only departments that genuinely have doctorCount > 0
           const validDepts = res.data.filter(d => (d.doctorCount ?? 0) > 0);
-          setDepartments(validDepts);
+
+          // Group departments by unique clean name so each clinical department appears exactly once
+          const groupedMap = new Map<string, DepartmentRecord>();
+          for (const d of validDepts) {
+            const key = d.name.trim().toLowerCase();
+            const existing = groupedMap.get(key);
+            if (!existing) {
+              groupedMap.set(key, {
+                ...d,
+                hospitalName: undefined, // Disassociate from single hospital on department list
+                doctorCount: d.doctorCount ?? 0
+              });
+            } else {
+              // Aggregate total doctors across all accredited hospitals
+              existing.doctorCount = (existing.doctorCount ?? 0) + (d.doctorCount ?? 0);
+            }
+          }
+          const uniqueDepts = Array.from(groupedMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+          setDepartments(uniqueDepts);
 
           // Check if URL specifies a dept id or dept name
           const deptParam = searchParams.get('dept') || searchParams.get('departmentId') || searchParams.get('department');
           if (deptParam) {
-            const matched = validDepts.find(d => 
+            const matched = uniqueDepts.find(d => 
               d.id === deptParam || 
               d.name.toLowerCase() === deptParam.toLowerCase()
             );
@@ -189,17 +207,24 @@ const DepartmentBooking: React.FC = () => {
     loadDoctorsForDepartment(dept, consultationType);
   };
 
-  // Load doctors for a department and consultation type
-  const loadDoctorsForDepartment = async (dept: DepartmentRecord, type: 'OP' | 'VIDEO') => {
+  const [showAllRegardlessOfDistance, setShowAllRegardlessOfDistance] = useState(false);
+
+  // Load doctors for a department and consultation type across ALL hospitals
+  const loadDoctorsForDepartment = async (dept: DepartmentRecord, type: 'OP' | 'VIDEO', forceAllDistance?: boolean) => {
     setIsDoctorsLoading(true);
     setSubmissionError(null);
     try {
+      const applyNearby = forceAllDistance !== undefined 
+        ? !forceAllDistance 
+        : (!showAllRegardlessOfDistance && userLocation.latitude != null);
+
       const res = await departmentApi.getDepartmentDoctors(dept.id, {
+        departmentName: dept.name,
         consultationType: type === 'VIDEO' ? 'video' : 'op',
         lat: userLocation.latitude ?? undefined,
         lng: userLocation.longitude ?? undefined,
         radius: userLocation.radiusKm,
-        nearbyOnly: true
+        nearbyOnly: applyNearby
       });
       if (res.success && Array.isArray(res.data)) {
         setDoctors(res.data);
@@ -212,6 +237,13 @@ const DepartmentBooking: React.FC = () => {
       setIsDoctorsLoading(false);
     }
   };
+
+  // Re-fetch doctors if location or radius changes while viewing DOCTOR step
+  useEffect(() => {
+    if (currentStep === 'DOCTOR' && selectedDepartment) {
+      loadDoctorsForDepartment(selectedDepartment, consultationType);
+    }
+  }, [userLocation.latitude, userLocation.longitude, userLocation.radiusKm]);
 
   // Handle Consultation Type change in Doctor Selection
   const handleConsultationTypeChange = (newType: 'OP' | 'VIDEO') => {
@@ -331,7 +363,7 @@ const DepartmentBooking: React.FC = () => {
       const payload = {
         hospitalId: selectedDoctor.hospitalId,
         doctorId: selectedDoctor.id,
-        departmentId: selectedDepartment.id,
+        departmentId: selectedDoctor.departmentId || selectedDepartment.id,
         date: selectedDate.isoDate,
         timeSlot: selectedSlot,
         patientName: patientName.trim(),
@@ -493,7 +525,7 @@ const DepartmentBooking: React.FC = () => {
                 const imageUrl = getDepartmentImageUrl(dept.name, dept.icon);
                 return (
                   <button
-                    key={dept.id}
+                    key={dept.id || dept.name}
                     onClick={() => handleSelectDepartment(dept)}
                     className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col items-center text-center hover:border-blue-300 hover:shadow-md transition-all group cursor-pointer text-left focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                   >
@@ -510,11 +542,9 @@ const DepartmentBooking: React.FC = () => {
                     <h3 className="font-bold text-slate-900 text-sm mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
                       {dept.name}
                     </h3>
-                    {dept.hospitalName && (
-                      <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
-                        {dept.hospitalName}
-                      </p>
-                    )}
+                    <p className="text-[11px] font-semibold text-emerald-600 mt-0.5 line-clamp-1">
+                      {dept.doctorCount ? `${dept.doctorCount} Doctor${dept.doctorCount > 1 ? 's' : ''} Available` : 'Consult Specialists'}
+                    </p>
                   </button>
                 );
               })}
@@ -547,7 +577,7 @@ const DepartmentBooking: React.FC = () => {
                   <h2 className="text-base font-bold text-slate-900">{selectedDepartment.name}</h2>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Showing eligible doctors from accredited partner hospitals
+                  Showing eligible specialists across all accredited partner hospitals
                 </p>
               </div>
             </div>
@@ -638,6 +668,16 @@ const DepartmentBooking: React.FC = () => {
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
                 >
                   Switch to {consultationType === 'OP' ? 'Video Consultation' : 'In-Person OP'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAllRegardlessOfDistance(true);
+                    loadDoctorsForDepartment(selectedDepartment, consultationType, true);
+                  }}
+                  className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 shadow-xs"
+                >
+                  Show All Doctors Across All Hospitals
                 </button>
                 <button
                   onClick={() => setCurrentStep('DEPARTMENT')}

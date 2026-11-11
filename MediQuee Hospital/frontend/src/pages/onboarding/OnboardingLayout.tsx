@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, ShieldCheck, PhoneCall } from "lucide-react";
 
 interface OnboardingLayoutProps {
   children: ReactNode;
@@ -98,15 +98,24 @@ export function OnboardingLayout({
               </div>
             </div>
             
-            <div className="flex items-center gap-3 pt-6 border-t border-white/10">
-              <div className="flex -space-x-3">
-                <div className="w-10 h-10 rounded-full border-2 border-[#0A4399] bg-surface/20" />
-                <div className="w-10 h-10 rounded-full border-2 border-[#0A4399] bg-surface/30" />
-                <div className="w-10 h-10 rounded-full border-2 border-[#0A4399] bg-surface/40" />
+            <div className="pt-6 border-t border-white/15 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-5 h-5 text-emerald-300" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[13px] font-bold text-white tracking-wide">
+                    Encrypted & HIPAA Compliant
+                  </span>
+                  <span className="text-[12px] text-white/70">
+                    Enterprise-grade health record security
+                  </span>
+                </div>
               </div>
-              <span className="text-[13px] font-semibold text-white/80">
-                Join 500+ premium facilities
-              </span>
+              <div className="flex items-center gap-2 text-[12px] text-white/80 pl-1">
+                <PhoneCall className="w-3.5 h-3.5 text-blue-200" />
+                <span>Onboarding Support: <strong className="text-white">8331045500</strong></span>
+              </div>
             </div>
           </div>
         </div>

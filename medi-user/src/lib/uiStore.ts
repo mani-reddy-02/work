@@ -27,11 +27,12 @@ function getInitialLocationState(): UserLocationState {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed.label === 'string') {
+        const cleanLabel = parsed.label.replace(/^Near\s+/i, '');
         return {
-          label: parsed.label || 'Hyderabad',
-          latitude: parsed.latitude ?? 17.4018,
-          longitude: parsed.longitude ?? 78.5602,
-          city: parsed.city ?? 'Hyderabad',
+          label: cleanLabel || 'Select Location',
+          latitude: parsed.latitude ?? null,
+          longitude: parsed.longitude ?? null,
+          city: parsed.city ?? null,
           locality: parsed.locality ?? null,
           status: 'idle', // Start as idle to automatically request live location first
           error: null,
@@ -42,12 +43,13 @@ function getInitialLocationState(): UserLocationState {
 
     const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
     if (legacy && legacy !== 'Select Location') {
+      const cleanLegacy = legacy.replace(/^Near\s+/i, '');
       const match = KNOWN_LOCALITIES.find(
-        (l) => l.name.toLowerCase() === legacy.toLowerCase() || l.city.toLowerCase() === legacy.toLowerCase()
+        (l) => l.name.toLowerCase() === cleanLegacy.toLowerCase() || l.city.toLowerCase() === cleanLegacy.toLowerCase()
       );
       if (match) {
         return {
-          label: legacy,
+          label: cleanLegacy,
           latitude: match.lat,
           longitude: match.lng,
           city: match.city,
@@ -63,11 +65,11 @@ function getInitialLocationState(): UserLocationState {
   }
 
   return {
-    label: 'Hyderabad',
-    latitude: 17.4018,
-    longitude: 78.5602,
-    city: 'Hyderabad',
-    locality: 'Uppal',
+    label: 'Select Location',
+    latitude: null,
+    longitude: null,
+    city: null,
+    locality: null,
     status: 'idle',
     error: null,
     radiusKm: DEFAULT_RADIUS_KM,

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService';
 import { useAdminAuth } from '../../contexts/AuthContext';
-import { CheckCircle2, XCircle, Building2, TestTube, MapPin, Calendar, ExternalLink, Percent, Save } from 'lucide-react';
+import { CheckCircle2, XCircle, Building2, TestTube, MapPin, Calendar, ExternalLink, Percent, Save, FileText } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { resolveFileUrl } from '../../utils/fileUtils';
 
 const PendingVerifications: React.FC = () => {
   const { token } = useAdminAuth();
@@ -380,13 +381,53 @@ const PendingVerifications: React.FC = () => {
                   
                   <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4 border-b pb-2">Verification Documents</h4>
                   <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 text-sm">
-                    {selectedRequest.labLicenseDocumentUrl ? (
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium text-slate-700">License Document</span>
-                        <a href={selectedRequest.labLicenseDocumentUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">View / Preview</a>
+                    {(selectedRequest.verifications && selectedRequest.verifications.length > 0) || selectedRequest.labLicenseDocumentUrl ? (
+                      <div className="flex flex-col gap-2.5">
+                        {selectedRequest.verifications?.map((doc: any, i: number) => {
+                          const resolvedHref = resolveFileUrl(doc.fileUrl);
+                          return (
+                            <div key={doc.id || i} className="flex justify-between items-center p-3 bg-white rounded-lg border border-slate-200 shadow-xs">
+                              <div className="flex items-center gap-2.5 overflow-hidden">
+                                <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+                                <span className="font-medium text-slate-800 text-xs sm:text-sm truncate">
+                                  {doc.documentType || 'Verification Document'}
+                                </span>
+                              </div>
+                              <a 
+                                href={resolvedHref} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg border border-blue-200/80 transition-colors shrink-0 ml-2"
+                              >
+                                <span>View Document</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
+                          );
+                        })}
+
+                        {selectedRequest.labLicenseDocumentUrl && (
+                          <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-slate-200 shadow-xs">
+                            <div className="flex items-center gap-2.5 overflow-hidden">
+                              <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+                              <span className="font-medium text-slate-800 text-xs sm:text-sm truncate">
+                                Laboratory License Document
+                              </span>
+                            </div>
+                            <a 
+                              href={resolveFileUrl(selectedRequest.labLicenseDocumentUrl)} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg border border-blue-200/80 transition-colors shrink-0 ml-2"
+                            >
+                              <span>View Document</span>
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          </div>
+                        )}
                       </div>
                     ) : (
-                      <div className="text-slate-500 italic">No verification documents submitted.</div>
+                      <div className="text-slate-500 italic py-1">No verification documents submitted.</div>
                     )}
                   </div>
                 </div>

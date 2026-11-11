@@ -57,7 +57,9 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
     if (isHospitalScopedRole && user.hospitalId) {
       const vStatus = user.hospital?.verificationStatus;
-      if (!user.hospital || vStatus !== 'APPROVED') {
+      
+      // If hospital is explicitly cancelled or suspended
+      if (!user.hospital || vStatus === 'CANCELLED') {
         return res.status(403).json({
           success: false,
           error: {
@@ -65,6 +67,31 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
             message: 'Account suspended: affiliated hospital is inactive or unverified'
           }
         });
+      }
+
+      // If hospital is not approved yet (e.g. PENDING)
+      const isApproved = vStatus === 'APPROVED' || vStatus === 'VERIFIED';
+      if (!isApproved) {
+        const path = (req.originalUrl || req.url || '').toLowerCase();
+        const isSelfProfileOrDashboard = 
+          req.method === 'GET' && (
+            path.includes('/users/me') || 
+            path.includes('/hospital/dashboard') ||
+            path.includes('/notifications') ||
+            path.includes('/hospital-profile')
+          );
+
+        const isAdmin = userRoleStr === 'HOSPITAL_ADMIN' || userRoleStr === 'LAB_ADMIN';
+
+        if (!isAdmin || !isSelfProfileOrDashboard) {
+          return res.status(403).json({
+            success: false,
+            error: {
+              code: 'FORBIDDEN',
+              message: 'Hospital verification pending: All operational actions are restricted until verified by MediQuee Administration. Please contact 8331045500.'
+            }
+          });
+        }
       }
     }
 

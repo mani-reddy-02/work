@@ -4,6 +4,7 @@ import { ArrowLeft, Building2, Building, Calendar, DollarSign, MapPin, Mail, Pho
 import { useAdminAuth } from '../contexts/AuthContext';
 import StatusBadge from '../components/ui/StatusBadge';
 import DataTable, { Column } from '../components/ui/DataTable';
+import { resolveFileUrl } from '../utils/fileUtils';
 
 const HospitalDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -198,6 +199,37 @@ const HospitalDetails: React.FC = () => {
               <span className="block text-xs font-medium text-amber-600 mb-1">Appointments</span>
               <span className="text-xl font-bold text-slate-900">{bookings.length}</span>
             </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="font-semibold text-slate-900 border-b pb-2 flex items-center justify-between">
+            <span>Verification Documents</span>
+            <span className="text-xs font-bold text-slate-500">
+              {hospital.verifications?.length || 0} Submitted
+            </span>
+          </h3>
+          <div className="space-y-2.5">
+            {hospital.verifications?.length > 0 ? (
+              hospital.verifications.map((doc: any, i: number) => (
+                <div key={doc.id || i} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <FileText size={16} className="text-blue-600 shrink-0" />
+                    <span className="text-xs font-medium text-slate-800 truncate">{doc.documentType}</span>
+                  </div>
+                  <a
+                    href={resolveFileUrl(doc.fileUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-bold text-blue-600 hover:underline shrink-0 ml-2 bg-white px-2.5 py-1 rounded-md border border-slate-200"
+                  >
+                    View
+                  </a>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-slate-400 italic">No verification documents attached.</p>
+            )}
           </div>
         </div>
       </div>

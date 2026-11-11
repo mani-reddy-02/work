@@ -36,6 +36,7 @@ import {
   type RevenueAnalyticsResponse 
 } from "../services/dashboardApi"
 import { cn } from "@/lib/utils"
+import { VerificationBanner } from "../components/verification/VerificationBanner"
 
 type RevenueTimeframe = 'today' | 'week' | 'month' | 'custom';
 
@@ -317,6 +318,9 @@ export function Dashboard() {
           <RefreshCw className={`w-4 h-4 ${isLoading || isRevenueLoading ? 'animate-spin text-primary' : ''}`} />
         </button>
       </div>
+
+      {/* Verification Pending Alert for Unverified Facilities */}
+      <VerificationBanner />
 
       {error && (
         <div className="bg-amber-50/80 border border-amber-200/60 text-amber-800 text-xs px-3.5 py-2.5 rounded-xl flex items-center justify-between">

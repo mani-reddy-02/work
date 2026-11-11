@@ -127,12 +127,79 @@ export const reverseGeocode = async (req: Request, res: Response, next: NextFunc
       return res.status(400).json({ success: false, error: 'Valid lat and lng required' });
     }
 
-    // 1. Check if close to verified platform localities (< 6 km)
+    // 1. Authoritative Nominatim lookup (with accurate User-Agent)
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'MediQuee-Platform/1.0 (contact@mediquee.com)'
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json() as any;
+        if (data && data.address) {
+          const addr = data.address;
+          
+          let rawLocality =
+            addr.suburb ||
+            addr.neighbourhood ||
+            addr.residential ||
+            addr.quarter ||
+            addr.subdistrict ||
+            addr.village ||
+            addr.town ||
+            addr.city_district ||
+            addr.road ||
+            '';
+
+          // Clean locality if it contains 'Ward 98 Ameerpet' -> 'Ameerpet'
+          rawLocality = rawLocality.replace(/^Ward\s+\d+\s*/i, '').replace(/\s+mandal$/i, '').trim();
+
+          let rawCity =
+            addr.city ||
+            addr.town ||
+            addr.municipality ||
+            addr.village ||
+            addr.county ||
+            addr.state_district ||
+            '';
+
+          rawCity = rawCity.replace(/\s+mandal$/i, '').replace(/\s+district$/i, '').trim();
+
+          const state = addr.state ? addr.state.trim() : null;
+          const locality = rawLocality && rawLocality.toLowerCase() !== rawCity.toLowerCase() ? rawLocality : null;
+          const city = rawCity || locality || state || 'Hyderabad';
+
+          let label = '';
+          if (locality && city) {
+            label = `${locality}, ${city}`;
+          } else if (city && state && city.toLowerCase() !== state.toLowerCase()) {
+            label = `${city}, ${state}`;
+          } else if (city) {
+            label = city;
+          } else {
+            label = 'Location Detected';
+          }
+
+          return res.json({
+            success: true,
+            data: { label, city, locality, state }
+          });
+        }
+      }
+    } catch {
+      // Continue to fallback
+    }
+
+    // 2. Fallback to closest platform locality if Nominatim is offline/unreachable
     const platformLocalities = [
       { name: 'Madanapalle, Andhra Pradesh', locality: 'Madanapalle', city: 'Madanapalle', state: 'Andhra Pradesh', lat: 13.5560, lng: 78.5010 },
       { name: 'BT College, Madanapalle', locality: 'BT College', city: 'Madanapalle', state: 'Andhra Pradesh', lat: 13.5510, lng: 78.5030 },
       { name: 'Neerugattuvaripalli, Madanapalle', locality: 'Neerugattuvaripalli', city: 'Madanapalle', state: 'Andhra Pradesh', lat: 13.5620, lng: 78.4980 },
-      { name: 'Near Uppal, Hyderabad', locality: 'Uppal', city: 'Hyderabad', state: 'Telangana', lat: 17.4018, lng: 78.5602 },
+      { name: 'Uppal, Hyderabad', locality: 'Uppal', city: 'Hyderabad', state: 'Telangana', lat: 17.4018, lng: 78.5602 },
       { name: 'Jubilee Hills, Hyderabad', locality: 'Jubilee Hills', city: 'Hyderabad', state: 'Telangana', lat: 17.4325, lng: 78.4071 },
       { name: 'Banjara Hills, Hyderabad', locality: 'Banjara Hills', city: 'Hyderabad', state: 'Telangana', lat: 17.4168, lng: 78.4485 },
       { name: 'Madhapur, Hyderabad', locality: 'Madhapur', city: 'Hyderabad', state: 'Telangana', lat: 17.4435, lng: 78.3772 },
@@ -158,57 +225,17 @@ export const reverseGeocode = async (req: Request, res: Response, next: NextFunc
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       const dist = 6371 * c;
 
-      if (dist <= 6) {
+      if (dist <= 10) {
         return res.json({
           success: true,
           data: {
-            label: loc.name.startsWith('Near') ? loc.name : `Near ${loc.name}`,
+            label: loc.name,
             city: loc.city,
             locality: loc.locality,
             state: loc.state
           }
         });
       }
-    }
-
-    // 2. Query Nominatim via backend (supported with proper User-Agent)
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`,
-        {
-          headers: {
-            'User-Agent': 'MediQuee-Platform/1.0 (contact@mediquee.com)'
-          }
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json() as any;
-        if (data && data.address) {
-          const addr = data.address;
-          const locality =
-            addr.suburb ||
-            addr.neighbourhood ||
-            addr.residential ||
-            addr.quarter ||
-            addr.village ||
-            addr.town ||
-            addr.county ||
-            '';
-          const city = addr.city || addr.town || addr.county || addr.state_district || 'Hyderabad';
-          const state = addr.state || '';
-          const label = locality && locality !== city
-            ? `Near ${locality}, ${city}`
-            : `Near ${city}${state ? `, ${state}` : ''}`;
-
-          return res.json({
-            success: true,
-            data: { label, city, locality, state }
-          });
-        }
-      }
-    } catch {
-      // Fallback
     }
 
     res.json({

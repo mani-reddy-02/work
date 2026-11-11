@@ -70,6 +70,7 @@ export type User = {
     city?: string;
     state?: string;
     pincode?: string;
+    verificationStatus?: string | null;
   } | null;
   department?: {
     id: string;

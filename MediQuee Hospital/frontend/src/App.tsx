@@ -24,6 +24,7 @@ import { ReceptionistHomeNursing } from "./pages/receptionist/ReceptionistHomeNu
 // Hospital layout & pages
 import { AppLayout } from "./components/layout/AppLayout"
 import { RoleProtectedRoute } from "./components/auth/RoleProtectedRoute"
+import { VerifiedFacilityRoute } from "./components/auth/VerifiedFacilityRoute"
 import { Dashboard } from "./pages/Dashboard"
 import { Appointments } from "./pages/Appointments"
 import { Payouts } from "./pages/Payouts"
@@ -87,6 +88,7 @@ import { LabAvailability } from "./pages/lab/LabAvailability"
 import { Login } from "./pages/Login"
 import { Register } from "./pages/Register"
 import { ForgotPassword } from "./pages/ForgotPassword"
+import { TermsOfService } from "./pages/TermsOfService"
 import './index.css'
 
 import { type ReactNode } from "react"
@@ -138,6 +140,16 @@ function AnimatedRoutes() {
             <ForgotPassword />
           </motion.div>
         } />
+        <Route path="/terms-of-service" element={
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <TermsOfService />
+          </motion.div>
+        } />
+        <Route path="/privacy-policy" element={
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <PrivacyPolicy />
+          </motion.div>
+        } />
 
         {/* Role-aware root redirect */}
         <Route path="/" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
@@ -148,20 +160,24 @@ function AnimatedRoutes() {
           {/* Admin Routes */}
           <Route element={<RoleProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/payouts" element={<Payouts />} />
-            <Route path="/home-nursing" element={<HomeNursingServices />} />
-            <Route path="/services/home-nursing" element={<HomeNursingServices />} />
-            <Route path="/add-department" element={<AddDepartment />} />
-            <Route path="/edit-department/:id" element={<EditDepartment />} />
-            <Route path="/add-doctor" element={<AddDoctor />} />
-            <Route path="/add-lab" element={<AddLab />} />
-            <Route path="/add-nurse" element={<AddNurse />} />
-            <Route path="/add-nursing-services" element={<AddNursingServices />} />
-            <Route path="/add-receptionist" element={<AddReceptionist />} />
-            <Route path="/edit-staff/:id" element={<EditStaff />} />
-            <Route path="/profile/staff" element={<StaffManagement />} />
-            <Route path="/profile/staff/add-lab" element={<AddLabStaff />} />
-            <Route path="/profile/staff/:type" element={<StaffList />} />
+
+            {/* Operational routes restricted to verified facilities */}
+            <Route element={<VerifiedFacilityRoute />}>
+              <Route path="/payouts" element={<Payouts />} />
+              <Route path="/home-nursing" element={<HomeNursingServices />} />
+              <Route path="/services/home-nursing" element={<HomeNursingServices />} />
+              <Route path="/add-department" element={<AddDepartment />} />
+              <Route path="/edit-department/:id" element={<EditDepartment />} />
+              <Route path="/add-doctor" element={<AddDoctor />} />
+              <Route path="/add-lab" element={<AddLab />} />
+              <Route path="/add-nurse" element={<AddNurse />} />
+              <Route path="/add-nursing-services" element={<AddNursingServices />} />
+              <Route path="/add-receptionist" element={<AddReceptionist />} />
+              <Route path="/edit-staff/:id" element={<EditStaff />} />
+              <Route path="/profile/staff" element={<StaffManagement />} />
+              <Route path="/profile/staff/add-lab" element={<AddLabStaff />} />
+              <Route path="/profile/staff/:type" element={<StaffList />} />
+            </Route>
           </Route>
 
           {/* Shared / Marketing Routes */}
