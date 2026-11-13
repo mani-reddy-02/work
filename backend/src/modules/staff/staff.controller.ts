@@ -122,6 +122,14 @@ export const createStaff = async (req: Request, res: Response, next: NextFunctio
 
     const passwordHash = await bcrypt.hash(password, 10);
 
+    const hospital = await prisma.hospital.findUnique({
+      where: { id: hospitalId },
+      select: { verificationStatus: true }
+    });
+    const isHospitalApproved = hospital?.verificationStatus === 'APPROVED';
+    // If the hospital facility is already approved, doctors added by hospital admin are activated immediately.
+    const isDoctorActive = role === Role.DOCTOR ? isHospitalApproved : true;
+
     const user = await prisma.user.create({
       data: {
         name,
@@ -129,7 +137,7 @@ export const createStaff = async (req: Request, res: Response, next: NextFunctio
         phone: phone || null,
         passwordHash,
         role: role as Role,
-        active: role === Role.DOCTOR ? false : true, // Doctors require Super Admin verification before activation
+        active: isDoctorActive,
         designation: designation || (role === 'DOCTOR' && deptName ? `Consultant - ${deptName}` : null),
         avatar: avatar || null,
         hospitalId, // ALWAYS from the authenticated admin, NEVER from the request
@@ -163,6 +171,28 @@ export const createStaff = async (req: Request, res: Response, next: NextFunctio
         department: { select: { id: true, name: true, code: true } }
       },
     });
+
+    // Auto-create default standard schedules (Mon-Sat, 09:00 - 17:00) so slots are immediately bookable
+    if (role === Role.DOCTOR) {
+      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      await Promise.all(
+        days.map(day =>
+          prisma.doctorSchedule.create({
+            data: {
+              doctorId: user.id,
+              hospitalId,
+              dayOfWeek: day,
+              startTime: '09:00',
+              endTime: '17:00',
+              videoStartTime: '14:00',
+              videoEndTime: '18:00',
+              slotDurationMinutes: 15,
+              isAvailable: true
+            }
+          }).catch(() => null)
+        )
+      );
+    }
 
     // INTERNAL_EVENT: New staff registered. No user notification generated.
 

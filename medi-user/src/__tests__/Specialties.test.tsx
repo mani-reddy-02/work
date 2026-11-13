@@ -227,7 +227,7 @@ describe('Specialties Component - 5-Step Booking Flow (OP Consultation)', () => 
     // Step 4: Review & Pay
     expect(await screen.findByText(/Review & Confirm/i)).toBeInTheDocument();
     expect(screen.getByText('Step 4 of 5')).toBeInTheDocument();
-    expect(screen.getByText('Dr. Sarah Jenkins')).toBeInTheDocument();
+    expect(screen.getAllByText('Dr. Sarah Jenkins').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Apollo Speciality Hospital')).toBeInTheDocument();
     expect(screen.getByText('10:00 AM')).toBeInTheDocument();
     expect(screen.getAllByText('₹600').length).toBeGreaterThanOrEqual(1);

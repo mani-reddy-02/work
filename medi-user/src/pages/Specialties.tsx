@@ -3,7 +3,7 @@ import { departmentIcons, allIcons, getDiseaseIconUrl } from '../utils/diseaseIc
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { 
   Search, Video, Clock, CheckCircle2, ChevronLeft, ChevronRight,
-  MapPin, Phone, ShieldCheck, User, Users, Plus, Activity, FileText, AlertCircle, 
+  MapPin, Phone, ShieldCheck, User, Users, Plus, Activity, FileText, AlertCircle, CreditCard, 
   Mic, MicOff, Video as VideoIcon, VideoOff, PhoneOff, Info,
   ArrowLeft, Calendar, Building2, Stethoscope, CalendarClock, CalendarCheck, 
   ActivitySquare, Bot, X, Sparkles, Copy, Star
@@ -631,6 +631,10 @@ const Specialties = () => {
 
     try {
       const targetDate = selectedDateIso || new Date().toISOString().split('T')[0];
+      const docFee = selectedDoctor?.consultationFee !== undefined && selectedDoctor?.consultationFee !== null
+        ? Number(selectedDoctor.consultationFee)
+        : (selectedDoctor?.fees ? Number(String(selectedDoctor.fees).replace(/[^0-9.]/g, '')) || undefined : undefined);
+
       const res = await opAppointmentApi.createOpAppointment({
         hospitalId: selectedDoctor?.hospitalId || selectedHospital?.id,
         doctorId: selectedDoctor?.id || '',
@@ -643,7 +647,8 @@ const Specialties = () => {
         patientAge: patientAge ? Number(patientAge) : undefined,
         patientGender: patientGender || undefined,
         reason: reason || (isVideo ? 'Video Consultation' : 'OP Consultation visit'),
-        opType: isVideo ? 'Video Consultation' : 'Normal'
+        opType: isVideo ? 'Video Consultation' : 'Normal',
+        fee: docFee
       });
 
       if (!res.success) {
@@ -2111,13 +2116,13 @@ const Specialties = () => {
 
           <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-100 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+              <CreditCard className="w-4 h-4 text-blue-600 shrink-0" />
               <span className="font-bold text-blue-900">
-                {isVideo ? 'Consultation Access Upon Confirmation' : 'Pay at Hospital Counter'}
+                {isVideo ? 'Online Video Consultation (UPI / Card / NetBanking)' : 'Pay Online (UPI / Card / NetBanking)'}
               </span>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white text-blue-700 border border-blue-200">
-              {isVideo ? 'Direct' : 'Pay Later'}
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white text-blue-700 border border-blue-200 uppercase tracking-wide">
+              Online Only
             </span>
           </div>
         </div>
@@ -2282,7 +2287,12 @@ const Specialties = () => {
 
             {/* Fee & Payment Status */}
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-600">Total Consultation Fee</span>
+              <div>
+                <span className="font-semibold text-slate-600 block">Total Consultation Fee</span>
+                <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
+                  <CheckCircle2 className="w-3 h-3" /> Paid Online
+                </span>
+              </div>
               <span className="font-extrabold text-slate-900">{feeDisplay}</span>
             </div>
           </div>

@@ -107,6 +107,7 @@ export interface CreateAppointmentPayload {
   patientGender?: string;
   reason?: string;
   opType?: string;
+  fee?: number;
 }
 
 export interface PrescriptionItem {

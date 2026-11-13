@@ -371,7 +371,8 @@ const DepartmentBooking: React.FC = () => {
         patientAge: parseInt(patientAge, 10) || undefined,
         patientGender,
         reason: chiefComplaint.trim() || `Consultation for ${selectedDepartment.name}`,
-        opType: consultationType === 'VIDEO' ? 'Video Consultation' : 'Normal'
+        opType: consultationType === 'VIDEO' ? 'Video Consultation' : 'Normal',
+        fee: feeAmount
       };
 
       const res = await opAppointmentApi.createOpAppointment(payload);

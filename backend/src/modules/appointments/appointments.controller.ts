@@ -22,7 +22,8 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       patientAge,
       patientGender,
       reason,
-      opType
+      opType,
+      fee
     } = req.body;
 
     const requestedSlot = (timeSlot || slotTime || '').trim();
@@ -267,7 +268,10 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       const hospitalConfig = await tx.hospital.findUnique({ where: { id: hospitalId }, select: { hospitalShare: true } });
       const hospitalSharePct = hospitalConfig?.hospitalShare ?? 80.0;
       const mediqueeCommissionPct = 100.0 - hospitalSharePct;
-      const feeAmount = 500;
+      const rawDoctorFee = doctor.consultationFee !== null && doctor.consultationFee !== undefined 
+        ? Number(doctor.consultationFee) 
+        : (fee !== undefined && fee !== null ? Number(fee) : 500);
+      const feeAmount = !isNaN(rawDoctorFee) && rawDoctorFee >= 0 ? rawDoctorFee : 500;
       const hospitalAmt = feeAmount * (hospitalSharePct / 100);
       const mediqueeAmt = feeAmount * (mediqueeCommissionPct / 100);
 

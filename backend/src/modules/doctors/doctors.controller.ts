@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
-import { Role } from '@prisma/client';
+import { Role, BusinessType } from '@prisma/client';
 import { checkAndExpireDoctorOverrides, computeDoctorLiveStatus } from './doctor-override.service';
 import { calculateHaversineDistanceKm, formatDistanceText, parseGeoParams, getEffectiveCoordinates } from '../../utils/geo';
 
@@ -126,7 +126,11 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
     } else if (consultationType === 'op' || consultationType === 'hospital-op' || consultationType === 'normal') {
       whereClause.hospital = {
         ...(whereClause.hospital || {}),
-        services: { has: 'op_consultation' }
+        OR: [
+          { services: { has: 'op_consultation' } },
+          { services: { isEmpty: true } },
+          { businessType: BusinessType.HOSPITAL }
+        ]
       };
     }
 
