@@ -7,7 +7,7 @@ const SUGGESTED_DEPARTMENTS = [
   "General Medicine", "Cardiology", "Orthopedics", "Pediatrics",
   "Dermatology", "Gynecology", "Neurology", "ENT",
   "Ophthalmology", "Dentistry", "Psychiatry", "Radiology",
-  "General Surgery", "Emergency"
+  "General Surgery", "Urology"
 ];
 
 export function Step6Departments() {

@@ -133,12 +133,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         {/* Logo Area */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800 transition-colors">
           <div className={`flex items-center gap-2 ${!isOpen && 'lg:hidden'}`}>
-            <img src="/logo.png" alt="MediQuee" className="h-8 w-auto object-contain dark:brightness-110" />
+            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="MediQuee" className="h-8 w-auto object-contain dark:brightness-110" />
           </div>
           
           {/* Logo when collapsed (desktop only) */}
           <div className={`hidden lg:flex w-full items-center justify-center ${isOpen && 'lg:hidden'}`}>
-            <img src="/logo-icon.png" alt="MediQuee" className="w-9 h-9 object-contain rounded-xl" />
+            <img src={`${import.meta.env.BASE_URL}logo-icon.png`} alt="MediQuee" className="w-9 h-9 object-contain rounded-xl" />
           </div>
           
           <button 

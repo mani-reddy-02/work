@@ -37,11 +37,11 @@ const AdminLogin: React.FC = () => {
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 text-slate-100">
       <div className="sm:mx-auto sm:w-full sm:max-w-md px-4 text-center">
         <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-white/5 border border-white/10 mb-4 shadow-xl shadow-blue-500/10">
-          <img src="/logo-icon.png" alt="MediQuee" className="w-14 h-14 object-contain rounded-xl" />
+          <img src={`${import.meta.env.BASE_URL}logo-icon.png`} alt="MediQuee" className="w-14 h-14 object-contain rounded-xl" />
         </div>
         <div className="flex justify-center mb-2">
           <div className="bg-white/95 rounded-xl px-4 py-2 inline-block">
-            <img src="/logo.png" alt="MediQuee" className="h-7 w-auto object-contain" />
+            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="MediQuee" className="h-7 w-auto object-contain" />
           </div>
         </div>
         <h2 className="text-2xl font-extrabold tracking-tight text-white mt-3">

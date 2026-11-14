@@ -1,9 +1,9 @@
 import { prisma } from '../../config/prisma';
-import { 
-  ReviewTargetType, 
-  ReviewBookingType, 
-  ReviewStatus, 
-  ResponseStatus, 
+import {
+  ReviewTargetType,
+  ReviewBookingType,
+  ReviewStatus,
+  ResponseStatus,
   ReportStatus,
   SubmitReviewDto,
   EditReviewDto,
@@ -1006,14 +1006,18 @@ export class ReviewsService {
     const skip = (page - 1) * limit;
 
     const where: any = {};
+    const andClauses: any[] = [];
+    const normalizedRole = String(user.role || '').toUpperCase();
 
-    // Hospital Scope
-    if (user.role === 'DOCTOR') {
-      where.OR = [
-        { targetType: 'DOCTOR', targetId: user.id },
-        { doctorId: user.id }
-      ];
-    } else if (user.role === 'HOSPITAL_ADMIN' || user.role === 'LAB_ADMIN') {
+    // Hospital / Doctor Scope
+    if (normalizedRole === 'DOCTOR') {
+      andClauses.push({
+        OR: [
+          { targetType: 'DOCTOR', targetId: user.id },
+          { doctorId: user.id }
+        ]
+      });
+    } else if (normalizedRole === 'HOSPITAL_ADMIN' || normalizedRole === 'LAB_ADMIN' || normalizedRole === 'ADMIN' || normalizedRole === 'RECEPTIONIST') {
       if (!user.hospitalId) {
         throw new Error('Hospital staff must be associated with a valid hospital.');
       }
@@ -1025,7 +1029,7 @@ export class ReviewsService {
       if (params.doctorId) {
         where.doctorId = params.doctorId;
       }
-    } else if (user.role !== 'SUPER_ADMIN') {
+    } else if (normalizedRole !== 'SUPER_ADMIN') {
       throw new Error('Unauthorized review access.');
     }
 
@@ -1035,11 +1039,17 @@ export class ReviewsService {
 
     if (params.search) {
       const term = params.search.trim();
-      where.OR = [
-        { comment: { contains: term, mode: 'insensitive' } },
-        { title: { contains: term, mode: 'insensitive' } },
-        { user: { name: { contains: term, mode: 'insensitive' } } },
-      ];
+      andClauses.push({
+        OR: [
+          { comment: { contains: term, mode: 'insensitive' } },
+          { title: { contains: term, mode: 'insensitive' } },
+          { user: { name: { contains: term, mode: 'insensitive' } } },
+        ]
+      });
+    }
+
+    if (andClauses.length > 0) {
+      where.AND = andClauses;
     }
 
     const [reviews, totalCount] = await Promise.all([
@@ -1107,14 +1117,46 @@ export class ReviewsService {
   /**
    * 7. Hospital Review Analytics
    */
-  async getHospitalReviewAnalytics(hospitalId: string, doctorId?: string) {
-    const where: any = {
-      hospitalId,
+  async getHospitalReviewAnalytics(hospitalId: string, doctorId?: string, isDoctorOnly?: boolean) {
+    const doctorScope = doctorId ? {
+      OR: [
+        { doctorId: doctorId },
+        { targetType: 'DOCTOR' as ReviewTargetType, targetId: doctorId }
+      ]
+    } : null;
+
+    const publishedWhere: any = {
       status: 'APPROVED',
+      ...(hospitalId && !isDoctorOnly ? { hospitalId } : {}),
+      ...(doctorScope ? doctorScope : {})
     };
-    if (doctorId) {
-      where.doctorId = doctorId;
-    }
+
+    const pendingWhere: any = {
+      status: 'PENDING',
+      ...(hospitalId && !isDoctorOnly ? { hospitalId } : {}),
+      ...(doctorScope ? doctorScope : {})
+    };
+
+    const allWhere: any = {
+      ...(hospitalId && !isDoctorOnly ? { hospitalId } : {}),
+      ...(doctorScope ? doctorScope : {})
+    };
+
+    const pendingResponseWhere: any = {
+      status: 'PENDING',
+      review: {
+        ...(hospitalId && !isDoctorOnly ? { hospitalId } : {}),
+        ...(doctorScope ? doctorScope : {})
+      }
+    };
+
+    const reportedWhere: any = {
+      status: 'PENDING',
+      review: {
+        ...(hospitalId && !isDoctorOnly ? { hospitalId } : {}),
+        ...(doctorScope ? doctorScope : {})
+      }
+    };
 
     const [
       publishedReviews,
@@ -1125,44 +1167,45 @@ export class ReviewsService {
       doctorsList
     ] = await Promise.all([
       prisma.review.findMany({
-        where,
+        where: publishedWhere,
         orderBy: { publishedAt: 'desc' }
       }),
       prisma.review.count({
-        where: { hospitalId, status: 'PENDING' }
+        where: pendingWhere
       }),
       prisma.review.findMany({
-        where: { hospitalId },
+        where: allWhere,
         include: { response: true, reports: true }
       }),
       prisma.reviewResponse.count({
-        where: {
-          review: { hospitalId },
-          status: 'PENDING'
-        }
+        where: pendingResponseWhere
       }),
       prisma.reviewReport.count({
-        where: {
-          review: { hospitalId },
-          status: 'PENDING'
-        }
+        where: reportedWhere
       }),
-      prisma.user.findMany({
-        where: { hospitalId, role: 'DOCTOR' },
-        select: {
-          id: true,
-          name: true,
-          specialization: true,
-          rating: true,
-          reviewCount: true,
-          avatar: true,
-        }
-      })
+      isDoctorOnly
+        ? Promise.resolve([])
+        : prisma.user.findMany({
+          where: {
+            ...(hospitalId ? { hospitalId } : {}),
+            role: 'DOCTOR'
+          },
+          select: {
+            id: true,
+            name: true,
+            specialization: true,
+            rating: true,
+            reviewCount: true,
+            avatar: true,
+          }
+        })
     ]);
 
-    const effectiveReviews = publishedReviews.length > 0
+    const effectiveReviews = doctorId
       ? publishedReviews
-      : allHospitalReviews.filter(r => r.status !== 'REJECTED' && r.status !== 'REMOVED');
+      : (publishedReviews.length > 0
+        ? publishedReviews
+        : allHospitalReviews.filter(r => r.status !== 'REJECTED' && r.status !== 'REMOVED'));
 
     const totalCount = effectiveReviews.length;
     let sum = 0;
@@ -1239,23 +1282,25 @@ export class ReviewsService {
       reviewCount: data.count,
     }));
 
-    // Doctor rating breakdown
-    const doctorBreakdown = doctorsList.map(doc => {
-      const docReviews = effectiveReviews.filter(
-        r => r.targetType === 'DOCTOR' && (r.targetId === doc.id || r.doctorId === doc.id)
-      );
-      const docSum = docReviews.reduce((acc, curr) => acc + curr.rating, 0);
-      const docAvg = docReviews.length > 0 ? Number((docSum / docReviews.length).toFixed(1)) : null;
+    // Doctor rating breakdown (only for hospital view, never leak other doctors to a doctor)
+    const doctorBreakdown = isDoctorOnly
+      ? []
+      : doctorsList.map(doc => {
+        const docReviews = effectiveReviews.filter(
+          r => r.targetType === 'DOCTOR' && (r.targetId === doc.id || r.doctorId === doc.id)
+        );
+        const docSum = docReviews.reduce((acc, curr) => acc + curr.rating, 0);
+        const docAvg = docReviews.length > 0 ? Number((docSum / docReviews.length).toFixed(1)) : null;
 
-      return {
-        id: doc.id,
-        name: doc.name,
-        specialization: doc.specialization,
-        avatar: doc.avatar,
-        averageRating: docAvg,
-        reviewCount: docReviews.length,
-      };
-    });
+        return {
+          id: doc.id,
+          name: doc.name,
+          specialization: doc.specialization,
+          avatar: doc.avatar,
+          averageRating: docAvg,
+          reviewCount: docReviews.length,
+        };
+      });
 
     return {
       overallRating: averageRating,

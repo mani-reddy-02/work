@@ -25,8 +25,7 @@ export const locationSchema = z.object({
   country: z.string().min(2, "Country is required"),
   pincode: z.string().min(5, "Valid pincode is required"),
   contactNumber: z.string().optional(),
-  email: z.string().optional(),
-  emergencyContact: z.string().optional()
+  email: z.string().optional()
 });
 
 export const adminSchema = z.object({

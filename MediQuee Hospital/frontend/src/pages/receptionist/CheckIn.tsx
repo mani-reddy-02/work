@@ -575,8 +575,8 @@ export function CheckIn() {
                 <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
                   3. OP Type
                 </label>
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  {['Normal', 'Emergency', 'Follow-up'].map(type => (
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {['Normal', 'Follow-up'].map(type => (
                     <button
                       key={type}
                       type="button"

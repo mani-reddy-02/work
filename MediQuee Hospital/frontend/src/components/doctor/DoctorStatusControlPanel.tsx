@@ -25,7 +25,7 @@ const PRESET_HOURS = [
 ];
 
 const PRESET_REASONS = [
-  'In Emergency Surgery',
+  'In Surgery',
   'On Ward Rounds',
   'Doctor Delayed',
   'In Clinical Meeting',
@@ -46,7 +46,7 @@ export function DoctorStatusControlPanel({ hospitalId, onStatusChange, className
   const [selectedPresetHours, setSelectedPresetHours] = useState<number | 'restOfToday'>(1);
   const [customHours, setCustomHours] = useState<string>('');
   const [isCustom, setIsCustom] = useState(false);
-  const [selectedReason, setSelectedReason] = useState<string>('In Emergency Surgery');
+  const [selectedReason, setSelectedReason] = useState<string>('In Surgery');
   const [customReason, setCustomReason] = useState<string>('');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
@@ -108,7 +108,7 @@ export function DoctorStatusControlPanel({ hospitalId, onStatusChange, className
     setSelectedPresetHours(1);
     setIsCustom(false);
     setCustomHours('');
-    setSelectedReason('In Emergency Surgery');
+    setSelectedReason('In Surgery');
     setCustomReason('');
     setIsPauseModalOpen(true);
   };
@@ -581,7 +581,7 @@ export function DoctorStatusControlPanel({ hospitalId, onStatusChange, className
                 </div>
                 <input
                   type="text"
-                  placeholder="Or enter custom reason (e.g. Traffic delay / Emergency rounds)..."
+                  placeholder="Or enter custom reason (e.g. Traffic delay / Special clinical rounds)..."
                   value={customReason}
                   onChange={(e) => setCustomReason(e.target.value)}
                   className="bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted/60 focus:outline-none focus:border-[#1769E0]"

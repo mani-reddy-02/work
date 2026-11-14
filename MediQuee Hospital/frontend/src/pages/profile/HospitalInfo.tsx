@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { 
-  ArrowLeft, Building2, MapPin, Phone, Mail, PhoneCall, Globe, 
+  ArrowLeft, Building2, MapPin, Phone, Mail, Globe, 
   ShieldCheck, Edit3, X, AlertCircle, Users, 
   Activity, Layers, FileText, RefreshCw, Eye, Download, ExternalLink,
   CheckCircle2, Award, FileCheck
@@ -57,7 +57,6 @@ export function HospitalInfo() {
       establishedYear: profile.establishedYear || '',
       contactPhone: profile.contactPhone || '',
       contactEmail: profile.contactEmail || '',
-      emergencyContact: profile.emergencyContact || '',
       website: profile.website || '',
       addressLine1: profile.addressLine1 || '',
       addressLine2: profile.addressLine2 || '',
@@ -255,27 +254,6 @@ export function HospitalInfo() {
                 </div>
                 <span className="text-lg font-black text-foreground">{profile.totalBookingsCount ?? 0}</span>
                 <span className="text-[11px] font-semibold text-muted">Appointments</span>
-              </button>
-            </div>
-
-            {/* Emergency Helpline Highlight Card */}
-            <div className="p-4 bg-gradient-to-r from-red-50 via-rose-50 to-orange-50 border border-red-200/80 rounded-2xl flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-md shadow-red-600/20">
-                  <PhoneCall className="w-5 h-5 animate-pulse" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-red-900 uppercase tracking-wide">24/7 Emergency Helpline</span>
-                  <p className="text-sm font-black text-red-700">
-                    {profile.emergencyContact || "Helpline not configured"}
-                  </p>
-                </div>
-              </div>
-              <button 
-                onClick={handleOpenEdit} 
-                className="text-xs font-bold text-red-700 hover:text-red-900 underline underline-offset-2"
-              >
-                Configure
               </button>
             </div>
 
@@ -555,9 +533,9 @@ export function HospitalInfo() {
                   </div>
                 </div>
 
-                {/* 2. Contact & Helpline */}
+                {/* 2. Contact Information */}
                 <div className="flex flex-col gap-3">
-                  <h4 className="text-xs font-bold text-muted/70 uppercase tracking-wider">Contact & 24/7 Helpline</h4>
+                  <h4 className="text-xs font-bold text-muted/70 uppercase tracking-wider">Contact Information</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-semibold text-foreground/80">Reception Phone</label>
@@ -570,16 +548,6 @@ export function HospitalInfo() {
                       />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <label className="text-xs font-semibold text-red-700">24/7 Emergency Helpline</label>
-                      <input
-                        type="tel"
-                        value={formData.emergencyContact || ''}
-                        onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
-                        className="px-3.5 py-2.5 bg-red-50/50 border border-red-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400/20 focus:border-red-500 font-semibold text-red-900"
-                        placeholder="e.g. 1066 / +91 99999 11111"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
                       <label className="text-xs font-semibold text-foreground/80">Official Email</label>
                       <input
                         type="email"
@@ -589,7 +557,7 @@ export function HospitalInfo() {
                         placeholder="e.g. contact@apollohospital.com"
                       />
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 md:col-span-2">
                       <label className="text-xs font-semibold text-foreground/80">Website</label>
                       <input
                         type="text"

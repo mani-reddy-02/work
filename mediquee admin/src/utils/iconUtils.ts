@@ -175,6 +175,18 @@ const keywordRules = [
 ];
 
 export function resolveIconUrl(icon?: string | null, fallbackName?: string | null): string {
+  const base = (import.meta.env.BASE_URL || '/admin/').replace(/\/$/, '');
+  const prefix = (url: string) => {
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/uploads/')) {
+      return url;
+    }
+    const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+    if (base && cleanUrl.startsWith(base + '/')) {
+      return cleanUrl;
+    }
+    return `${base}${cleanUrl}`;
+  };
+
   // 1. Direct valid icon URL check
   if (icon && typeof icon === 'string' && icon.trim().length > 0) {
     const clean = icon.trim();
@@ -182,10 +194,10 @@ export function resolveIconUrl(icon?: string | null, fallbackName?: string | nul
       return clean;
     }
     if (clean.startsWith('/icons/') || clean.startsWith('/optimized/')) {
-      return clean;
+      return prefix(clean);
     }
     if (clean.endsWith('.webp') || clean.endsWith('.jpg') || clean.endsWith('.png')) {
-      return `/optimized/${clean}`;
+      return prefix(`/optimized/${clean}`);
     }
   }
 
@@ -195,17 +207,17 @@ export function resolveIconUrl(icon?: string | null, fallbackName?: string | nul
     
     // Check specialty match
     if (specialtyIconMap[lower]) {
-      return specialtyIconMap[lower];
+      return prefix(specialtyIconMap[lower]);
     }
 
     // Check keyword rules
     for (const rule of keywordRules) {
       if (rule.regex.test(lower)) {
-        return `/optimized/${rule.icon}`;
+        return prefix(`/optimized/${rule.icon}`);
       }
     }
   }
 
   // Default fallback
-  return '/optimized/Blood Test.webp';
+  return prefix('/optimized/Blood Test.webp');
 }

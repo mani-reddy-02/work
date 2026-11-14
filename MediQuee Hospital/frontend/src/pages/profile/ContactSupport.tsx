@@ -114,7 +114,7 @@ export function ContactSupport() {
             <div>
               <span className="text-[11px] font-bold text-muted uppercase tracking-wider">Hospital Priority Desk</span>
               <h3 className="text-xl font-black text-foreground mt-0.5 font-mono">8331045500</h3>
-              <p className="text-xs text-muted mt-1">Direct hot-line for emergency escalation and urgent assistance.</p>
+              <p className="text-xs text-muted mt-1">Direct hot-line for priority escalation and operational assistance.</p>
             </div>
 
             <a
@@ -219,7 +219,7 @@ export function ContactSupport() {
                 <span className="text-xs font-bold uppercase tracking-wider">Technical Desk</span>
               </div>
               <span className="text-sm font-black text-foreground">24/7 Availability</span>
-              <p className="text-[11px] text-muted">Emergency OPD token sync, app downtime & server status</p>
+              <p className="text-[11px] text-muted">OPD token sync, app downtime & server status</p>
             </div>
 
             <div className="p-4 bg-gray-50/80 dark:bg-gray-900/30 rounded-2xl border border-border/60 flex flex-col gap-1.5">

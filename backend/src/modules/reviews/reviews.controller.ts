@@ -178,10 +178,13 @@ export class ReviewsController {
       }
 
       const { targetType, doctorId, status, page, limit, search } = req.query;
+      const isDoctor = String(user.role).toUpperCase() === 'DOCTOR';
+      const effectiveDoctorId = isDoctor ? user.id : (doctorId ? String(doctorId) : undefined);
+      const effectiveTargetType = isDoctor ? ('DOCTOR' as ReviewTargetType) : (targetType as ReviewTargetType);
 
       const result = await reviewsService.getProviderReviews(user, {
-        targetType: targetType as ReviewTargetType,
-        doctorId: doctorId ? String(doctorId) : undefined,
+        targetType: effectiveTargetType,
+        doctorId: effectiveDoctorId,
         status: status as ReviewStatus,
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
@@ -205,14 +208,15 @@ export class ReviewsController {
         return res.status(401).json({ success: false, message: 'Authentication required' });
       }
 
+      const isDoctor = String(user.role).toUpperCase() === 'DOCTOR';
       const hospitalId = user.hospitalId || (req.query.hospitalId as string);
-      const doctorId = user.role === 'DOCTOR' ? user.id : (req.query.doctorId as string);
+      const doctorId = isDoctor ? user.id : (req.query.doctorId as string);
 
       if (!hospitalId && !doctorId) {
         return res.status(400).json({ success: false, message: 'Hospital or Doctor context is required.' });
       }
 
-      const result = await reviewsService.getHospitalReviewAnalytics(hospitalId, doctorId);
+      const result = await reviewsService.getHospitalReviewAnalytics(hospitalId, doctorId, isDoctor);
       return res.json({ success: true, data: result });
     } catch (err: any) {
       return res.status(400).json({ success: false, message: err.message || 'Failed to fetch analytics' });

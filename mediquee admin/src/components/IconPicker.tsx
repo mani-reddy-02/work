@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { PRESET_ICONS, IconPreset } from '../utils/iconUtils';
+import { PRESET_ICONS, IconPreset, resolveIconUrl } from '../utils/iconUtils';
 import { Search, Upload, Check, Image as ImageIcon } from 'lucide-react';
 import { IconImage } from './IconImage';
 
@@ -140,7 +140,7 @@ export default function IconPicker({ value, onChange, folderType }: IconPickerPr
                 >
                   <div className="w-8 h-8 flex items-center justify-center p-0.5 mb-1">
                     <img
-                      src={ic.url}
+                      src={resolveIconUrl(ic.url, ic.name)}
                       alt={ic.name}
                       className="w-full h-full object-contain transition-transform group-hover:scale-105"
                       loading="lazy"

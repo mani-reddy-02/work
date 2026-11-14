@@ -15,6 +15,8 @@ export function Reviews() {
   const { user, role } = useAuth();
   const { toast } = useToast();
 
+  const isDoctor = role === 'doctor' || String(user?.role || '').toLowerCase() === 'doctor';
+
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'HOSPITAL' | 'DOCTORS' | 'LABS'>('OVERVIEW');
   const [analytics, setAnalytics] = useState<HospitalReviewAnalytics | null>(null);
   const [reviews, setReviews] = useState<ProviderReviewItem[]>([]);
@@ -37,12 +39,19 @@ export function Reviews() {
   const [reportDetails, setReportDetails] = useState('');
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
+  // Keep doctor strictly on allowed tabs
+  useEffect(() => {
+    if (isDoctor && (activeTab === 'HOSPITAL' || activeTab === 'LABS')) {
+      setActiveTab('OVERVIEW');
+    }
+  }, [isDoctor, activeTab]);
+
   const fetchAnalytics = useCallback(async () => {
     setIsLoadingAnalytics(true);
     try {
       const data = await reviewsApi.getHospitalAnalytics(
         user?.hospitalId || undefined,
-        role === 'doctor' ? user?.id : undefined
+        isDoctor ? user?.id : undefined
       );
       setAnalytics(data);
     } catch (err: any) {
@@ -50,19 +59,25 @@ export function Reviews() {
     } finally {
       setIsLoadingAnalytics(false);
     }
-  }, [user?.hospitalId, user?.id, role]);
+  }, [user?.hospitalId, user?.id, isDoctor]);
 
   const fetchReviews = useCallback(async (page = 1) => {
     setIsLoadingReviews(true);
     try {
       let targetType: string | undefined = undefined;
-      if (activeTab === 'HOSPITAL') targetType = 'HOSPITAL';
-      if (activeTab === 'DOCTORS') targetType = 'DOCTOR';
-      if (activeTab === 'LABS') targetType = 'LABORATORY';
+      let doctorId: string | undefined = undefined;
 
-      const doctorId = activeTab === 'DOCTORS' && selectedDoctorId !== 'ALL' 
-        ? selectedDoctorId 
-        : (role === 'doctor' ? user?.id : undefined);
+      if (isDoctor) {
+        targetType = 'DOCTOR';
+        doctorId = user?.id;
+      } else {
+        if (activeTab === 'HOSPITAL') targetType = 'HOSPITAL';
+        if (activeTab === 'DOCTORS') targetType = 'DOCTOR';
+        if (activeTab === 'LABS') targetType = 'LABORATORY';
+        if (activeTab === 'DOCTORS' && selectedDoctorId !== 'ALL') {
+          doctorId = selectedDoctorId;
+        }
+      }
 
       const res = await reviewsApi.getProviderReviews({
         targetType,
@@ -80,7 +95,7 @@ export function Reviews() {
     } finally {
       setIsLoadingReviews(false);
     }
-  }, [activeTab, selectedDoctorId, role, user?.id, selectedStatus, searchQuery, toast]);
+  }, [activeTab, selectedDoctorId, isDoctor, user?.id, selectedStatus, searchQuery, toast]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -158,14 +173,18 @@ export function Reviews() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-5">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900">Reviews & Ratings</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {isDoctor ? "My Reviews & Ratings" : "Reviews & Ratings"}
+            </h1>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
               <ShieldCheck className="w-3.5 h-3.5" />
               Verified Real Patient Data
             </span>
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            Centralized feedback, authentic rating distribution, and official patient response management.
+            {isDoctor
+              ? "Your direct patient feedback, ratings distribution, and official response management."
+              : "Centralized feedback, authentic rating distribution, and official patient response management."}
           </p>
         </div>
 
@@ -180,12 +199,18 @@ export function Reviews() {
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 gap-2 sm:gap-4 overflow-x-auto no-scrollbar">
-        {[
-          { key: 'OVERVIEW', label: 'Overview & Analytics', icon: TrendingUp },
-          { key: 'HOSPITAL', label: 'Hospital Reviews', icon: Building2 },
-          { key: 'DOCTORS', label: 'Doctor Reviews', icon: User },
-          { key: 'LABS', label: 'Laboratory Reviews', icon: Award },
-        ].map(tab => {
+        {(isDoctor
+          ? [
+              { key: 'OVERVIEW', label: 'My Performance & Analytics', icon: TrendingUp },
+              { key: 'DOCTORS', label: 'My Patient Reviews', icon: User },
+            ]
+          : [
+              { key: 'OVERVIEW', label: 'Overview & Analytics', icon: TrendingUp },
+              { key: 'HOSPITAL', label: 'Hospital Reviews', icon: Building2 },
+              { key: 'DOCTORS', label: 'Doctor Reviews', icon: User },
+              { key: 'LABS', label: 'Laboratory Reviews', icon: Award },
+            ]
+        ).map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
           return (
@@ -222,7 +247,9 @@ export function Reviews() {
                 {/* Overall Rating */}
                 <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm relative overflow-hidden">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Overall Rating</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      {isDoctor ? "My Overall Rating" : "Overall Rating"}
+                    </span>
                     <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
                       <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
                     </div>
@@ -245,7 +272,9 @@ export function Reviews() {
                 {/* Published Reviews */}
                 <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Total Reviews</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      {isDoctor ? "My Total Reviews" : "Total Reviews"}
+                    </span>
                     <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
                       <MessageSquare className="w-4 h-4 text-blue-600" />
                     </div>
@@ -383,8 +412,8 @@ export function Reviews() {
                 </div>
               </div>
 
-              {/* Doctor Performance Summary */}
-              {analytics.doctorBreakdown && analytics.doctorBreakdown.length > 0 && (
+              {/* Doctor Performance Summary (Hospital-wide only, hidden for individual doctors) */}
+              {!isDoctor && analytics.doctorBreakdown && analytics.doctorBreakdown.length > 0 && (
                 <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -452,8 +481,8 @@ export function Reviews() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {/* Doctor filter when in DOCTORS tab */}
-              {activeTab === 'DOCTORS' && analytics?.doctorBreakdown && (
+              {/* Doctor filter when in DOCTORS tab (Only for hospital admin viewing all doctors) */}
+              {!isDoctor && activeTab === 'DOCTORS' && analytics?.doctorBreakdown && analytics.doctorBreakdown.length > 0 && (
                 <select
                   value={selectedDoctorId}
                   onChange={e => setSelectedDoctorId(e.target.value)}

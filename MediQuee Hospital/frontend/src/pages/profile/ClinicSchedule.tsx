@@ -1,4 +1,4 @@
-import { Save, Calendar, Video, Stethoscope, ArrowLeft, RefreshCw } from "lucide-react"
+import { Save, Calendar, Video, Stethoscope, ArrowLeft } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useToast } from "@/context/ToastContext"
@@ -53,30 +53,53 @@ export function ClinicSchedule() {
   };
 
   return (
-    <div className="flex flex-col bg-[#F7F8FA] min-h-full pb-20 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col bg-gray-50/30 min-h-screen pb-24 transition-colors">
       
-      {/* Header Section */}
-      <div className="sticky top-0 z-30 bg-surface/95 backdrop-blur-xl pt-4 md:pt-5 pb-4 px-4 md:px-6 flex flex-col gap-4 border-b border-border shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
-        <div className="flex items-center justify-between">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-[#0A1A3D] hover:bg-gray-100 rounded-xl transition-colors">
-            <ArrowLeft className="w-5 h-5" />
+      {/* Top Header */}
+      <div className="sticky top-0 z-30 pt-4 pb-3 px-4 sm:px-6 flex items-center justify-between bg-surface/95 backdrop-blur-xl border-b border-border shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+        <div className="flex items-center gap-2.5">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="p-2 -ml-2 rounded-xl text-muted hover:text-[#0A1A3D] hover:bg-gray-100 transition-colors cursor-pointer"
+            title="Go back"
+          >
+            <ArrowLeft className="w-5 h-5 text-[#0A1A3D]" />
           </button>
-          <h1 className="text-[17px] font-bold text-[#0A1A3D] tracking-tight">Availability</h1>
-          <div className="w-9 h-9" /> {/* Spacer */}
+          <div>
+            <h1 className="text-[19px] font-black text-[#0A1A3D] tracking-tight">Clinic Schedule</h1>
+            <p className="text-[12px] text-muted font-medium">Set your working hours for physical and remote consultations</p>
+          </div>
         </div>
-        <p className="text-[13px] font-medium text-muted">Set your working hours for physical consultations.</p>
+
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#1B5DF1] hover:bg-[#1255b8] active:scale-95 text-white text-sm font-bold rounded-xl shadow-sm transition-all disabled:opacity-60 cursor-pointer"
+        >
+          <Save className="w-4 h-4" />
+          <span>{isSaving ? "Saving..." : "Save Schedule"}</span>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 md:p-6">
+      {/* Main Content - Centered, comfortable max-width for both Desktop and Mobile */}
+      <div className="p-4 sm:p-6 flex flex-col gap-4 max-w-2xl mx-auto w-full">
+        
         {schedule.map((slot, index) => (
-          <div key={slot.day} className={`bg-surface rounded-[24px] border ${slot.active ? 'border-[#1B5DF1]/20 shadow-[0_4px_20px_rgba(27,93,241,0.05)]' : 'border-border shadow-sm'} p-5 transition-all`}>
-            
+          <div 
+            key={slot.day} 
+            className={`bg-surface rounded-[24px] border ${slot.active ? 'border-[#1B5DF1]/20 shadow-[0_4px_20px_rgba(27,93,241,0.05)]' : 'border-border shadow-xs'} p-5 transition-all`}
+          >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className={`w-12 h-12 rounded-[16px] flex items-center justify-center font-bold ${slot.active ? 'bg-[#EBF5FF] text-[#1B5DF1]' : 'bg-gray-100 text-muted/70'}`}>
                   <Calendar className="w-6 h-6" />
                 </div>
-                <span className={`font-black text-[18px] ${slot.active ? 'text-[#0A1A3D]' : 'text-muted/70'}`}>{slot.day}</span>
+                <div>
+                  <span className={`font-black text-[18px] block ${slot.active ? 'text-[#0A1A3D]' : 'text-muted/70'}`}>{slot.day}</span>
+                  {!slot.active && (
+                    <span className="text-[11px] font-semibold text-muted/60">Day off · Unavailable</span>
+                  )}
+                </div>
               </div>
               
               <label className="relative inline-flex items-center cursor-pointer">
@@ -93,7 +116,7 @@ export function ClinicSchedule() {
             {slot.active && (
               <div className="flex flex-col gap-4 pt-4 border-t border-border">
                 
-                {/* OP Hours */}
+                {/* Physical OP Hours */}
                 <div className="flex flex-col gap-2">
                   <h4 className="flex items-center gap-1.5 text-[12px] font-bold text-[#1B5DF1] uppercase tracking-wider">
                     <Stethoscope className="w-3.5 h-3.5" /> Physical OP Hours
@@ -114,19 +137,48 @@ export function ClinicSchedule() {
                     />
                   </div>
                 </div>
+
+                {/* Video Hours */}
+                <div className="flex flex-col gap-2 pt-3 border-t border-gray-50">
+                  <h4 className="flex items-center gap-1.5 text-[12px] font-bold text-indigo-500 uppercase tracking-wider">
+                    <Video className="w-3.5 h-3.5" /> Video Consult Hours
+                  </h4>
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="time" 
+                      value={slot.videoStartTime}
+                      onChange={(e) => updateDay(index, 'videoStartTime', e.target.value)}
+                      className="flex-1 bg-gray-50 border border-border rounded-[12px] px-3 py-2.5 text-[14px] font-bold text-[#0A1A3D] focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10" 
+                    />
+                    <span className="text-muted/70 font-bold text-[12px]">TO</span>
+                    <input 
+                      type="time" 
+                      value={slot.videoEndTime}
+                      onChange={(e) => updateDay(index, 'videoEndTime', e.target.value)}
+                      className="flex-1 bg-gray-50 border border-border rounded-[12px] px-3 py-2.5 text-[14px] font-bold text-[#0A1A3D] focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10" 
+                    />
+                  </div>
+                </div>
+
               </div>
             )}
           </div>
         ))}
-        
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="mt-2 flex items-center justify-center gap-2 py-4 rounded-[16px] font-bold text-[15px] text-white shadow-[0_8px_20px_rgba(27,93,241,0.25)] transition-all active:scale-[0.98] bg-[#1B5DF1] hover:bg-[#1B5DF1]/90 disabled:opacity-60"
-        >
-          <Save className="w-5 h-5" /> {isSaving ? "Saving..." : "Save Availability"}
-        </button>
+
+        {/* Bottom Save Button */}
+        <div className="pt-2 pb-6">
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-[16px] font-bold text-[15px] text-white shadow-[0_8px_20px_rgba(27,93,241,0.25)] transition-all active:scale-[0.98] bg-[#1B5DF1] hover:bg-[#1B5DF1]/90 disabled:opacity-60 cursor-pointer"
+          >
+            <Save className="w-5 h-5" />
+            <span>{isSaving ? "Saving..." : "Save Schedule"}</span>
+          </button>
+        </div>
+
       </div>
+
     </div>
   )
 }
