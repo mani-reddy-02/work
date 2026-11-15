@@ -422,4 +422,130 @@ export class AuthService {
       throw error;
     }
   }
+
+  /**
+   * Dispatches a WhatsApp OTP for password recovery if user exists
+   */
+  static async forgotPasswordSendOtp(identifier: string) {
+    const raw = (identifier || '').trim();
+    if (!raw) {
+      throw new Error('Please enter your registered mobile number or email');
+    }
+
+    const isEmail = raw.includes('@');
+    const cleanDigits = raw.replace(/\D/g, '');
+
+    const searchConditions: any[] = [];
+    if (isEmail) {
+      searchConditions.push({ email: raw.toLowerCase() });
+    } else {
+      searchConditions.push({ phone: raw });
+      if (cleanDigits.length >= 10) {
+        const last10 = cleanDigits.slice(-10);
+        searchConditions.push({ phone: last10 });
+        searchConditions.push({ phone: `+91${last10}` });
+        searchConditions.push({ phone: `91${last10}` });
+      }
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: searchConditions,
+      },
+    });
+
+    if (!user) {
+      throw new Error('No user account found with this mobile number or email.');
+    }
+
+    if (!user.phone) {
+      throw new Error('This account does not have a registered mobile number for WhatsApp recovery.');
+    }
+
+    const { WhatsAppOtpService } = await import('../whatsapp/whatsapp-otp.service');
+    const result = await WhatsAppOtpService.requestOtp(user.phone);
+
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to dispatch WhatsApp OTP. Please try again.');
+    }
+
+    const cleanUserPhone = user.phone.replace(/\D/g, '');
+    const maskedPhone = cleanUserPhone.length >= 10
+      ? `+91 ******${cleanUserPhone.slice(-4)}`
+      : user.phone;
+
+    return {
+      message: result.message || 'OTP sent successfully to your WhatsApp number',
+      phone: cleanUserPhone,
+      maskedPhone,
+      cooldownSeconds: result.cooldownSeconds || 60,
+    };
+  }
+
+  /**
+   * Verifies WhatsApp OTP for password recovery
+   */
+  static async forgotPasswordVerifyOtp(phone: string, code: string) {
+    const { WhatsAppOtpService } = await import('../whatsapp/whatsapp-otp.service');
+    const result = await WhatsAppOtpService.verifyOtp(phone, code);
+    if (!result.valid) {
+      throw new Error(result.message || 'Invalid or expired WhatsApp OTP');
+    }
+    return { verified: true, message: result.message };
+  }
+
+  /**
+   * Resets password after verifying WhatsApp OTP
+   */
+  static async forgotPasswordReset(payload: { phone: string; otp: string; newPassword: string }) {
+    const { phone, otp, newPassword } = payload;
+    const cleanPhone = (phone || '').replace(/\D/g, '');
+
+    if (!cleanPhone || cleanPhone.length < 10) {
+      throw new Error('Valid mobile number is required');
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('Password must be at least 6 characters long');
+    }
+
+    // Verify OTP (allowing already verified in step 2)
+    const { WhatsAppOtpService } = await import('../whatsapp/whatsapp-otp.service');
+    const verifyResult = await WhatsAppOtpService.verifyOtp(cleanPhone, otp.trim(), { allowAlreadyVerified: true });
+    if (!verifyResult.valid) {
+      throw new Error(verifyResult.message || 'Invalid or expired WhatsApp OTP');
+    }
+
+    // Find the user
+    const last10 = cleanPhone.slice(-10);
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: cleanPhone },
+          { phone: last10 },
+          { phone: `+91${last10}` },
+          { phone: `91${last10}` },
+        ],
+      },
+    });
+
+    if (!user) {
+      throw new Error('User account not found for this mobile number.');
+    }
+
+    // Hash and update password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+
+    // Invalidate/consume the OTP
+    await WhatsAppOtpService.consumeOtp(cleanPhone);
+
+    return {
+      success: true,
+      message: 'Password reset successfully. You can now log in with your new password.',
+    };
+  }
 }

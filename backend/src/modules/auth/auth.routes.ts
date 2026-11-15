@@ -1,8 +1,24 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { login, register, sendWhatsAppOtp, verifyWhatsAppOtp } from './auth.controller';
+import { 
+  login, 
+  register, 
+  sendWhatsAppOtp, 
+  verifyWhatsAppOtp,
+  forgotPasswordSendOtp,
+  forgotPasswordVerifyOtp,
+  forgotPasswordReset
+} from './auth.controller';
 import { validateRequest } from '../../middleware/validate';
-import { loginSchema, registerSchema, sendOtpSchema, verifyOtpSchema } from './auth.schema';
+import { 
+  loginSchema, 
+  registerSchema, 
+  sendOtpSchema, 
+  verifyOtpSchema,
+  forgotPasswordSendOtpSchema,
+  forgotPasswordVerifyOtpSchema,
+  forgotPasswordResetSchema
+} from './auth.schema';
 import { authenticate } from '../../middleware/auth';
 import { getMe } from '../users/users.controller';
 
@@ -29,5 +45,10 @@ router.post('/login', authRateLimiter, validateRequest(loginSchema), login);
 router.post('/register', authRateLimiter, validateRequest(registerSchema), register);
 router.post('/whatsapp/send-otp', authRateLimiter, validateRequest(sendOtpSchema), sendWhatsAppOtp);
 router.post('/whatsapp/verify-otp', authRateLimiter, validateRequest(verifyOtpSchema), verifyWhatsAppOtp);
+
+// Forgot Password via WhatsApp OTP routes
+router.post('/forgot-password/send-otp', authRateLimiter, validateRequest(forgotPasswordSendOtpSchema), forgotPasswordSendOtp);
+router.post('/forgot-password/verify-otp', authRateLimiter, validateRequest(forgotPasswordVerifyOtpSchema), forgotPasswordVerifyOtp);
+router.post('/forgot-password/reset', authRateLimiter, validateRequest(forgotPasswordResetSchema), forgotPasswordReset);
 
 export default router;

@@ -208,6 +208,69 @@ export const useAuth = () => {
     }
   };
 
+  const forgotPasswordSendOtp = async (identifier: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/forgot-password/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        return {
+          success: false,
+          error: json?.error?.message || 'Failed to dispatch WhatsApp OTP. Please verify your details.',
+        };
+      }
+      return {
+        success: true,
+        message: json.data?.message || 'OTP sent successfully to your WhatsApp number',
+        phone: json.data?.phone,
+        maskedPhone: json.data?.maskedPhone,
+        cooldownSeconds: json.data?.cooldownSeconds || 60,
+      };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error while requesting OTP' };
+    }
+  };
+
+  const forgotPasswordVerifyOtp = async (phone: string, code: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/forgot-password/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, code }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        return { success: false, error: json?.error?.message || 'Invalid or expired OTP' };
+      }
+      return { success: true, verified: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error while verifying OTP' };
+    }
+  };
+
+  const forgotPasswordReset = async (payload: { phone: string; otp: string; newPassword: string }) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/forgot-password/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        return {
+          success: false,
+          error: json?.error?.message || 'Failed to reset password. Please try again.',
+        };
+      }
+      return { success: true, message: json.data?.message || 'Password reset successfully!' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error while resetting password' };
+    }
+  };
+
   const register = async (data: {
     name: string;
     phone: string;
@@ -289,6 +352,9 @@ export const useAuth = () => {
     register,
     sendWhatsAppOtp,
     verifyWhatsAppOtp,
+    forgotPasswordSendOtp,
+    forgotPasswordVerifyOtp,
+    forgotPasswordReset,
     logout,
   };
 };

@@ -97,3 +97,24 @@ export const hospitalRegisterSchema = z.object({
 export const registerSchema = z.object({
   body: z.union([patientRegisterSchema, hospitalRegisterSchema]),
 });
+
+export const forgotPasswordSendOtpSchema = z.object({
+  body: z.object({
+    identifier: z.string().min(3, 'Email or mobile number is required'),
+  }),
+});
+
+export const forgotPasswordVerifyOtpSchema = z.object({
+  body: z.object({
+    phone: z.string().min(10, 'Valid mobile number is required'),
+    code: z.string().min(4, 'OTP is required'),
+  }),
+});
+
+export const forgotPasswordResetSchema = z.object({
+  body: z.object({
+    phone: z.string().min(10, 'Valid mobile number is required'),
+    otp: z.string().min(4, 'OTP is required'),
+    newPassword: z.string().min(6, 'Password must be at least 6 characters'),
+  }),
+});

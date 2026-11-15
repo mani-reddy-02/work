@@ -123,3 +123,61 @@ export const verifyWhatsAppOtp = async (req: Request, res: Response, next: NextF
   }
 };
 
+export const forgotPasswordSendOtp = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { identifier } = req.body;
+    const result = await AuthService.forgotPasswordSendOtp(identifier);
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    const isNotFound = error.message?.includes('No user account found');
+    res.status(isNotFound ? 404 : 400).json({
+      success: false,
+      error: {
+        code: isNotFound ? 'USER_NOT_FOUND' : 'FORGOT_PASSWORD_OTP_FAILED',
+        message: error.message || 'Failed to dispatch OTP for password recovery',
+      },
+    });
+  }
+};
+
+export const forgotPasswordVerifyOtp = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { phone, code } = req.body;
+    const result = await AuthService.forgotPasswordVerifyOtp(phone, code);
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'INVALID_OTP',
+        message: error.message || 'Invalid or expired OTP',
+      },
+    });
+  }
+};
+
+export const forgotPasswordReset = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { phone, otp, newPassword } = req.body;
+    const result = await AuthService.forgotPasswordReset({ phone, otp, newPassword });
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'RESET_PASSWORD_FAILED',
+        message: error.message || 'Failed to reset password',
+      },
+    });
+  }
+};
+
