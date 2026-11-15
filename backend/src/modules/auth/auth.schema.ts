@@ -17,9 +17,16 @@ export const patientRegisterSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   phone: z.string().min(10, 'Mobile number must be at least 10 digits'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  email: z.string().email('Invalid email address').optional(),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
   otp: z.string().min(4, 'Valid WhatsApp OTP is required for registration'),
   whatsappConsent: z.boolean().optional(),
+  age: z.union([z.number(), z.string()]).optional(),
+  gender: z.string().optional(),
+  place: z.string().optional(),
+  address: z.string().optional(),
+  dob: z.string().optional(),
+  bloodGroup: z.string().optional(),
+  emergencyContact: z.string().optional(),
 });
 
 export const sendOtpSchema = z.object({

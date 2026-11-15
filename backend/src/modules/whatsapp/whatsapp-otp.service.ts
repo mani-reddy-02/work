@@ -178,7 +178,11 @@ export class WhatsAppOtpService {
   /**
    * Validates the OTP against the stored SHA-256 hash
    */
-  static async verifyOtp(rawPhone: string, code: string): Promise<{
+  static async verifyOtp(
+    rawPhone: string,
+    code: string,
+    options?: { allowAlreadyVerified?: boolean }
+  ): Promise<{
     valid: boolean;
     message: string;
   }> {
@@ -191,6 +195,27 @@ export class WhatsAppOtpService {
 
     const inputHash = this.hashOtp(trimmedCode);
     const now = new Date();
+
+    // If allowAlreadyVerified is enabled, check if user recently verified this OTP (e.g. in Step 1)
+    if (options?.allowAlreadyVerified) {
+      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+      const verifiedRecord = await prisma.whatsAppOtp.findFirst({
+        where: {
+          phone: cleanPhone,
+          verified: true,
+          createdAt: { gt: fifteenMinutesAgo },
+          expiresAt: { not: new Date(0) }, // not already consumed
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (verifiedRecord) {
+        const isMatch = verifiedRecord.codeHash ? verifiedRecord.codeHash === inputHash : verifiedRecord.code === trimmedCode;
+        if (isMatch) {
+          return { valid: true, message: 'OTP verified successfully' };
+        }
+      }
+    }
 
     const record = await prisma.whatsAppOtp.findFirst({
       where: {
@@ -232,15 +257,32 @@ export class WhatsAppOtpService {
       };
     }
 
-    // Mark as verified and invalidate immediately to prevent replay
+    // Mark as verified, keep valid for 15 minutes to allow profile completion step
+    const validUntil = new Date(Date.now() + 15 * 60 * 1000);
     await prisma.whatsAppOtp.update({
       where: { id: record.id },
       data: {
         verified: true,
-        expiresAt: new Date(),
+        expiresAt: validUntil,
       },
     });
 
     return { valid: true, message: 'OTP verified successfully' };
+  }
+
+  /**
+   * Consumes/invalidates all verified OTPs for this phone number after successful registration
+   */
+  static async consumeOtp(rawPhone: string): Promise<void> {
+    const cleanPhone = WhatsAppClient.normalizePhone(rawPhone);
+    await prisma.whatsAppOtp.updateMany({
+      where: {
+        phone: cleanPhone,
+      },
+      data: {
+        verified: true,
+        expiresAt: new Date(0),
+      },
+    });
   }
 }

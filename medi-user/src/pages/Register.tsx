@@ -1,6 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { HeartPulse, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2, ShieldCheck, ArrowRight, RotateCw } from 'lucide-react';
+import { 
+  HeartPulse, 
+  Eye, 
+  EyeOff, 
+  Loader2, 
+  AlertCircle, 
+  CheckCircle2, 
+  ShieldCheck, 
+  ArrowRight, 
+  ArrowLeft, 
+  RotateCw,
+  MapPin,
+  Calendar,
+  Droplet,
+  User,
+  PhoneCall,
+  Check
+} from 'lucide-react';
 import { useAuth } from '../lib/auth';
 
 const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
@@ -11,8 +28,12 @@ const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
 
 export default function Register() {
   const navigate = useNavigate();
-  const { register, sendWhatsAppOtp } = useAuth();
+  const { register, sendWhatsAppOtp, verifyWhatsAppOtp } = useAuth();
   
+  // Step State: 1 = Basic Info & WhatsApp OTP, 2 = Personal Details (Age, Gender, Place, etc.)
+  const [step, setStep] = useState<1 | 2>(1);
+
+  // Step 1: Base Account Details
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -21,14 +42,26 @@ export default function Register() {
     otp: ''
   });
   
+  // Step 2: Personal Details
+  const [personalData, setPersonalData] = useState({
+    age: '',
+    dob: '',
+    gender: 'Male',
+    place: '',
+    bloodGroup: '',
+    email: '',
+    emergencyContact: ''
+  });
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
-  const [whatsappConsent, setWhatsappConsent] = useState(false);
+  const [whatsappConsent, setWhatsappConsent] = useState(true);
   
   // OTP States
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [otpTimer, setOtpTimer] = useState(0);
   const [otpNotice, setOtpNotice] = useState('');
   
@@ -104,7 +137,6 @@ export default function Register() {
       setIsOtpSent(true);
       setOtpTimer(60);
       setOtpNotice(res.message || 'OTP sent successfully to your WhatsApp number!');
-      // Focus on OTP input if available
       setTimeout(() => {
         const otpInput = document.getElementById('whatsapp-otp-input');
         if (otpInput) otpInput.focus();
@@ -114,37 +146,124 @@ export default function Register() {
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!agreeTerms) return;
-
+  // Step 1: User verifies OTP and advances to Personal Details screen
+  const handleVerifyOtpAndNext = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setApiError('');
 
     if (!validateBaseFields()) {
       return;
     }
 
-    // If OTP hasn't been sent yet, trigger sending OTP
+    if (!agreeTerms) {
+      setApiError('Please accept the Terms & Conditions and Privacy Policy to proceed');
+      return;
+    }
+
     if (!isOtpSent) {
       await handleSendOtp();
       return;
     }
 
-    // Validate OTP presence
     if (!formData.otp.trim() || formData.otp.trim().length < 4) {
       setErrors((prev) => ({ ...prev, otp: 'Please enter the 6-digit WhatsApp OTP' }));
       return;
     }
 
+    setIsVerifyingOtp(true);
+    const cleanPhone = formData.phone.replace(/\D/g, '');
+    const res = await verifyWhatsAppOtp(cleanPhone, formData.otp.trim());
+    setIsVerifyingOtp(false);
+
+    if (res.success) {
+      setErrors({});
+      setApiError('');
+      setStep(2);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setApiError(res.error || 'Invalid or expired OTP. Please verify and try again.');
+    }
+  };
+
+  // Sync Age and DOB
+  const handleAgeChange = (val: string) => {
+    const clean = val.replace(/\D/g, '');
+    if (clean) {
+      const num = parseInt(clean, 10);
+      if (num > 0 && num <= 120) {
+        const birthYear = new Date().getFullYear() - num;
+        setPersonalData((prev) => ({
+          ...prev,
+          age: clean,
+          dob: `${birthYear}-01-01`,
+        }));
+      } else {
+        setPersonalData((prev) => ({ ...prev, age: clean }));
+      }
+    } else {
+      setPersonalData((prev) => ({ ...prev, age: '', dob: '' }));
+    }
+    if (errors.age) {
+      setErrors((prev) => ({ ...prev, age: '' }));
+    }
+  };
+
+  const handleDobChange = (val: string) => {
+    if (val) {
+      const birthYear = new Date(val).getFullYear();
+      const currentYear = new Date().getFullYear();
+      const calculatedAge = currentYear - birthYear;
+      setPersonalData((prev) => ({
+        ...prev,
+        dob: val,
+        age: calculatedAge > 0 && calculatedAge <= 120 ? calculatedAge.toString() : prev.age,
+      }));
+    } else {
+      setPersonalData((prev) => ({ ...prev, dob: '' }));
+    }
+    if (errors.age) {
+      setErrors((prev) => ({ ...prev, age: '' }));
+    }
+  };
+
+  // Step 2: User completes personal details and submits registration
+  const handleCompleteRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setApiError('');
+
+    const newErrors: Record<string, string> = {};
+    if (!personalData.age || parseInt(personalData.age, 10) < 1 || parseInt(personalData.age, 10) > 120) {
+      newErrors.age = 'Please enter a valid age (1 - 120)';
+    }
+    if (!personalData.gender) {
+      newErrors.gender = 'Please select your gender';
+    }
+    if (!personalData.place.trim()) {
+      newErrors.place = 'Please enter your city / place';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     setIsLoading(true);
     const cleanPhone = formData.phone.replace(/\D/g, '');
-    
+
     const res = await register({
       name: formData.name.trim(),
       phone: cleanPhone,
       password: formData.password,
       otp: formData.otp.trim(),
       whatsappConsent,
+      age: personalData.age ? parseInt(personalData.age, 10) : undefined,
+      gender: personalData.gender,
+      place: personalData.place.trim(),
+      address: personalData.place.trim(),
+      dob: personalData.dob || undefined,
+      bloodGroup: personalData.bloodGroup || undefined,
+      email: personalData.email.trim() || undefined,
+      emergencyContact: personalData.emergencyContact.trim() || undefined,
     });
 
     setIsLoading(false);
@@ -153,9 +272,9 @@ export default function Register() {
       setShowSuccess(true);
       setTimeout(() => {
         navigate('/');
-      }, 1200);
+      }, 1400);
     } else {
-      setApiError(res.error || 'Registration failed. Please check your details and OTP.');
+      setApiError(res.error || 'Registration failed. Please review your details and try again.');
     }
   };
 
@@ -170,6 +289,19 @@ export default function Register() {
     }
   };
 
+  const handlePersonalChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setPersonalData({ ...personalData, [name]: value });
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: '' });
+    }
+    if (apiError) {
+      setApiError('');
+    }
+  };
+
+  const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'Unknown'];
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-8 sm:px-6 lg:px-8 overflow-x-hidden">
       {/* Title Header with Official Brand Logo */}
@@ -178,16 +310,69 @@ export default function Register() {
           <img src="/logo.png" alt="MediQuee Healthcare" className="h-10 sm:h-12 w-auto mx-auto object-contain hover:opacity-95 transition-opacity" />
         </Link>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Create Your Account
+          {step === 1 ? 'Create Your Account' : 'Personal Information'}
         </h1>
         <p className="mt-1 text-sm text-slate-600 font-medium px-4">
-          Join MediQuee and manage your healthcare in one place.
+          {step === 1 
+            ? 'Join MediQuee and manage your healthcare in one place.' 
+            : 'Provide your personal details to personalize your healthcare & appointments.'}
         </p>
       </div>
 
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-xl px-4">
         <div className="bg-white py-6 px-4 shadow-sm sm:rounded-2xl sm:px-10 border border-slate-200/80">
           
+          {/* Progress Multi-Step Indicator */}
+          {!showSuccess && (
+            <div className="mb-6">
+              <div className="flex items-center justify-between relative">
+                {/* Connecting Line */}
+                <div className="absolute top-1/2 left-0 right-0 h-1 bg-slate-100 -translate-y-1/2 z-0" />
+                <div 
+                  className="absolute top-1/2 left-0 h-1 bg-blue-600 -translate-y-1/2 z-0 transition-all duration-300"
+                  style={{ width: step === 1 ? '30%' : '100%' }}
+                />
+
+                {/* Step 1 Pill */}
+                <div 
+                  onClick={() => { if (step === 2) setStep(1); }}
+                  className={`relative z-10 flex items-center gap-2 bg-white px-2 py-1 rounded-full cursor-pointer select-none transition-all ${
+                    step === 1 ? 'ring-2 ring-blue-500/20' : 'hover:opacity-80'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                    step > 1 
+                      ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20' 
+                      : 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                  }`}>
+                    {step > 1 ? <Check className="w-4 h-4" /> : '1'}
+                  </div>
+                  <div className="text-left hidden sm:block">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Step 1</p>
+                    <p className={`text-xs font-bold ${step === 1 ? 'text-blue-600' : 'text-slate-700'}`}>Account & OTP</p>
+                  </div>
+                </div>
+
+                {/* Step 2 Pill */}
+                <div className={`relative z-10 flex items-center gap-2 bg-white px-2 py-1 rounded-full select-none transition-all ${
+                  step === 2 ? 'ring-2 ring-blue-500/20' : ''
+                }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                    step === 2 
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
+                      : 'bg-slate-200 text-slate-500'
+                  }`}>
+                    2
+                  </div>
+                  <div className="text-left hidden sm:block">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Step 2</p>
+                    <p className={`text-xs font-bold ${step === 2 ? 'text-blue-600' : 'text-slate-400'}`}>Personal Details</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {apiError && (
             <div className="mb-4 p-3.5 bg-red-50 text-red-700 rounded-xl border border-red-100 font-medium text-xs sm:text-sm flex items-center gap-2.5 animate-in fade-in duration-200">
               <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />
@@ -201,13 +386,16 @@ export default function Register() {
                 <HeartPulse className="w-10 h-10 text-emerald-600" />
               </div>
               <h3 className="text-2xl font-bold text-slate-900 mb-2">Account Created Successfully</h3>
-              <p className="text-slate-600 mb-8 font-medium">Welcome to MediQuee! Redirecting you to your dashboard...</p>
+              <p className="text-slate-600 mb-8 font-medium">
+                Welcome to MediQuee, <span className="text-slate-900 font-bold">{formData.name}</span>! Redirecting you to your health dashboard...
+              </p>
               <div className="flex justify-center">
                 <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
               </div>
             </div>
-          ) : (
-            <form className="space-y-4" onSubmit={handleRegister}>
+          ) : step === 1 ? (
+            /* ================= STEP 1: ACCOUNT & OTP ================= */
+            <form className="space-y-4" onSubmit={handleVerifyOtpAndNext}>
               {/* Full Name */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700">Full Name</label>
@@ -398,7 +586,7 @@ export default function Register() {
                 </div>
               </div>
 
-              {/* Submit Button */}
+              {/* Submit / Continue Button */}
               <div>
                 {!isOtpSent ? (
                   <button
@@ -415,29 +603,230 @@ export default function Register() {
                     ) : (
                       <>
                         <WhatsAppIcon className="w-5 h-5" />
-                        <span>Send WhatsApp OTP to Register</span>
+                        <span>Send WhatsApp OTP</span>
                       </>
                     )}
                   </button>
                 ) : (
                   <button
                     type="submit"
-                    disabled={isLoading || showSuccess || !agreeTerms || !formData.otp}
+                    disabled={isVerifyingOtp || !agreeTerms || !formData.otp}
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-md shadow-blue-500/20 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
-                    {isLoading ? (
+                    {isVerifyingOtp ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>Verifying & Creating Account...</span>
+                        <span>Verifying OTP...</span>
                       </>
                     ) : (
                       <>
-                        <CheckCircle2 className="w-5 h-5" />
-                        <span>Verify & Create Account</span>
+                        <span>Verify OTP & Next</span>
+                        <ArrowRight className="w-5 h-5" />
                       </>
                     )}
                   </button>
                 )}
+              </div>
+            </form>
+          ) : (
+            /* ================= STEP 2: PERSONAL DETAILS (AGE, GENDER, PLACE, ETC.) ================= */
+            <form className="space-y-5 animate-in fade-in duration-300" onSubmit={handleCompleteRegistration}>
+              <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl flex items-center gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0" />
+                <p className="text-xs text-blue-900 font-medium leading-relaxed">
+                  Mobile number <strong className="font-mono text-blue-950">+91 {formData.phone}</strong> verified via WhatsApp. Please finish setting up your profile below.
+                </p>
+              </div>
+
+              {/* Age and Date of Birth */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Age */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Age (Years) <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      name="age"
+                      type="number"
+                      min={1}
+                      max={120}
+                      placeholder="e.g. 28"
+                      value={personalData.age}
+                      onChange={(e) => handleAgeChange(e.target.value)}
+                      className={`appearance-none block w-full px-3 py-2.5 border rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:text-sm font-medium transition-all ${
+                        errors.age ? 'border-red-300 focus:border-red-500 bg-red-50/50' : 'border-slate-300 focus:border-blue-500 bg-white'
+                      }`}
+                    />
+                  </div>
+                  {errors.age && <p className="mt-1 text-xs text-red-500 font-medium">{errors.age}</p>}
+                </div>
+
+                {/* Date of Birth (Optional / Auto-synced) */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Date of Birth (Optional)
+                  </label>
+                  <div className="relative">
+                    <input
+                      name="dob"
+                      type="date"
+                      value={personalData.dob}
+                      onChange={(e) => handleDobChange(e.target.value)}
+                      className="appearance-none block w-full px-3 py-2.5 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:text-sm font-medium bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Gender Selection */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Gender <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {[
+                    { label: 'Male', icon: '👨' },
+                    { label: 'Female', icon: '👩' },
+                    { label: 'Other', icon: '🧑' },
+                  ].map((item) => {
+                    const isSelected = personalData.gender === item.label;
+                    return (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onClick={() => {
+                          setPersonalData((prev) => ({ ...prev, gender: item.label }));
+                          if (errors.gender) setErrors((prev) => ({ ...prev, gender: '' }));
+                        }}
+                        className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1 text-sm font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm ring-2 ring-blue-500/20'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="text-xl">{item.icon}</span>
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {errors.gender && <p className="mt-1 text-xs text-red-500 font-medium">{errors.gender}</p>}
+              </div>
+
+              {/* Place / City / Location */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Place / City <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <MapPin className="h-4 w-4" />
+                  </div>
+                  <input
+                    name="place"
+                    type="text"
+                    placeholder="Enter city or town (e.g. Hyderabad, Bengaluru, Kurnool)"
+                    value={personalData.place}
+                    onChange={handlePersonalChange}
+                    className={`appearance-none block w-full pl-9 pr-3 py-2.5 border rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:text-sm font-medium transition-all ${
+                      errors.place ? 'border-red-300 focus:border-red-500 bg-red-50/50' : 'border-slate-300 focus:border-blue-500 bg-white'
+                    }`}
+                  />
+                </div>
+                {errors.place && <p className="mt-1 text-xs text-red-500 font-medium">{errors.place}</p>}
+              </div>
+
+              {/* Blood Group and Optional Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Blood Group */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Blood Group (Optional)
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-rose-500">
+                      <Droplet className="h-4 w-4" />
+                    </div>
+                    <select
+                      name="bloodGroup"
+                      value={personalData.bloodGroup}
+                      onChange={handlePersonalChange}
+                      className="appearance-none block w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:text-sm font-medium bg-white text-slate-700"
+                    >
+                      <option value="">Select Blood Group</option>
+                      {bloodGroups.map((bg) => (
+                        <option key={bg} value={bg}>{bg}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Email (Optional) */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Email Address (Optional)
+                  </label>
+                  <input
+                    name="email"
+                    type="email"
+                    placeholder="e.g. user@example.com"
+                    value={personalData.email}
+                    onChange={handlePersonalChange}
+                    className="appearance-none block w-full px-3 py-2.5 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:text-sm font-medium bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Emergency Contact (Optional) */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Emergency Contact Number (Optional)
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <PhoneCall className="h-4 w-4" />
+                  </div>
+                  <input
+                    name="emergencyContact"
+                    type="tel"
+                    maxLength={10}
+                    placeholder="10-digit emergency contact phone number"
+                    value={personalData.emergencyContact}
+                    onChange={handlePersonalChange}
+                    className="appearance-none block w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:text-sm font-medium bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Navigation Actions */}
+              <div className="pt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="py-3 px-4 border border-slate-300 rounded-xl shadow-sm text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Back</span>
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-md shadow-blue-500/20 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Creating Health Account...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5" />
+                      <span>Complete Registration</span>
+                    </>
+                  )}
+                </button>
               </div>
             </form>
           )}

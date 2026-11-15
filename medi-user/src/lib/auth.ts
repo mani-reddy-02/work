@@ -51,8 +51,9 @@ const verifySession = async () => {
           name: data.data.name,
           email: data.data.email,
           phone: data.data.phone || '',
-          dob: '1990-01-01',
-          gender: 'Not specified',
+          dob: data.data.dob || '1990-01-01',
+          gender: data.data.gender || 'Not specified',
+          address: data.data.address || '',
         });
       } else {
         throw new Error('Invalid user payload');
@@ -149,8 +150,9 @@ export const useAuth = () => {
             name: json.data.user.name,
             email: json.data.user.email,
             phone: json.data.user.phone || '',
-            dob: '1990-01-01',
-            gender: 'Not specified',
+            dob: json.data.user.dob || '1990-01-01',
+            gender: json.data.user.gender || 'Not specified',
+            address: json.data.user.address || '',
           });
         }
 
@@ -213,6 +215,13 @@ export const useAuth = () => {
     email?: string;
     otp?: string;
     whatsappConsent?: boolean;
+    age?: number | string;
+    gender?: string;
+    place?: string;
+    address?: string;
+    dob?: string;
+    bloodGroup?: string;
+    emergencyContact?: string;
   }) => {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/register`, {
@@ -243,8 +252,9 @@ export const useAuth = () => {
           name: json.data.user.name,
           email: json.data.user.email || '',
           phone: json.data.user.phone || '',
-          dob: '1990-01-01',
-          gender: 'Not specified',
+          dob: json.data.user.dob || '1990-01-01',
+          gender: json.data.user.gender || 'Not specified',
+          address: json.data.user.address || '',
         });
       }
 

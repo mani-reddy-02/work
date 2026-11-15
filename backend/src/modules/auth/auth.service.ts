@@ -121,6 +121,13 @@ export class AuthService {
     email?: string;
     whatsappConsent?: boolean;
     otp: string;
+    age?: number | string;
+    gender?: string;
+    place?: string;
+    address?: string;
+    dob?: string;
+    bloodGroup?: string;
+    emergencyContact?: string;
   }) {
     // Enforce mandatory WhatsApp OTP verification before patient registration
     if (!payload.otp || typeof payload.otp !== 'string' || payload.otp.trim().length < 4) {
@@ -128,14 +135,14 @@ export class AuthService {
     }
 
     const { WhatsAppOtpService } = await import('../whatsapp/whatsapp-otp.service');
-    const verifyResult = await WhatsAppOtpService.verifyOtp(payload.phone, payload.otp.trim());
+    const verifyResult = await WhatsAppOtpService.verifyOtp(payload.phone, payload.otp.trim(), { allowAlreadyVerified: true });
     if (!verifyResult.valid) {
       throw new Error(verifyResult.message || 'Invalid or expired WhatsApp OTP');
     }
 
     const searchConditions: any[] = [{ phone: payload.phone }];
-    if (payload.email) {
-      searchConditions.push({ email: payload.email });
+    if (payload.email && payload.email.trim()) {
+      searchConditions.push({ email: payload.email.trim() });
     }
 
     const existingUser = await prisma.user.findFirst({
@@ -153,16 +160,37 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(payload.password, 10);
 
+    let calculatedDob = payload.dob;
+    if (!calculatedDob && payload.age) {
+      const parsedAge = parseInt(String(payload.age), 10);
+      if (!isNaN(parsedAge) && parsedAge > 0 && parsedAge <= 125) {
+        const birthYear = new Date().getFullYear() - parsedAge;
+        calculatedDob = `${birthYear}-01-01`;
+      }
+    }
+
+    const bioParts: string[] = [];
+    if (payload.bloodGroup) bioParts.push(`Blood Group: ${payload.bloodGroup}`);
+    if (payload.emergencyContact) bioParts.push(`Emergency: ${payload.emergencyContact}`);
+    const bio = bioParts.length > 0 ? bioParts.join(' | ') : null;
+
     const user = await prisma.user.create({
       data: {
-        name: payload.name,
-        email: payload.email || null,
+        name: payload.name.trim(),
+        email: payload.email && payload.email.trim() ? payload.email.trim() : null,
         phone: payload.phone,
         passwordHash,
         role: Role.PATIENT,
         whatsappConsent: payload.whatsappConsent ?? true,
+        dob: calculatedDob || null,
+        gender: payload.gender || null,
+        address: payload.place?.trim() || payload.address?.trim() || null,
+        bio: bio || null,
       },
     });
+
+    // Invalidate/consume the used OTP code
+    await WhatsAppOtpService.consumeOtp(payload.phone);
 
     const token = jwt.sign({ userId: user.id }, env.JWT_SECRET as string, { expiresIn: env.JWT_EXPIRES_IN as any });
 
@@ -175,6 +203,10 @@ export class AuthService {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        dob: user.dob,
+        gender: user.gender,
+        address: user.address,
+        bio: user.bio,
       },
     };
   }
