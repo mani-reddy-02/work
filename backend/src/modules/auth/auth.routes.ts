@@ -8,10 +8,10 @@ import { getMe } from '../users/users.controller';
 
 const router = Router();
 
-// Strict rate limiter for authentication and OTP endpoints: max 10 requests per 15-minute window per IP
+// Rate limiter for authentication and OTP endpoints: max 60 requests per 15-minute window per IP
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10,
+  max: 60,
   standardHeaders: true,
   legacyHeaders: false,
   statusCode: 429,

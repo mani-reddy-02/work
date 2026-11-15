@@ -57,8 +57,133 @@ export function Register() {
     defaultValues: getInitialValues()
   });
 
-  const { watch, trigger, getValues } = methods;
+  const { watch, trigger, getValues, setValue } = methods;
   const businessType = watch("businessType.businessType");
+  const phoneValue = watch("account.phone");
+
+  // Step 1 WhatsApp OTP State
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpTimer, setOtpTimer] = useState(0);
+  const [otpError, setOtpError] = useState("");
+  const [otpNotice, setOtpNotice] = useState("");
+  const [verifiedPhone, setVerifiedPhone] = useState("");
+
+  // OTP Timer countdown
+  useEffect(() => {
+    let interval: any = null;
+    if (otpTimer > 0) {
+      interval = setInterval(() => {
+        setOtpTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [otpTimer]);
+
+  // If user modifies phone number after sending/verifying, reset verification state
+  useEffect(() => {
+    const cleanCurrent = (phoneValue || "").replace(/\D/g, "");
+    if (verifiedPhone && cleanCurrent !== verifiedPhone) {
+      setIsPhoneVerified(false);
+      setIsOtpSent(false);
+      setVerifiedPhone("");
+      setValue("account.otp", "");
+    }
+  }, [phoneValue, verifiedPhone, setValue]);
+
+  // Handle Send WhatsApp OTP
+  const handleSendOtp = async (): Promise<boolean> => {
+    setOtpError("");
+    setOtpNotice("");
+
+    // Validate account fields first
+    const isStep1Valid = await trigger([
+      "account.name",
+      "account.email",
+      "account.phone",
+      "account.password",
+      "account.confirmPassword"
+    ]);
+    if (!isStep1Valid) return false;
+
+    const currentPhone = getValues("account.phone");
+    const cleanPhone = (currentPhone || "").replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length < 10) {
+      toast("Please enter a valid 10-digit mobile number", "error");
+      return false;
+    }
+
+    setIsSendingOtp(true);
+    const res = await authApi.sendWhatsAppOtp(cleanPhone);
+    setIsSendingOtp(false);
+
+    if (res.success) {
+      setIsOtpSent(true);
+      setOtpTimer(60);
+      setOtpNotice(res.message || "OTP sent successfully to your WhatsApp number!");
+      toast("WhatsApp OTP sent successfully!", "success");
+      setTimeout(() => {
+        const el = document.getElementById("whatsapp-otp-input");
+        if (el) el.focus();
+      }, 100);
+      return true;
+    } else {
+      setOtpError(res.error || "Failed to send WhatsApp OTP. Please verify your phone number.");
+      toast(res.error || "Failed to send WhatsApp OTP", "error");
+      return false;
+    }
+  };
+
+  // Handle Verify WhatsApp OTP
+  const handleVerifyOtp = async (codeToVerify?: string): Promise<boolean> => {
+    const code = (codeToVerify !== undefined ? codeToVerify : otpCode).trim();
+    setOtpError("");
+    const currentPhone = getValues("account.phone");
+    const cleanPhone = (currentPhone || "").replace(/\D/g, "");
+
+    if (!code || code.length < 4) {
+      setOtpError("Please enter the 6-digit WhatsApp OTP");
+      return false;
+    }
+
+    setIsVerifyingOtp(true);
+    const res = await authApi.verifyWhatsAppOtp(cleanPhone, code);
+    setIsVerifyingOtp(false);
+
+    if (res.success) {
+      setIsPhoneVerified(true);
+      setVerifiedPhone(cleanPhone);
+      setValue("account.otp", code);
+      setOtpError("");
+      setOtpNotice("WhatsApp verified successfully!");
+      toast("Mobile number verified via WhatsApp!", "success");
+
+      // Auto-advance to Step 2
+      setCurrentStep(2);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return true;
+    } else {
+      setOtpError(res.error || "Invalid or expired OTP. Please verify and try again.");
+      toast(res.error || "Invalid or expired OTP", "error");
+      return false;
+    }
+  };
+
+  // Handle Changing Phone Number
+  const handleChangePhone = () => {
+    setIsOtpSent(false);
+    setIsPhoneVerified(false);
+    setOtpCode("");
+    setOtpError("");
+    setOtpNotice("");
+    setVerifiedPhone("");
+    setValue("account.otp", "");
+  };
 
   // Save draft on change (excluding files which can't be easily serialized)
   useEffect(() => {
@@ -84,11 +209,43 @@ export function Register() {
   const totalSteps = businessType ? (isHospital ? 6 : 10) : 2; 
 
   const handleNext = async () => {
+    // Step 1: Enforce WhatsApp OTP verification before advancing to Step 2
+    if (currentStep === 1) {
+      const isStep1Valid = await trigger([
+        "account.name",
+        "account.email",
+        "account.phone",
+        "account.password",
+        "account.confirmPassword",
+      ]);
+      if (!isStep1Valid) return;
+
+      // If already verified, advance to Step 2
+      if (isPhoneVerified) {
+        setCurrentStep(2);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      // If OTP has not been sent yet, trigger WhatsApp OTP dispatch
+      if (!isOtpSent) {
+        await handleSendOtp();
+        return;
+      }
+
+      // If OTP has been sent, verify OTP before advancing
+      const verified = await handleVerifyOtp();
+      if (verified) {
+        setCurrentStep(2);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return;
+    }
+
     let fieldsToValidate: string[] = [];
 
     // Map step to required validation fields
-    if (currentStep === 1) fieldsToValidate = ["account"];
-    else if (currentStep === 2) fieldsToValidate = ["businessType"];
+    if (currentStep === 2) fieldsToValidate = ["businessType"];
     else if (currentStep === 3) fieldsToValidate = [isHospital ? "hospitalInfo" : "labInfo"];
     else if (currentStep === 4) fieldsToValidate = [isHospital ? "hospitalLocation" : "labLocation"];
     else if (isHospital) {
@@ -158,7 +315,24 @@ export function Register() {
   // Render appropriate step
   const renderStep = () => {
     // Shared Steps
-    if (currentStep === 1) return <Step1Account />;
+    if (currentStep === 1) {
+      return (
+        <Step1Account 
+          isOtpSent={isOtpSent}
+          isPhoneVerified={isPhoneVerified}
+          isSendingOtp={isSendingOtp}
+          isVerifyingOtp={isVerifyingOtp}
+          otpCode={otpCode}
+          setOtpCode={setOtpCode}
+          otpTimer={otpTimer}
+          otpError={otpError}
+          otpNotice={otpNotice}
+          onSendOtp={handleSendOtp}
+          onVerifyOtp={handleVerifyOtp}
+          onChangePhone={handleChangePhone}
+        />
+      );
+    }
     if (currentStep === 2) return <Step2BusinessType />;
     
     if (isHospital) {
@@ -183,7 +357,19 @@ export function Register() {
   };
 
   const isFinalStep = currentStep === totalSteps;
-  const isNextDisabled = currentStep === 2 && !businessType;
+  const isNextDisabled = (currentStep === 2 && !businessType) || (currentStep === 1 && (isSendingOtp || isVerifyingOtp));
+
+  const getNextLabel = () => {
+    if (isFinalStep) return "Complete Registration";
+    if (currentStep === 1) {
+      if (isSendingOtp) return "Sending OTP...";
+      if (isVerifyingOtp) return "Verifying OTP...";
+      if (!isOtpSent && !isPhoneVerified) return "Send OTP & Continue";
+      if (isOtpSent && !isPhoneVerified) return "Verify OTP & Continue";
+      return "Continue";
+    }
+    return "Continue";
+  };
 
   return (
     <FormProvider {...methods}>
@@ -192,7 +378,7 @@ export function Register() {
         totalSteps={totalSteps}
         onBack={handleBack}
         onNext={handleNext}
-        nextLabel={isFinalStep ? "Complete Registration" : "Continue"}
+        nextLabel={getNextLabel()}
         isNextDisabled={isNextDisabled}
         showBack={currentStep > 1}
       >

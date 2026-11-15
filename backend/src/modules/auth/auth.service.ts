@@ -231,6 +231,15 @@ export class AuthService {
       throw new Error('User with this email or phone already exists');
     }
 
+    // Verify WhatsApp OTP if provided
+    if (payload.account?.otp) {
+      const { WhatsAppOtpService } = await import('../whatsapp/whatsapp-otp.service');
+      const verifyResult = await WhatsAppOtpService.verifyOtp(payload.account.phone, payload.account.otp.trim(), { allowAlreadyVerified: true });
+      if (!verifyResult.valid) {
+        throw new Error(verifyResult.message || 'Invalid or expired WhatsApp OTP');
+      }
+    }
+
     const passwordHash = await bcrypt.hash(payload.account.password, 10);
     
     const info = payload.hospitalInfo || payload.labInfo || {};
@@ -328,6 +337,16 @@ export class AuthService {
           hospitalId: hospital.id,
         },
       });
+
+      // Consume WhatsApp OTP if verified
+      if (payload.account?.otp) {
+        try {
+          const { WhatsAppOtpService } = await import('../whatsapp/whatsapp-otp.service');
+          await WhatsAppOtpService.consumeOtp(payload.account.phone);
+        } catch (otpErr) {
+          console.warn('[WhatsApp OTP Consumption Warning]:', otpErr);
+        }
+      }
 
       // 4. Process & Persist Verification Documents
       for (const [key, docValue] of Object.entries(verification)) {

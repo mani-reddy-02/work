@@ -6,7 +6,8 @@ export const accountSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
   phone: z.string().min(10, "Phone number must be at least 10 digits."),
   password: z.string().min(6, "Password must be at least 6 characters."),
-  confirmPassword: z.string()
+  confirmPassword: z.string(),
+  otp: z.string().optional()
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],

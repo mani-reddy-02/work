@@ -127,6 +127,69 @@ export const authApi = {
       role: normalizeRole(data.data.role)
     };
   },
+
+  /**
+   * POST /api/v1/auth/whatsapp/send-otp
+   * Requests a 6-digit WhatsApp OTP to the specified mobile number.
+   */
+  async sendWhatsAppOtp(phone: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const cleanPhone = phone.replace(/\D/g, '');
+      const response = await fetch(`${API_BASE_URL}/auth/whatsapp/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success) {
+        return {
+          success: false,
+          error: data?.error?.message || 'Failed to dispatch WhatsApp OTP. Please check your mobile number.',
+        };
+      }
+
+      return {
+        success: true,
+        message: data.data?.message || 'OTP sent successfully to your WhatsApp number',
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.message || 'Network error while requesting WhatsApp OTP',
+      };
+    }
+  },
+
+  /**
+   * POST /api/v1/auth/whatsapp/verify-otp
+   * Verifies the 6-digit WhatsApp OTP code for the mobile number.
+   */
+  async verifyWhatsAppOtp(phone: string, code: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const cleanPhone = phone.replace(/\D/g, '');
+      const response = await fetch(`${API_BASE_URL}/auth/whatsapp/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone, code: code.trim() }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success) {
+        return {
+          success: false,
+          error: data?.error?.message || 'Invalid or expired OTP code',
+        };
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.message || 'Network error while verifying OTP',
+      };
+    }
+  },
   
   /**
    * GET /api/v1/users/me

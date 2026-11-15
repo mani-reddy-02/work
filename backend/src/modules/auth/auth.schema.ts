@@ -49,6 +49,7 @@ export const hospitalRegisterSchema = z.object({
     email: z.string().email(),
     phone: z.string().min(10),
     password: z.string().min(6),
+    otp: z.string().optional(),
   }),
   businessType: z.object({
     businessType: z.enum(['hospital', 'laboratory']),
