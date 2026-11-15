@@ -54,27 +54,103 @@ export class WhatsAppNotificationService {
 
       // 1a. Send to Patient if phone present and consent given
       if (recipientPhone && patientConsent) {
-        await WhatsAppClient.sendTemplateMessage({
-          recipientPhone,
-          templateName: 'op_appointment_confirmed',
-          languageCode: 'en',
-          messageType: isVideo ? 'VIDEO_BOOKING_CONFIRMATION' : 'APPOINTMENT_CONFIRMATION',
-          appointmentId: booking.id,
-          components: [
-            {
-              type: 'body',
-              parameters: [
-                { type: 'text', text: patientName },
-                { type: 'text', text: appointmentRef },
-                { type: 'text', text: hospitalName },
-                { type: 'text', text: doctorOrDept },
-                { type: 'text', text: dateStr },
-                { type: 'text', text: timeStr },
-                { type: 'text', text: statusStr },
+        if (!isVideo) {
+          // In-person OP Appointment: Use dedicated mediquee_op_confirmed template
+          const opResult = await WhatsAppClient.sendTemplateMessage({
+            recipientPhone,
+            templateName: 'mediquee_op_confirmed',
+            languageCode: 'en',
+            messageType: 'APPOINTMENT_CONFIRMATION',
+            appointmentId: booking.id,
+            components: [
+              {
+                type: 'body',
+                parameters: [
+                  { type: 'text', text: patientName },
+                  { type: 'text', text: appointmentRef },
+                  { type: 'text', text: hospitalName },
+                  { type: 'text', text: doctorOrDept },
+                  { type: 'text', text: dateStr },
+                  { type: 'text', text: timeStr },
+                ],
+              },
+            ],
+          });
+
+          // Fallback to approved op_appointment_confirmed if template is pending review
+          if (!opResult.success) {
+            await WhatsAppClient.sendTemplateMessage({
+              recipientPhone,
+              templateName: 'op_appointment_confirmed',
+              languageCode: 'en',
+              messageType: 'APPOINTMENT_CONFIRMATION',
+              appointmentId: booking.id,
+              components: [
+                {
+                  type: 'body',
+                  parameters: [
+                    { type: 'text', text: patientName },
+                    { type: 'text', text: appointmentRef },
+                    { type: 'text', text: hospitalName },
+                    { type: 'text', text: doctorOrDept },
+                    { type: 'text', text: dateStr },
+                    { type: 'text', text: timeStr },
+                    { type: 'text', text: statusStr },
+                  ],
+                },
               ],
-            },
-          ],
-        });
+            });
+          }
+        } else {
+          // Online Video Consultation: Use universal mediquee_service_confirmed template
+          const vidResult = await WhatsAppClient.sendTemplateMessage({
+            recipientPhone,
+            templateName: 'mediquee_service_confirmed',
+            languageCode: 'en',
+            messageType: 'VIDEO_BOOKING_CONFIRMATION',
+            appointmentId: booking.id,
+            components: [
+              {
+                type: 'body',
+                parameters: [
+                  { type: 'text', text: patientName },
+                  { type: 'text', text: 'online video consultation' },
+                  { type: 'text', text: appointmentRef },
+                  { type: 'text', text: hospitalName },
+                  { type: 'text', text: doctorOrDept },
+                  { type: 'text', text: dateStr },
+                  { type: 'text', text: timeStr },
+                  { type: 'text', text: 'Please join 5 minutes before your scheduled appointment from your MediQuee app.' },
+                ],
+              },
+            ],
+          });
+
+          // Fallback if pending review
+          if (!vidResult.success) {
+            await WhatsAppClient.sendTemplateMessage({
+              recipientPhone,
+              templateName: 'op_appointment_confirmed',
+              languageCode: 'en',
+              messageType: 'VIDEO_BOOKING_CONFIRMATION',
+              appointmentId: booking.id,
+              components: [
+                {
+                  type: 'body',
+                  parameters: [
+                    { type: 'text', text: patientName },
+                    { type: 'text', text: appointmentRef },
+                    { type: 'text', text: hospitalName },
+                    { type: 'text', text: doctorOrDept },
+                    { type: 'text', text: dateStr },
+                    { type: 'text', text: timeStr },
+                    { type: 'text', text: statusStr },
+                  ],
+                },
+              ],
+            });
+          }
+        }
       }
 
       // 1b. Send alert to Doctor / Staff
@@ -139,15 +215,19 @@ export class WhatsAppNotificationService {
         .slice(0, 2)
         .join(', ');
       const isHome = booking.bookingType === 'HOME_COLLECTION';
-      const serviceDesc = `${testNames || 'Lab Tests'} (${isHome ? 'Home Sample Collection' : 'Lab Visit'})`;
+      const serviceType = isHome ? 'Home Sample Collection' : 'diagnostic lab test booking';
+      const serviceDesc = testNames || 'Lab Diagnostic Tests';
+      const instruction = isHome 
+        ? 'Our certified phlebotomist will arrive for sample collection at your address.' 
+        : 'Please arrive at the diagnostic center 10 minutes prior to your time slot.';
       
       const dateStr = booking.collectionDate ? this.formatDate(booking.collectionDate) : 'As Scheduled';
       const timeStr = booking.collectionTimeSlot || 'Scheduled Slot';
-      const statusStr = 'Confirmed (Lab Order)';
 
-      await WhatsAppClient.sendTemplateMessage({
+      // 1. Try universal service confirmation template
+      const labResult = await WhatsAppClient.sendTemplateMessage({
         recipientPhone,
-        templateName: 'op_appointment_confirmed',
+        templateName: 'mediquee_service_confirmed',
         languageCode: 'en',
         messageType: 'LAB_BOOKING_CONFIRMATION',
         appointmentId: booking.id,
@@ -156,16 +236,42 @@ export class WhatsAppNotificationService {
             type: 'body',
             parameters: [
               { type: 'text', text: patientName },
+              { type: 'text', text: serviceType },
               { type: 'text', text: refCode },
               { type: 'text', text: providerName },
               { type: 'text', text: serviceDesc },
               { type: 'text', text: dateStr },
               { type: 'text', text: timeStr },
-              { type: 'text', text: statusStr },
+              { type: 'text', text: instruction },
             ],
           },
         ],
       });
+
+      // 2. Fallback to op_appointment_confirmed if pending review
+      if (!labResult.success) {
+        await WhatsAppClient.sendTemplateMessage({
+          recipientPhone,
+          templateName: 'op_appointment_confirmed',
+          languageCode: 'en',
+          messageType: 'LAB_BOOKING_CONFIRMATION',
+          appointmentId: booking.id,
+          components: [
+            {
+              type: 'body',
+              parameters: [
+                { type: 'text', text: patientName },
+                { type: 'text', text: refCode },
+                { type: 'text', text: providerName },
+                { type: 'text', text: `${serviceDesc} (${isHome ? 'Home Sample Collection' : 'Lab Visit'})` },
+                { type: 'text', text: dateStr },
+                { type: 'text', text: timeStr },
+                { type: 'text', text: 'Confirmed (Lab Order)' },
+              ],
+            },
+          ],
+        });
+      }
     } catch (err: any) {
       console.error('[WhatsAppNotificationService] Error in sendLabBookingConfirmation:', err.message);
     }
@@ -193,14 +299,15 @@ export class WhatsAppNotificationService {
       const patientName = booking.patientName || booking.user?.name || 'Valued Patient';
       const refCode = this.formatRef(booking.bookingNumber || booking.id, 'HN');
       const providerName = booking.hospital?.name || 'MediQuee Home Care';
-      const serviceDesc = `${booking.service?.name || 'Home Nursing'} (Home Visit)`;
+      const serviceDesc = booking.service?.name || 'Home Nursing Care';
       const dateStr = this.formatDate(booking.serviceDate);
       const timeStr = booking.timeSlot || 'Scheduled Slot';
-      const statusStr = 'Confirmed (Home Visit)';
+      const instruction = 'Our certified nursing staff will arrive at your address as scheduled.';
 
-      await WhatsAppClient.sendTemplateMessage({
+      // 1. Try universal service confirmation template
+      const nursingResult = await WhatsAppClient.sendTemplateMessage({
         recipientPhone,
-        templateName: 'op_appointment_confirmed',
+        templateName: 'mediquee_service_confirmed',
         languageCode: 'en',
         messageType: 'NURSING_BOOKING_CONFIRMATION',
         appointmentId: booking.id,
@@ -209,16 +316,42 @@ export class WhatsAppNotificationService {
             type: 'body',
             parameters: [
               { type: 'text', text: patientName },
+              { type: 'text', text: 'home nursing service' },
               { type: 'text', text: refCode },
               { type: 'text', text: providerName },
               { type: 'text', text: serviceDesc },
               { type: 'text', text: dateStr },
               { type: 'text', text: timeStr },
-              { type: 'text', text: statusStr },
+              { type: 'text', text: instruction },
             ],
           },
         ],
       });
+
+      // 2. Fallback to op_appointment_confirmed if pending review
+      if (!nursingResult.success) {
+        await WhatsAppClient.sendTemplateMessage({
+          recipientPhone,
+          templateName: 'op_appointment_confirmed',
+          languageCode: 'en',
+          messageType: 'NURSING_BOOKING_CONFIRMATION',
+          appointmentId: booking.id,
+          components: [
+            {
+              type: 'body',
+              parameters: [
+                { type: 'text', text: patientName },
+                { type: 'text', text: refCode },
+                { type: 'text', text: providerName },
+                { type: 'text', text: `${serviceDesc} (Home Visit)` },
+                { type: 'text', text: dateStr },
+                { type: 'text', text: timeStr },
+                { type: 'text', text: 'Confirmed (Home Visit)' },
+              ],
+            },
+          ],
+        });
+      }
     } catch (err: any) {
       console.error('[WhatsAppNotificationService] Error in sendHomeNursingConfirmation:', err.message);
     }
@@ -467,7 +600,6 @@ export class WhatsAppNotificationService {
       const doctorName = booking.doctor?.name ? `Dr. ${booking.doctor.name}` : 'Your Doctor';
       const appointmentRef = this.formatRef(booking.id, 'VID');
 
-      // Uses approved test_utility_template_check to notify patient with direct action instruction
       const readyMsg = `${patientName}! Dr. ${doctorName} is ready for your video consultation (Ref: ${appointmentRef}). Please open MediQuee and select Join Video Consultation now.`;
       await WhatsAppClient.sendTemplateMessage({
         recipientPhone,
