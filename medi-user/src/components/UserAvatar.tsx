@@ -60,8 +60,8 @@ export function UserAvatar({
   const [imgError, setImgError] = useState(false);
 
   // Ensure any out-of-bounds legacy avatar paths are cleanly ignored
-  const isLegacyInvalid = 
-    typeof avatar === 'string' && 
+  const isLegacyInvalid =
+    typeof avatar === 'string' &&
     (avatar.startsWith('/avatars/') || avatar.startsWith('avatars/')) &&
     !MALE_AVATARS.includes(avatar) &&
     !FEMALE_AVATARS.includes(avatar);
@@ -179,22 +179,20 @@ export function AvatarPickerModal({
             <button
               type="button"
               onClick={() => setActiveTab('male')}
-              className={`py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'male' 
-                  ? 'bg-white text-blue-600 shadow-sm' 
+              className={`py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${activeTab === 'male'
+                  ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               Male Avatars ({MALE_AVATARS.length})
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('female')}
-              className={`py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'female' 
-                  ? 'bg-white text-blue-600 shadow-sm' 
+              className={`py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${activeTab === 'female'
+                  ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               Female Avatars ({FEMALE_AVATARS.length})
             </button>
@@ -212,11 +210,10 @@ export function AvatarPickerModal({
                   type="button"
                   disabled={isSaving}
                   onClick={() => handleChoose(url)}
-                  className={`relative aspect-square rounded-2xl p-1 transition-all group hover:scale-105 active:scale-95 cursor-pointer ${
-                    isSelected
+                  className={`relative aspect-square rounded-2xl p-1 transition-all group hover:scale-105 active:scale-95 cursor-pointer ${isSelected
                       ? 'ring-3 ring-blue-600 bg-blue-50/50 shadow-md'
                       : 'hover:bg-slate-50 border border-slate-100 hover:border-slate-200'
-                  }`}
+                    }`}
                 >
                   <img
                     src={url}
