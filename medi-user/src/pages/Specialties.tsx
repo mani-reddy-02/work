@@ -200,32 +200,6 @@ const FALLBACK_CATEGORICAL_SPECIALTIES = [
 
 
 
-const FALLBACK_DOCTORS: DoctorRecord[] = [
-  {
-    id: 'doc-1',
-    name: 'Dr. Sarah Jenkins',
-    specialization: 'General Physician & Internal Medicine',
-    qualification: 'MBBS, MD (General Medicine)',
-    experience: '12+ Years Exp',
-    designation: 'Senior Consultant Physician',
-    hospitalId: 'hosp-1',
-    hospitalName: 'Apollo Hospitals',
-    hospitalAddress: 'Road No. 72, Jubilee Hills, Hyderabad',
-    hospitalPhone: '+91 40 2360 7777',
-    departmentId: 'dept-gen',
-    department: 'General Medicine',
-    consultInfo: 'Expert in infectious diseases, chronic illness management, and adult primary care.',
-    bio: 'Dr. Sarah Jenkins has over 12 years of clinical experience in internal medicine and comprehensive outpatient diagnostic care.',
-    fees: '₹ 500',
-    consultationFee: 500,
-    rating: 4.8
-  }
-];
-
-const FALLBACK_SLOTS = [
-  '09:00 AM', '10:00 AM', '11:00 AM', '02:00 PM', '03:00 PM', '04:00 PM'
-];
-
 const Specialties = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -249,9 +223,9 @@ const Specialties = () => {
     categorical: FALLBACK_CATEGORICAL_SPECIALTIES as any[],
     raw: [] as any[]
   });
-  const [doctorsList, setDoctorsList] = useState<DoctorRecord[]>(FALLBACK_DOCTORS);
-  const [availableSlots, setAvailableSlots] = useState<string[]>(FALLBACK_SLOTS);
-  const [allSlots, setAllSlots] = useState<string[]>(FALLBACK_SLOTS);
+  const [doctorsList, setDoctorsList] = useState<DoctorRecord[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [allSlots, setAllSlots] = useState<string[]>([]);
   const [isDoctorsLoading, setIsDoctorsLoading] = useState(false);
   const [isSlotsLoading, setIsSlotsLoading] = useState(false);
   const [isDiseasesLoading, setIsDiseasesLoading] = useState(false);
@@ -489,17 +463,17 @@ const Specialties = () => {
             setAllSlots(res.data.allSlots || []);
             setAvailableSlots(res.data.availableSlots || []);
           } else {
-            setIsDoctorAvailable(true);
-            setAllSlots(FALLBACK_SLOTS);
-            setAvailableSlots(FALLBACK_SLOTS);
+            setIsDoctorAvailable(false);
+            setAllSlots([]);
+            setAvailableSlots([]);
           }
         }
       }).catch(() => {
         if (active) {
           setIsSlotsLoading(false);
-          setIsDoctorAvailable(true);
-          setAllSlots(FALLBACK_SLOTS);
-          setAvailableSlots(FALLBACK_SLOTS);
+          setIsDoctorAvailable(false);
+          setAllSlots([]);
+          setAvailableSlots([]);
         }
       });
       return () => { active = false; };
