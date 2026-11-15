@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { prisma } from '../../config/prisma';
-import { WhatsAppClient } from './whatsapp.client';
+import { WhatsAppClient, WhatsAppTemplateComponent } from './whatsapp.client';
 import { env } from '../../config/env';
 
 export class WhatsAppOtpService {
@@ -77,11 +77,27 @@ export class WhatsAppOtpService {
     });
 
     // Template name for Meta authentication
-    // Uses approved UTILITY template by default while Authentication template access is restricted by Meta
-    const templateName = env.META_WA_TEMPLATE_NAME || 'op_appointment_confirmed';
+    // Uses approved clean service update template 'test_utility_template_check' by default
+    const templateName = env.META_WA_TEMPLATE_NAME || 'test_utility_template_check';
 
-    let components: any[] = [];
-    if (templateName === 'op_appointment_confirmed') {
+    let components: WhatsAppTemplateComponent[] = [];
+    let languageCode = 'en_US';
+
+    if (templateName === 'test_utility_template_check') {
+      languageCode = 'en_US';
+      components = [
+        {
+          type: 'body',
+          parameters: [
+            {
+              type: 'text',
+              text: `! Your MediQuee login OTP is ${otpCode}`,
+            },
+          ],
+        },
+      ];
+    } else if (templateName === 'op_appointment_confirmed') {
+      languageCode = 'en';
       components = [
         {
           type: 'body',
@@ -97,6 +113,7 @@ export class WhatsAppOtpService {
         },
       ];
     } else {
+      languageCode = 'en';
       components = [
         {
           type: 'body',
@@ -125,7 +142,7 @@ export class WhatsAppOtpService {
     const sendResult = await WhatsAppClient.sendTemplateMessage({
       recipientPhone: cleanPhone,
       templateName,
-      languageCode: 'en',
+      languageCode,
       messageType: 'OTP',
       components,
     });
