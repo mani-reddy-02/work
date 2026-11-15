@@ -1,18 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Eye, 
-  EyeOff, 
-  Loader2, 
-  AlertCircle, 
-  CheckCircle2, 
-  Lock, 
-  Phone, 
-  RefreshCw, 
-  ShieldCheck, 
-  KeyRound, 
-  ArrowRight 
+import {
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Lock,
+  Phone,
+  RefreshCw,
+  ShieldCheck,
+  KeyRound,
+  ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 
@@ -236,10 +236,10 @@ export default function ForgotPassword() {
       {/* Official Header */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md px-4 text-center">
         <Link to="/" className="inline-block mb-3 focus:outline-none">
-          <img 
-            src="/logo.png" 
-            alt="MediQuee Healthcare" 
-            className="h-10 sm:h-12 w-auto mx-auto object-contain hover:opacity-95 transition-opacity" 
+          <img
+            src="/logo.png"
+            alt="MediQuee Healthcare"
+            className="h-10 sm:h-12 w-auto mx-auto object-contain hover:opacity-95 transition-opacity"
           />
         </Link>
         <p className="text-center text-xs sm:text-sm text-slate-500 font-medium">
@@ -249,7 +249,7 @@ export default function ForgotPassword() {
 
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md px-4">
         <div className="bg-white py-8 px-5 sm:px-10 shadow-lg shadow-slate-200/50 rounded-2xl border border-slate-100 relative">
-          
+
           {/* Back Navigation */}
           {step < 4 && (
             <div className="mb-5 flex items-center justify-between">
@@ -324,7 +324,7 @@ export default function ForgotPassword() {
                     <input
                       id="identifier"
                       type="text"
-                      placeholder="e.g. 9573800494 or user@example.com"
+                      placeholder="e.g. 9876543210 or user@example.com"
                       value={identifier}
                       onChange={(e) => {
                         setIdentifier(e.target.value);
@@ -380,7 +380,7 @@ export default function ForgotPassword() {
               <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-xs mx-auto">
                 Enter the 6-digit verification code sent to
               </p>
-              
+
               <div className="inline-flex items-center gap-2 my-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full">
                 <span className="font-mono text-xs sm:text-sm font-bold text-slate-900">
                   {maskedPhone || targetPhone}
@@ -411,13 +411,12 @@ export default function ForgotPassword() {
                       onChange={(e) => handleOtpBoxChange(idx, e)}
                       onKeyDown={(e) => handleOtpKeyDown(idx, e)}
                       onPaste={handleOtpPaste}
-                      className={`w-10 h-13 sm:w-11 sm:h-14 text-center text-xl sm:text-2xl font-black rounded-xl border-2 font-mono outline-none transition-all ${
-                        apiError
+                      className={`w-10 h-13 sm:w-11 sm:h-14 text-center text-xl sm:text-2xl font-black rounded-xl border-2 font-mono outline-none transition-all ${apiError
                           ? 'border-red-400 bg-red-50/30 text-red-700'
                           : isFilled
-                          ? 'border-emerald-500 bg-emerald-50/20 text-slate-900 shadow-sm'
-                          : 'border-slate-200 bg-slate-50 text-slate-900 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-500/10'
-                      }`}
+                            ? 'border-emerald-500 bg-emerald-50/20 text-slate-900 shadow-sm'
+                            : 'border-slate-200 bg-slate-50 text-slate-900 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-500/10'
+                        }`}
                     />
                   );
                 })}
@@ -511,9 +510,9 @@ export default function ForgotPassword() {
                   {newPassword && (
                     <div className="mt-2 flex items-center gap-2">
                       <div className="h-1 flex-1 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full ${strength.color} transition-all duration-300`} 
-                          style={{ width: strength.width }} 
+                        <div
+                          className={`h-full ${strength.color} transition-all duration-300`}
+                          style={{ width: strength.width }}
                         />
                       </div>
                       <span className="text-[10px] font-bold text-slate-500 uppercase w-12 text-right">

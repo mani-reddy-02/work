@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useFamilyMembers, type FamilyMember } from '../lib/familyMembers';
+import { UserAvatar } from '../components/UserAvatar';
 
 const RELATIONSHIP_OPTIONS = [
   'Father',
@@ -267,9 +268,12 @@ export default function FamilyMembers() {
                   <div>
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 flex items-center justify-center shrink-0 text-blue-600 font-bold text-lg">
-                          {member.name.charAt(0).toUpperCase()}
-                        </div>
+                        <UserAvatar
+                          name={member.name}
+                          gender={member.gender}
+                          size="lg"
+                          className="w-12 h-12 rounded-2xl shadow-xs"
+                        />
                         <div className="min-w-0">
                           <h3 className="font-bold text-slate-900 text-base sm:text-lg truncate">
                             {member.name}

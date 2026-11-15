@@ -5,8 +5,10 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { useProfile } from '../lib/profile';
+import { useProfile, updateGlobalProfile } from '../lib/profile';
 import { useAuth } from '../lib/auth';
+import { profileApi } from '../lib/profileApi';
+import { UserAvatar, AvatarPickerModal } from '../components/UserAvatar';
 
 const menuItems = [
   {
@@ -66,6 +68,7 @@ const Profile = () => {
   const { profile, isLoading } = useProfile();
   const { logout } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -106,14 +109,21 @@ const Profile = () => {
 
           <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:gap-6">
             <div className="relative shrink-0">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white/80 overflow-hidden bg-white/20 shadow-lg">
-                <img
-                  src={profile.avatar || ""}
-                  alt="Profile"
-                  className="w-full h-full object-cover"
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white/90 overflow-hidden shadow-xl bg-white/20">
+                <UserAvatar
+                  name={profile.name}
+                  gender={profile.gender}
+                  avatar={profile.avatar}
+                  size="xl"
+                  className="w-full h-full"
                 />
               </div>
-              <button className="absolute bottom-1 right-1 p-1.5 bg-white rounded-full text-blue-600 shadow-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <button 
+                type="button"
+                onClick={() => setShowAvatarPicker(true)}
+                className="absolute bottom-1 right-1 p-2 bg-white rounded-full text-blue-600 shadow-md hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                title="Change Avatar"
+              >
                 <Camera className="w-4 h-4" />
               </button>
             </div>
@@ -202,6 +212,14 @@ const Profile = () => {
           </div>
         </div>
       )}
+      {/* Avatar Picker Modal */}
+      <AvatarPickerModal
+        isOpen={showAvatarPicker}
+        onClose={() => setShowAvatarPicker(false)}
+        currentAvatar={profile.avatar}
+        userName={profile.name}
+        userGender={profile.gender}
+      />
     </div>
   );
 };

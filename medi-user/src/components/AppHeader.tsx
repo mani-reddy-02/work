@@ -7,6 +7,7 @@ import { useProfile } from '../lib/profile';
 import { useState } from 'react';
 import { usePreferences } from '../lib/PreferencesContext';
 import { searchLocalities, KNOWN_LOCALITIES, type LocalityItem } from '../lib/locationService';
+import { UserAvatar } from './UserAvatar';
 
 const RADIUS_OPTIONS = [
   { value: 25, label: '25 km (Default)' },
@@ -134,7 +135,13 @@ const AppHeader = ({ className }: { className?: string }) => {
           </Link>
           
           <Link to="/profile" className="hidden md:flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 border border-slate-200 overflow-hidden hover:ring-2 hover:ring-primary/20 transition-all">
-             <img src={profile?.avatar || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80"} alt="Profile" className="w-full h-full object-cover" />
+            <UserAvatar 
+              name={profile?.name} 
+              gender={profile?.gender} 
+              avatar={profile?.avatar} 
+              size="sm" 
+              className="w-full h-full" 
+            />
           </Link>
         </div>
       </div>

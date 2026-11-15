@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Camera, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useProfile } from '../lib/profile';
+import { UserAvatar, AvatarPickerModal } from '../components/UserAvatar';
 
 export default function ProfilePersonal() {
   const navigate = useNavigate();
   const { profile, updateProfile, isLoading: isProfileLoading } = useProfile();
   
   const [isEditing, setIsEditing] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [formData, setFormData] = useState(profile);
   const [isSaving, setIsSaving] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -91,17 +93,22 @@ export default function ProfilePersonal() {
         <div className="bg-white rounded-2xl border border-slate-100 p-6 sm:p-8 shadow-sm mb-6 flex flex-col items-center">
           <div className="relative mb-4">
             <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-slate-50 overflow-hidden shadow-sm">
-              <img 
-                src={profile.avatar || "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80"} 
-                alt="Profile" 
-                className="w-full h-full object-cover" 
+              <UserAvatar
+                name={profile.name}
+                gender={profile.gender}
+                avatar={profile.avatar}
+                size="xl"
+                className="w-full h-full"
               />
             </div>
-            {isEditing && (
-              <button className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full shadow-md hover:bg-blue-700 transition-colors cursor-pointer">
-                <Camera className="w-4 h-4" />
-              </button>
-            )}
+            <button 
+              type="button"
+              onClick={() => setShowAvatarPicker(true)}
+              className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full shadow-md hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              title="Change Avatar"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">{profile.name || 'Patient'}</h2>
           <p className="text-slate-500 text-sm sm:text-base break-all">{profile.email}</p>
@@ -202,6 +209,18 @@ export default function ProfilePersonal() {
           </div>
         )}
       </div>
+
+      {/* Avatar Picker Modal */}
+      <AvatarPickerModal
+        isOpen={showAvatarPicker}
+        onClose={() => setShowAvatarPicker(false)}
+        currentAvatar={profile.avatar}
+        userName={formData.name || profile.name}
+        userGender={formData.gender || profile.gender}
+        onSelectAvatar={(url) => {
+          setFormData((prev) => ({ ...prev, avatar: url }));
+        }}
+      />
     </div>
   );
 }
