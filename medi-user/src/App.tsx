@@ -105,6 +105,9 @@ function App() {
               <Route path="ai" element={<MediQueeAI />} />
               <Route path="services" element={<Services />} />
               <Route path="specialties" element={<Specialties />} />
+              <Route path="specialities" element={<Navigate to="/specialties" replace />} />
+              <Route path="Specialties" element={<Navigate to="/specialties" replace />} />
+              <Route path="Specialities" element={<Navigate to="/specialties" replace />} />
               <Route path="departments" element={<DepartmentBooking />} />
               <Route path="services/insurance" element={<InsuranceList />} />
               <Route path="services/home-nursing" element={<HomeNursingList />} />
