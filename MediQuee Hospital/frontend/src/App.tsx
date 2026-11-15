@@ -16,7 +16,6 @@ import { NurseVisits } from "./pages/nurse/NurseVisits"
 import { NurseCalendar } from "./pages/nurse/NurseCalendar"
 import { ReceptionistDashboard } from "./pages/receptionist/ReceptionistDashboard"
 import { CheckIn } from "./pages/receptionist/CheckIn"
-import { BookAppointment } from "./pages/receptionist/BookAppointment"
 import { QueueScreen } from "./pages/receptionist/QueueScreen"
 import { ReceptionistAppointments } from "./pages/receptionist/ReceptionistAppointments"
 import { ReceptionistHomeNursing } from "./pages/receptionist/ReceptionistHomeNursing"
@@ -208,7 +207,7 @@ function AnimatedRoutes() {
             <Route path="/receptionist/profile" element={<Navigate to="/profile/personal" replace />} />
             <Route path="/receptionist/queue" element={<QueueScreen />} />
             <Route path="/receptionist/check-in" element={<CheckIn />} />
-            <Route path="/receptionist/book-appointment" element={<BookAppointment />} />
+            <Route path="/receptionist/book-appointment" element={<Navigate to="/receptionist/check-in" replace />} />
             <Route path="/receptionist/appointments" element={<ReceptionistAppointments />} />
             <Route path="/receptionist/home-nursing" element={<ReceptionistHomeNursing />} />
           </Route>

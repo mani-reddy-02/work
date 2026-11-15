@@ -85,18 +85,11 @@ export function QuickAddMenu({ isOpen, onClose }: QuickAddMenuProps) {
   } else if (role === 'receptionist') {
     options = [
       {
-        title: "Register Patient",
-        description: "Register a new patient",
+        title: "Check-In Patient",
+        description: "Register and check-in walk-in patient",
         icon: UserPlus,
         path: "/receptionist/check-in", 
         color: "text-blue-600 bg-blue-50/50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/30"
-      },
-      {
-        title: "Book Appointment",
-        description: "Schedule a new appointment",
-        icon: Calendar,
-        path: "/receptionist/book-appointment", 
-        color: "text-emerald-600 bg-emerald-50/50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/30"
       }
     ];
   }

@@ -52,7 +52,6 @@ export function SideNav({
           { to: '/receptionist/queue', icon: Users, label: 'Queue Management' },
           { to: '/receptionist/home-nursing', icon: HeartHandshake, label: 'Home Nursing' },
           { to: '/receptionist/check-in', icon: UserPlus, label: 'Check-In Patient' },
-          { to: '/receptionist/book-appointment', icon: CalendarClock, label: 'Book Appointment' },
           { to: '/profile', icon: User, label: t('profile') },
         ];
       case 'lab':
