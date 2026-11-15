@@ -3,9 +3,9 @@ import { X, Check, Camera, Sparkles, Upload } from 'lucide-react';
 import { profileApi } from '../lib/profileApi';
 import { updateGlobalProfile } from '../lib/profile';
 
-// 16 Male and 14 Female avatars extracted directly from the user's avatar sheet
-export const MALE_AVATARS = Array.from({ length: 16 }, (_, i) => `/avatars/male_${i + 1}.png`);
-export const FEMALE_AVATARS = Array.from({ length: 14 }, (_, i) => `/avatars/female_${i + 1}.png`);
+// 5 Male and 5 Female high-resolution (512x512) modern 3D healthcare avatars
+export const MALE_AVATARS = Array.from({ length: 5 }, (_, i) => `/avatars/male_${i + 1}.png`);
+export const FEMALE_AVATARS = Array.from({ length: 5 }, (_, i) => `/avatars/female_${i + 1}.png`);
 
 /**
  * Returns a stable, deterministic avatar path based on gender and name
@@ -23,21 +23,21 @@ export function getGenderAvatar(name?: string, gender?: string): string {
   const positiveHash = Math.abs(hash);
 
   if (isFemale) {
-    const idx = (positiveHash % 14) + 1;
+    const idx = (positiveHash % 5) + 1;
     return `/avatars/female_${idx}.png`;
   }
 
   if (isMale) {
-    const idx = (positiveHash % 16) + 1;
+    const idx = (positiveHash % 5) + 1;
     return `/avatars/male_${idx}.png`;
   }
 
   // Fallback if gender is unspecified: deterministically pick male or female
   if (positiveHash % 2 === 0) {
-    const idx = (positiveHash % 16) + 1;
+    const idx = (positiveHash % 5) + 1;
     return `/avatars/male_${idx}.png`;
   } else {
-    const idx = (positiveHash % 14) + 1;
+    const idx = (positiveHash % 5) + 1;
     return `/avatars/female_${idx}.png`;
   }
 }
@@ -59,12 +59,20 @@ export function UserAvatar({
 }: UserAvatarProps) {
   const [imgError, setImgError] = useState(false);
 
-  // Filter out empty strings, null, or placeholder Unsplash stock images
+  // Ensure any out-of-bounds legacy avatar paths are cleanly ignored
+  const isLegacyInvalid = 
+    typeof avatar === 'string' && 
+    (avatar.startsWith('/avatars/') || avatar.startsWith('avatars/')) &&
+    !MALE_AVATARS.includes(avatar) &&
+    !FEMALE_AVATARS.includes(avatar);
+
+  // Filter out empty strings, null, legacy invalid paths, or placeholder Unsplash stock images
   const isCustomValid = 
     !imgError &&
     !!avatar && 
     typeof avatar === 'string' && 
     avatar.trim() !== '' && 
+    !isLegacyInvalid &&
     !avatar.includes('images.unsplash.com/photo-1599566150163-29194dcaad36');
 
   // Resolve final avatar: either user's uploaded avatar or deterministic gender avatar
@@ -195,7 +203,7 @@ export function AvatarPickerModal({
 
         {/* Avatars Grid */}
         <div className="p-5 overflow-y-auto flex-1">
-          <div className="grid grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3.5">
             {avatars.map((url, idx) => {
               const isSelected = currentEffective === url;
               return (
