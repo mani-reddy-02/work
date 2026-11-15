@@ -272,6 +272,15 @@ export function Register() {
   };
 
   const handleBack = () => {
+    // If in OTP verification view on Step 1, go back to editing account fields
+    if (currentStep === 1 && isOtpSent && !isPhoneVerified) {
+      setIsOtpSent(false);
+      setOtpCode("");
+      setOtpError("");
+      setOtpNotice("");
+      return;
+    }
+
     if (currentStep > 1) {
       setCurrentStep(prev => prev - 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -362,10 +371,9 @@ export function Register() {
   const getNextLabel = () => {
     if (isFinalStep) return "Complete Registration";
     if (currentStep === 1) {
-      if (isSendingOtp) return "Sending OTP...";
+      if (isSendingOtp) return "Sending WhatsApp OTP...";
       if (isVerifyingOtp) return "Verifying OTP...";
-      if (!isOtpSent && !isPhoneVerified) return "Send OTP & Continue";
-      if (isOtpSent && !isPhoneVerified) return "Verify OTP & Continue";
+      if (isOtpSent && !isPhoneVerified) return "Verify & Continue";
       return "Continue";
     }
     return "Continue";
@@ -380,7 +388,7 @@ export function Register() {
         onNext={handleNext}
         nextLabel={getNextLabel()}
         isNextDisabled={isNextDisabled}
-        showBack={currentStep > 1}
+        showBack={currentStep > 1 || (currentStep === 1 && isOtpSent && !isPhoneVerified)}
       >
         {renderStep()}
       </OnboardingLayout>
