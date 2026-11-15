@@ -243,6 +243,11 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
       targetRoles: ['PATIENT']
     });
 
+    // Trigger Meta WhatsApp Lab booking confirmation
+    import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
+      WhatsAppNotificationService.sendLabBookingConfirmation(booking.id).catch(console.error);
+    }).catch(console.error);
+
     const responseData = {
       ...booking,
       collectionType: booking.bookingType,

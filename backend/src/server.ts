@@ -20,6 +20,11 @@ const startServer = async () => {
     // Start background auto-reactivation worker for expired doctor overrides
     startDoctorOverrideAutoReactivationJob();
 
+    // Start background reminder & WhatsApp lifecycle drip scheduler (every 5 minutes)
+    import('./modules/notifications/reminder-scheduler').then(({ startReminderScheduler }) => {
+      startReminderScheduler();
+    }).catch(console.error);
+
     app.listen(Number(PORT), '0.0.0.0', () => {
       console.log(`Server is running on port ${PORT} in ${env.NODE_ENV} mode.`);
     });

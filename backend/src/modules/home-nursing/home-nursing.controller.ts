@@ -702,6 +702,11 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
       targetRoles: ['HOSPITAL_ADMIN', 'NURSE']
     }).catch(console.error);
 
+    // Trigger Meta WhatsApp Home Nursing confirmation
+    import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
+      WhatsAppNotificationService.sendHomeNursingConfirmation(newBooking.id).catch(console.error);
+    }).catch(console.error);
+
     res.status(201).json({
       success: true,
       data: {
