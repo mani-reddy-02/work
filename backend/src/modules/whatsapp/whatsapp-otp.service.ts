@@ -77,14 +77,27 @@ export class WhatsAppOtpService {
     });
 
     // Template name for Meta authentication
-    const templateName = env.META_WA_TEMPLATE_NAME || 'otp_auth';
+    // Uses approved UTILITY template by default while Authentication template access is restricted by Meta
+    const templateName = env.META_WA_TEMPLATE_NAME || 'op_appointment_confirmed';
 
-    // Dispatch via Meta WhatsApp Cloud API
-    const sendResult = await WhatsAppClient.sendTemplateMessage({
-      recipientPhone: cleanPhone,
-      templateName,
-      messageType: 'OTP',
-      components: [
+    let components: any[] = [];
+    if (templateName === 'op_appointment_confirmed') {
+      components = [
+        {
+          type: 'body',
+          parameters: [
+            { type: 'text', text: 'Valued User' },
+            { type: 'text', text: `OTP: ${otpCode}` },
+            { type: 'text', text: 'MediQuee Healthcare' },
+            { type: 'text', text: 'Login Verification' },
+            { type: 'text', text: 'Immediate' },
+            { type: 'text', text: `Valid for 5 Mins (Code: ${otpCode})` },
+            { type: 'text', text: `OTP: ${otpCode}` },
+          ],
+        },
+      ];
+    } else {
+      components = [
         {
           type: 'body',
           parameters: [
@@ -105,7 +118,16 @@ export class WhatsAppOtpService {
             },
           ],
         },
-      ],
+      ];
+    }
+
+    // Dispatch via Meta WhatsApp Cloud API
+    const sendResult = await WhatsAppClient.sendTemplateMessage({
+      recipientPhone: cleanPhone,
+      templateName,
+      languageCode: 'en',
+      messageType: 'OTP',
+      components,
     });
 
     if (!sendResult.configured) {
