@@ -726,11 +726,11 @@ const Home = () => {
 
         {isDepartmentsLoading ? (
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 w-full">
 
-            {[1, 2, 3, 4, 5].map((i) => (
+            {[1, 2, 3, 4, 5, 6].map((i) => (
 
-              <div key={i} className="rounded-2xl sm:rounded-3xl bg-slate-100 aspect-square animate-pulse" />
+              <div key={i} className="rounded-2xl sm:rounded-3xl bg-slate-100 aspect-[1.23/1] animate-pulse" />
 
             ))}
 
@@ -738,9 +738,29 @@ const Home = () => {
 
         ) : departments.length > 0 ? (
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className={`grid gap-3 sm:gap-4 md:gap-5 w-full ${
 
-            {departments.slice(0, 5).map((dept) => {
+            departments.length <= 2 
+
+              ? 'grid-cols-2' 
+
+              : departments.length === 3 
+
+              ? 'grid-cols-2 sm:grid-cols-3' 
+
+              : departments.length === 4 
+
+              ? 'grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4' 
+
+              : departments.length === 5 
+
+              ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-5' 
+
+              : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
+
+          }`}>
+
+            {departments.slice(0, 6).map((dept) => {
 
               const imageUrl = getDepartmentImageUrl(dept.name, dept.icon);
 
@@ -752,7 +772,7 @@ const Home = () => {
 
                   to={`/departments?dept=${encodeURIComponent(dept.id)}`}
 
-                  className="rounded-2xl sm:rounded-3xl overflow-hidden shadow-xs hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group block focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white border border-slate-100/80"
+                  className="rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xs hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 group block focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 bg-white border border-slate-200/50"
 
                 >
 
@@ -762,7 +782,7 @@ const Home = () => {
 
                     alt={dept.name} 
 
-                    className="w-full h-auto aspect-square object-cover rounded-2xl sm:rounded-3xl group-hover:scale-102 transition-transform duration-300" 
+                    className="w-full h-auto aspect-[1.23/1] object-cover rounded-2xl sm:rounded-3xl group-hover:scale-[1.01] transition-transform duration-200" 
 
                     onError={(e) => {
 
@@ -771,6 +791,8 @@ const Home = () => {
                     }}
 
                   />
+
+                  <span className="sr-only">{dept.name}</span>
 
                 </Link>
 
@@ -822,11 +844,11 @@ const Home = () => {
 
         {isSpecialistsLoading ? (
 
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5 sm:gap-3 md:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3 md:gap-4 w-full">
 
             {[1, 2, 3, 4, 5, 6].map((i) => (
 
-              <div key={i} className={`bg-white rounded-2xl border border-slate-100 p-3 sm:p-4 h-28 md:h-32 animate-pulse flex flex-col items-center justify-center ${i > 3 ? 'hidden sm:flex' : ''}`}>
+              <div key={i} className="bg-white rounded-2xl border border-slate-100 p-3 sm:p-4 h-24 md:h-28 animate-pulse flex flex-col items-center justify-center">
 
                 <div className="w-10 h-10 bg-slate-200 rounded-full mb-2"></div>
 
@@ -850,9 +872,25 @@ const Home = () => {
 
         ) : (
 
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5 sm:gap-3 md:gap-4">
+          <div className={`grid gap-2.5 sm:gap-3 md:gap-4 w-full ${
 
-            {topSpecialists.map((specialist, idx) => (
+            topSpecialists.length <= 3 
+
+              ? 'grid-cols-3' 
+
+              : topSpecialists.length === 4 
+
+              ? 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-4' 
+
+              : topSpecialists.length === 5 
+
+              ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-5' 
+
+              : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
+
+          }`}>
+
+            {topSpecialists.slice(0, 6).map((specialist) => (
 
               <Link 
 
@@ -860,7 +898,7 @@ const Home = () => {
 
                 to={`/specialties?type=doctor&category=${encodeURIComponent(specialist.name)}`} 
 
-                className={`relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-xs hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group block focus:outline-hidden focus:ring-2 focus:ring-blue-500 bg-white border border-slate-100/80 ${idx >= 3 ? 'hidden sm:block' : ''}`}
+                className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xs hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 group block focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 bg-white border border-slate-200/50"
 
               >
 
@@ -870,7 +908,7 @@ const Home = () => {
 
                   alt={specialist.name} 
 
-                  className="w-full h-auto aspect-square object-cover rounded-2xl sm:rounded-3xl group-hover:scale-102 transition-transform duration-300" 
+                  className="w-full h-auto aspect-[1.23/1] object-cover rounded-2xl sm:rounded-3xl group-hover:scale-[1.01] transition-transform duration-200" 
 
                   onError={(e) => {
 
@@ -906,25 +944,27 @@ const Home = () => {
 
       {/* MediAI Assistant */}
 
-      <section className="mt-4 mb-2 cursor-pointer transition-transform active:scale-[0.99]" onClick={() => navigate('/ai')}>
+      <section className="mt-4 mb-2 cursor-pointer transition-transform active:scale-[0.99] group" onClick={() => navigate('/ai')}>
 
-        <div className="bg-[#1a1f2e] rounded-2xl p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 shadow-md hover:shadow-lg transition-shadow">
+        <div className="relative overflow-hidden bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 rounded-2xl p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 shadow-sm hover:shadow-md transition-all duration-300 border border-blue-400/20">
 
-          <div className="w-11 h-11 rounded-2xl bg-[#273041] flex items-center justify-center shrink-0">
+          <div className="absolute -right-8 -top-8 w-40 h-40 bg-white/10 rounded-full blur-xl pointer-events-none" />
 
-              <Bot className="w-6 h-6 text-sky-400" />
+          <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-xs border border-white/25 flex items-center justify-center shrink-0 shadow-2xs">
 
-          </div>
-
-          <div className="min-w-0 flex-1">
-
-              <h4 className="text-white text-sm sm:text-base font-bold mb-0.5 truncate">Chat with MediAI Assistant</h4>
-
-              <p className="text-xs text-slate-400 truncate">Instant symptom checker & health recommendations</p>
+              <Bot className="w-6 h-6 text-white" />
 
           </div>
 
-          <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+          <div className="min-w-0 flex-1 relative z-10">
+
+              <h4 className="text-white text-sm sm:text-base font-bold mb-0.5 truncate tracking-tight">Chat with MediAI Assistant</h4>
+
+              <p className="text-xs text-blue-100/90 truncate font-medium">Instant symptom checker &amp; health recommendations</p>
+
+          </div>
+
+          <ChevronRight className="w-5 h-5 text-white/80 group-hover:text-white group-hover:translate-x-1 transition-all shrink-0 relative z-10" />
 
         </div>
 

@@ -1044,7 +1044,7 @@ const DepartmentBooking: React.FC = () => {
 
           ) : (
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 w-full">
 
               {filteredDepartments.map((dept) => {
 
@@ -1058,7 +1058,7 @@ const DepartmentBooking: React.FC = () => {
 
                     onClick={() => handleSelectDepartment(dept)}
 
-                    className="rounded-2xl sm:rounded-3xl overflow-hidden shadow-xs hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group block focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-left bg-white border border-slate-100/80 cursor-pointer"
+                    className="rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xs hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 group block focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 text-left bg-white border border-slate-200/50 cursor-pointer"
 
                   >
 
@@ -1068,7 +1068,7 @@ const DepartmentBooking: React.FC = () => {
 
                       alt={dept.name}
 
-                      className="w-full h-auto aspect-square object-cover rounded-2xl sm:rounded-3xl group-hover:scale-102 transition-transform duration-300"
+                      className="w-full h-auto aspect-[1.23/1] object-cover rounded-2xl sm:rounded-3xl group-hover:scale-[1.01] transition-transform duration-200"
 
                       onError={(e) => {
 
