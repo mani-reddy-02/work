@@ -21,7 +21,7 @@ const Layout = () => {
     detectLocation(false);
   }, [detectLocation]);
   return (
-    <div className="flex flex-col h-screen overflow-hidden font-sans text-[#172B4D] bg-[#F5F8FD] bg-gradient-to-b from-[#F5F8FD] via-[#F8FAFC] to-[#F5F8FD]">
+    <div className="flex flex-col h-screen overflow-hidden font-sans text-[#172B4D] bg-[#F5F8FD]">
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile Sidebar Overlay */}
         {isMobileMenuOpen && (
@@ -53,7 +53,7 @@ const Layout = () => {
 
           {/* Main Content Area */}
           <main className="flex-1 overflow-y-auto overflow-x-hidden pb-20 md:pb-6 scroll-smooth w-full">
-            <div className="w-full max-w-7xl mx-auto min-h-full">
+            <div className="w-full min-h-full">
               <Outlet />
             </div>
           </main>

@@ -494,7 +494,13 @@ const Home = () => {
 
       />
 
-      <div className={`w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-5 overflow-x-hidden relative transition-all ${hasUpcomingBooking ? 'pb-32' : 'pb-8'}`}>
+      <div 
+        className={`w-full min-h-full transition-all ${hasUpcomingBooking ? 'pb-32' : 'pb-8'}`}
+        style={{
+          background: 'linear-gradient(135deg, #F5F8FD 0%, #EDF5FF 45%, #F8FBFF 100%)',
+        }}
+      >
+        <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-5 overflow-x-hidden relative">
 
 
 
@@ -982,7 +988,9 @@ const Home = () => {
 
       
 
-    </div>
+        </div>
+
+      </div>
 
     </>
 
