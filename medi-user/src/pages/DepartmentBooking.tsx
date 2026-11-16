@@ -1058,7 +1058,7 @@ const DepartmentBooking: React.FC = () => {
 
                     onClick={() => handleSelectDepartment(dept)}
 
-                    className="rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xs hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 group block focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 text-left bg-white border border-slate-200/50 cursor-pointer"
+                    className="rounded-2xl overflow-hidden shadow-xs hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 group block focus:outline-hidden focus:ring-2 focus:ring-[#1769E0]/20 text-left bg-white border border-[#E5EDF7] cursor-pointer"
 
                   >
 
@@ -1068,7 +1068,7 @@ const DepartmentBooking: React.FC = () => {
 
                       alt={dept.name}
 
-                      className="w-full h-auto aspect-[1.23/1] object-cover rounded-2xl sm:rounded-3xl group-hover:scale-[1.01] transition-transform duration-200"
+                      className="w-full h-auto aspect-[1.74/1] object-contain rounded-2xl group-hover:scale-[1.01] transition-transform duration-200"
 
                       onError={(e) => {
 

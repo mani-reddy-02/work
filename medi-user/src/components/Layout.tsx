@@ -21,7 +21,7 @@ const Layout = () => {
     detectLocation(false);
   }, [detectLocation]);
   return (
-    <div className="flex flex-col h-screen overflow-hidden font-sans text-slate-900 bg-slate-50">
+    <div className="flex flex-col h-screen overflow-hidden font-sans text-[#172B4D] bg-[#F5F8FD] bg-gradient-to-b from-[#F5F8FD] via-[#F8FAFC] to-[#F5F8FD]">
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile Sidebar Overlay */}
         {isMobileMenuOpen && (

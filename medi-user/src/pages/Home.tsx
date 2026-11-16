@@ -494,7 +494,7 @@ const Home = () => {
 
       />
 
-      <div className={`w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 overflow-x-hidden relative transition-all ${hasUpcomingBooking ? 'pb-32' : 'pb-8'}`}>
+      <div className={`w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-5 overflow-x-hidden relative transition-all ${hasUpcomingBooking ? 'pb-32' : 'pb-8'}`}>
 
 
 
@@ -584,7 +584,7 @@ const Home = () => {
 
       <section>
 
-        <h2 className="text-base sm:text-lg md:text-xl font-bold mb-3 md:mb-4 text-slate-800">Quick Services</h2>
+        <h2 className="text-base sm:text-lg md:text-xl font-bold mb-3 md:mb-4 text-[#172B4D]">Quick Services</h2>
 
         
 
@@ -592,11 +592,11 @@ const Home = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
 
-          <Link to="/specialties?type=hospital-op" className="relative overflow-hidden bg-white rounded-2xl border border-slate-100 p-4 flex flex-col justify-between h-[120px] sm:h-[135px] hover:border-blue-200 hover:shadow-sm transition-all group">
+          <Link to="/specialties?type=hospital-op" className="relative overflow-hidden bg-white rounded-2xl border border-[#E5EDF7] p-4 flex flex-col justify-between h-[120px] sm:h-[135px] hover:border-blue-200 hover:shadow-sm transition-all group">
 
             <div className="relative z-10">
 
-              <h3 className="font-bold text-slate-900 text-base mb-1 group-hover:text-blue-600 transition-colors">OP Booking</h3>
+              <h3 className="font-bold text-[#172B4D] text-base mb-1 group-hover:text-[#1769E0] transition-colors">OP Booking</h3>
 
               <p className="text-xs text-slate-500 font-medium">Book in-person hospital visits</p>
 
@@ -604,7 +604,7 @@ const Home = () => {
 
             <div className="absolute bottom-0 right-0 w-16 h-16 bg-blue-50 rounded-tl-full flex items-end justify-end p-3 py-3.5 group-hover:bg-blue-100 transition-colors">
 
-              <Hospital className="w-7 h-7 text-[#0055ff] -mb-0.5 -mr-0.5" />
+              <Hospital className="w-7 h-7 text-[#1769E0] -mb-0.5 -mr-0.5" />
 
             </div>
 
@@ -612,11 +612,11 @@ const Home = () => {
 
           
 
-          <Link to="/specialties?type=doctor" className="relative overflow-hidden bg-white rounded-2xl border border-slate-100 p-4 flex flex-col justify-between h-[120px] sm:h-[135px] hover:border-green-200 hover:shadow-sm transition-all group">
+          <Link to="/specialties?type=doctor" className="relative overflow-hidden bg-white rounded-2xl border border-[#E5EDF7] p-4 flex flex-col justify-between h-[120px] sm:h-[135px] hover:border-green-200 hover:shadow-sm transition-all group">
 
             <div className="relative z-10">
 
-              <h3 className="font-bold text-slate-900 text-base mb-1 group-hover:text-emerald-600 transition-colors">Video Consultation</h3>
+              <h3 className="font-bold text-[#172B4D] text-base mb-1 group-hover:text-emerald-600 transition-colors">Video Consultation</h3>
 
               <p className="text-xs text-slate-500 font-medium">Connect online with verified doctors</p>
 
@@ -638,7 +638,7 @@ const Home = () => {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
 
-            <Link to="/services/insurance" className="flex flex-col items-center p-3.5 sm:p-4 bg-white rounded-2xl border border-slate-100 gap-2 hover:border-cyan-200 hover:shadow-sm transition-all text-center">
+            <Link to="/services/insurance" className="flex flex-col items-center p-3.5 sm:p-4 bg-white rounded-2xl border border-[#E5EDF7] gap-2 hover:border-cyan-200 hover:shadow-sm transition-all text-center">
 
               <div className="w-12 h-12 rounded-2xl bg-cyan-50 flex items-center justify-center shrink-0">
 
@@ -650,7 +650,7 @@ const Home = () => {
 
             </Link>
 
-            <Link to="/services/home-nursing" className="flex flex-col items-center p-3.5 sm:p-4 bg-white rounded-2xl border border-slate-100 gap-2 hover:border-pink-200 hover:shadow-sm transition-all text-center">
+            <Link to="/services/home-nursing" className="flex flex-col items-center p-3.5 sm:p-4 bg-white rounded-2xl border border-[#E5EDF7] gap-2 hover:border-pink-200 hover:shadow-sm transition-all text-center">
 
               <div className="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center shrink-0">
 
@@ -662,7 +662,7 @@ const Home = () => {
 
             </Link>
 
-            <Link to="/services/lab-tests" className="flex flex-col items-center p-3.5 sm:p-4 bg-white rounded-2xl border border-slate-100 gap-2 hover:border-indigo-200 hover:shadow-sm transition-all text-center">
+            <Link to="/services/lab-tests" className="flex flex-col items-center p-3.5 sm:p-4 bg-white rounded-2xl border border-[#E5EDF7] gap-2 hover:border-indigo-200 hover:shadow-sm transition-all text-center">
 
               <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center shrink-0">
 
@@ -674,7 +674,7 @@ const Home = () => {
 
             </Link>
 
-            <Link to="/services/home-sample" className="flex flex-col items-center p-3.5 sm:p-4 bg-white rounded-2xl border border-slate-100 gap-2 hover:border-orange-200 hover:shadow-sm transition-all text-center">
+            <Link to="/services/home-sample" className="flex flex-col items-center p-3.5 sm:p-4 bg-white rounded-2xl border border-[#E5EDF7] gap-2 hover:border-orange-200 hover:shadow-sm transition-all text-center">
 
               <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center shrink-0">
 
@@ -698,11 +698,11 @@ const Home = () => {
 
       <section>
 
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2.5 sm:mb-3">
 
           <div>
 
-            <h2 className="text-base sm:text-lg md:text-xl font-bold text-slate-800">Browse Departments</h2>
+            <h2 className="text-base sm:text-lg md:text-xl font-bold text-[#172B4D]">Browse Departments</h2>
 
             <p className="text-xs text-slate-500">Direct doctor consultation by clinical specialty</p>
 
@@ -712,7 +712,7 @@ const Home = () => {
 
             to="/departments" 
 
-            className="text-[11px] text-blue-600 font-semibold cursor-pointer hover:underline flex items-center gap-0.5"
+            className="text-[11px] text-[#1769E0] font-semibold cursor-pointer hover:underline flex items-center gap-0.5"
 
           >
 
@@ -726,11 +726,11 @@ const Home = () => {
 
         {isDepartmentsLoading ? (
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 w-full">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3.5 sm:gap-4 md:gap-5 w-full">
 
             {[1, 2, 3, 4, 5, 6].map((i) => (
 
-              <div key={i} className="rounded-2xl sm:rounded-3xl bg-slate-100 aspect-[1.23/1] animate-pulse" />
+              <div key={i} className="rounded-2xl bg-slate-100 aspect-[1.74/1] animate-pulse" />
 
             ))}
 
@@ -738,27 +738,7 @@ const Home = () => {
 
         ) : departments.length > 0 ? (
 
-          <div className={`grid gap-3 sm:gap-4 md:gap-5 w-full ${
-
-            departments.length <= 2 
-
-              ? 'grid-cols-2' 
-
-              : departments.length === 3 
-
-              ? 'grid-cols-2 sm:grid-cols-3' 
-
-              : departments.length === 4 
-
-              ? 'grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4' 
-
-              : departments.length === 5 
-
-              ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-5' 
-
-              : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
-
-          }`}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3.5 sm:gap-4 md:gap-5 w-full">
 
             {departments.slice(0, 6).map((dept) => {
 
@@ -772,7 +752,7 @@ const Home = () => {
 
                   to={`/departments?dept=${encodeURIComponent(dept.id)}`}
 
-                  className="rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xs hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 group block focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 bg-white border border-slate-200/50"
+                  className="rounded-2xl overflow-hidden shadow-xs hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 group block focus:outline-hidden focus:ring-2 focus:ring-[#1769E0]/20 bg-white border border-[#E5EDF7]"
 
                 >
 
@@ -782,7 +762,7 @@ const Home = () => {
 
                     alt={dept.name} 
 
-                    className="w-full h-auto aspect-[1.23/1] object-cover rounded-2xl sm:rounded-3xl group-hover:scale-[1.01] transition-transform duration-200" 
+                    className="w-full h-auto aspect-[1.74/1] object-contain rounded-2xl group-hover:scale-[1.01] transition-transform duration-200" 
 
                     onError={(e) => {
 
@@ -804,7 +784,7 @@ const Home = () => {
 
         ) : (
 
-          <div className="bg-white rounded-2xl border border-slate-100 p-5 text-center text-slate-500 text-xs">
+          <div className="bg-white rounded-2xl border border-[#E5EDF7] p-5 text-center text-slate-500 text-xs">
 
             No departments currently configured with active doctors. Check back soon!
 
@@ -824,15 +804,15 @@ const Home = () => {
 
       <section>
 
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2.5 sm:mb-3">
 
-          <h2 className="text-base sm:text-lg md:text-xl font-bold text-slate-800">Consult Top Specialists</h2>
+          <h2 className="text-base sm:text-lg md:text-xl font-bold text-[#172B4D]">Consult Top Specialists</h2>
 
           <Link 
 
             to="/specialties?type=doctor" 
 
-            className="text-[11px] text-blue-600 font-semibold cursor-pointer hover:underline flex items-center gap-0.5"
+            className="text-[11px] text-[#1769E0] font-semibold cursor-pointer hover:underline flex items-center gap-0.5"
 
           >
 
@@ -844,17 +824,17 @@ const Home = () => {
 
         {isSpecialistsLoading ? (
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3 md:gap-4 w-full">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5 w-full">
 
-            {[1, 2, 3, 4, 5, 6].map((i) => (
+            {[1, 2, 3, 4].map((i) => (
 
-              <div key={i} className="bg-white rounded-2xl border border-slate-100 p-3 sm:p-4 h-24 md:h-28 animate-pulse flex flex-col items-center justify-center">
+              <div key={i} className="bg-white rounded-2xl border border-[#E5EDF7] p-4 h-32 animate-pulse flex flex-col items-center justify-center">
 
-                <div className="w-10 h-10 bg-slate-200 rounded-full mb-2"></div>
+                <div className="w-12 h-12 bg-slate-200 rounded-2xl mb-2"></div>
 
-                <div className="h-2 w-16 bg-slate-200 rounded mb-2"></div>
+                <div className="h-2.5 w-20 bg-slate-200 rounded mb-2"></div>
 
-                <div className="h-2 w-12 bg-slate-200 rounded"></div>
+                <div className="h-2 w-14 bg-slate-200 rounded"></div>
 
               </div>
 
@@ -864,7 +844,7 @@ const Home = () => {
 
         ) : specialistsError || topSpecialists.length === 0 ? (
 
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 text-center text-slate-500 text-xs">
+          <div className="bg-white rounded-2xl border border-[#E5EDF7] p-6 text-center text-slate-500 text-xs">
 
             No specialists currently available. Check back later!
 
@@ -872,25 +852,9 @@ const Home = () => {
 
         ) : (
 
-          <div className={`grid gap-2.5 sm:gap-3 md:gap-4 w-full ${
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5 w-full">
 
-            topSpecialists.length <= 3 
-
-              ? 'grid-cols-3' 
-
-              : topSpecialists.length === 4 
-
-              ? 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-4' 
-
-              : topSpecialists.length === 5 
-
-              ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-5' 
-
-              : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
-
-          }`}>
-
-            {topSpecialists.slice(0, 6).map((specialist) => (
+            {topSpecialists.slice(0, 4).map((specialist) => (
 
               <Link 
 
@@ -898,37 +862,43 @@ const Home = () => {
 
                 to={`/specialties?type=doctor&category=${encodeURIComponent(specialist.name)}`} 
 
-                className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xs hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 group block focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 bg-white border border-slate-200/50"
+                className="bg-white rounded-2xl border border-[#E5EDF7] p-4 sm:p-5 flex flex-col items-center text-center shadow-xs hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 group focus:outline-hidden focus:ring-2 focus:ring-[#1769E0]/20"
 
               >
 
-                <img 
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-blue-50/60 p-2.5 mb-2.5 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden shrink-0">
 
-                  src={specialist.image || '/departments-images/general-medicine.png'} 
+                  <img 
 
-                  alt={specialist.name} 
+                    src={getDiseaseIconUrl(specialist.name, specialist.icon)} 
 
-                  className="w-full h-auto aspect-[1.23/1] object-cover rounded-2xl sm:rounded-3xl group-hover:scale-[1.01] transition-transform duration-200" 
+                    alt={specialist.name} 
 
-                  onError={(e) => {
+                    className="w-full h-full object-contain" 
 
-                    (e.target as HTMLImageElement).src = '/departments-images/general-medicine.png';
+                    onError={(e) => {
 
-                  }}
+                      (e.target as HTMLImageElement).src = '/optimized/Blood Test.webp';
 
-                />
+                    }}
 
-                <span className="sr-only">{specialist.name}</span>
-
-                <div className="absolute bottom-1.5 inset-x-0 flex justify-center pointer-events-none">
-
-                  <span className="px-2 py-0.5 bg-emerald-600/95 text-white text-[9px] font-bold rounded-full shadow-xs whitespace-nowrap backdrop-blur-xs">
-
-                    Video Call
-
-                  </span>
+                  />
 
                 </div>
+
+                <h4 className="text-xs sm:text-sm font-bold text-[#172B4D] mb-1 line-clamp-1 group-hover:text-[#1769E0] transition-colors w-full">
+
+                  {specialist.name}
+
+                </h4>
+
+                <p className="text-[11px] sm:text-xs text-emerald-600 font-bold flex items-center justify-center gap-1.5">
+
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+
+                  Video Call
+
+                </p>
 
               </Link>
 
@@ -944,9 +914,9 @@ const Home = () => {
 
       {/* MediAI Assistant */}
 
-      <section className="mt-4 mb-2 cursor-pointer transition-transform active:scale-[0.99] group" onClick={() => navigate('/ai')}>
+      <section className="mt-3 mb-1 cursor-pointer transition-transform active:scale-[0.99] group" onClick={() => navigate('/ai')}>
 
-        <div className="relative overflow-hidden bg-gradient-to-r from-blue-700 via-blue-600 to-sky-500 rounded-2xl p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 shadow-sm hover:shadow-md transition-all duration-300 border border-blue-400/20">
+        <div className="relative overflow-hidden bg-gradient-to-r from-[#1769E0] via-[#2563EB] to-[#3B82F6] rounded-2xl p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 shadow-xs hover:shadow-sm transition-all duration-300 border border-blue-400/20">
 
           <div className="absolute -right-8 -top-8 w-40 h-40 bg-white/10 rounded-full blur-xl pointer-events-none" />
 
@@ -976,19 +946,19 @@ const Home = () => {
 
       <section className="mt-2">
 
-        <h2 className="text-base sm:text-lg md:text-xl font-bold mb-3 text-slate-800">Frequently Asked Questions</h2>
+        <h2 className="text-base sm:text-lg md:text-xl font-bold mb-3 text-[#172B4D]">Frequently Asked Questions</h2>
 
         <div className="space-y-2">
 
             {faqs.map((item, i) => (
 
-                <div key={i} className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-100">
+                <div key={i} className="bg-white rounded-xl overflow-hidden shadow-xs border border-[#E5EDF7]">
 
                     <div onClick={() => toggleFaq(i)} className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors">
 
-                        <span className={`text-[12px] font-bold ${expandedFaq === i ? 'text-blue-600' : 'text-slate-700'}`}>{item.q}</span>
+                        <span className={`text-[12px] font-bold ${expandedFaq === i ? 'text-[#1769E0]' : 'text-slate-700'}`}>{item.q}</span>
 
-                        {expandedFaq === i ? <Minus className="w-4 h-4 text-blue-600 shrink-0" /> : <Plus className="w-4 h-4 text-slate-400 shrink-0" />}
+                        {expandedFaq === i ? <Minus className="w-4 h-4 text-[#1769E0] shrink-0" /> : <Plus className="w-4 h-4 text-slate-400 shrink-0" />}
 
                     </div>
 
