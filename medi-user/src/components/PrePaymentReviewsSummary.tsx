@@ -20,6 +20,7 @@ export interface PrePaymentReviewsSummaryProps {
   rating?: number | null;
   reviewCount?: number | null;
   defaultVisibleCount?: number;
+  showReviewTiles?: boolean;
 }
 
 export const PrePaymentReviewsSummary: React.FC<PrePaymentReviewsSummaryProps> = ({
@@ -29,6 +30,7 @@ export const PrePaymentReviewsSummary: React.FC<PrePaymentReviewsSummaryProps> =
   rating: initialRating,
   reviewCount: initialReviewCount,
   defaultVisibleCount = 2,
+  showReviewTiles = false,
 }) => {
   const [data, setData] = useState<PublicReviewsResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -138,113 +140,116 @@ export const PrePaymentReviewsSummary: React.FC<PrePaymentReviewsSummaryProps> =
           </div>
         </div>
       ) : (
-        /* Reviews Content */
+        /* Reviews & Ratings Summary Content */
         <div className="space-y-3">
-          {/* Category Averages if available */}
+          {/* Category Averages / Dimensions */}
           {aggregate?.categoryAverages && Object.keys(aggregate.categoryAverages).length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap pb-1">
+            <div className="flex items-center gap-2 flex-wrap pt-0.5">
               {Object.entries(aggregate.categoryAverages).map(([k, score]) => (
                 <div 
                   key={k} 
-                  className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded-lg text-[10px] font-bold text-slate-700"
+                  className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200/80 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-700"
                 >
                   <span className="capitalize">{k.replace(/([A-Z])/g, ' $1').trim()}:</span>
                   <span className="text-blue-700">{Number(score).toFixed(1)}</span>
-                  <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                 </div>
               ))}
             </div>
           )}
 
-          {/* Review List */}
-          <div className="space-y-2.5">
-            {visibleReviews.map((rev) => (
-              <div 
-                key={rev.id} 
-                className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-colors space-y-2"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
-                      <User className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-xs font-bold text-slate-800">
-                          Verified Patient
-                        </span>
-                        {rev.isVerified && (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200">
-                            <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />
-                            Verified
+          {/* Optional Review List Tiles (hidden by default to show only reviews and ratings summary) */}
+          {showReviewTiles && visibleReviews.length > 0 && (
+            <div className="space-y-2.5 pt-1">
+              {visibleReviews
+                .filter((rev) => (rev.comment && rev.comment.trim()) || (rev.title && rev.title.trim()))
+                .map((rev) => (
+                  <div 
+                    key={rev.id} 
+                    className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-colors space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
+                          <User className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-bold text-slate-800">
+                              {rev.isAnonymous ? 'Verified Patient' : (rev.displayName || 'Verified Patient')}
+                            </span>
+                            {rev.isVerified && (
+                              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200">
+                                <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />
+                                Verified
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-slate-400 block">
+                            {new Date(rev.publishedAt).toLocaleDateString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
                           </span>
-                        )}
+                        </div>
                       </div>
-                      <span className="text-[10px] text-slate-400 block">
-                        {new Date(rev.publishedAt).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric'
-                        })}
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/80 shrink-0">
-                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                    <span className="text-xs font-black text-amber-800">
-                      {rev.rating}.0
+                      <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/80 shrink-0">
+                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                        <span className="text-xs font-black text-amber-800">
+                          {rev.rating}.0
+                        </span>
+                      </div>
+                    </div>
+
+                    {rev.title && (
+                      <h4 className="text-xs font-bold text-slate-900 leading-snug">
+                        {rev.title}
+                      </h4>
+                    )}
+
+                    {rev.comment && (
+                      <p className="text-[11px] text-slate-600 leading-relaxed font-normal">
+                        {rev.comment}
+                      </p>
+                    )}
+
+                    {/* Provider Official Response */}
+                    {rev.officialResponse && (
+                      <div className="p-2.5 rounded-lg bg-blue-50/70 border border-blue-100 text-[11px] space-y-0.5">
+                        <div className="flex items-center gap-1 text-blue-800 font-bold text-[10px]">
+                          <Building2 className="w-3 h-3 text-blue-600" />
+                          <span>Official Provider Response</span>
+                        </div>
+                        <p className="text-slate-700 leading-normal">
+                          {rev.officialResponse.response}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+              {reviews.length > defaultVisibleCount && (
+                <div className="pt-1 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50/80 hover:bg-blue-100 transition-all cursor-pointer w-full sm:w-auto"
+                  >
+                    <span>
+                      {isExpanded 
+                        ? 'Show Less' 
+                        : `Show More Reviews (${remainingCount} more)`}
                     </span>
-                  </div>
+                    {isExpanded ? (
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    )}
+                  </button>
                 </div>
-
-                {rev.title && (
-                  <h4 className="text-xs font-bold text-slate-900 leading-snug">
-                    {rev.title}
-                  </h4>
-                )}
-
-                {rev.comment && (
-                  <p className="text-[11px] text-slate-600 leading-relaxed font-normal">
-                    {rev.comment}
-                  </p>
-                )}
-
-                {/* Provider Official Response */}
-                {rev.officialResponse && (
-                  <div className="p-2.5 rounded-lg bg-blue-50/70 border border-blue-100 text-[11px] space-y-0.5">
-                    <div className="flex items-center gap-1 text-blue-800 font-bold text-[10px]">
-                      <Building2 className="w-3 h-3 text-blue-600" />
-                      <span>Official Provider Response</span>
-                    </div>
-                    <p className="text-slate-700 leading-normal">
-                      {rev.officialResponse.response}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Show More / Show Less Toggle Button */}
-          {reviews.length > defaultVisibleCount && (
-            <div className="pt-1 text-center">
-              <button
-                type="button"
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50/80 hover:bg-blue-100 transition-all cursor-pointer w-full sm:w-auto"
-              >
-                <span>
-                  {isExpanded 
-                    ? 'Show Less' 
-                    : `Show More Reviews (${remainingCount} more)`}
-                </span>
-                {isExpanded ? (
-                  <ChevronUp className="w-3.5 h-3.5" />
-                ) : (
-                  <ChevronDown className="w-3.5 h-3.5" />
-                )}
-              </button>
+              )}
             </div>
           )}
         </div>

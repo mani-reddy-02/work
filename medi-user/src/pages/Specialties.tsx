@@ -16,6 +16,7 @@ import { useUIStore } from '../lib/uiStore';
 import PrePaymentReviewsSummary from '../components/PrePaymentReviewsSummary';
 import ProviderReviewsModal from '../components/ProviderReviewsModal';
 import { useFamilyMembers, type FamilyMember } from '../lib/familyMembers';
+import { scrollToTop } from '../utils/scroll';
 
 // --- 5-STEP HOW IT WORKS DATA ---
 const opBookingStepsData = [
@@ -109,6 +110,7 @@ const Specialties = () => {
   const [showAllGeneral, setShowAllGeneral] = useState(false);
   const [showAllAdvanced, setShowAllAdvanced] = useState(false);
   const [showAllCategorical, setShowAllCategorical] = useState(false);
+  const [showAllRegardlessOfDistance, setShowAllRegardlessOfDistance] = useState(false);
 
   // Real Dynamic Data State (driven strictly by registered hospital departments)
   const [diseasesList, setDiseasesList] = useState({
@@ -252,11 +254,24 @@ const Specialties = () => {
     }
   }, [view, selectedDoctor?.id]);
 
-  // Fetch diseases from backend filtered by consultation type
+  // Scroll to top whenever step or view changes
+  useEffect(() => {
+    scrollToTop();
+  }, [view]);
+
+  // Fetch diseases from backend filtered strictly by consultation type, active doctors, and user location
   useEffect(() => {
     let mounted = true;
     setIsDiseasesLoading(true);
-    opAppointmentApi.fetchDiseases(undefined, consultationTypeQuery).then((res) => {
+
+    const applyNearby = !showAllRegardlessOfDistance && userLocation.latitude != null;
+
+    opAppointmentApi.fetchDiseases(undefined, consultationTypeQuery, {
+      lat: userLocation.latitude ?? undefined,
+      lng: userLocation.longitude ?? undefined,
+      radius: userLocation.radiusKm,
+      nearbyOnly: applyNearby
+    }).then((res) => {
       if (mounted) {
         if (res.success && res.data) {
           const general = (res.data.general || []).map((d: any, idx: number) => ({
@@ -287,21 +302,38 @@ const Specialties = () => {
             categorical,
             raw: res.data.conditions || []
           });
+        } else {
+          setDiseasesList({
+            general: [],
+            advanced: [],
+            categorical: [],
+            raw: []
+          });
         }
         setIsDiseasesLoading(false);
       }
     }).catch(() => {
-      if (mounted) setIsDiseasesLoading(false);
+      if (mounted) {
+        setDiseasesList({
+          general: [],
+          advanced: [],
+          categorical: [],
+          raw: []
+        });
+        setIsDiseasesLoading(false);
+      }
     });
 
     return () => { mounted = false; };
-  }, [consultationTypeQuery]);
+  }, [consultationTypeQuery, userLocation.latitude, userLocation.longitude, userLocation.radiusKm, showAllRegardlessOfDistance]);
 
   // Step 2: Fetch eligible doctors directly using selected disease, consultation type, and user location
   useEffect(() => {
     if (view === 'DOCTOR_LIST' || view === 'DOCTOR_PROFILE') {
       let active = true;
       setIsDoctorsLoading(true);
+
+      const applyNearby = !showAllRegardlessOfDistance && userLocation.latitude != null;
 
       doctorApi.getDoctors({
         search: doctorSearch,
@@ -312,7 +344,7 @@ const Specialties = () => {
         lat: userLocation.latitude ?? undefined,
         lng: userLocation.longitude ?? undefined,
         radius: userLocation.radiusKm,
-        nearbyOnly: true
+        nearbyOnly: applyNearby
       }).then((res) => {
         if (active) {
           setIsDoctorsLoading(false);
@@ -339,7 +371,7 @@ const Specialties = () => {
       });
       return () => { active = false; };
     }
-  }, [view, selectedDisease, doctorSearch, consultationTypeQuery, userLocation.latitude, userLocation.longitude, userLocation.radiusKm]);
+  }, [view, selectedDisease, doctorSearch, consultationTypeQuery, userLocation.latitude, userLocation.longitude, userLocation.radiusKm, showAllRegardlessOfDistance]);
 
   // Step 3: Fetch real doctor availability when selecting slot
   useEffect(() => {
@@ -657,6 +689,25 @@ const Specialties = () => {
           </div>
         )}
 
+        {/* Location Proximity Banner */}
+        {userLocation.latitude != null && (
+          <div className="flex items-center justify-between bg-blue-50/70 border border-blue-100/80 rounded-2xl px-4 py-2.5 text-xs text-blue-900 shadow-2xs max-w-2xl mx-auto w-full">
+            <span className="flex items-center gap-1.5 truncate">
+              <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              {showAllRegardlessOfDistance
+                ? `Showing conditions across all locations (${isVideo ? 'Video Consultation' : 'OP Consultation'})`
+                : `Showing conditions with active ${isVideo ? 'video specialists' : 'OP specialists'} within ${userLocation.radiusKm} km`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowAllRegardlessOfDistance(!showAllRegardlessOfDistance)}
+              className="text-blue-600 font-semibold hover:underline shrink-0 ml-2 cursor-pointer"
+            >
+              {showAllRegardlessOfDistance ? `Filter nearby (${userLocation.radiusKm} km)` : 'View all'}
+            </button>
+          </div>
+        )}
+
         {/* Real-time Disease Search Bar */}
         <div className="relative w-full max-w-2xl mx-auto">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -686,9 +737,52 @@ const Specialties = () => {
 
         {!isDiseasesLoading && !hasResults ? (
           <div className="text-center py-12 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm max-w-xl mx-auto">
-            <Search className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-[14px] text-slate-700 font-bold">No matching conditions found</p>
-            <p className="text-[12px] text-slate-400 mt-1">Try searching another medical symptom or choose a category below.</p>
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Stethoscope className="w-6 h-6" />
+            </div>
+            <p className="text-[14px] text-slate-700 font-bold">
+              {query
+                ? `No matching conditions found for "${diseaseSearch}"`
+                : userLocation.latitude != null && !showAllRegardlessOfDistance
+                  ? `No active specialists found for ${isVideo ? 'video consultation' : 'OP consultation'} within ${userLocation.radiusKm} km`
+                  : `No active specialists available for ${isVideo ? 'video consultation' : 'OP consultation'} at this time`}
+            </p>
+            <p className="text-[12px] text-slate-400 mt-1 max-w-md mx-auto">
+              {query
+                ? 'Try searching another medical symptom or reset search filters.'
+                : userLocation.latitude != null && !showAllRegardlessOfDistance
+                  ? 'We only display conditions where certified doctors are currently available in your area.'
+                  : 'Please check back shortly or select another service.'}
+            </p>
+            {userLocation.latitude != null && !showAllRegardlessOfDistance && (
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+                {userLocation.radiusKm < 50 && (
+                  <button
+                    type="button"
+                    onClick={() => setNearbyRadiusKm(50)}
+                    className="px-4 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 font-bold text-xs hover:bg-blue-100 transition-colors"
+                  >
+                    Expand Radius (50 km)
+                  </button>
+                )}
+                {userLocation.radiusKm < 100 && userLocation.radiusKm >= 50 && (
+                  <button
+                    type="button"
+                    onClick={() => setNearbyRadiusKm(100)}
+                    className="px-4 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 font-bold text-xs hover:bg-blue-100 transition-colors"
+                  >
+                    Expand Radius (100 km)
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowAllRegardlessOfDistance(true)}
+                  className="px-4 py-2 rounded-xl bg-white text-slate-700 border border-slate-200 font-bold text-xs hover:bg-slate-50 transition-colors"
+                >
+                  View All Doctors Regardless of Distance
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <>

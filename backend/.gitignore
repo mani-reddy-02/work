@@ -1,0 +1,11 @@
+# Environment variables and secrets
+.env
+.env.*
+*.env
+*.env.local
+
+# Dependencies
+node_modules/
+dist/
+build/
+*.log

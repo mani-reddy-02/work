@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Outlet, useLocation } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { BottomNav } from "./BottomNav"
@@ -13,6 +13,17 @@ export function AppLayout() {
   const { user } = useAuth();
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      mainRef.current.scrollTop = 0;
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }, [location.pathname, location.search, location.key]);
 
   const vStatus = user?.hospital?.verificationStatus;
   const isPending = Boolean(
@@ -56,7 +67,7 @@ export function AppLayout() {
           </div>
         )}
         
-        <main className="flex-1 w-full max-w-7xl mx-auto md:p-6 relative overflow-y-auto pb-[100px] md:pb-0">
+        <main ref={mainRef} className="flex-1 w-full max-w-7xl mx-auto md:p-6 relative overflow-y-auto pb-[100px] md:pb-0">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

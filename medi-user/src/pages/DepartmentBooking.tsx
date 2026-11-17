@@ -29,6 +29,7 @@ import { useAuth } from '../lib/auth';
 import { useUIStore } from '../lib/uiStore';
 
 import { useFamilyMembers } from '../lib/familyMembers';
+import { scrollToTop } from '../utils/scroll';
 
 
 
@@ -144,7 +145,7 @@ const DepartmentBooking: React.FC = () => {
 
   const [departmentSearch, setDepartmentSearch] = useState('');
 
-  
+  const [showAllRegardlessOfDistance, setShowAllRegardlessOfDistance] = useState(false);
 
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentRecord | null>(null);
 
@@ -230,6 +231,11 @@ const DepartmentBooking: React.FC = () => {
 
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Auto-scroll to top when moving between booking steps or viewing doctor profile
+  useEffect(() => {
+    scrollToTop();
+  }, [currentStep, previewDoctor]);
+
 
 
   // Sync patient name/phone when user profile is loaded or URL params present
@@ -278,9 +284,16 @@ const DepartmentBooking: React.FC = () => {
 
     setIsDepartmentsLoading(true);
 
+    const applyNearby = !showAllRegardlessOfDistance && userLocation.latitude != null;
 
-
-    departmentApi.getDepartments({ hasDoctors: true })
+    departmentApi.getDepartments({
+      hasDoctors: true,
+      lat: userLocation.latitude ?? undefined,
+      lng: userLocation.longitude ?? undefined,
+      radius: userLocation.radiusKm,
+      nearbyOnly: applyNearby,
+      consultationType: consultationType === 'VIDEO' ? 'video' : 'op',
+    })
 
       .then((res) => {
 
@@ -321,6 +334,10 @@ const DepartmentBooking: React.FC = () => {
               // Aggregate total doctors across all accredited hospitals
 
               existing.doctorCount = (existing.doctorCount ?? 0) + (d.doctorCount ?? 0);
+              if (d.distance != null && (existing.distance == null || d.distance < existing.distance)) {
+                existing.distance = d.distance;
+                existing.distanceText = d.distanceText;
+              }
 
             }
 
@@ -378,7 +395,7 @@ const DepartmentBooking: React.FC = () => {
 
     return () => { isMounted = false; };
 
-  }, []);
+  }, [userLocation.latitude, userLocation.longitude, userLocation.radiusKm, showAllRegardlessOfDistance, consultationType]);
 
 
 
@@ -413,12 +430,6 @@ const DepartmentBooking: React.FC = () => {
     loadDoctorsForDepartment(dept, consultationType);
 
   };
-
-
-
-  const [showAllRegardlessOfDistance, setShowAllRegardlessOfDistance] = useState(false);
-
-
 
   // Load doctors for a department and consultation type across ALL hospitals
 
@@ -1004,7 +1015,24 @@ const DepartmentBooking: React.FC = () => {
 
           </div>
 
-
+          {/* Location proximity filter indicator */}
+          {userLocation.latitude != null && (
+            <div className="flex items-center justify-between text-xs text-slate-500 bg-white px-3.5 py-2 rounded-xl border border-slate-200">
+              <span className="flex items-center gap-1.5 truncate">
+                <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                {showAllRegardlessOfDistance
+                  ? 'Showing all active hospital departments across all locations'
+                  : `Showing active departments with registered doctors within ${userLocation.radiusKm} km`}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowAllRegardlessOfDistance(!showAllRegardlessOfDistance)}
+                className="text-blue-600 font-semibold hover:underline shrink-0 ml-2 cursor-pointer"
+              >
+                {showAllRegardlessOfDistance ? `Filter nearby (${userLocation.radiusKm} km)` : 'View all'}
+              </button>
+            </div>
+          )}
 
           {/* Department Cards Grid */}
 
@@ -1032,13 +1060,23 @@ const DepartmentBooking: React.FC = () => {
 
               <Building2 className="w-10 h-10 text-slate-300 mx-auto" />
 
-              <h3 className="text-sm font-bold text-slate-700">No departments found</h3>
+              <h3 className="text-sm font-bold text-slate-700">No active departments found</h3>
 
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-
-                No active departments matching your search are currently configured with eligible doctors.
-
+                {userLocation.latitude != null && !showAllRegardlessOfDistance
+                  ? `No accredited hospitals with active doctors found within ${userLocation.radiusKm} km. Try expanding your search radius or viewing all hospitals.`
+                  : 'No active hospital departments with registered doctors match your criteria.'}
               </p>
+
+              {userLocation.latitude != null && !showAllRegardlessOfDistance && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllRegardlessOfDistance(true)}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Show departments across all locations
+                </button>
+              )}
 
             </div>
 

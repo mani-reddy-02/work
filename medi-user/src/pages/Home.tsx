@@ -26,6 +26,8 @@ import PosterCarousel from '../components/PosterCarousel';
 
 import { departmentApi, type DepartmentRecord } from '../lib/hospitalApi';
 
+import { useUIStore } from '../lib/uiStore';
+
 import SEOHead from '../components/SEOHead';
 
 
@@ -86,6 +88,8 @@ const Home = () => {
 
   const [isDepartmentsLoading, setIsDepartmentsLoading] = useState(true);
 
+  const { userLocation } = useUIStore();
+
 
 
   const [showBookingPopup, setShowBookingPopup] = useState(false);
@@ -99,8 +103,15 @@ const Home = () => {
   useEffect(() => {
 
     let mounted = true;
+    setIsDepartmentsLoading(true);
 
-    departmentApi.getDepartments({ hasDoctors: true })
+    departmentApi.getDepartments({
+      hasDoctors: true,
+      lat: userLocation.latitude ?? undefined,
+      lng: userLocation.longitude ?? undefined,
+      radius: userLocation.radiusKm,
+      nearbyOnly: userLocation.latitude != null,
+    })
 
       .then((res) => {
 
@@ -118,10 +129,17 @@ const Home = () => {
 
             const key = d.name.trim().toLowerCase();
 
-            if (!groupedMap.has(key)) {
+            const existing = groupedMap.get(key);
+            if (!existing) {
 
               groupedMap.set(key, { ...d, hospitalName: undefined });
 
+            } else {
+              existing.doctorCount = (existing.doctorCount ?? 0) + (d.doctorCount ?? 0);
+              if (d.distance != null && (existing.distance == null || d.distance < existing.distance)) {
+                existing.distance = d.distance;
+                existing.distanceText = d.distanceText;
+              }
             }
 
           }
@@ -150,7 +168,7 @@ const Home = () => {
 
     return () => { mounted = false; };
 
-  }, []);
+  }, [userLocation.latitude, userLocation.longitude, userLocation.radiusKm]);
 
 
 
@@ -160,7 +178,12 @@ const Home = () => {
 
 
 
-    opAppointmentApi.fetchDiseases().then((res) => {
+    opAppointmentApi.fetchDiseases(undefined, undefined, {
+      lat: userLocation.latitude ?? undefined,
+      lng: userLocation.longitude ?? undefined,
+      radius: userLocation.radiusKm,
+      nearbyOnly: userLocation.latitude != null
+    }).then((res) => {
 
       if (mounted) {
 
@@ -182,7 +205,7 @@ const Home = () => {
 
           } else {
 
-            setTopSpecialists(FALLBACK_SPECIALISTS);
+            setTopSpecialists([]);
 
           }
 
@@ -202,13 +225,19 @@ const Home = () => {
 
             setCommonDiseases(general);
 
+          } else {
+
+            setCommonDiseases([]);
+
           }
 
           setSpecialistsError(false);
 
         } else {
 
-          setTopSpecialists(FALLBACK_SPECIALISTS);
+          setTopSpecialists([]);
+
+          setCommonDiseases([]);
 
           setSpecialistsError(false);
 
@@ -222,7 +251,9 @@ const Home = () => {
 
       if (mounted) {
 
-        setTopSpecialists(FALLBACK_SPECIALISTS);
+        setTopSpecialists([]);
+
+        setCommonDiseases([]);
 
         setSpecialistsError(false);
 
@@ -234,7 +265,7 @@ const Home = () => {
 
     return () => { mounted = false; };
 
-  }, []);
+  }, [userLocation.latitude, userLocation.longitude, userLocation.radiusKm]);
 
 
 

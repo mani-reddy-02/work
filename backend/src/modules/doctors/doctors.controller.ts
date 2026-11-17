@@ -28,6 +28,7 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
     const specialtyId = typeof req.query.specialtyId === 'string' ? req.query.specialtyId.trim() : '';
     let targetSpecialtyId = specialtyId;
 
+    let targetDepartmentId = departmentId;
     if (conditionId && !targetSpecialtyId) {
       const condition = await prisma.platformCondition.findUnique({
         where: { id: conditionId },
@@ -35,6 +36,16 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
       });
       if (condition) {
         targetSpecialtyId = condition.specialtyId;
+      } else {
+        const customDisease = await prisma.disease.findUnique({
+          where: { id: conditionId },
+          include: { department: { select: { id: true, specialtyId: true } } }
+        });
+        if (customDisease?.department?.specialtyId) {
+          targetSpecialtyId = customDisease.department.specialtyId;
+        } else if (customDisease?.departmentId && !targetDepartmentId) {
+          targetDepartmentId = customDisease.departmentId;
+        }
       }
     }
 
@@ -76,8 +87,8 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
       whereClause.hospitalId = hospitalId;
     }
 
-    if (departmentId) {
-      whereClause.departmentId = departmentId;
+    if (targetDepartmentId) {
+      whereClause.departmentId = targetDepartmentId;
     } else if (departmentName) {
       whereClause.department = {
         name: { equals: departmentName, mode: 'insensitive' }
@@ -90,7 +101,7 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
             OR: [
               { department: { specialtyId: targetSpecialtyId } },
               { department: { name: { equals: targetSpecialtyName, mode: 'insensitive' } } },
-              { specialization: { equals: targetSpecialtyName, mode: 'insensitive' } },
+              { specialization: { contains: targetSpecialtyName, mode: 'insensitive' } },
               { designation: { contains: targetSpecialtyName, mode: 'insensitive' } }
             ]
           }
@@ -102,8 +113,8 @@ export const getDoctors = async (req: Request, res: Response, next: NextFunction
       }
     }
 
-    // Strict disease-driven filter: if conditionId was provided but no targetSpecialtyId was resolved, return empty array immediately or set impossible where clause
-    if (conditionId && !targetSpecialtyId) {
+    // Strict disease-driven filter: if conditionId was provided but no targetSpecialtyId/departmentId was resolved, return empty array immediately
+    if (conditionId && !targetSpecialtyId && !targetDepartmentId) {
       return res.json({ success: true, data: [] });
     }
 

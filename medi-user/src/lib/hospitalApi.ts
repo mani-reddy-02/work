@@ -98,6 +98,10 @@ export interface DepartmentRecord {
   isActive?: boolean;
   doctorCount?: number;
   diseaseCount?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  distance?: number | null;
+  distanceText?: string | null;
 }
 
 export interface LaboratoryRecord {
@@ -329,6 +333,11 @@ export const departmentApi = {
     search?: string;
     specialtyId?: string;
     hasDoctors?: boolean;
+    lat?: number;
+    lng?: number;
+    radius?: number;
+    nearbyOnly?: boolean;
+    consultationType?: string;
   }): Promise<{ success: boolean; data?: DepartmentRecord[]; error?: string }> {
     try {
       const url = new URL(`${API_BASE_URL}/departments`, window.location.origin);
@@ -336,6 +345,11 @@ export const departmentApi = {
       if (params?.search) url.searchParams.set('search', params.search);
       if (params?.specialtyId) url.searchParams.set('specialtyId', params.specialtyId);
       if (params?.hasDoctors) url.searchParams.set('hasDoctors', 'true');
+      if (params?.lat != null) url.searchParams.set('lat', String(params.lat));
+      if (params?.lng != null) url.searchParams.set('lng', String(params.lng));
+      if (params?.radius != null) url.searchParams.set('radius', String(params.radius));
+      if (params?.nearbyOnly !== undefined) url.searchParams.set('nearbyOnly', String(params.nearbyOnly));
+      if (params?.consultationType) url.searchParams.set('consultationType', params.consultationType);
 
       const res = await fetch(url.toString(), { headers: getAuthHeaders() });
       const json = await res.json();

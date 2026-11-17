@@ -30,7 +30,32 @@ export const getDepartments = async (req: Request, res: Response, next: NextFunc
     const hospitalIdQuery = typeof req.query.hospitalId === 'string' ? req.query.hospitalId.trim() : '';
     const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
     const hasDoctors = req.query.hasDoctors === 'true';
+    const consultationType = typeof req.query.consultationType === 'string'
+      ? req.query.consultationType.trim().toLowerCase()
+      : (typeof req.query.type === 'string' ? req.query.type.trim().toLowerCase() : '');
+    const isVideo = consultationType === 'video' || consultationType === 'video_consultation' || consultationType === 'video-consult' || consultationType === 'doctor';
+    const isOp = consultationType === 'op' || consultationType === 'hospital-op' || consultationType === 'normal';
+
     const hospitalId = hospitalIdQuery || req.user?.hospitalId;
+    const isPublicDiscovery = !req.user?.hospitalId;
+
+    const now = new Date();
+    const doctorCondition: any = {
+      role: Role.DOCTOR,
+      active: true,
+      OR: [
+        { inactiveUntil: null },
+        { inactiveUntil: { lte: now } }
+      ]
+    };
+    if (isVideo) {
+      doctorCondition.doctorSchedules = {
+        some: {
+          isAvailable: true,
+          videoStartTime: { not: null }
+        }
+      };
+    }
 
     const whereClause: any = {};
     if (hospitalId) whereClause.hospitalId = hospitalId;
@@ -40,35 +65,91 @@ export const getDepartments = async (req: Request, res: Response, next: NextFunc
         { description: { contains: search, mode: 'insensitive' } }
       ];
     }
-    if (hasDoctors) {
+
+    // For public browsing/discovery or when hasDoctors is explicitly requested:
+    // Only return active departments from approved hospitals that have active doctors
+    if (isPublicDiscovery || hasDoctors) {
+      whereClause.isActive = true;
+      whereClause.hospital = {
+        ...(whereClause.hospital || {}),
+        verificationStatus: 'APPROVED',
+        cancelledAt: null
+      };
+
+      if (isVideo) {
+        whereClause.hospital.OR = [
+          { services: { has: 'video_consultation' } },
+          { services: { isEmpty: true } },
+          { businessType: 'HOSPITAL' }
+        ];
+      } else if (isOp) {
+        whereClause.hospital.OR = [
+          { services: { has: 'op_consultation' } },
+          { services: { isEmpty: true } },
+          { businessType: 'HOSPITAL' }
+        ];
+      }
+
       whereClause.users = {
-        some: {
-          role: Role.DOCTOR,
-          active: true,
-          OR: [
-            { inactiveUntil: null },
-            { inactiveUntil: { lte: new Date() } }
-          ]
-        }
+        some: doctorCondition
       };
     }
 
-    const departments = await prisma.department.findMany({
+    const geo = parseGeoParams(req.query);
+
+    let departments = await prisma.department.findMany({
       where: whereClause,
       include: {
         hospital: {
-          select: { id: true, name: true, city: true, contactPhone: true }
+          select: {
+            id: true,
+            name: true,
+            city: true,
+            contactPhone: true,
+            addressLine1: true,
+            latitude: true,
+            longitude: true,
+            verificationStatus: true,
+            cancelledAt: true,
+            services: true
+          }
         },
         _count: {
-          select: { users: { where: { role: Role.DOCTOR, active: true } }, diseases: true }
+          select: {
+            users: {
+              where: doctorCondition
+            },
+            diseases: {
+              where: { isActive: true }
+            }
+          }
         }
       },
       orderBy: { name: 'asc' }
     });
 
-    res.json({
-      success: true,
-      data: departments.map(d => ({
+    // If coordinates are provided and nearbyOnly is active, filter by distance range
+    if (geo.hasCoords && geo.nearbyOnly) {
+      departments = departments.filter(d => {
+        if (!d.hospital) return false;
+        const coords = getEffectiveCoordinates(d.hospital);
+        if (!coords || coords.latitude == null || coords.longitude == null) return false;
+        const dist = calculateHaversineDistanceKm(geo.lat!, geo.lng!, coords.latitude, coords.longitude);
+        return dist <= geo.radius;
+      });
+    }
+
+    let formatted = departments.map(d => {
+      const coords = getEffectiveCoordinates(d.hospital);
+      let distance: number | null = null;
+      let distanceText: string | null = null;
+
+      if (geo.hasCoords && coords && coords.latitude != null && coords.longitude != null) {
+        distance = calculateHaversineDistanceKm(geo.lat!, geo.lng!, coords.latitude, coords.longitude);
+        distanceText = formatDistanceText(distance);
+      }
+
+      return {
         id: d.id,
         name: d.name,
         description: d.description,
@@ -78,9 +159,35 @@ export const getDepartments = async (req: Request, res: Response, next: NextFunc
         hospitalName: d.hospital?.name,
         hospitalCity: d.hospital?.city,
         hospitalPhone: d.hospital?.contactPhone,
+        latitude: coords?.latitude ?? d.hospital?.latitude ?? null,
+        longitude: coords?.longitude ?? d.hospital?.longitude ?? null,
+        distance,
+        distanceText,
         doctorCount: d._count.users,
-        diseaseCount: d._count.diseases
-      }))
+        diseaseCount: d._count.diseases,
+        hospital: d.hospital ? {
+          ...d.hospital,
+          latitude: coords?.latitude ?? d.hospital?.latitude ?? null,
+          longitude: coords?.longitude ?? d.hospital?.longitude ?? null,
+          distance,
+          distanceText
+        } : undefined
+      };
+    });
+
+    // Sort by distance if coordinates provided
+    if (geo.hasCoords) {
+      formatted.sort((a, b) => {
+        if (a.distance !== null && b.distance !== null) return a.distance - b.distance;
+        if (a.distance !== null) return -1;
+        if (b.distance !== null) return 1;
+        return a.name.localeCompare(b.name);
+      });
+    }
+
+    res.json({
+      success: true,
+      data: formatted
     });
   } catch (error) { next(error); }
 };

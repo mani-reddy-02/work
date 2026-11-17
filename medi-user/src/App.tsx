@@ -4,6 +4,7 @@ import { useAuth } from './lib/auth';
 import { PreferencesProvider } from './lib/PreferencesContext';
 import Translator from './components/Translator';
 import Layout from './components/Layout';
+import { scrollToTop } from './utils/scroll';
 
 // --- Code-Split Lazy Route Loading for Core Web Vitals (FCP, LCP & INP) ---
 const Home = lazy(() => import('./pages/Home'));
@@ -81,10 +82,10 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const ScrollToTop = () => {
-  const { pathname } = useLocation();
+  const location = useLocation();
   React.useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+    scrollToTop();
+  }, [location.pathname, location.search, location.key]);
   return null;
 };
 

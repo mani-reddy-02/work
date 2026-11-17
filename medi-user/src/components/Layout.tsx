@@ -6,6 +6,7 @@ import { useUIStore } from '../lib/uiStore';
 import { useEffect, useRef } from 'react';
 import { cn } from '../lib/utils';
 import PostServiceReviewPopup from './PostServiceReviewPopup';
+import { scrollToTop } from '../utils/scroll';
 
 const Layout = () => {
   const { isMobileMenuOpen, setMobileMenuOpen, isDesktopSidebarOpen, detectLocation } = useUIStore();
@@ -15,11 +16,8 @@ const Layout = () => {
   // Close mobile menu and scroll to top on every route change
   useEffect(() => {
     setMobileMenuOpen(false);
-    if (mainRef.current) {
-      mainRef.current.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    }
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-  }, [location.pathname, setMobileMenuOpen]);
+    scrollToTop();
+  }, [location.pathname, location.search, location.key, setMobileMenuOpen]);
 
   // First take the live location automatically on entry into user module
   useEffect(() => {

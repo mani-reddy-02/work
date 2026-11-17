@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AdminLayout from './components/layout/AdminLayout';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -55,10 +55,29 @@ import VideoConsultations from './pages/VideoConsultations';
 import VideoConsultationDetails from './pages/VideoConsultationDetails';
 
 
+const ScrollToTop = () => {
+  const location = useLocation();
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+    const containers = document.querySelectorAll('main, .overflow-y-auto');
+    containers.forEach((c) => {
+      try {
+        c.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      } catch {
+        c.scrollTop = 0;
+      }
+    });
+  }, [location.pathname, location.search, location.key]);
+  return null;
+};
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ScrollToTop />
           <Routes>
             <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
             

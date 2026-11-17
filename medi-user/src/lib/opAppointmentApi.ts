@@ -179,7 +179,16 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 export const opAppointmentApi = {
-  async fetchDiseases(search?: string, consultationType?: string): Promise<{
+  async fetchDiseases(
+    search?: string,
+    consultationType?: string,
+    params?: {
+      lat?: number;
+      lng?: number;
+      radius?: number;
+      nearbyOnly?: boolean;
+    }
+  ): Promise<{
     success: boolean;
     data?: {
       total: number;
@@ -197,6 +206,16 @@ export const opAppointmentApi = {
       }
       if (consultationType) {
         url.searchParams.set('consultationType', consultationType);
+      }
+      if (params?.lat !== undefined && params?.lng !== undefined) {
+        url.searchParams.set('lat', String(params.lat));
+        url.searchParams.set('lng', String(params.lng));
+      }
+      if (params?.radius !== undefined) {
+        url.searchParams.set('radius', String(params.radius));
+      }
+      if (params?.nearbyOnly !== undefined) {
+        url.searchParams.set('nearbyOnly', String(params.nearbyOnly));
       }
       const res = await fetch(url.toString(), {
         headers: getAuthHeaders(),

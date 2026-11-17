@@ -29,6 +29,14 @@ const envSchema = z.object({
   LIVEKIT_URL: z.string().optional(),
   LIVEKIT_API_KEY: z.string().optional(),
   LIVEKIT_API_SECRET: z.string().optional(),
+  // Exotel Telephony Cloud API
+  EXOTEL_ACCOUNT_SID: z.string().optional(),
+  EXOTEL_API_KEY: z.string().optional(),
+  EXOTEL_API_TOKEN: z.string().optional(),
+  EXOTEL_SUBDOMAIN: z.string().default('api.in.exotel.com'),
+  EXOTEL_BASE_URL: z.string().optional(),
+  EXOTEL_CALLER_ID: z.string().optional(),
+  EXOTEL_APP_ID: z.string().optional(),
 });
 
 const _env = envSchema.safeParse(process.env);
