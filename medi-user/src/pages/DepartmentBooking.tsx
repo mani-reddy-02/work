@@ -300,7 +300,9 @@ const DepartmentBooking: React.FC = () => {
 
           for (const d of validDepts) {
 
-            const key = d.name.trim().toLowerCase();
+            const cleanName = d.name.replace(/\s*\(?\btest\b\)?/gi, '').replace(/\s*-\s*test\b/gi, '').replace(/\s+/g, ' ').trim();
+
+            const key = (cleanName || d.name).toLowerCase();
 
             const existing = groupedMap.get(key);
 
@@ -309,6 +311,8 @@ const DepartmentBooking: React.FC = () => {
               groupedMap.set(key, {
 
                 ...d,
+
+                name: cleanName || d.name,
 
                 hospitalName: undefined, // Disassociate from single hospital on department list
 

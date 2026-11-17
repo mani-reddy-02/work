@@ -220,14 +220,13 @@ export class HealthEducationService {
     if (!apiKey || apiKey.length < 10) return null;
 
     // Cascade of candidate Gemini models to try in Google Cloud
-    const preferredModel = env.GEMINI_MODEL || 'gemini-3.8-flash';
+    const preferredModel = env.GEMINI_MODEL || 'gemini-2.0-flash';
     const candidateModels = Array.from(new Set([
       preferredModel,
-      'gemini-3.8-flash',
-      'gemini-flash-latest',
-      'gemini-3.7-flash',
-      'gemini-3.1-flash-lite',
-      'gemini-pro-latest'
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-1.5-flash-8b',
+      'gemini-1.5-pro'
     ]));
 
     const contentsPayload = [
@@ -601,20 +600,20 @@ export class HealthEducationService {
     ) {
       if (isTelugu) {
         return {
-          answer: `**తలనొప్పి మరియు మైగ్రేన్ కారణాలు & ఉపశమనం:**\n\n- **సాధారణ రకాలు:**\n  - **టెన్షన్ తలనొప్పి:** కంప్యూటర్/మొబైల్ స్క్రీన్లు ఎక్కువసేపు చూడటం, నిద్రలేమి, లేదా ఒత్తిడి వల్ల తల చుట్టూ బిగుతుగా అనిపించడం.\n  - **మైగ్రేన్:** తలలో ఒకవైపు మాత్రమే తీవ్రమైన నొప్పితో పాటు వెలుతురు, శబ్దాలకు ఇబ్బందిగా అనిపించడం లేదా వికారం కలగడం.\n- **ఇంటి సంరక్షణ:**\n  - వెంటనే ఒక పెద్ద గ్లాసు నీరు తాగండి (డీహైడ్రేషన్ తలనొప్పికి అత్యంత సాధారణ కారణం).\n  - చీకటిగా, ప్రశాంతంగా ఉన్న గదిలో 20-30 నిమిషాలు విశ్రాంతి తీసుకోండి.\n  - స్క్రీన్లు చూసేటప్పుడు 20-20-20 సూత్రాన్ని పాటించండి (ప్రతి 20 నిమిషాలకు 20 అడుగుల దూరంలోని వస్తువును 20 సెకన్ల పాటు చూడటం).\n- **తీవ్ర హెచ్చరిక:** తలనొప్పి ఆకస్మికంగా మరియు అత్యంత తీవ్రంగా వస్తే (థండర్‌క్లాప్ హెడేక్) లేదా చూపు మసకబారడం, మాట్లాడటంలో తేడా వస్తే వెంటనే ఎమర్జెన్సీ వార్డును లేదా మెడిక్యూలో **న్యూరాలజిస్ట్** ను సంప్రదించండి.`,
+          answer: `**తలనొప్పి మరియు మైగ్రేన్ ఉపశమన మార్గదర్శకాలు:**\n\n**1. సాధారణ కారణాలు:**\nచాలావరకు తలనొప్పులు తగినంత నీరు తాగకపోవడం (డీహైడ్రేషన్), ఎక్కువ స్క్రీన్ సమయం, నిద్రలేమి, లేదా మానసిక ఒత్తిడి వల్ల వస్తాయి.\n\n**2. వెంటనే చేయవలసిన జాగ్రత్తలు:**\n• **మంచినీరు తాగండి:** డీహైడ్రేషన్ సాధారణ కారణం — వెంటనే 1-2 గ్లాసుల నీరు తాగండి.\n• **విశ్రాంతి:** ప్రశాంతమైన, చీకటి గదిలో కళ్ళు మూసుకుని 15–20 నిమిషాలు విశ్రాంతి తీసుకోండి.\n• **స్క్రీన్ విరామం:** మొబైల్, కంప్యూటర్ స్క్రీన్ల వాడకాన్ని కాసేపు నిలిపివేయండి.\n\n**3. ఎప్పుడు డాక్టర్‌ను సంప్రదించాలి (హెచ్చరికలు):**\n⚠️ ఆకస్మిక తీవ్రమైన తలనొప్పి, చూపు మసకబారడం, లేదా మాట్లాడటంలో తేడా వస్తే వెంటనే ఎమర్జెన్సీ సంప్రదించండి.\n\n**4. సిఫార్సు చేసిన స్పెషలిస్ట్:**\nతలనొప్పి తరచుగా వస్తుంటే మెడిక్యూలో **జనరల్ ఫిజిషియన్ లేదా న్యూరాలజిస్ట్** ను సంప్రదించండి.`,
           suggestedFollowUps: [
-            'మైగ్రేన్ లక్షణాలు ఎలా ఉంటాయి?',
-            'స్క్రీన్ టైమ్ తలనొప్పి నివారణ చిట్కాలు',
-            'న్యూరాలజిస్ట్‌ను సంప్రదించండి'
+            'మైగ్రేన్ మరియు సాధారణ తలనొప్పికి తేడా ఏమిటి?',
+            'స్క్రీన్ తలనొప్పి నివారణ చిట్కాలు',
+            'న్యూరాలజిస్ట్‌ను బుక్ చేయండి'
           ]
         };
       }
       return {
-        answer: `**Understanding Headaches & Migraines (General Education):**\n\n- **Primary Classes:**\n  - **Tension Headaches:** Bilateral pressure across forehead or occipital neck muscles, sparked by stress, posture, or screen fatigue.\n  - **Migraines:** Unilateral throbbing, episodic headache frequently accompanied by nausea, aura, photophobia, or phonophobia.\n- **Immediate Supportive Steps:**\n  - **Rapid Hydration:** Dehydration is a very common trigger; drink 500ml of room-temperature water.\n  - **Sensory Rest:** Rest quietly in a dark, cool room with a cold compress placed over the forehead.\n  - **Ocular Ergonomics:** Observe the 20-20-20 rule during computer and smartphone usage.\n- **Emergency Red Flags:** Sudden 'worst headache of life' (thunderclap), numbness, slurred speech, or weakness requires immediate emergency room evaluation.\n- **Specialist Care:** Consult a **Neurologist or General Physician** on MediQuee for chronic recurrent headache management.`,
+        answer: `**Headache Relief & Guidance:**\n\n**1. What It Means:**\nMost headaches are tension headaches caused by dehydration, screen eye-strain, lack of sleep, or daily stress.\n\n**2. What You Can Do Right Now:**\n• **Hydrate:** Dehydration is the #1 trigger — drink 1 to 2 glasses of room-temperature water.\n• **Rest in a Quiet, Dim Room:** Lie down with a cool or warm cloth on your forehead for 15–20 minutes.\n• **Screen Break:** Turn off your smartphone and computer screens for at least 20 minutes.\n\n**3. When to Seek Urgent Care (Red Flags):**\n⚠️ Seek immediate medical care if you experience sudden "worst headache of your life", high fever with stiff neck, weakness, or slurred speech.\n\n**4. Recommended Doctor on MediQuee:**\nIf headaches happen frequently or persist, book a consultation with a **General Physician or Neurologist**.`,
         suggestedFollowUps: [
-          'What are the most common migraine dietary triggers?',
-          'When does a headache require brain imaging (MRI/CT)?',
-          'Consult a Neurologist on MediQuee'
+          'What are common triggers for migraines?',
+          'Tips to prevent screen-related headaches',
+          'Book a General Physician on MediQuee'
         ]
       };
     }
@@ -907,16 +906,24 @@ export class HealthEducationService {
       ? 'ఈ సమాచారం సాధారణ ఆరోగ్య అవగాహన కోసం మాత్రమే. ఇది వైద్య సలహా లేదా వ్యాధి నిర్ధారణ కాదు. ఖచ్చితమైన నిర్ధారణ కోసం వైద్యుడిని సంప్రదించండి.'
       : 'This assistant provides general educational information only, not medical diagnosis or treatment. Consult a licensed doctor for personalized medical advice.';
 
-    const systemInstruction = `You are the MediQuee AI Health Education Assistant, a compassionate, accurate, and professional medical literacy companion.
-YOUR PURPOSE is to provide verified healthcare education, explain medical concepts in lay terms, guide users on healthy lifestyle practices, and direct them to appropriate hospital specialists on MediQuee.
+    const systemInstruction = `You are MediQuee AI, an expert, empathetic, and dedicated healthcare assistant for the MediQuee Healthcare platform.
 
-CRITICAL HEALTHCARE SAFETY COMPLIANCE:
-1. You are NOT a doctor and do NOT diagnose diseases.
-2. NEVER prescribe medications, calculate pharmaceutical dosages, or tell users to stop prescribed treatments.
-3. If red flag symptoms appear, emphasize seeking emergency hospital care immediately.
-4. Support English and Telugu. If the user writes in Telugu or requested language is 'te', respond in clear, polite Telugu with English medical terms in parentheses where helpful.
-5. Format answers clearly with bullet points and bold headings so they are easy to read on mobile devices.
-6. Conclude by suggesting which MediQuee OP department or doctor specialist to consult if symptoms persist.`;
+STRICT DOMAIN GUARDRAILS (HEALTHCARE & WELLNESS ONLY):
+1. You ONLY answer questions related to human health, medicine, symptoms, nutrition, wellness, preventive care, first aid, diagnostic lab tests, and hospital doctor specialties.
+2. If the user asks about ANYTHING NON-MEDICAL (such as computer coding, software, math, movies, sports, finance, or general chit-chat unrelated to health), politely decline:
+   "I am MediQuee's dedicated Healthcare Assistant. I am specialized only in health, medicine, wellness, and doctor guidance. Please ask me a health-related question!"
+
+RESPONSE FORMAT & CLINICAL RULES:
+1. KEEP IT SIMPLE & EASY TO UNDERSTAND: Write in clear, everyday language. NEVER use dense academic textbook jargon (e.g. do not say "bilateral occipital pressure", say "tension across your forehead or neck").
+2. KEEP IT CONCISE & ORGANIZED (Under 150 words): Structure your answer into 3 distinct, short sections:
+   - **What It Means:** (1-2 simple sentences explaining the common cause)
+   - **What You Can Do Right Now:** (2-3 practical everyday home relief tips with bullet points)
+   - **When to See a Doctor:** (Warning red flags & the exact MediQuee specialist to book, e.g. General Physician, Neurologist, Cardiologist, etc.)
+3. SAFETY & COMPLIANCE:
+   - You are an educational guide, not an autonomous diagnostic doctor.
+   - Do NOT prescribe specific prescription medication dosages.
+   - If symptoms sound severe or life-threatening (e.g. crushing chest pain, sudden thunderclap headache, breathing difficulty, stroke signs), immediately advise emergency care (Call 108).
+4. MULTI-LANGUAGE: Support English and Telugu. If the user asks in Telugu or language is 'te', answer in warm, clear, everyday Telugu.`;
 
     // 1. Google Gemini / Google Cloud (Primary Provider)
     // 2. Groq (if configured)
