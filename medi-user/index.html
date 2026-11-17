@@ -4,13 +4,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Lightweight SVG Favicon (replaces 624 KB PNG) -->
+    <!-- Official MediQuee Favicons & App Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
-    <meta name="theme-color" content="#2563eb" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <meta name="theme-color" content="#1769E0" />
 
     <title>MediQuee - Healthcare at Your Doorstep</title>
     <meta name="description" content="Book hospital outpatient appointments, video consultations with verified doctors, home nursing, and lab tests on MediQuee." />
+
+    <!-- Open Graph / WhatsApp / Facebook / LinkedIn Link Previews -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="MediQuee" />
+    <meta property="og:url" content="https://mediquee.in/" />
+    <meta property="og:title" content="MediQuee - Healthcare at Your Doorstep" />
+    <meta property="og:description" content="Book hospital outpatient appointments, video consultations with verified doctors, home nursing, and lab tests on MediQuee." />
+    <meta property="og:image" content="https://mediquee.in/og-image.jpg" />
+    <meta property="og:image:secure_url" content="https://mediquee.in/og-image.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="MediQuee - Healthcare at Your Doorstep" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MediQuee - Healthcare at Your Doorstep" />
+    <meta name="twitter:description" content="Book hospital outpatient appointments, video consultations with verified doctors, home nursing, and lab tests on MediQuee." />
+    <meta name="twitter:image" content="https://mediquee.in/og-image.jpg" />
 
     <!-- Non-Blocking Google Fonts Loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -33,24 +56,36 @@
       />
     </noscript>
   </head>
-  <body class="bg-slate-50 antialiased">
-    <!-- Crawlable Initial DOM Fallback for Search Bots Before React Hydration -->
+  <body class="bg-[#F5F8FD] antialiased">
     <div id="root">
-      <header style="padding: 1rem; border-bottom: 1px solid #e2e8f0; text-align: center;">
-        <h1 style="font-size: 1.25rem; font-weight: bold; color: #1e293b;">MediQuee Healthcare</h1>
-        <p style="font-size: 0.875rem; color: #64748b;">Hospital Appointments, Video Consultations, Home Nursing &amp; Lab Tests</p>
-      </header>
-      <main style="padding: 1.5rem; max-width: 800px; margin: 0 auto;">
-        <h2>Healthcare Services</h2>
-        <ul>
-          <li><a href="/specialties?type=hospital-op">Hospital Outpatient (OP) Booking</a></li>
-          <li><a href="/specialties?type=doctor">Doctor Video Consultations</a></li>
-          <li><a href="/departments">Clinical Departments &amp; Specialists</a></li>
-          <li><a href="/services/lab-tests">Diagnostic Lab Tests &amp; Packages</a></li>
-          <li><a href="/services/home-nursing">Home Nursing &amp; Attendant Care</a></li>
-        </ul>
-      </main>
+      <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #F5F8FD; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
+          <img src="/logo.png" alt="MediQuee" style="height: 48px; width: auto; object-fit: contain; animation: mq-pulse 1.6s ease-in-out infinite;" />
+          <div style="width: 36px; height: 36px; border: 3px solid #E2E8F0; border-top-color: #1769E0; border-radius: 50%; animation: mq-spin 0.75s linear infinite;"></div>
+        </div>
+      </div>
+      <style>
+        @keyframes mq-spin { to { transform: rotate(360deg); } }
+        @keyframes mq-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.88; transform: scale(0.98); } }
+      </style>
     </div>
+
+    <!-- Crawlable Fallback for Non-JS Clients & SEO Bots -->
+    <noscript>
+      <div style="padding: 2rem; max-width: 800px; margin: 0 auto; font-family: sans-serif; text-align: center;">
+        <h1 style="font-size: 1.5rem; font-weight: bold; color: #1e293b;">MediQuee Healthcare</h1>
+        <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 1.5rem;">Hospital Appointments, Video Consultations, Home Nursing &amp; Lab Tests</p>
+        <h2 style="font-size: 1.1rem; color: #334155;">Healthcare Services</h2>
+        <ul style="list-style: none; padding: 0; line-height: 2;">
+          <li><a href="/specialties?type=hospital-op" style="color: #1769E0;">Hospital Outpatient (OP) Booking</a></li>
+          <li><a href="/specialties?type=doctor" style="color: #1769E0;">Doctor Video Consultations</a></li>
+          <li><a href="/departments" style="color: #1769E0;">Clinical Departments &amp; Specialists</a></li>
+          <li><a href="/services/lab-tests" style="color: #1769E0;">Diagnostic Lab Tests &amp; Packages</a></li>
+          <li><a href="/services/home-nursing" style="color: #1769E0;">Home Nursing &amp; Attendant Care</a></li>
+        </ul>
+      </div>
+    </noscript>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

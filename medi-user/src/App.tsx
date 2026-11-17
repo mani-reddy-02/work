@@ -6,8 +6,8 @@ import Translator from './components/Translator';
 import Layout from './components/Layout';
 import { scrollToTop } from './utils/scroll';
 
+import Home from './pages/Home';
 // --- Code-Split Lazy Route Loading for Core Web Vitals (FCP, LCP & INP) ---
-const Home = lazy(() => import('./pages/Home'));
 const Services = lazy(() => import('./pages/Services'));
 const Specialties = lazy(() => import('./pages/Specialties'));
 const DepartmentBooking = lazy(() => import('./pages/DepartmentBooking'));
@@ -41,7 +41,7 @@ const Register = lazy(() => import('./pages/Register'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 
 const PageLoader = () => (
-  <div className="min-h-[50vh] flex items-center justify-center">
+  <div className="min-h-screen flex flex-col items-center justify-center bg-[#F5F8FD]">
     <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
   </div>
 );

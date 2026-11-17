@@ -14,7 +14,7 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
   title,
   description,
   canonicalUrl = 'https://mediquee.in',
-  ogImage = 'https://mediquee.in/logo.png',
+  ogImage = 'https://mediquee.in/og-image.jpg',
   ogType = 'website',
   keywords = ['healthcare', 'doctor consultation', 'online doctor appointment', 'hospital op booking', 'home nursing', 'lab tests'],
   jsonLd

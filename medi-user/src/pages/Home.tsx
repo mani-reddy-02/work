@@ -127,12 +127,14 @@ const Home = () => {
 
           for (const d of withDocs) {
 
-            const key = d.name.trim().toLowerCase();
+            const cleanName = (d.name || '').replace(/\s*\(?\btest\b\)?/gi, '').replace(/\s*-\s*test\b/gi, '').replace(/\s+/g, ' ').trim();
+
+            const key = (cleanName || d.name).toLowerCase();
 
             const existing = groupedMap.get(key);
             if (!existing) {
 
-              groupedMap.set(key, { ...d, hospitalName: undefined });
+              groupedMap.set(key, { ...d, name: cleanName || d.name, hospitalName: undefined });
 
             } else {
               existing.doctorCount = (existing.doctorCount ?? 0) + (d.doctorCount ?? 0);

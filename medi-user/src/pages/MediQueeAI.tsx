@@ -30,6 +30,113 @@ const SUGGESTED_QUESTIONS_TE = [
   "సరైన శరీర హైడ్రేషన్ (నీరు తాగడం) ప్రాముఖ్యత ఏమిటి?"
 ];
 
+const SPECIALTY_NAV_MAP: Array<{ keywords: string[]; label: string; icon: string; dept: string }> = [
+  { keywords: ['general physician', 'general medicine', 'physician', 'internal medicine'], label: 'General Physician', icon: '🩺', dept: 'General Medicine' },
+  { keywords: ['neurologist', 'neurology'], label: 'Neurologist', icon: '🧠', dept: 'Neurology' },
+  { keywords: ['cardiologist', 'cardiology', 'heart doctor'], label: 'Cardiologist', icon: '❤️', dept: 'Cardiology' },
+  { keywords: ['dermatologist', 'dermatology', 'skin specialist'], label: 'Dermatologist', icon: '✨', dept: 'Dermatology' },
+  { keywords: ['orthopedic', 'orthopedics', 'bone specialist', 'joints'], label: 'Orthopedic Specialist', icon: '🦴', dept: 'Orthopedics' },
+  { keywords: ['gynecologist', 'gynecology', 'women health'], label: 'Gynecologist', icon: '🌸', dept: 'Gynecology' },
+  { keywords: ['pediatrician', 'pediatrics', 'child doctor'], label: 'Pediatrician', icon: '👶', dept: 'Pediatrics' },
+  { keywords: ['gastroenterologist', 'gastroenterology', 'stomach'], label: 'Gastroenterologist', icon: '🍏', dept: 'Gastroenterology' },
+  { keywords: ['ent specialist', 'ent doctor', 'ent', 'ear nose throat'], label: 'ENT Specialist', icon: '👂', dept: 'ENT' },
+  { keywords: ['endocrinologist', 'diabetologist', 'diabetes'], label: 'Diabetologist', icon: '🩸', dept: 'General Medicine' }
+];
+
+function renderFormattedMessage(text: string, navigate: (path: string) => void) {
+  const lower = text.toLowerCase();
+  const detectedSpecialties: Array<{ label: string; icon: string; dept: string }> = [];
+  const seen = new Set<string>();
+
+  for (const item of SPECIALTY_NAV_MAP) {
+    if (item.keywords.some(k => lower.includes(k)) && !seen.has(item.label)) {
+      seen.add(item.label);
+      detectedSpecialties.push(item);
+    }
+  }
+
+  const lines = text.split('\n');
+
+  const parseInline = (str: string) => {
+    const parts = str.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="font-semibold text-slate-900">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="space-y-1.5 text-slate-800">
+        {lines.map((line, idx) => {
+          const trimmed = line.trim();
+          if (!trimmed) return <div key={idx} className="h-1" />;
+
+          // Heading or Section
+          if (trimmed.startsWith('**') && (trimmed.endsWith(':**') || trimmed.endsWith('**'))) {
+            const headingText = trimmed.replace(/^\*\*|\*\*$/g, '').replace(/:$/, '');
+            return (
+              <div key={idx} className="font-bold text-slate-900 text-xs sm:text-sm pt-1 pb-0.5 border-b border-slate-200/60 first:pt-0">
+                {headingText}
+              </div>
+            );
+          }
+
+          // Bullet points
+          if (trimmed.startsWith('- ') || trimmed.startsWith('• ') || trimmed.startsWith('* ')) {
+            const content = trimmed.replace(/^[-•*]\s*/, '');
+            return (
+              <div key={idx} className="flex items-start gap-2 pl-1 text-xs sm:text-[13px] leading-relaxed">
+                <span className="text-blue-500 font-bold select-none">•</span>
+                <span className="flex-1">{parseInline(content)}</span>
+              </div>
+            );
+          }
+
+          // Warning / Alert block
+          if (trimmed.startsWith('⚠️')) {
+            return (
+              <div key={idx} className="bg-amber-50 border border-amber-200/80 rounded-xl p-2.5 text-amber-950 font-medium text-xs leading-relaxed my-1">
+                {parseInline(trimmed)}
+              </div>
+            );
+          }
+
+          return (
+            <p key={idx} className="text-xs sm:text-[13px] leading-relaxed">
+              {parseInline(trimmed)}
+            </p>
+          );
+        })}
+      </div>
+
+      {/* Suggested Doctor Quick-Action Buttons */}
+      {detectedSpecialties.length > 0 && (
+        <div className="mt-3 pt-2.5 border-t border-slate-200/80 space-y-1.5">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+            <span>Consult Recommended Specialist</span>
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {detectedSpecialties.slice(0, 3).map((s) => (
+              <button
+                key={s.label}
+                onClick={() => navigate(`/departments?dept=${encodeURIComponent(s.dept)}`)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-bold text-xs rounded-xl shadow-2xs transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                <span>{s.icon}</span>
+                <span>Book {s.label}</span>
+                <span className="text-[10px] opacity-70">→</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MediQueeAI() {
   const navigate = useNavigate();
 
@@ -212,7 +319,11 @@ export default function MediQueeAI() {
                     </div>
                   )}
 
-                  <div className="whitespace-pre-wrap">{msg.text}</div>
+                  {msg.sender === 'user' ? (
+                    <div className="whitespace-pre-wrap">{msg.text}</div>
+                  ) : (
+                    renderFormattedMessage(msg.text, navigate)
+                  )}
 
                   {/* Emergency Call Button if Emergency Triggered */}
                   {msg.isEmergency && (
