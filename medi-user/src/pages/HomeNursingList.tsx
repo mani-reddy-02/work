@@ -41,6 +41,7 @@ import {
 import { profileApi } from '../lib/profileApi';
 import PrePaymentReviewsSummary from '../components/PrePaymentReviewsSummary';
 import ProviderReviewsModal from '../components/ProviderReviewsModal';
+import { useUIStore } from '../lib/uiStore';
 
 const mockHospitals: NursingProviderRecord[] = [];
 
@@ -85,6 +86,7 @@ const getTomorrowDateString = () => {
 const HomeNursingList = () => {
   const navigate = useNavigate();
   const { profile } = useProfile();
+  const { userLocation, setNearbyRadiusKm } = useUIStore();
   
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
@@ -156,22 +158,29 @@ const HomeNursingList = () => {
 
   const [confirmedBooking, setConfirmedBooking] = useState<any>(null);
 
-  // 1. Load active services and categories from backend
+  // 1. Load active services and categories from backend based on user location
   useEffect(() => {
     const fetchServices = async () => {
       try {
         const [servRes, catRes] = await Promise.all([
-          homeNursingApi.getServices(),
+          homeNursingApi.getServices({
+            lat: userLocation.latitude ?? undefined,
+            lng: userLocation.longitude ?? undefined,
+            radius: userLocation.radiusKm,
+            nearbyOnly: true
+          }),
           homeNursingApi.getCategories(),
         ]);
-        if (servRes.success && servRes.data && servRes.data.length > 0) {
+        if (servRes.success && servRes.data) {
           setServices(servRes.data);
+        } else {
+          setServices([]);
         }
         if (catRes.success && catRes.data && catRes.data.length > 0) {
           setCategories(catRes.data);
         }
       } catch (err) {
-        // Fallback silently kept
+        setServices([]);
       }
     };
 
@@ -225,15 +234,24 @@ const HomeNursingList = () => {
     setViewState('HOSPITALS');
     setSearchQuery('');
 
-    // Load live hospital offerings from backend
+    // Load live hospital offerings from backend based on user location
     homeNursingApi
-      .getServiceProviders(service.id)
+      .getServiceProviders(service.id, {
+        lat: userLocation.latitude ?? undefined,
+        lng: userLocation.longitude ?? undefined,
+        radius: userLocation.radiusKm,
+        nearbyOnly: true
+      })
       .then((res) => {
         if (res.success && res.data && res.data.length > 0) {
           setHospitals(res.data);
+        } else {
+          setHospitals([]);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setHospitals([]);
+      });
   };
 
   // Handle Select Hospital -> fetch real availability

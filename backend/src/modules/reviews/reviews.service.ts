@@ -924,13 +924,9 @@ export class ReviewsService {
       })
     ]);
 
-    // Format reviews for privacy
+    // Format reviews for privacy - do not show reviewer personal names
     const formattedReviews = reviews.map(r => {
-      let displayName = 'Verified Patient';
-      if (!r.isAnonymous && r.user?.name) {
-        const parts = r.user.name.trim().split(/\s+/);
-        displayName = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
-      }
+      const displayName = 'Verified Patient';
 
       return {
         id: r.id,

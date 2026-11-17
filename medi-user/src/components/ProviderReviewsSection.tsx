@@ -8,7 +8,8 @@ import {
   Filter, 
   Clock, 
   ChevronRight,
-  RefreshCw
+  RefreshCw,
+  User
 } from 'lucide-react';
 import { reviewsApi, type PublicReview, type PublicReviewsResponse } from '../lib/reviewsApi';
 import { cn } from '../lib/utils';
@@ -193,12 +194,12 @@ export const ProviderReviewsSection: React.FC<ProviderReviewsSectionProps> = ({
               <div key={rev.id} className="pt-3.5 first:pt-0 space-y-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs">
-                      {rev.displayName[0]}
+                    <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
+                      <User className="w-4 h-4" />
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-slate-900">{rev.displayName}</span>
+                        <span className="text-xs font-bold text-slate-900">Verified Patient</span>
                         {rev.isVerified && (
                           <span className="inline-flex items-center gap-0.5 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200">
                             <ShieldCheck className="w-3 h-3 text-emerald-600" />

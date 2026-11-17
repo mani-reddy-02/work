@@ -37,7 +37,14 @@ export const getDiseases = async (req: Request, res: Response, next: NextFunctio
     const isVideo = consultationType === 'video' || consultationType === 'video_consultation' || consultationType === 'video-consult' || consultationType === 'doctor';
     const isOp = consultationType === 'op' || consultationType === 'hospital-op' || consultationType === 'normal';
 
-    const doctorCondition: any = { role: 'DOCTOR', active: true };
+    const doctorCondition: any = { 
+      role: 'DOCTOR', 
+      active: true,
+      OR: [
+        { inactiveUntil: null },
+        { inactiveUntil: { lte: new Date() } }
+      ]
+    };
     if (isVideo) {
       doctorCondition.doctorSchedules = {
         some: {
@@ -47,11 +54,21 @@ export const getDiseases = async (req: Request, res: Response, next: NextFunctio
       };
     }
 
-    const hospitalCondition: any = {};
+    const hospitalCondition: any = {
+      verificationStatus: 'APPROVED'
+    };
     if (isVideo) {
-      hospitalCondition.services = { has: 'video_consultation' };
+      hospitalCondition.OR = [
+        { services: { has: 'video_consultation' } },
+        { services: { isEmpty: true } },
+        { businessType: 'HOSPITAL' }
+      ];
     } else if (isOp) {
-      hospitalCondition.services = { has: 'op_consultation' };
+      hospitalCondition.OR = [
+        { services: { has: 'op_consultation' } },
+        { services: { isEmpty: true } },
+        { businessType: 'HOSPITAL' }
+      ];
     }
 
     // Fetch active diseases added explicitly by hospitals that have active doctors
@@ -64,23 +81,42 @@ export const getDiseases = async (req: Request, res: Response, next: NextFunctio
           users: { some: doctorCondition }
         }
       },
-      select: { name: true },
-      distinct: ['name']
+      include: {
+        department: {
+          select: { id: true, name: true, specialtyId: true }
+        }
+      }
     });
     const addedDiseaseNames = new Set(addedDiseases.map(d => d.name.toLowerCase()));
 
-    // Fetch specialty IDs of active hospital departments that have active doctors
+    // Fetch active hospital departments that have active doctors
     const activeDepartments = await prisma.department.findMany({
       where: { 
         isActive: true, 
-        specialtyId: { not: null },
         hospital: hospitalCondition,
         users: { some: doctorCondition }
       },
-      select: { specialtyId: true },
-      distinct: ['specialtyId']
+      select: { specialtyId: true, name: true }
     });
-    const activeSpecialtyIds = new Set(activeDepartments.map(d => d.specialtyId));
+
+    const activeSpecialtyIds = new Set<string>();
+    const activeDeptNames = new Set<string>();
+    for (const d of activeDepartments) {
+      if (d.specialtyId) activeSpecialtyIds.add(d.specialtyId);
+      if (d.name) activeDeptNames.add(d.name.trim().toLowerCase());
+    }
+
+    // Match departments to PlatformSpecialty by name if specialtyId was not set
+    if (activeDeptNames.size > 0) {
+      const allPlatformSpecialties = await prisma.platformSpecialty.findMany({
+        select: { id: true, name: true }
+      });
+      for (const ps of allPlatformSpecialties) {
+        if (activeDeptNames.has(ps.name.trim().toLowerCase())) {
+          activeSpecialtyIds.add(ps.id);
+        }
+      }
+    }
 
     const conditionsDataRaw = await prisma.platformCondition.findMany({ 
       where, 
@@ -88,7 +124,7 @@ export const getDiseases = async (req: Request, res: Response, next: NextFunctio
       include: { specialty: true } 
     });
 
-    // Filter to only diseases supported by at least one hospital with an active doctor
+    // Filter to strictly only diseases supported by registered hospital departments that have active doctors
     const conditionsData = conditionsDataRaw.filter(d => 
       addedDiseaseNames.has(d.name.toLowerCase()) || activeSpecialtyIds.has(d.specialtyId)
     );

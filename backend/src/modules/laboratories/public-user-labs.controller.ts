@@ -103,6 +103,10 @@ export const getPublicLabTests = async (req: Request, res: Response, next: NextF
       };
     });
 
+    if (geo.hasCoords && geo.nearbyOnly) {
+      formattedTests = formattedTests.filter((pt: any) => pt.availableLabCount > 0);
+    }
+
     const packages = await prisma.labPackage.findMany({
       where: {
         status: 'Active',
@@ -120,6 +124,14 @@ export const getPublicLabTests = async (req: Request, res: Response, next: NextF
 
     const formattedPackages = [];
     for (const pkg of packages) {
+      if (geo.hasCoords && geo.nearbyOnly) {
+        if (!pkg.hospital) continue;
+        const coords = getEffectiveCoordinates(pkg.hospital);
+        if (!coords || coords.latitude == null || coords.longitude == null) continue;
+        const dist = calculateHaversineDistanceKm(geo.lat!, geo.lng!, coords.latitude, coords.longitude);
+        if (dist > geo.radius) continue;
+      }
+
       const hospitalTests = allHospitalTests.filter((lt: any) => lt.hospitalId === pkg.hospitalId);
       
       let homeCollectionAvailable = true;

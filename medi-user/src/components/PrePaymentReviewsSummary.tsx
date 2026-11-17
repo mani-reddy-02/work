@@ -8,7 +8,8 @@ import {
   ExternalLink,
   MessageSquare,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  User
 } from 'lucide-react';
 import { reviewsApi, type PublicReview, type PublicReviewsResponse } from '../lib/reviewsApi';
 
@@ -164,13 +165,13 @@ export const PrePaymentReviewsSummary: React.FC<PrePaymentReviewsSummaryProps> =
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center shrink-0">
-                      {rev.displayName ? rev.displayName.charAt(0).toUpperCase() : 'P'}
+                    <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
+                      <User className="w-3.5 h-3.5" />
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-xs font-bold text-slate-800">
-                          {rev.displayName || 'Verified Patient'}
+                          Verified Patient
                         </span>
                         {rev.isVerified && (
                           <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200">

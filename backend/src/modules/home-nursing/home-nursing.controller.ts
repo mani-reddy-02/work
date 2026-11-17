@@ -62,6 +62,8 @@ export const getNursingServices = async (req: Request, res: Response, next: Next
       };
     }
 
+    const geo = parseGeoParams(req.query);
+
     const services = await prisma.nursingService.findMany({
       where,
       include: {
@@ -79,8 +81,32 @@ export const getNursingServices = async (req: Request, res: Response, next: Next
       orderBy: { name: 'asc' },
     });
 
-    const enriched = services.map((s) => {
-      const prices = s.offerings.map((o) => o.price);
+    let hospitalMap = new Map<string, any>();
+    if (geo.hasCoords && geo.nearbyOnly) {
+      const allHospitalIds = Array.from(new Set(services.flatMap((s: any) => s.offerings.map((o: any) => o.hospitalId))));
+      if (allHospitalIds.length > 0) {
+        const hospitals = await prisma.hospital.findMany({
+          where: { id: { in: allHospitalIds }, verificationStatus: 'APPROVED' },
+          select: { id: true, name: true, city: true, latitude: true, longitude: true }
+        });
+        hospitalMap = new Map(hospitals.map((h: any) => [h.id, h]));
+      }
+    }
+
+    let enriched = services.map((s: any) => {
+      let offerings = s.offerings;
+      if (geo.hasCoords && geo.nearbyOnly) {
+        offerings = offerings.filter((o: any) => {
+          const h = hospitalMap.get(o.hospitalId);
+          if (!h) return false;
+          const coords = getEffectiveCoordinates(h);
+          if (!coords || coords.latitude == null || coords.longitude == null) return false;
+          const dist = calculateHaversineDistanceKm(geo.lat!, geo.lng!, coords.latitude, coords.longitude);
+          return dist <= geo.radius;
+        });
+      }
+
+      const prices = offerings.map((o: any) => o.price);
       const minPrice = prices.length > 0 ? Math.min(...prices) : s.basePrice;
       return {
         id: s.id,
@@ -94,9 +120,13 @@ export const getNursingServices = async (req: Request, res: Response, next: Next
         numericPrice: minPrice,
         requirements: s.requirements,
         iconUrl: s.iconUrl,
-        availableProvidersCount: s.offerings.length,
+        availableProvidersCount: offerings.length,
       };
     });
+
+    if (geo.hasCoords && geo.nearbyOnly) {
+      enriched = enriched.filter((s: any) => s.availableProvidersCount > 0);
+    }
 
     res.json({ success: true, data: enriched });
   } catch (error) {

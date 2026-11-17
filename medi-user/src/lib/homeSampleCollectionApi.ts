@@ -45,6 +45,10 @@ export const homeSampleCollectionApi = {
     concern?: string;
     laboratoryId?: string;
     hospitalId?: string;
+    lat?: number;
+    lng?: number;
+    radius?: number;
+    nearbyOnly?: boolean;
   }): Promise<{ success: boolean; data?: LabTestRecord[]; error?: string }> {
     try {
       const q = new URLSearchParams();
@@ -53,6 +57,12 @@ export const homeSampleCollectionApi = {
       if (params?.concern) q.append('concern', params.concern);
       if (params?.laboratoryId) q.append('laboratoryId', params.laboratoryId);
       if (params?.hospitalId) q.append('hospitalId', params.hospitalId);
+      if (params?.lat !== undefined && params?.lng !== undefined) {
+        q.append('lat', String(params.lat));
+        q.append('lng', String(params.lng));
+      }
+      if (params?.radius) q.append('radius', String(params.radius));
+      if (params?.nearbyOnly !== undefined) q.append('nearbyOnly', String(params.nearbyOnly));
 
       const qs = q.toString() ? `?${q.toString()}` : '';
       const res = await fetch(`${API_BASE_URL}/home-sample-collection/tests${qs}`, {

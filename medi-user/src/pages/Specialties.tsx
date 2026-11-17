@@ -94,112 +94,6 @@ type ViewState =
   | 'VIDEO_CALL'
   | 'VIDEO_COMPLETED';
 
-const FALLBACK_GENERAL_DISEASES = [
-  { id: 'gen-1', name: 'Fever', icon: Activity, image: getDiseaseIconUrl('Fever'), bg: 'bg-rose-50' },
-  { id: 'gen-2', name: 'Common Cold', icon: Activity, image: getDiseaseIconUrl('Common Cold'), bg: 'bg-sky-50' },
-  { id: 'gen-3', name: 'Flu', icon: Activity, image: getDiseaseIconUrl('Flu'), bg: 'bg-emerald-50' },
-  { id: 'gen-4', name: 'Cough', icon: Activity, image: getDiseaseIconUrl('Cough'), bg: 'bg-cyan-50' },
-  { id: 'gen-5', name: 'Headache', icon: Activity, image: getDiseaseIconUrl('Headache'), bg: 'bg-pink-50' },
-  { id: 'gen-6', name: 'Migraine', icon: Activity, image: getDiseaseIconUrl('Migraine'), bg: 'bg-purple-50' },
-  { id: 'gen-7', name: 'Body Pain', icon: Activity, image: getDiseaseIconUrl('Body Pain'), bg: 'bg-slate-100' },
-  { id: 'gen-8', name: 'Sore Throat', icon: Activity, image: getDiseaseIconUrl('Sore Throat'), bg: 'bg-amber-50' },
-  { id: 'gen-9', name: 'Stomach Pain', icon: Activity, image: getDiseaseIconUrl('Stomach Pain'), bg: 'bg-amber-50' },
-  { id: 'gen-10', name: 'Fatigue & Weakness', icon: Activity, image: getDiseaseIconUrl('Fatigue'), bg: 'bg-indigo-50' },
-];
-
-const FALLBACK_ADVANCED_DISEASES = [
-  { id: 'adv-1', name: 'Chest Pain', icon: ShieldCheck, image: getDiseaseIconUrl('Chest Pain'), bg: 'bg-pink-50' },
-  { id: 'adv-2', name: 'Shortness of Breath', icon: ShieldCheck, image: getDiseaseIconUrl('Shortness of Breath'), bg: 'bg-blue-50' },
-  { id: 'adv-3', name: 'Diabetes Check', icon: ShieldCheck, image: getDiseaseIconUrl('Diabetes'), bg: 'bg-orange-50' },
-  { id: 'adv-4', name: 'Hypertension Management', icon: ShieldCheck, image: getDiseaseIconUrl('Hypertension'), bg: 'bg-rose-50' },
-  { id: 'adv-5', name: 'Kidney Health Screening', icon: ShieldCheck, image: getDiseaseIconUrl('Kidney Health'), bg: 'bg-cyan-50' },
-  { id: 'adv-6', name: 'Thyroid Disorder', icon: ShieldCheck, image: getDiseaseIconUrl('Thyroid'), bg: 'bg-purple-50' },
-  { id: 'adv-7', name: 'Chronic Joint Pain', icon: ShieldCheck, image: getDiseaseIconUrl('Joint Pain'), bg: 'bg-amber-50' },
-  { id: 'adv-8', name: 'Severe Migraine', icon: ShieldCheck, image: getDiseaseIconUrl('Migraine'), bg: 'bg-indigo-50' },
-  { id: 'adv-9', name: 'Liver Function Concern', icon: ShieldCheck, image: getDiseaseIconUrl('Liver'), bg: 'bg-emerald-50' },
-];
-
-const FALLBACK_CATEGORICAL_SPECIALTIES = [
-  {
-    id: 'cat-diet',
-    name: 'Diet & Nutrition / Dietitian',
-    desc: 'Diet and nutrition plans.',
-    icon: Sparkles,
-    bg: 'bg-emerald-50',
-    conditions: [
-      { id: 'c-d1', name: 'Weight Management', specialtyId: 'cat-diet' },
-      { id: 'c-d2', name: 'Diabetes Nutrition', specialtyId: 'cat-diet' },
-    ]
-  },
-  {
-    id: 'cat-yoga',
-    name: 'Yoga & Wellness',
-    desc: 'Physical and mental well-being.',
-    icon: Sparkles,
-    bg: 'bg-cyan-50',
-    conditions: [
-      { id: 'c-y1', name: 'Stress & Anxiety Relief', specialtyId: 'cat-yoga' },
-      { id: 'c-y2', name: 'Posture & Mobility', specialtyId: 'cat-yoga' },
-    ]
-  },
-  {
-    id: 'cat-1',
-    name: 'Cardiology',
-    desc: 'Heart and cardiovascular care',
-    icon: Stethoscope,
-    bg: 'bg-emerald-50',
-    conditions: [
-      { id: 'c-1', name: 'Hypertension / High BP', specialtyId: 'cat-1' },
-      { id: 'c-2', name: 'Angina & Chest Discomfort', specialtyId: 'cat-1' },
-    ]
-  },
-  {
-    id: 'cat-2',
-    name: 'Dermatology',
-    desc: 'Skin and hair conditions',
-    icon: Stethoscope,
-    bg: 'bg-cyan-50',
-    conditions: [
-      { id: 'c-3', name: 'Acne', specialtyId: 'cat-2' },
-      { id: 'c-4', name: 'Eczema', specialtyId: 'cat-2' },
-    ]
-  },
-  {
-    id: 'cat-3',
-    name: 'Neurology',
-    desc: 'Brain and nervous system care',
-    icon: Stethoscope,
-    bg: 'bg-purple-50',
-    conditions: [
-      { id: 'c-5', name: 'Migraine', specialtyId: 'cat-3' },
-    ]
-  },
-  {
-    id: 'cat-4',
-    name: 'Orthopedics',
-    desc: 'Bones, joints, and spine care',
-    icon: Stethoscope,
-    bg: 'bg-amber-50',
-    conditions: [
-      { id: 'c-6', name: 'Back Pain', specialtyId: 'cat-4' },
-      { id: 'c-7', name: 'Arthritis', specialtyId: 'cat-4' },
-    ]
-  },
-  {
-    id: 'cat-5',
-    name: 'Gastroenterology',
-    desc: 'Digestive and liver health',
-    icon: Stethoscope,
-    bg: 'bg-rose-50',
-    conditions: [
-      { id: 'c-8', name: 'Acid Reflux / GERD', specialtyId: 'cat-5' },
-    ]
-  },
-];
-
-
-
-
 const Specialties = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -216,11 +110,11 @@ const Specialties = () => {
   const [showAllAdvanced, setShowAllAdvanced] = useState(false);
   const [showAllCategorical, setShowAllCategorical] = useState(false);
 
-  // Real Data State
+  // Real Dynamic Data State (driven strictly by registered hospital departments)
   const [diseasesList, setDiseasesList] = useState({
-    general: FALLBACK_GENERAL_DISEASES as any[],
-    advanced: FALLBACK_ADVANCED_DISEASES as any[],
-    categorical: FALLBACK_CATEGORICAL_SPECIALTIES as any[],
+    general: [] as any[],
+    advanced: [] as any[],
+    categorical: [] as any[],
     raw: [] as any[]
   });
   const [doctorsList, setDoctorsList] = useState<DoctorRecord[]>([]);

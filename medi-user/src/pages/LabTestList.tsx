@@ -200,16 +200,21 @@ const LabTestList = () => {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [createdBooking, setCreatedBooking] = useState<LabBookingRecord | null>(null);
 
-  // Load real tests from backend on mount
+  // Load real tests from backend on mount and when location changes
   const loadInitialData = async () => {
     try {
       const [testsRes, catsRes, concernsRes] = await Promise.all([
-        labTestApi.getLabTests(),
+        labTestApi.getLabTests({
+          lat: userLocation.latitude ?? undefined,
+          lng: userLocation.longitude ?? undefined,
+          radius: userLocation.radiusKm,
+          nearbyOnly: true
+        }),
         labTestApi.getCategories(),
         labTestApi.getHealthConcerns()
       ]);
 
-      if (testsRes.success && testsRes.data && testsRes.data.length > 0) {
+      if (testsRes.success && testsRes.data) {
         // Merge database tests with styling metadata
         const mapped = testsRes.data.map((t) => ({
           ...t,
@@ -217,6 +222,8 @@ const LabTestList = () => {
           fasting: t.preparation?.toLowerCase().includes('fasting') ? 'Fasting Required' : 'No Fasting',
         }));
         setTests(mapped);
+      } else {
+        setTests([]);
       }
       if (catsRes.success && catsRes.data && catsRes.data.length > 0) {
         setCategoryTabs(catsRes.data);
@@ -225,13 +232,13 @@ const LabTestList = () => {
         setDynamicHealthConcerns(concernsRes.data);
       }
     } catch {
-      // Fallback to initial tests on network error
+      setTests([]);
     }
   };
 
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [userLocation.latitude, userLocation.longitude, userLocation.radiusKm]);
 
   // Debounce search query
   useEffect(() => {
@@ -241,7 +248,7 @@ const LabTestList = () => {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Real Backend Search
+  // Real Backend Search with Location
   useEffect(() => {
     let active = true;
     if (!debouncedSearchQuery.trim()) {
@@ -251,7 +258,13 @@ const LabTestList = () => {
     const search = async () => {
       setIsSearching(true);
       try {
-        const res = await labTestApi.getLabTests({ search: debouncedSearchQuery.trim() });
+        const res = await labTestApi.getLabTests({ 
+          search: debouncedSearchQuery.trim(),
+          lat: userLocation.latitude ?? undefined,
+          lng: userLocation.longitude ?? undefined,
+          radius: userLocation.radiusKm,
+          nearbyOnly: true
+        });
         if (active && res.success && res.data) {
           const mapped = res.data.map((t) => ({
             ...t,
@@ -270,7 +283,7 @@ const LabTestList = () => {
     return () => {
       active = false;
     };
-  }, [debouncedSearchQuery]);
+  }, [debouncedSearchQuery, userLocation.latitude, userLocation.longitude, userLocation.radiusKm]);
 
   // Pre-load user profile if authenticated
   useEffect(() => {

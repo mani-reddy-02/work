@@ -129,6 +129,10 @@ export const homeNursingApi = {
     search?: string;
     category?: string;
     hospitalId?: string;
+    lat?: number;
+    lng?: number;
+    radius?: number;
+    nearbyOnly?: boolean;
   }): Promise<{ success: boolean; data?: NursingServiceRecord[]; error?: string }> {
     try {
       const q = new URLSearchParams();
@@ -137,6 +141,12 @@ export const homeNursingApi = {
         q.append('category', params.category);
       }
       if (params?.hospitalId) q.append('hospitalId', params.hospitalId);
+      if (params?.lat !== undefined && params?.lng !== undefined) {
+        q.append('lat', String(params.lat));
+        q.append('lng', String(params.lng));
+      }
+      if (params?.radius) q.append('radius', String(params.radius));
+      if (params?.nearbyOnly !== undefined) q.append('nearbyOnly', String(params.nearbyOnly));
 
       const qs = q.toString() ? `?${q.toString()}` : '';
       const res = await fetch(`${API_BASE_URL}/home-nursing/services${qs}`, {
@@ -199,11 +209,27 @@ export const homeNursingApi = {
    */
   async getServiceProviders(
     serviceId: string,
-    search?: string
+    params?: {
+      search?: string;
+      lat?: number;
+      lng?: number;
+      radius?: number;
+      nearbyOnly?: boolean;
+    } | string
   ): Promise<{ success: boolean; data?: NursingProviderRecord[]; error?: string }> {
     try {
       const q = new URLSearchParams();
-      if (search) q.append('search', search);
+      if (typeof params === 'string') {
+        if (params) q.append('search', params);
+      } else if (params) {
+        if (params.search) q.append('search', params.search);
+        if (params.lat !== undefined && params.lng !== undefined) {
+          q.append('lat', String(params.lat));
+          q.append('lng', String(params.lng));
+        }
+        if (params.radius) q.append('radius', String(params.radius));
+        if (params.nearbyOnly !== undefined) q.append('nearbyOnly', String(params.nearbyOnly));
+      }
 
       const qs = q.toString() ? `?${q.toString()}` : '';
       const res = await fetch(`${API_BASE_URL}/home-nursing/services/${serviceId}/providers${qs}`, {

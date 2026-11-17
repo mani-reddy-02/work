@@ -65,7 +65,9 @@ const AppHeader = ({ className }: { className?: string }) => {
           )}
 
           <div className={cn(
-            "absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex items-center gap-2",
+            isHome 
+              ? "static translate-x-0 flex items-center gap-2" 
+              : "absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex items-center gap-2",
             isDesktopSidebarOpen && "md:hidden"
           )}>
             <Link to="/" className="flex items-center">

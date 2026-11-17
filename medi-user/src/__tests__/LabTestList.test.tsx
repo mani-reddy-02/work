@@ -165,7 +165,7 @@ describe('LabTestList Component', () => {
     fireEvent.change(phoneInput, { target: { value: '9876543210' } });
 
     // Verify summary & payment options
-    expect(screen.getByText('Apollo Diagnostics Centre')).toBeInTheDocument();
+    expect(screen.getAllByText('Apollo Diagnostics Centre').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Total Payable')).toBeInTheDocument();
     expect(screen.getByText(/Pay Online/i)).toBeInTheDocument();
     expect(screen.queryByText(/Pay on Collection/i)).not.toBeInTheDocument();

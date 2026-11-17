@@ -361,7 +361,7 @@ describe('Specialties Component - Video Consultation', () => {
 
   test('Deep link with type=doctor and category opens categorical disease directly', async () => {
     render(<Specialties />, { initialEntries: ['/specialties?type=doctor&category=Cardiology'] });
-    expect(screen.getAllByText('Cardiology').length).toBeGreaterThanOrEqual(1);
+    expect((await screen.findAllByText('Cardiology')).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Video Consultation').length).toBeGreaterThanOrEqual(1);
     expect(await screen.findByText('Hypertension / High BP')).toBeInTheDocument();
   });
