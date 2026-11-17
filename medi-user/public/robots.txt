@@ -51,5 +51,5 @@ User-agent: Amazonbot
 Disallow: /
 
 # Sitemap Index
-Sitemap: https://mediquee.com/sitemap.xml
+Sitemap: https://mediquee.in/sitemap.xml
 

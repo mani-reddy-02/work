@@ -119,7 +119,7 @@ export default function TermsAndConditions() {
                 6. Contact Information
               </h2>
               <p>
-                If you have questions regarding these Terms and Conditions, please contact us at support@mediquee.com or through our Help & Support center.
+                If you have questions regarding these Terms and Conditions, please contact us at support@mediquee.in or through our Help & Support center.
               </p>
             </section>
           </div>

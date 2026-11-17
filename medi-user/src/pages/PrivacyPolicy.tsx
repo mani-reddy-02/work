@@ -288,8 +288,8 @@ export default function PrivacyPolicy() {
                     <p className="text-xs text-slate-700 mt-2 font-medium">
                       Send an email from your registered email address to:
                     </p>
-                    <a href="mailto:privacy@mediquee.com" className="text-sm font-bold text-blue-600 hover:underline block mt-1">
-                      privacy@mediquee.com
+                    <a href="mailto:privacy@mediquee.in" className="text-sm font-bold text-blue-600 hover:underline block mt-1">
+                      privacy@mediquee.in
                     </a>
                     <p className="text-[11px] text-slate-500 mt-1">
                       Subject: "Account Deletion Request" with your registered phone number.
@@ -426,7 +426,7 @@ export default function PrivacyPolicy() {
                 <p><strong>Officer Name:</strong> Grievance & Data Protection Officer</p>
                 <p><strong>Designation:</strong> Head of Compliance & Data Privacy</p>
                 <p><strong>Entity:</strong> MediQuee Healthcare Solutions Pvt. Ltd.</p>
-                <p><strong>Email Address:</strong> <a href="mailto:privacy@mediquee.com" className="text-blue-600 font-bold hover:underline">privacy@mediquee.com</a> / <a href="mailto:support@mediquee.com" className="text-blue-600 font-bold hover:underline">support@mediquee.com</a></p>
+                <p><strong>Email Address:</strong> <a href="mailto:privacy@mediquee.in" className="text-blue-600 font-bold hover:underline">privacy@mediquee.in</a> / <a href="mailto:support@mediquee.in" className="text-blue-600 font-bold hover:underline">support@mediquee.in</a></p>
                 <p><strong>Support Telephone:</strong> <a href="tel:8331045500" className="text-blue-600 font-bold hover:underline">+91 8331045500</a></p>
                 <p><strong>Headquarters:</strong> Hyderabad, Telangana, India</p>
                 <div className="pt-2 border-t border-slate-200 text-slate-500 text-xs">

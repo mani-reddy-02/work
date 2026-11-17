@@ -175,7 +175,7 @@ export class HealthEducationService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': 'https://mediquee.com',
+          'HTTP-Referer': 'https://mediquee.in',
           'X-Title': 'MediQuee Health AI'
         },
         body: JSON.stringify({

@@ -133,7 +133,7 @@ export const reverseGeocode = async (req: Request, res: Response, next: NextFunc
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`,
         {
           headers: {
-            'User-Agent': 'MediQuee-Platform/1.0 (contact@mediquee.com)'
+            'User-Agent': 'MediQuee-Platform/1.0 (contact@mediquee.in)'
           }
         }
       );

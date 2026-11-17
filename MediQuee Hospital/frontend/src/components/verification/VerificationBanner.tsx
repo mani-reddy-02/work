@@ -72,7 +72,7 @@ export function VerificationBanner() {
           </a>
           
           <a
-            href="mailto:support@mediquee.com?subject=Expedite%20Hospital%20Verification"
+            href="mailto:support@mediquee.in?subject=Expedite%20Hospital%20Verification"
             className="flex-1 lg:flex-initial inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/80 hover:bg-white text-amber-900 border border-amber-300 text-xs font-semibold transition-colors cursor-pointer"
           >
             <Mail className="w-4 h-4 text-amber-700" />

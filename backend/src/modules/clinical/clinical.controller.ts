@@ -505,7 +505,7 @@ export const sendPrescriptionToPatient = async (req: Request, res: Response, nex
         targetUserId = existingUser.id;
       } else {
         const cleanPhone = booking.patientPhone.replace(/\D/g, '') || Date.now().toString();
-        const dummyEmail = `patient_${cleanPhone}@mediquee.com`;
+        const dummyEmail = `patient_${cleanPhone}@mediquee.in`;
         const newPatient = await prisma.user.create({
           data: {
             phone: booking.patientPhone,

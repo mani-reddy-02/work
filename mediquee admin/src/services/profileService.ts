@@ -35,7 +35,7 @@ export interface PlatformSettingsData {
 
 const DEFAULT_SETTINGS: PlatformSettingsData = {
   platformName: 'MediQuee Healthcare Platform',
-  supportEmail: 'support@mediquee.com',
+  supportEmail: 'support@mediquee.in',
   supportPhone: '+91 800-MEDIQUEE',
   emergencyHelpline: '+91 99999 99999',
   operatingHours: '24/7 Multi-Specialty Support',

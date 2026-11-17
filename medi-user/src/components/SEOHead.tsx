@@ -13,8 +13,8 @@ export interface SEOHeadProps {
 export const SEOHead: React.FC<SEOHeadProps> = ({
   title,
   description,
-  canonicalUrl = 'https://mediquee.com',
-  ogImage = 'https://mediquee.com/logo.png',
+  canonicalUrl = 'https://mediquee.in',
+  ogImage = 'https://mediquee.in/logo.png',
   ogType = 'website',
   keywords = ['healthcare', 'doctor consultation', 'online doctor appointment', 'hospital op booking', 'home nursing', 'lab tests'],
   jsonLd

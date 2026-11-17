@@ -376,15 +376,15 @@ const Home = () => {
 
     "name": "MediQuee",
 
-    "url": "https://mediquee.com",
+    "url": "https://mediquee.in",
 
-    "logo": "https://mediquee.com/logo.png",
+    "logo": "https://mediquee.in/logo.png",
 
     "description": "Comprehensive digital healthcare platform offering in-person hospital OP appointments, verified telemedicine video consultations, home nursing, and diagnostic lab tests.",
 
     "telephone": "+91-9014535199",
 
-    "email": "support@mediquee.com",
+    "email": "support@mediquee.in",
 
     "address": {
 
@@ -488,7 +488,7 @@ const Home = () => {
 
         description="Book verified hospital outpatient (OP) appointments, video consultations with certified specialists, home nursing, and diagnostic lab tests with MediQuee."
 
-        canonicalUrl="https://mediquee.com/"
+        canonicalUrl="https://mediquee.in/"
 
         jsonLd={[medicalOrgSchema, faqSchema]}
 

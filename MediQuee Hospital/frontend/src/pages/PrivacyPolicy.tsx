@@ -58,7 +58,7 @@ export function PrivacyPolicy() {
 
             <section>
               <h3 className="text-lg font-semibold text-foreground mb-2">5. Contact Us</h3>
-              <p>If you have any questions about this Privacy Policy, please contact our Data Protection Officer at privacy@mediquee.com.</p>
+              <p>If you have any questions about this Privacy Policy, please contact our Data Protection Officer at privacy@mediquee.in.</p>
             </section>
           </div>
         </div>

@@ -53,7 +53,7 @@ export function ContactSupport() {
   const [copiedEmail, setCopiedEmail] = useState(false);
 
   const handleCopyEmail = () => {
-    navigator.clipboard.writeText("support@mediquee.com");
+    navigator.clipboard.writeText("support@mediquee.in");
     setCopiedEmail(true);
     toast("Email address copied to clipboard!", "success");
     setTimeout(() => setCopiedEmail(false), 2000);
@@ -139,15 +139,15 @@ export function ContactSupport() {
 
             <div>
               <span className="text-[11px] font-bold text-muted uppercase tracking-wider">Email Support Team</span>
-              <h3 className="text-sm font-bold text-foreground mt-0.5 font-mono truncate" title="support@mediquee.com">
-                support@mediquee.com
+              <h3 className="text-sm font-bold text-foreground mt-0.5 font-mono truncate" title="support@mediquee.in">
+                support@mediquee.in
               </h3>
               <p className="text-xs text-muted mt-1">Technical bugs, payout inquiries & integration queries.</p>
             </div>
 
             <div className="flex items-center gap-2">
               <a
-                href="mailto:support@mediquee.com"
+                href="mailto:support@mediquee.in"
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all active:scale-95 cursor-pointer"
               >
                 <Mail className="w-4 h-4" />

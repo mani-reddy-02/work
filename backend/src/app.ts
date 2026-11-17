@@ -16,7 +16,16 @@ app.use(helmet({
 }));
 
 const allowedOrigins = [
-  env.CORS_ORIGIN,
+  ...((env.CORS_ORIGIN || '').split(',').map(s => s.trim())),
+  'https://mediquee.in',
+  'https://www.mediquee.in',
+  'https://hospital.mediquee.in',
+  'https://admin.mediquee.in',
+  'https://api.mediquee.in',
+  'http://mediquee.in',
+  'http://www.mediquee.in',
+  'http://hospital.mediquee.in',
+  'http://admin.mediquee.in',
   'http://34.93.190.51',
   'https://34.93.190.51',
   'http://localhost:5173',
@@ -31,7 +40,10 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow non-browser requests (e.g. mobile apps, curl, server-to-server) where origin is undefined
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
+    if (
+      allowedOrigins.includes(origin) ||
+      /^https?:\/\/([a-z0-9-]+\.)?mediquee\.in$/.test(origin)
+    ) {
       return callback(null, true);
     }
     return callback(null, false);

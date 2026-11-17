@@ -53,11 +53,11 @@ export function VerificationPendingShield({
               <span>Call: 8331045500</span>
             </a>
             <a
-              href="mailto:support@mediquee.com?subject=Expedite%20Hospital%20Verification"
+              href="mailto:support@mediquee.in?subject=Expedite%20Hospital%20Verification"
               className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-surface border border-border text-foreground text-xs font-semibold hover:bg-muted/50 transition-colors"
             >
               <Mail className="w-3.5 h-3.5 text-muted" />
-              <span>support@mediquee.com</span>
+              <span>support@mediquee.in</span>
             </a>
           </div>
         </div>
