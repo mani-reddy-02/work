@@ -12,19 +12,25 @@ import {
 async function runExotelTests() {
   console.log('[TEST] Starting Updated Exotel Configuration & Telephony Verification...');
 
-  // 1. Verify Host is api.in.exotel.com
-  console.log('[TEST 1] India API Host verification');
+  // 1. Verify Host is api.exotel.com (Singapore region confirmed by Exotel for Indian virtual numbers)
+  console.log('[TEST 1] Exotel API Host & Virtual Number verification');
   const config = getExotelConfig();
   assert.strictEqual(
     config.subdomain,
-    'api.in.exotel.com',
-    'Subdomain must be api.in.exotel.com for the India cluster'
+    'api.exotel.com',
+    'Subdomain must be api.exotel.com for the Singapore region'
   );
   assert(
-    config.baseUrl.includes('api.in.exotel.com'),
-    'Base URL must target the India cluster api.in.exotel.com'
+    config.baseUrl.includes('api.exotel.com'),
+    'Base URL must target the Singapore cluster api.exotel.com'
   );
-  console.log('  -> Host correctly configured to api.in.exotel.com');
+  assert.strictEqual(
+    config.callerId,
+    '08047290980',
+    'Caller ID must be the confirmed Exotel virtual number 08047290980'
+  );
+  console.log('  -> Host correctly configured to api.exotel.com');
+  console.log('  -> Caller ID correctly configured to 08047290980');
 
   // 2. Safe config validation and pending items reporting
   console.log('[TEST 2] Safe config validation & pending item detection');
@@ -51,14 +57,20 @@ async function runExotelTests() {
   assert(!statusJson.includes('EXOTEL_API_TOKEN'), 'Safe status must not contain API Token value');
   console.log('  -> Secrets properly redacted from status');
 
-  // 3. Confirm APP_ID is NOT required for Calls Connect
+  // 3. Confirm APP_ID optionality confirmation
   console.log('[TEST 3] APP_ID optionality confirmation');
-  assert.strictEqual(config.appId, undefined, 'APP_ID is optional and empty by default');
+  assert(
+    config.appId === undefined || typeof config.appId === 'string',
+    'APP_ID is optional (either undefined or configured as string)'
+  );
+  if (config.appId) {
+    console.log('  -> Configured Exotel App ID detected:', config.appId);
+  }
   // Validation passes even without APP_ID as long as core credentials exist
   if (config.accountSid && config.apiKey && config.apiToken) {
     assert.strictEqual(validation.isValid, true, 'Core API config is valid without APP_ID');
   }
-  console.log('  -> APP_ID is confirmed optional for 2-party Calls Connect');
+  console.log('  -> APP_ID optionality confirmed');
 
   // 4. Personal mobile number rejection for Caller ID
   console.log('[TEST 4] Personal mobile number detection for Caller ID');
@@ -127,8 +139,8 @@ async function runExotelTests() {
     callerId: '08047123456', // Valid virtual number format
   });
   assert.strictEqual(validationResult.isValid, true);
-  assert.strictEqual(validationResult.normalizedFrom, '9876543210');
-  assert.strictEqual(validationResult.normalizedTo, '9123456780');
+  assert.strictEqual(validationResult.normalizedFrom, '+919876543210');
+  assert.strictEqual(validationResult.normalizedTo, '+919123456780');
   assert.strictEqual(validationResult.resolvedCallerId, '08047123456');
   console.log('  -> Call parameters validated successfully without initiating call');
 

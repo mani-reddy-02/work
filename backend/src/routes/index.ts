@@ -33,6 +33,7 @@ import healthAiRoutes from '../modules/health-ai/health-ai.routes';
 import videoRoutes from '../modules/video/video.routes';
 import insuranceRoutes from '../modules/insurance/insurance.routes';
 import reviewsRoutes from '../modules/reviews/reviews.routes';
+import callsRoutes from '../modules/exotel/exotel.routes';
 import { prisma } from '../config/prisma';
 import { authenticate, requireRole } from '../middleware/auth';
 
@@ -95,5 +96,7 @@ router.use('/video', videoRoutes);
 router.use('/insurance', insuranceRoutes);
 router.use('/insurances', insuranceRoutes);
 router.use('/reviews', reviewsRoutes);
+router.use('/exotel', callsRoutes);
+router.use('/calls', callsRoutes);
 
 export default router;

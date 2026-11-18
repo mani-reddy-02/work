@@ -44,16 +44,19 @@ function cleanEnvValue(val?: string): string {
 
 /**
  * Retrieve current Exotel configuration values from server environment.
- * Default host is India API host: api.in.exotel.com
+ * Default host is Singapore API host: api.exotel.com
  * Never logs or exposes secret credentials.
  */
 export function getExotelConfig(): ExotelConfig {
   const accountSid = cleanEnvValue(env.EXOTEL_ACCOUNT_SID || process.env.EXOTEL_ACCOUNT_SID);
   const apiKey = cleanEnvValue(env.EXOTEL_API_KEY || process.env.EXOTEL_API_KEY);
   const apiToken = cleanEnvValue(env.EXOTEL_API_TOKEN || process.env.EXOTEL_API_TOKEN);
-  const subdomain = cleanEnvValue(env.EXOTEL_SUBDOMAIN || process.env.EXOTEL_SUBDOMAIN) || 'api.in.exotel.com';
+  const subdomain = cleanEnvValue(env.EXOTEL_SUBDOMAIN || process.env.EXOTEL_SUBDOMAIN) || 'api.exotel.com';
   const callerId = cleanEnvValue(env.EXOTEL_CALLER_ID || process.env.EXOTEL_CALLER_ID) || undefined;
   const appId = cleanEnvValue(env.EXOTEL_APP_ID || process.env.EXOTEL_APP_ID) || undefined;
+  const webhookSecret = cleanEnvValue(env.EXOTEL_WEBHOOK_SECRET || process.env.EXOTEL_WEBHOOK_SECRET) || 'mediquee_exotel_webhook_secret_key';
+  const enableRecording = (cleanEnvValue(env.EXOTEL_ENABLE_RECORDING || process.env.EXOTEL_ENABLE_RECORDING) === 'true');
+  const statusCallbackUrl = cleanEnvValue(env.EXOTEL_STATUS_CALLBACK_URL || process.env.EXOTEL_STATUS_CALLBACK_URL) || undefined;
 
   let baseUrl = cleanEnvValue(env.EXOTEL_BASE_URL || process.env.EXOTEL_BASE_URL);
   if (!baseUrl) {
@@ -66,7 +69,7 @@ export function getExotelConfig(): ExotelConfig {
   }
 
   const isConfigured = Boolean(accountSid && apiKey && apiToken);
-  const isCallReady = Boolean(isConfigured && callerId);
+  const isCallReady = Boolean(isConfigured && callerId && !isLikelyPersonalMobileNumber(callerId));
 
   return {
     accountSid,
@@ -76,10 +79,27 @@ export function getExotelConfig(): ExotelConfig {
     baseUrl,
     callerId,
     appId,
+    webhookSecret,
+    enableRecording,
+    statusCallbackUrl,
     isConfigured,
     isCallReady,
   };
 }
+
+/**
+ * Constructs the Exotel Applet Flow URL for app-initiated calls (CCM)
+ * Format: http://my.exotel.com/{account_sid}/exoml/start_voice/{app_id}
+ */
+export function getExotelAppletUrl(appIdOverride?: string): string | undefined {
+  const config = getExotelConfig();
+  const effectiveAppId = appIdOverride || config.appId;
+  if (!effectiveAppId || !config.accountSid) {
+    return undefined;
+  }
+  return `http://my.exotel.com/${config.accountSid}/exoml/start_voice/${effectiveAppId.trim()}`;
+}
+
 
 /**
  * Validate presence of required Exotel credentials without revealing secret values.
@@ -112,7 +132,6 @@ export function validateExotelConfig(): ExotelConfigValidation {
     );
   }
 
-  // Note: EXOTEL_APP_ID is optional and NOT required for direct two-party Calls Connect
   const isValid = missing.length === 0;
   const callReady = isValid && Boolean(config.callerId) && !isLikelyPersonalMobileNumber(config.callerId);
 
@@ -130,6 +149,7 @@ export function validateExotelConfig(): ExotelConfigValidation {
         ? config.baseUrl.replace(config.accountSid, '[ACCOUNT_SID]')
         : config.baseUrl
       : '',
+    recordingEnabled: config.enableRecording,
     pendingFromExotel,
   };
 
@@ -159,29 +179,33 @@ export function assertExotelConfigured(): ExotelConfig {
  * Ensures Exotel is ready to place real telephone calls.
  * Throws an explicit error if Caller ID is empty or not an approved ExoPhone.
  */
-export function assertCallReady(customCallerId?: string): { config: ExotelConfig; resolvedCallerId: string } {
+export function assertCallReady(callerIdOverride?: string): {
+  config: ExotelConfig;
+  resolvedCallerId: string;
+} {
   const config = assertExotelConfigured();
-  const callerId = (customCallerId || config.callerId || '').trim();
+  const effectiveCallerId = (callerIdOverride !== undefined ? callerIdOverride : (config.callerId || '')).trim();
 
-  if (!callerId) {
-    throw new ExotelConfigurationError(
-      ['EXOTEL_CALLER_ID'],
-      'Cannot initiate telephone call: EXOTEL_CALLER_ID is empty. Real calls require an Exotel-approved virtual number (ExoPhone). Do not use a personal mobile number.'
+  if (!effectiveCallerId) {
+    throw new Error(
+      'Cannot initiate outbound call: EXOTEL_CALLER_ID is empty. An Exotel-approved virtual number (ExoPhone) is required.'
     );
   }
 
-  if (isLikelyPersonalMobileNumber(callerId)) {
-    throw new ExotelConfigurationError(
-      ['EXOTEL_CALLER_ID'],
-      `Cannot initiate telephone call: "${callerId}" appears to be a personal mobile number. Exotel requires an approved virtual number (ExoPhone) as Caller ID.`
+  if (isLikelyPersonalMobileNumber(effectiveCallerId)) {
+    throw new Error(
+      `Cannot initiate outbound call: "${effectiveCallerId}" appears to be a personal mobile number. Caller ID must be an Exotel-approved virtual number (ExoPhone).`
     );
   }
 
-  return { config, resolvedCallerId: callerId };
+  return {
+    config,
+    resolvedCallerId: effectiveCallerId,
+  };
 }
 
 /**
- * Safe public inspection of Exotel status (boolean flags only).
+ * Safe summary object safe to expose via health checks or logs
  */
 export function getExotelSafeStatus(): ExotelSafeConfigStatus {
   return validateExotelConfig().status;

@@ -3,6 +3,7 @@ import {
   ExotelCallResponse,
   ExotelClientOptions,
   ExotelConfig,
+  ExotelHostVerificationResult,
   ExotelSmsParams,
   ExotelSmsResponse,
 } from './exotel.types';
@@ -67,6 +68,100 @@ export class ExotelClient {
   }
 
   /**
+   * Verify API Region Host against Exotel account without placing any live calls.
+   * Performs read-only authenticated metadata check:
+   * 1. Attempts GET /v1/Accounts/{AccountSid}/Calls.json?PageSize=1 (Standard Voice API permission)
+   * 2. Falls back to GET /v1/Accounts/{AccountSid}.json (Master Account permission)
+   */
+  public static async verifyApiHost(subdomainOverride?: string): Promise<ExotelHostVerificationResult> {
+    const config = getExotelConfig();
+    const targetHost = (subdomainOverride || config.subdomain || 'api.exotel.com').trim();
+    
+    if (!config.accountSid || !config.apiKey || !config.apiToken) {
+      return {
+        testedHost: targetHost,
+        isVerified: false,
+        statusCode: 400,
+        error: 'Missing required credentials (EXOTEL_ACCOUNT_SID, EXOTEL_API_KEY, or EXOTEL_API_TOKEN)',
+      };
+    }
+
+    const authHeader = `Basic ${Buffer.from(`${config.apiKey}:${config.apiToken}`).toString('base64')}`;
+
+    // Read-only Voice call history check (works with standard Exotel Voice API credentials)
+    try {
+      const callsUrl = `https://${targetHost}/v1/Accounts/${config.accountSid}/Calls.json?PageSize=1`;
+      const callsRes = await fetch(callsUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: authHeader,
+          Accept: 'application/json',
+        },
+      });
+
+      if (callsRes.ok) {
+        const callsData: any = await callsRes.json().catch(() => ({}));
+        return {
+          testedHost: targetHost,
+          isVerified: true,
+          statusCode: callsRes.status,
+          accountSid: config.accountSid,
+          status: 'active',
+          friendlyName: `Exotel Voice Account (Total calls: ${callsData?.Metadata?.Total ?? 0})`,
+        };
+      }
+
+      // If call list endpoint failed with 401 or network error, test account root
+      const accUrl = `https://${targetHost}/v1/Accounts/${config.accountSid}.json`;
+      const accRes = await fetch(accUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: authHeader,
+          Accept: 'application/json',
+        },
+      });
+
+      const responseText = await accRes.text();
+      let parsedData: any;
+      try {
+        parsedData = JSON.parse(responseText);
+      } catch {
+        parsedData = {};
+      }
+
+      if (accRes.ok) {
+        return {
+          testedHost: targetHost,
+          isVerified: true,
+          statusCode: accRes.status,
+          accountSid: parsedData?.Account?.Sid || config.accountSid,
+          friendlyName: parsedData?.Account?.FriendlyName,
+          status: parsedData?.Account?.Status,
+        };
+      }
+
+      const errMsg =
+        parsedData?.RestException?.Message ||
+        parsedData?.message ||
+        `Exotel host ${targetHost} rejected credentials with HTTP ${callsRes.status}`;
+
+      return {
+        testedHost: targetHost,
+        isVerified: false,
+        statusCode: callsRes.status || accRes.status,
+        error: errMsg,
+      };
+    } catch (err: any) {
+      return {
+        testedHost: targetHost,
+        isVerified: false,
+        statusCode: 0,
+        error: err.message || 'Network connectivity error during host verification',
+      };
+    }
+  }
+
+  /**
    * Generate Server-Side HTTP Basic Authentication header
    * Format: "Basic base64(EXOTEL_API_KEY:EXOTEL_API_TOKEN)"
    */
@@ -77,82 +172,99 @@ export class ExotelClient {
   }
 
   /**
-   * Normalize telephone number for Exotel
-   * Indian 10-digit numbers normalized cleanly
+   * Normalize telephone number for Exotel in standard E.164 format.
+   * Cleans white spaces and hyphens. Converts 10-digit Indian numbers to +91XXXXXXXXXX.
    */
   public normalizePhoneNumber(phone: string): string {
-    const cleaned = (phone || '').replace(/\s+|-/g, '');
-    const digits = cleaned.replace(/\D/g, '');
-
-    if (digits.length === 10) {
-      return digits;
+    if (!phone) return '';
+    const cleaned = phone.replace(/[\s-]/g, '').trim();
+    if (cleaned.startsWith('+')) {
+      return cleaned;
     }
-    if (digits.length === 12 && digits.startsWith('91')) {
-      return digits.slice(2);
+    const digits = cleaned.replace(/\D/g, '');
+    if (digits.length === 10) {
+      return `+91${digits}`;
     }
     if (digits.length === 11 && digits.startsWith('0')) {
-      return digits.slice(1);
+      return `+91${digits.slice(1)}`;
+    }
+    if (digits.length === 12 && digits.startsWith('91')) {
+      return `+${digits}`;
     }
     return cleaned;
   }
 
   /**
+   * Normalizes the Exotel-approved virtual number (ExoPhone).
+   * ExoPhone virtual numbers (e.g. 08047290980) retain their standard digit format.
+   */
+  public normalizeCallerId(callerId: string): string {
+    if (!callerId) return '';
+    return callerId.replace(/[\s-]/g, '').trim();
+  }
+
+  /**
    * Validates call parameters without placing a call.
-   * Confirms both legs are present, validates Caller ID is an approved virtual number,
-   * and verifies that APP_ID is not assumed or required.
+   * Confirms legs or applet URL are present, validates Caller ID is an approved virtual number,
+   * and verifies required fields.
    */
   public validateCallParams(params: ExotelCallParams): {
     isValid: boolean;
     resolvedCallerId: string;
     normalizedFrom: string;
-    normalizedTo: string;
+    normalizedTo?: string;
   } {
     const { resolvedCallerId } = assertCallReady(params.callerId);
 
     if (!params.from || !params.from.trim()) {
       throw new Error('Parameter "from" (first leg) is required to initiate a call.');
     }
-    if (!params.to || !params.to.trim()) {
-      throw new Error('Parameter "to" (second leg) is required to initiate a call.');
+    if (!params.url && (!params.to || !params.to.trim())) {
+      throw new Error('Parameter "to" (second leg) or "url" (applet flow) is required to initiate a call.');
     }
 
     const normalizedFrom = this.normalizePhoneNumber(params.from);
-    const normalizedTo = this.normalizePhoneNumber(params.to);
+    const normalizedTo = params.to ? this.normalizePhoneNumber(params.to) : undefined;
 
     return {
       isValid: true,
-      resolvedCallerId,
+      resolvedCallerId: this.normalizeCallerId(resolvedCallerId),
       normalizedFrom,
       normalizedTo,
     };
   }
 
   /**
-   * Initiates a two-legged phone call via Exotel.
+   * Initiates a phone call via Exotel's Connect API.
+   * Supports both:
+   * 1. Direct Two Numbers (From + To + CallerId)
+   * 2. CCM Programmable Connect (From + Url [Applet] + CallerId + CustomField)
    *
-   * Note on Exotel API architecture:
-   * 1. APP_ID is NOT required for two-party Calls Connect (`Calls/connect.json`).
-   *    Exotel automatically dials the `From` leg, then dials the `To` leg and bridges them.
-   * 2. Caller ID MUST be an Exotel-approved virtual number (ExoPhone).
-   *    Personal mobile numbers are strictly prohibited.
-   * 3. If Caller ID is empty or not configured, this method immediately aborts and does NOT place any call.
+   * Telephony Call Flow:
+   * 1. Exotel dials the 'From' number first.
+   * 2. When 'From' answers:
+   *    - In Direct mode: Exotel dials the 'To' number and bridges.
+   *    - In CCM Applet mode: Exotel executes Applet, hits Primary URL, and dials returned destination.
+   * 3. Both parties see 'CallerId' (08047290980) on their caller display.
+   *
+   * Call Recording Policy:
+   * Call recording defaults to false. It is only enabled if both params.record
+   * and EXOTEL_ENABLE_RECORDING server environment flag are set to true.
    */
   public async initiateCall(
     params: ExotelCallParams,
     options: { validateOnly?: boolean } = {}
   ): Promise<ExotelCallResponse> {
-    // Strict safety check: enforces Caller ID presence and verifies not a personal number
-    const { config, resolvedCallerId } = assertCallReady(params.callerId);
-    const { normalizedFrom, normalizedTo } = this.validateCallParams(params);
+    const { config } = assertCallReady(params.callerId);
+    const { normalizedFrom, normalizedTo, resolvedCallerId } = this.validateCallParams(params);
 
-    // If in validation-only mode, stop before network dispatch
     if (options.validateOnly) {
       return {
         Call: {
           Sid: '',
           AccountSid: config.accountSid,
           From: normalizedFrom,
-          To: normalizedTo,
+          To: normalizedTo || '',
           PhoneNumberSid: resolvedCallerId,
           Status: 'validated-not-dispatched',
         },
@@ -162,10 +274,15 @@ export class ExotelClient {
     const url = `${config.baseUrl}/Calls/connect.json`;
     const formBody = new URLSearchParams({
       From: normalizedFrom,
-      To: normalizedTo,
       CallerId: resolvedCallerId,
-      CallType: 'trans', // Standard transactional call
+      CallType: params.callType || 'trans', // Standard transactional call
     });
+
+    if (params.url) {
+      formBody.append('Url', params.url);
+    } else if (normalizedTo) {
+      formBody.append('To', normalizedTo);
+    }
 
     if (params.timeLimit) {
       formBody.append('TimeLimit', String(params.timeLimit));
@@ -175,10 +292,20 @@ export class ExotelClient {
     }
     if (params.statusCallback) {
       formBody.append('StatusCallback', params.statusCallback);
+      formBody.append('StatusCallbackContentType', params.statusCallbackContentType || 'application/json');
+      if (params.statusCallbackEvents && params.statusCallbackEvents.length > 0) {
+        for (const ev of params.statusCallbackEvents) {
+          formBody.append('StatusCallbackEvents[]', ev);
+        }
+      } else {
+        formBody.append('StatusCallbackEvents[]', 'terminal');
+      }
     }
-    if (params.record !== undefined) {
-      formBody.append('Record', params.record ? 'true' : 'false');
-    }
+
+    // Call Recording: strictly opt-in and controlled by policy
+    const recordEnabled = Boolean(params.record && config.enableRecording);
+    formBody.append('Record', recordEnabled ? 'true' : 'false');
+
     if (params.customField) {
       formBody.append('CustomField', params.customField);
     }
@@ -194,9 +321,9 @@ export class ExotelClient {
     return response as ExotelCallResponse;
   }
 
+
   /**
    * Sends an SMS via Exotel using server-side Basic Auth.
-   * Requires an approved Sender ID / ExoPhone number.
    */
   public async sendSms(
     params: ExotelSmsParams,

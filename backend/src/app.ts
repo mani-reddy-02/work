@@ -57,6 +57,12 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+// Sanitize query parameters in HTTP access logs to redact secrets/tokens
+morgan.token('url', (req: express.Request) => {
+  const rawUrl = req.originalUrl || req.url || '';
+  return rawUrl.replace(/([?&](?:token|verify_token|key|secret|password)=)[^&]+/gi, '$1[REDACTED]');
+});
 app.use(morgan('dev'));
 
 // File streaming & inline preview handlers (resolves Supabase Storage & local disk files)
@@ -91,9 +97,10 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API Routes (supports both direct /api/v1 and reverse-proxied /v1)
+// API Routes (supports /api/v1, /v1, and /api prefixes)
 app.use('/api/v1', apiRouter);
 app.use('/v1', apiRouter);
+app.use('/api', apiRouter);
 
 // Global Error Handler
 app.use(errorHandler);

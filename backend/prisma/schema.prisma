@@ -1171,4 +1171,49 @@ model ReviewInvitation {
   @@map("review_invitations")
 }
 
+enum CallDirection {
+  PATIENT_TO_HOSPITAL
+  HOSPITAL_TO_PATIENT
+}
+
+enum CallStatus {
+  INITIATED
+  QUEUED
+  RINGING
+  IN_PROGRESS
+  COMPLETED
+  BUSY
+  NO_ANSWER
+  FAILED
+  CANCELED
+}
+
+model CallLog {
+  id            String        @id @default(uuid())
+  callSid       String?       @unique
+  bookingId     String?
+  bookingType   String        @default("OP")
+  initiatedById String
+  callerRole    Role
+  fromPhone     String
+  toPhone       String
+  virtualNumber String        @default("08047290980")
+  direction     CallDirection @default(PATIENT_TO_HOSPITAL)
+  status        CallStatus    @default(INITIATED)
+  duration      Int?
+  recordingUrl  String?
+  price         String?
+  failureReason String?
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([bookingId])
+  @@index([callSid])
+  @@index([initiatedById])
+  @@index([createdAt])
+  @@map("call_logs")
+}
+
+
 
