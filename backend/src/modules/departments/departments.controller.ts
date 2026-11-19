@@ -57,7 +57,9 @@ export const getDepartments = async (req: Request, res: Response, next: NextFunc
       };
     }
 
-    const whereClause: any = {};
+    const whereClause: any = {
+      isActive: true
+    };
     if (hospitalId) whereClause.hospitalId = hospitalId;
     if (search) {
       whereClause.OR = [
