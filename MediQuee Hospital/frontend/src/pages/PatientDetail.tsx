@@ -12,6 +12,8 @@ import { ConditionLabel } from "@/components/shared/ConditionLabel"
 import { EmptyState } from "../components/ui/EmptyState"
 import { Skeleton } from "../components/ui/Skeleton"
 import { doctorApi, type ClinicalHistoryItem, type ConsultationVitals } from "@/services/doctorApi"
+import { HospitalCallModal } from "@/components/common/HospitalCallModal"
+import { maskPhoneNumber } from "@/services/callApi"
 
 type PatientRecord = {
   id: string;
@@ -71,6 +73,7 @@ export function PatientDetail() {
 
   // Vitals recording modal state
   const [isVitalsModalOpen, setIsVitalsModalOpen] = useState(false);
+  const [isCallModalOpen, setIsCallModalOpen] = useState(false);
   const [isSavingVitals, setIsSavingVitals] = useState(false);
   const [vitalsForm, setVitalsForm] = useState<{
     systolicBp: string;
@@ -426,7 +429,7 @@ export function PatientDetail() {
     demographicsPills.push(patient.gender);
   }
   if (patient.phone) {
-    demographicsPills.push(patient.phone);
+    demographicsPills.push(maskPhoneNumber(patient.phone));
   }
 
   const isVideoConsult = (patient.opType || '').toLowerCase().includes('video');
@@ -551,13 +554,15 @@ export function PatientDetail() {
           {/* Quick Actions Row: Call, WhatsApp, and Status Transition */}
           <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/60">
             {patient.phone ? (
-              <a 
-                href={`tel:${patient.phone}`}
+              <button
+                type="button"
+                onClick={() => setIsCallModalOpen(true)}
                 className="flex-1 min-w-[130px] flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-primary border border-blue-200/80 rounded-xl text-xs font-bold transition-all active:scale-95"
+                title="Call Patient via MediQuee Masked Line"
               >
                 <Phone className="w-3.5 h-3.5" />
-                <span>Call ({patient.phone})</span>
-              </a>
+                <span>Call Patient (Masked)</span>
+              </button>
             ) : null}
 
             {cleanPhone ? (
@@ -1176,6 +1181,15 @@ export function PatientDetail() {
           </div>
         )}
       </AnimatePresence>
+
+      <HospitalCallModal
+        isOpen={isCallModalOpen}
+        onClose={() => setIsCallModalOpen(false)}
+        bookingId={patient.fullId || patient.id}
+        patientName={patient.name}
+        patientPhone={patient.phone}
+        bookingType="OP"
+      />
 
     </div>
   )
