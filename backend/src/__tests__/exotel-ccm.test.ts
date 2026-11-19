@@ -12,6 +12,7 @@ import {
   maskPhoneNumber,
 } from '../utils/phoneCrypto';
 import { prisma } from '../config/prisma';
+import { env } from '../config/env';
 
 async function runExotelCcmTests() {
   console.log('================================================================');
@@ -20,7 +21,7 @@ async function runExotelCcmTests() {
 
   const client = ExotelClient.getInstance();
   const service = new ExotelCallService();
-  const validToken = 'mediquee_exotel_webhook_secret_key';
+  const validToken = env.EXOTEL_WEBHOOK_SECRET || 'mediquee_exotel_webhook_secret_key';
 
   // In-memory CallLog model for sandboxed unit testing
   const inMemoryLogs = new Map<string, any>();
@@ -190,8 +191,12 @@ async function runExotelCcmTests() {
         payload.call_event_passthru_url.includes('/api/v1/exotel/events?token='),
       'CCM Connect payload must include valid call_event_passthru_url'
     );
+    const safePayloadToLog = {
+      ...payload,
+      call_event_passthru_url: payload.call_event_passthru_url?.replace(/token=[^&]+/g, 'token=[REDACTED]'),
+    };
     console.log('  -> CCM Primary URL response successfully validated:');
-    console.log('     ', JSON.stringify(payload));
+    console.log('     ', JSON.stringify(safePayloadToLog));
 
     // 8b: Verify CallLog status transitioned to IN_PROGRESS
     const updatedCall = await (prisma as any).callLog.findUnique({

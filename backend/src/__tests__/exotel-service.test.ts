@@ -10,6 +10,7 @@ import {
   decryptPhoneNumber,
   maskPhoneNumber,
 } from '../utils/phoneCrypto';
+import { env } from '../config/env';
 
 async function runExotelServiceTests() {
   console.log('====================================================');
@@ -149,9 +150,10 @@ async function runExotelServiceTests() {
   console.log('  -> Unauthorized webhook rejected with HTTP 403 using timing-safe comparison.');
 
   // Test 7b: Missing CallSid in payload
+  const validSecret = env.EXOTEL_WEBHOOK_SECRET || 'mediquee_exotel_webhook_secret_key';
   const missingSidWebhook = await service.handleWebhook(
     { Status: 'completed' },
-    'mediquee_exotel_webhook_secret_key'
+    validSecret
   );
   assert.strictEqual(missingSidWebhook.status, 400, 'Webhook must reject missing CallSid with HTTP 400');
   console.log('  -> Missing CallSid rejected with HTTP 400.');
