@@ -11,6 +11,8 @@ import { StatusBadge } from "@/components/lab/LabUI"
 import { cn, formatPatientAddress } from "@/lib/utils"
 import { labApi } from "@/services/labApi"
 import { useToast } from "@/context/ToastContext"
+import { HospitalCallModal } from "@/components/common/HospitalCallModal"
+import { maskPhoneNumber } from "@/services/callApi"
 
 export function LabOrderDetail() {
   const navigate = useNavigate()
@@ -39,6 +41,7 @@ export function LabOrderDetail() {
 
   // Fullscreen Report Viewer Modal
   const [reportViewerOpen, setReportViewerOpen] = useState(false)
+  const [isCallModalOpen, setIsCallModalOpen] = useState(false)
 
   const fetchDetail = async (silent = false) => {
     if (!id) return
@@ -678,13 +681,20 @@ export function LabOrderDetail() {
 
                     <div className="flex items-center gap-4 mt-2 flex-wrap text-xs text-muted">
                       {patientPhone && (
-                        <a 
-                          href={`tel:${patientPhone}`}
-                          className="flex items-center gap-1.5 font-bold text-primary hover:underline"
-                        >
-                          <Phone className="w-3.5 h-3.5" />
-                          <span>{patientPhone}</span>
-                        </a>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-slate-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 text-xs font-bold">
+                            {maskPhoneNumber(patientPhone)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsCallModalOpen(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary hover:bg-primary/90 text-white rounded-lg text-xs font-bold shadow-xs transition-all active:scale-95"
+                            title="Call Patient via MediQuee Masked Line"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                            <span>Call Patient</span>
+                          </button>
+                        </div>
                       )}
                       {patientEmail && (
                         <a 
@@ -1331,6 +1341,15 @@ export function LabOrderDetail() {
           </div>
         )}
       </AnimatePresence>
+
+      <HospitalCallModal
+        isOpen={isCallModalOpen}
+        onClose={() => setIsCallModalOpen(false)}
+        bookingId={booking?.id || id}
+        patientName={patientName}
+        patientPhone={patientPhone}
+        bookingType={booking?.isHomeSample ? 'HOME_SAMPLE' : 'LAB_WALK_IN'}
+      />
 
     </div>
   )

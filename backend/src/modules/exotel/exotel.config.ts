@@ -43,6 +43,65 @@ function cleanEnvValue(val?: string): string {
 }
 
 /**
+ * Constructs a fully qualified Exotel Accounts Base URL including Account SID.
+ * Expected format: https://{host}/v1/Accounts/{accountSid}
+ * - Removes trailing slashes.
+ * - Appends the Account SID exactly once.
+ * - Does not duplicate the Account SID if already present in baseUrl.
+ * - Supports base URLs with or without an Account SID.
+ * - Supports custom domains, regional clusters (e.g. api.in.exotel.com), and standard api.exotel.com.
+ */
+export function buildExotelBaseUrl(
+  rawBaseUrl?: string,
+  subdomain?: string,
+  accountSid?: string
+): string {
+  const cleanSid = (accountSid || '').trim();
+  const cleanSubdomain = (subdomain || '').trim() || 'api.exotel.com';
+  let url = (rawBaseUrl || '').trim();
+
+  // 1. If no custom base URL provided, construct standard URL from subdomain & accountSid
+  if (!url) {
+    return cleanSid
+      ? `https://${cleanSubdomain}/v1/Accounts/${cleanSid}`
+      : `https://${cleanSubdomain}/v1/Accounts`;
+  }
+
+  // 2. Strip all trailing slashes
+  url = url.replace(/\/+$/, '');
+
+  // 3. If accountSid is empty or undefined, return cleaned URL
+  if (!cleanSid) {
+    return url;
+  }
+
+  // 4. Check if the URL path already contains accountSid as a segment (prevent duplicate SID)
+  const segments = url.split('/');
+  const hasSidSegment = segments.some((seg) => seg.toLowerCase() === cleanSid.toLowerCase());
+  if (hasSidSegment) {
+    return url;
+  }
+
+  // 5. If URL ends with /v1/Accounts or /Accounts (case-insensitive), append Account SID
+  if (url.toLowerCase().endsWith('/accounts')) {
+    return `${url}/${cleanSid}`;
+  }
+
+  // 6. If URL ends with /v1, append Accounts/{accountSid}
+  if (url.toLowerCase().endsWith('/v1')) {
+    return `${url}/Accounts/${cleanSid}`;
+  }
+
+  // 7. If URL doesn't contain /accounts at all (e.g. "https://api.exotel.com"), append /v1/Accounts/{accountSid}
+  if (!url.toLowerCase().includes('/accounts')) {
+    return `${url}/v1/Accounts/${cleanSid}`;
+  }
+
+  // 8. Default fallback: append Account SID
+  return `${url}/${cleanSid}`;
+}
+
+/**
  * Retrieve current Exotel configuration values from server environment.
  * Default host is Singapore API host: api.exotel.com
  * Never logs or exposes secret credentials.
@@ -58,15 +117,11 @@ export function getExotelConfig(): ExotelConfig {
   const enableRecording = (cleanEnvValue(env.EXOTEL_ENABLE_RECORDING || process.env.EXOTEL_ENABLE_RECORDING) === 'true');
   const statusCallbackUrl = cleanEnvValue(env.EXOTEL_STATUS_CALLBACK_URL || process.env.EXOTEL_STATUS_CALLBACK_URL) || undefined;
 
-  let baseUrl = cleanEnvValue(env.EXOTEL_BASE_URL || process.env.EXOTEL_BASE_URL);
-  if (!baseUrl) {
-    baseUrl = `https://${subdomain}/v1/Accounts/${accountSid}`;
-  } else {
-    baseUrl = baseUrl.replace(/\/+$/, '');
-    if (accountSid && !baseUrl.includes(accountSid) && !baseUrl.endsWith('/Accounts')) {
-      baseUrl = `${baseUrl}/${accountSid}`;
-    }
-  }
+  const baseUrl = buildExotelBaseUrl(
+    cleanEnvValue(env.EXOTEL_BASE_URL || process.env.EXOTEL_BASE_URL),
+    subdomain,
+    accountSid
+  );
 
   const isConfigured = Boolean(accountSid && apiKey && apiToken);
   const isCallReady = Boolean(isConfigured && callerId && !isLikelyPersonalMobileNumber(callerId));

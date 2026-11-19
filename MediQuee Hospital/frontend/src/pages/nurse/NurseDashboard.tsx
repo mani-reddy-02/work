@@ -24,6 +24,8 @@ import { useAuth } from "@/context/AuthContext"
 import { useToast } from "@/context/ToastContext"
 import { nurseApi, type NurseVisit, type NurseDashboardData } from "@/services/nurseApi"
 import { NurseVisitDetailModal } from "@/components/nurse/NurseVisitDetailModal"
+import { HospitalCallModal } from "@/components/common/HospitalCallModal"
+import { maskPhoneNumber } from "@/services/callApi"
 
 export function NurseDashboard() {
   const navigate = useNavigate();
@@ -37,6 +39,7 @@ export function NurseDashboard() {
   const [selectedVisit, setSelectedVisit] = useState<NurseVisit | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [todayFilter, setTodayFilter] = useState<'all' | 'in_progress' | 'assigned' | 'completed'>('all');
+  const [callModalTarget, setCallModalTarget] = useState<{ id: string; name: string; phone?: string } | null>(null);
 
   const lastFetchRef = useRef<number>(0);
 
@@ -379,13 +382,14 @@ export function NurseDashboard() {
 
                 {/* Direct Actions Bar */}
                 <div className="flex items-center gap-2">
-                  <a
-                    href={`tel:${nextVisit.patientPhone}`}
-                    className="px-3.5 py-3 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 transition-colors border border-white/10"
-                    title={`Call patient: ${nextVisit.patientPhone}`}
+                  <button
+                    type="button"
+                    onClick={() => setCallModalTarget({ id: nextVisit.id, name: nextVisit.name, phone: nextVisit.patientPhone })}
+                    className="px-3.5 py-3 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 transition-colors border border-white/10 active:scale-95"
+                    title="Call patient via MediQuee Masked Line"
                   >
-                    <Phone className="w-4 h-4" /> Call
-                  </a>
+                    <Phone className="w-4 h-4" /> Call Patient
+                  </button>
 
                   {nextVisit.rawStatus === 'IN_PROGRESS' ? (
                     <button
@@ -583,13 +587,17 @@ export function NurseDashboard() {
 
                 {/* Card Actions */}
                 <div className="flex items-center gap-2 pt-1 border-t border-border/40">
-                  <a
-                    href={`tel:${visit.patientPhone}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-border text-[#0A1A3D] rounded-xl text-[12px] font-bold flex items-center gap-1.5 transition-colors"
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCallModalTarget({ id: visit.id, name: visit.name, phone: visit.patientPhone });
+                    }}
+                    className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-border text-[#0A1A3D] rounded-xl text-[12px] font-bold flex items-center gap-1.5 transition-colors active:scale-95"
+                    title="Call patient via MediQuee Masked Line"
                   >
-                    <Phone className="w-3.5 h-3.5 text-[#1769E0]" /> Call
-                  </a>
+                    <Phone className="w-3.5 h-3.5 text-[#1769E0]" /> Call Patient
+                  </button>
 
                   {isInProgress ? (
                     <div className="flex-1 text-center py-1.5 text-[11px] font-bold text-amber-800 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-center gap-1.5">
@@ -652,6 +660,15 @@ export function NurseDashboard() {
         onClose={() => { setIsModalOpen(false); setSelectedVisit(null); }}
         onUpdateStatus={handleModalUpdateStatus}
         actionLoadingId={actionLoadingId}
+      />
+
+      <HospitalCallModal
+        isOpen={Boolean(callModalTarget)}
+        onClose={() => setCallModalTarget(null)}
+        bookingId={callModalTarget?.id}
+        patientName={callModalTarget?.name}
+        patientPhone={callModalTarget?.phone}
+        bookingType="NURSING"
       />
     </div>
   )

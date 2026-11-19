@@ -12,6 +12,8 @@ import { useToast } from "@/context/ToastContext"
 import { nurseApi, type HospitalNursingBooking } from "@/services/nurseApi"
 import { AssignNurseModal } from "@/components/appointments/AssignNurseModal"
 import { ReceptionistNavHeader } from "@/components/layout/ReceptionistNavHeader"
+import { HospitalCallModal } from "@/components/common/HospitalCallModal"
+import { maskPhoneNumber } from "@/services/callApi"
 
 export function ReceptionistHomeNursing() {
   const { toast } = useToast();
@@ -23,6 +25,7 @@ export function ReceptionistHomeNursing() {
   const [selectedDate, setSelectedDate] = useState<string>('upcoming');
   const [searchQuery, setSearchQuery] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [callModalTarget, setCallModalTarget] = useState<{ id: string; name: string; phone?: string } | null>(null);
 
   // Nurse Assignment Modal state
   const [nurseAssignModalBooking, setNurseAssignModalBooking] = useState<{
@@ -396,13 +399,20 @@ export function ReceptionistHomeNursing() {
                             {b.patientName}
                           </h4>
                           {b.patientPhone && (
-                            <a 
-                              href={`tel:${b.patientPhone}`}
-                              className="text-[12px] font-semibold text-[#1B5DF1] hover:underline flex items-center gap-1 mt-0.5"
-                            >
-                              <Phone className="w-3 h-3" />
-                              {b.patientPhone}
-                            </a>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="font-mono text-slate-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 text-[11px] font-bold">
+                                {maskPhoneNumber(b.patientPhone)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setCallModalTarget({ id: b.id, name: b.patientName, phone: b.patientPhone })}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#1769E0] hover:bg-[#1258be] text-white rounded-md text-[10px] font-extrabold shadow-xs transition-all active:scale-95"
+                                title="Call Patient via MediQuee Masked Line"
+                              >
+                                <Phone className="w-2.5 h-2.5" />
+                                <span>Call Patient</span>
+                              </button>
+                            </div>
                           )}
                         </div>
 
@@ -568,6 +578,15 @@ export function ReceptionistHomeNursing() {
           booking={nurseAssignModalBooking}
         />
       )}
+
+      <HospitalCallModal
+        isOpen={Boolean(callModalTarget)}
+        onClose={() => setCallModalTarget(null)}
+        bookingId={callModalTarget?.id}
+        patientName={callModalTarget?.name}
+        patientPhone={callModalTarget?.phone}
+        bookingType="NURSING"
+      />
     </div>
   );
 }

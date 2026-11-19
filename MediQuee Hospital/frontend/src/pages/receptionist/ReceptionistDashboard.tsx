@@ -15,6 +15,8 @@ import { nurseApi } from "@/services/nurseApi"
 import { DoctorStatusControlPanel } from "@/components/doctor/DoctorStatusControlPanel"
 import { useTranslation } from "react-i18next"
 import { useToast } from "@/context/ToastContext"
+import { HospitalCallModal } from "@/components/common/HospitalCallModal"
+import { maskPhoneNumber } from "@/services/callApi"
 
 export function ReceptionistDashboard() {
   const { t } = useTranslation();
@@ -29,6 +31,7 @@ export function ReceptionistDashboard() {
   const [selectedDeptId, setSelectedDeptId] = useState<string>('all');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [copiedPhoneId, setCopiedPhoneId] = useState<string | null>(null);
+  const [callModalTarget, setCallModalTarget] = useState<{ id: string; name: string; phone?: string } | null>(null);
   const lastFetchRef = useRef<number>(0);
 
   const loadData = useCallback(async (silent = false) => {
@@ -456,25 +459,18 @@ export function ReceptionistDashboard() {
 
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted font-medium">
                             {activeOp.patientPhone && (
-                              <div className="flex items-center gap-1">
-                                <Phone className="w-3.5 h-3.5 text-muted/80" />
-                                <a 
-                                  href={`tel:${activeOp.patientPhone}`} 
-                                  className="text-[#0A1A3D] font-bold hover:text-[#1769E0] hover:underline"
-                                >
-                                  {activeOp.patientPhone}
-                                </a>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-slate-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 text-[11px] font-bold">
+                                  {maskPhoneNumber(activeOp.patientPhone)}
+                                </span>
                                 <button
                                   type="button"
-                                  onClick={() => copyPhoneNumber(activeOp.id, activeOp.patientPhone)}
-                                  title="Copy phone"
-                                  className="p-1 hover:bg-blue-100 rounded text-muted hover:text-[#0A1A3D]"
+                                  onClick={() => setCallModalTarget({ id: activeOp.id, name: activeOp.patientName, phone: activeOp.patientPhone })}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#1769E0] hover:bg-[#1258be] text-white rounded-lg text-[11px] font-extrabold shadow-sm transition-all active:scale-95"
+                                  title="Call Patient via MediQuee Masked Line"
                                 >
-                                  {copiedPhoneId === activeOp.id ? (
-                                    <CheckCheck className="w-3 h-3 text-emerald-600" />
-                                  ) : (
-                                    <Copy className="w-3 h-3" />
-                                  )}
+                                  <Phone className="w-3 h-3" />
+                                  <span>Call Patient</span>
                                 </button>
                               </div>
                             )}
@@ -592,25 +588,18 @@ export function ReceptionistDashboard() {
 
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted font-medium">
                             {nextOp.patientPhone && (
-                              <div className="flex items-center gap-1">
-                                <Phone className="w-3.5 h-3.5 text-muted/80" />
-                                <a 
-                                  href={`tel:${nextOp.patientPhone}`} 
-                                  className="text-[#0A1A3D] font-bold hover:text-[#1769E0] hover:underline"
-                                >
-                                  {nextOp.patientPhone}
-                                </a>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-slate-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[11px] font-bold">
+                                  {maskPhoneNumber(nextOp.patientPhone)}
+                                </span>
                                 <button
                                   type="button"
-                                  onClick={() => copyPhoneNumber(nextOp.id, nextOp.patientPhone)}
-                                  title="Copy phone"
-                                  className="p-1 hover:bg-amber-100 rounded text-muted hover:text-[#0A1A3D]"
+                                  onClick={() => setCallModalTarget({ id: nextOp.id, name: nextOp.patientName, phone: nextOp.patientPhone })}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#1769E0] hover:bg-[#1258be] text-white rounded-lg text-[11px] font-extrabold shadow-sm transition-all active:scale-95"
+                                  title="Call Patient via MediQuee Masked Line"
                                 >
-                                  {copiedPhoneId === nextOp.id ? (
-                                    <CheckCheck className="w-3 h-3 text-emerald-600" />
-                                  ) : (
-                                    <Copy className="w-3 h-3" />
-                                  )}
+                                  <Phone className="w-3 h-3" />
+                                  <span>Call Patient</span>
                                 </button>
                               </div>
                             )}
@@ -787,6 +776,15 @@ export function ReceptionistDashboard() {
           </div>
         </motion.div>
       </div>
+
+      <HospitalCallModal
+        isOpen={Boolean(callModalTarget)}
+        onClose={() => setCallModalTarget(null)}
+        bookingId={callModalTarget?.id}
+        patientName={callModalTarget?.name}
+        patientPhone={callModalTarget?.phone}
+        bookingType="OP"
+      />
     </div>
   )
 }
