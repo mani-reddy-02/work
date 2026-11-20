@@ -1215,5 +1215,44 @@ model CallLog {
   @@map("call_logs")
 }
 
+model PaymentTransaction {
+  id             String    @id @default(uuid())
+  orderId        String    @unique
+  paymentId      String?   @unique
+  signature      String?
+  serviceType    String    // OP_BOOKING, VIDEO_CONSULTATION, LAB_BOOKING, HOME_SAMPLE, HOME_NURSING
+  bookingId      String
+  userId         String
+  amount         Float     // In INR
+  amountInPaise  Int       // In Paise
+  currency       String    @default("INR")
+  status         String    @default("CREATED") // CREATED, PAID, FAILED, REFUNDED
+  method         String?
+  failureReason  String?
+  receipt        String?
+  idempotencyKey String?   @unique
+  metadata       Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([bookingId, serviceType])
+  @@index([userId])
+  @@index([status])
+  @@map("payment_transactions")
+}
+
+model PaymentWebhookLog {
+  id        String   @id @default(uuid())
+  eventId   String   @unique // x-razorpay-event-id
+  event     String   // e.g. payment.captured, order.paid, payment.failed
+  payload   Json
+  processed Boolean  @default(false)
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@map("payment_webhook_logs")
+}
+
+
 
 

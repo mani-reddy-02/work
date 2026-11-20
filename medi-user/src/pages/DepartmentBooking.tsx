@@ -30,6 +30,7 @@ import { useUIStore } from '../lib/uiStore';
 
 import { useFamilyMembers } from '../lib/familyMembers';
 import { scrollToTop } from '../utils/scroll';
+import { paymentApi } from '../services/paymentService';
 
 
 
@@ -769,20 +770,37 @@ const DepartmentBooking: React.FC = () => {
 
       const res = await opAppointmentApi.createOpAppointment(payload);
 
-
-
       if (res.success && res.data) {
+        const createdBooking = res.data;
+        const bookingId = createdBooking.id || createdBooking.appointmentId;
+        const effectiveFee = Number(feeAmount) || 0;
 
-        setBookingConfirmation(res.data);
+        if (effectiveFee > 0 && bookingId) {
+          await paymentApi.initiatePayment({
+            serviceType: consultationType === 'VIDEO' ? 'VIDEO_CONSULTATION' : 'OP_BOOKING',
+            bookingId: bookingId,
+            patientName: patientName.trim(),
+            patientPhone: patientPhone.trim(),
+            patientEmail: user?.email,
+            serviceName: `${consultationType === 'VIDEO' ? 'Video Consultation' : 'OP Appointment'} - ${selectedDoctor?.name || selectedDepartment?.name || 'Doctor'}`,
+            onSuccess: () => {
+              setBookingConfirmation(createdBooking);
+              setCurrentStep('CONFIRMATION');
+              setIsSubmitting(false);
+            },
+            onFailure: (errMsg) => {
+              setSubmissionError(`Payment not completed: ${errMsg}. You can retry or complete the payment.`);
+              setIsSubmitting(false);
+            }
+          });
+          return;
+        }
 
+        setBookingConfirmation(createdBooking);
         setCurrentStep('CONFIRMATION');
-
       } else {
-
         const errorMsg = typeof res.error === 'object' ? res.error.message : (res.error || 'Failed to complete appointment booking');
-
         setSubmissionError(errorMsg);
-
       }
 
     } catch (err: any) {

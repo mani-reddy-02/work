@@ -39,6 +39,7 @@ import {
   type NursingSlot,
 } from '../lib/homeNursingApi';
 import { profileApi } from '../lib/profileApi';
+import { paymentApi } from '../services/paymentService';
 import PrePaymentReviewsSummary from '../components/PrePaymentReviewsSummary';
 import ProviderReviewsModal from '../components/ProviderReviewsModal';
 import { useUIStore } from '../lib/uiStore';
@@ -327,7 +328,32 @@ const HomeNursingList = () => {
       const res = await homeNursingApi.createBooking(payload);
 
       if (res.success && res.data) {
-        setConfirmedBooking(res.data);
+        const createdBooking = res.data;
+        const numPrice = calculatedPriceNumber || 0;
+
+        if (numPrice > 0 && createdBooking?.id) {
+          await paymentApi.initiatePayment({
+            serviceType: 'HOME_NURSING',
+            bookingId: createdBooking.id,
+            patientName: patientDetails.name.trim(),
+            patientPhone: patientDetails.phone.trim(),
+            patientEmail: patientDetails.email.trim() || undefined,
+            serviceName: `Home Nursing - ${selectedService?.name || 'Healthcare Service'}`,
+            onSuccess: () => {
+              setConfirmedBooking(createdBooking);
+              setViewState('CONFIRMED');
+              setIsSubmitting(false);
+            },
+            onFailure: (errMsg) => {
+              setBookingError(`Payment failed or cancelled: ${errMsg}. You can retry or complete the payment.`);
+              setViewState('SUMMARY');
+              setIsSubmitting(false);
+            }
+          });
+          return;
+        }
+
+        setConfirmedBooking(createdBooking);
         setViewState('CONFIRMED');
       } else {
         const errorMsg = res.error || 'Failed to complete home nursing booking. Please try again.';

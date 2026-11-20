@@ -40,6 +40,10 @@ const envSchema = z.object({
   EXOTEL_WEBHOOK_SECRET: z.string().default('mediquee_exotel_webhook_secret_key'),
   EXOTEL_ENABLE_RECORDING: z.string().default('false'),
   EXOTEL_STATUS_CALLBACK_URL: z.string().optional(),
+  // Razorpay Payment Gateway
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 });
 
 const _env = envSchema.safeParse(process.env);

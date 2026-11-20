@@ -17,6 +17,7 @@ import PrePaymentReviewsSummary from '../components/PrePaymentReviewsSummary';
 import ProviderReviewsModal from '../components/ProviderReviewsModal';
 import { useFamilyMembers, type FamilyMember } from '../lib/familyMembers';
 import { scrollToTop } from '../utils/scroll';
+import { paymentApi } from '../services/paymentService';
 
 // --- 5-STEP HOW IT WORKS DATA ---
 const opBookingStepsData = [
@@ -571,6 +572,33 @@ const Specialties = () => {
       }
 
       const realBookingId = res.data.id || res.data.appointmentId;
+      const numDocFee = Number(docFee) || 0;
+
+      if (numDocFee > 0 && realBookingId) {
+        await paymentApi.initiatePayment({
+          serviceType: isVideo ? 'VIDEO_CONSULTATION' : 'OP_BOOKING',
+          bookingId: realBookingId,
+          patientName: patientName || user?.name || 'Self',
+          patientPhone: patientPhone || user?.phone || '9999999999',
+          patientEmail: user?.email,
+          serviceName: `${isVideo ? 'Video Consultation' : 'OP Consultation'} - Dr. ${selectedDoctor?.name || 'Specialist'}`,
+          onSuccess: () => {
+            setBookingId(realBookingId);
+            setBookingStatus(res.data.status || 'CONFIRMED');
+            setConfirmedBookingData(res.data);
+            setView('CONFIRMATION');
+            showNotification(`Payment successful! Appointment with ${selectedDoctor?.name || 'Doctor'} confirmed.`);
+            setIsSubmitting(false);
+          },
+          onFailure: (errMsg) => {
+            setBookingError(`Payment failed or cancelled: ${errMsg}`);
+            showNotification(`Payment failed: ${errMsg}`);
+            setIsSubmitting(false);
+          }
+        });
+        return;
+      }
+
       setBookingId(realBookingId);
       setBookingStatus(res.data.status || 'CONFIRMED');
       setConfirmedBookingData(res.data);

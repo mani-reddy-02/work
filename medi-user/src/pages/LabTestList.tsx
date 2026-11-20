@@ -38,6 +38,7 @@ import {
   labBookingApi
 } from '../lib/labTestApi';
 import { profileApi } from '../lib/profileApi';
+import { paymentApi } from '../services/paymentService';
 import HowItWorks from '../components/HowItWorks';
 import { getTestIcon, getHealthConcernIcon, parseDatePill } from '../lib/optimizedTestIcons';
 import { useUIStore } from '../lib/uiStore';
@@ -505,7 +506,31 @@ const LabTestList = () => {
         return;
       }
 
-      setCreatedBooking(res.data);
+      const createdBookingData = res.data;
+      const testPrice = selectedLab ? selectedLab.numericPrice : (selectedItem?.numericPrice || 0);
+
+      if (testPrice > 0 && createdBookingData?.id) {
+        await paymentApi.initiatePayment({
+          serviceType: 'LAB_BOOKING',
+          bookingId: createdBookingData.id,
+          patientName: patientDetails.name.trim(),
+          patientPhone: patientDetails.phone.trim(),
+          patientEmail: patientDetails.email?.trim() || undefined,
+          serviceName: `Lab Diagnostic Visit - ${selectedItem?.name || 'Lab Test'}`,
+          onSuccess: () => {
+            setCreatedBooking(createdBookingData);
+            setViewState('CONFIRMED');
+            setIsSubmittingBooking(false);
+          },
+          onFailure: (errMsg) => {
+            setBookingError(`Payment not completed: ${errMsg}. You can retry or complete the payment.`);
+            setIsSubmittingBooking(false);
+          }
+        });
+        return;
+      }
+
+      setCreatedBooking(createdBookingData);
       setViewState('CONFIRMED');
     } catch (err: any) {
       setBookingError(err.message || 'An unexpected error occurred. Please try again.');
