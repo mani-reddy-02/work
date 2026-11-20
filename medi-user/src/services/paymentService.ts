@@ -184,6 +184,38 @@ export const paymentApi = {
       theme: {
         color: '#1769E0'
       },
+      config: {
+        display: {
+          blocks: {
+            upi_block: {
+              name: 'UPI / QR (Google Pay, PhonePe, Paytm)',
+              instruments: [
+                {
+                  method: 'upi'
+                }
+              ]
+            },
+            other_methods: {
+              name: 'Cards & Netbanking',
+              instruments: [
+                {
+                  method: 'card'
+                },
+                {
+                  method: 'netbanking'
+                },
+                {
+                  method: 'wallet'
+                }
+              ]
+            }
+          },
+          sequence: ['block.upi_block', 'block.other_methods'],
+          preferences: {
+            show_default_blocks: true
+          }
+        }
+      },
       modal: {
         ondismiss: () => {
           onFailure('Payment cancelled by user.');
