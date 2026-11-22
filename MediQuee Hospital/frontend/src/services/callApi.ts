@@ -79,6 +79,38 @@ export async function getCallStatus(callSid: string): Promise<CallStatusResponse
 }
 
 /**
+ * Pre-registers a call intent for direct inbound masked dialing.
+ * When hospital staff dials 08047290980 from their phone, Exotel connects
+ * to the intended patient with complete two-way number masking.
+ */
+export async function registerCallIntent(
+  bookingId: string,
+  bookingType: string = 'OP'
+): Promise<{ success: boolean; virtualNumber: string; dialNumber?: string }> {
+  const token = localStorage.getItem('mediquee_token');
+  if (!token) return { success: false, virtualNumber: '080-472-90980', dialNumber: '08047290980' };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/exotel/calls/intent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        bookingId,
+        bookingType,
+        direction: 'HOSPITAL_TO_PATIENT',
+      }),
+    });
+    const data = await response.json();
+    return data?.data || { success: true, virtualNumber: '080-472-90980', dialNumber: '08047290980' };
+  } catch {
+    return { success: false, virtualNumber: '080-472-90980', dialNumber: '08047290980' };
+  }
+}
+
+/**
  * Masks phone numbers to protect patient privacy on screen (e.g., •••• ••4550).
  */
 export function maskPhoneNumber(phone?: string): string {

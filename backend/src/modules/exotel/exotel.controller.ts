@@ -55,6 +55,48 @@ export async function initiateCallHandler(req: Request, res: Response) {
 }
 
 /**
+ * Pre-registers a Call Intent for Direct Inbound Masked Dialing (e.g. tel:08047290980).
+ */
+export async function registerIntentHandler(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+    const userHospitalId = req.user?.hospitalId;
+
+    if (!userId || !userRole) {
+      return res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+      });
+    }
+
+    const { bookingId, bookingType, direction } = req.body;
+
+    const result = await callService.registerCallIntent({
+      bookingId,
+      bookingType,
+      direction,
+      userId,
+      userRole,
+      userHospitalId,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'INTENT_REGISTRATION_FAILED',
+        message: error.message || 'Failed to register call intent',
+      },
+    });
+  }
+}
+
+/**
  * Retrieve status of a call session by CallSid
  */
 export async function getCallStatusHandler(req: Request, res: Response) {

@@ -367,17 +367,99 @@ export class ExotelCallService {
   }
 
   /**
+   * Pre-registers a Call Intent for Direct Inbound Masked Dialing.
+   * When a patient or hospital staff taps "Call" on a specific booking,
+   * an AWAITING_INBOUND record is logged so that when their phone dials
+   * virtual number 08047290980, Exotel seamlessly routes to the target party.
+   */
+  public async registerCallIntent(params: {
+    bookingId: string;
+    bookingType?: ServiceBookingType;
+    direction?: 'PATIENT_TO_HOSPITAL' | 'HOSPITAL_TO_PATIENT';
+    userId: string;
+    userRole: string;
+    userHospitalId?: string | null;
+  }) {
+    const bookingType = params.bookingType || 'OP';
+    const direction: 'PATIENT_TO_HOSPITAL' | 'HOSPITAL_TO_PATIENT' =
+      params.userRole === 'PATIENT' ? 'PATIENT_TO_HOSPITAL' : 'HOSPITAL_TO_PATIENT';
+
+    const parties = await this.resolveBookingParties(
+      params.bookingId,
+      bookingType,
+      params.userId,
+      params.userRole,
+      params.userHospitalId
+    );
+
+    let fromNumber = '';
+    let toNumber = '';
+
+    if (direction === 'PATIENT_TO_HOSPITAL') {
+      fromNumber = parties.patientPhone;
+      toNumber = parties.hospitalPhone;
+    } else {
+      const staffUser = await prisma.user.findUnique({
+        where: { id: params.userId },
+        select: { phone: true },
+      });
+      fromNumber = staffUser?.phone || parties.hospitalPhone;
+      toNumber = parties.patientPhone;
+    }
+
+    const callerDigits = fromNumber.replace(/\D/g, '').slice(-10);
+    const virtualNumber = this.client.normalizeCallerId(env.EXOTEL_CALLER_ID || '08047290980');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+    let intentRecord: any = null;
+    if (ExotelCallService.callLogModel) {
+      intentRecord = await ExotelCallService.callLogModel.create({
+        data: {
+          bookingId: params.bookingId,
+          bookingType,
+          initiatedById: params.userId,
+          callerRole: params.userRole as Role,
+          fromPhone: encryptPhoneNumber(fromNumber),
+          toPhone: encryptPhoneNumber(toNumber),
+          virtualNumber,
+          direction,
+          status: 'INITIATED',
+          metadata: {
+            mode: 'INBOUND_INTENT',
+            callerDigits,
+            expiresAt,
+            patientId: parties.patientId,
+            hospitalId: parties.hospitalId,
+          },
+        },
+      });
+    }
+
+    return {
+      success: true,
+      intentId: intentRecord?.id || '',
+      virtualNumber: '080-472-90980',
+      dialNumber: virtualNumber,
+      direction,
+      maskedTarget: maskPhoneNumber(toNumber),
+      expiresInSeconds: 900,
+    };
+  }
+
+  /**
    * CCM Primary URL Handler (GET /api/v1/exotel/connect)
    *
    * SLA Requirement: Exotel expects an HTTP 200 response with Content-Type: application/json
    * within 5 seconds. This handler processes within <100ms.
    *
-   * Secure Correlation Flow:
+   * Dynamic Routing Flow:
    * 1. Validates webhook secret token (?token=...).
-   * 2. Finds the exact pending CallLog by CallSid or CustomField (correlationToken).
-   * 3. Prevents reuse of expired or already completed correlation tokens.
-   * 4. Resolves the verified hospital phone by decrypting CallLog.toPhone.
-   * 5. Returns the documented CCM destination payload.
+   * 2. Correlates by CallSid, CustomField, or Caller phone number (From).
+   * 3. For Inbound Calls to 08047290980:
+   *    - Checks pre-registered Intent in CallLog.
+   *    - Falls back to database lookup of caller's active OP booking.
+   * 4. Resolves destination phone number from verified database records.
+   * 5. Returns documented Exotel Connect destination payload.
    */
   public async handleCcmConnect(
     queryParams: ExotelCcmQueryParams,
@@ -400,29 +482,28 @@ export class ExotelCallService {
 
     const callSid = queryParams.CallSid || queryParams.Sid;
     const customToken = queryParams.CustomField;
+    const callerRaw = queryParams.From || (queryParams as any).from;
+    const callerDigits = String(callerRaw || '').replace(/\D/g, '').slice(-10);
 
-    if (!callSid && !customToken) {
-      return { httpStatus: 400, payload: { error: 'Missing CallSid and CustomField correlation parameter' } };
+    if (!callSid && !customToken && !callerDigits) {
+      return { httpStatus: 400, payload: { error: 'Missing CallSid, CustomField, and From parameters' } };
     }
 
-    if (!ExotelCallService.callLogModel) {
-      return { httpStatus: 500, payload: { error: 'CallLog model not available' } };
-    }
-
-    // 2. Correlate to exactly one pending CallLog
     let callLog: any = null;
-    if (callSid) {
+
+    // 2a. Correlate by existing CallSid
+    if (callSid && ExotelCallService.callLogModel) {
       callLog = await ExotelCallService.callLogModel.findUnique({
         where: { callSid },
       });
     }
 
-    if (!callLog && customToken) {
-      // Find candidate calls created recently
+    // 2b. Correlate by CustomField token
+    if (!callLog && customToken && ExotelCallService.callLogModel) {
       const candidateCalls = await ExotelCallService.callLogModel.findMany({
         where: {
           status: { in: ['INITIATED', 'QUEUED', 'RINGING'] },
-          createdAt: { gte: new Date(Date.now() - 10 * 60 * 1000) },
+          createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
         },
         orderBy: { createdAt: 'desc' },
         take: 10,
@@ -433,48 +514,163 @@ export class ExotelCallService {
       );
     }
 
-    if (!callLog) {
-      console.warn(`[Exotel CCM] Call not found for CallSid: ${callSid}, Token: ${customToken}`);
-      return { httpStatus: 404, payload: { error: 'Pending call session not found' } };
+    // 2c. Correlate by pre-registered Inbound Intent matching caller's phone digits
+    if (!callLog && callerDigits && ExotelCallService.callLogModel) {
+      const candidateIntents = await ExotelCallService.callLogModel.findMany({
+        where: {
+          status: 'INITIATED',
+          createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      });
+
+      callLog = candidateIntents.find((c: any) => {
+        if (!c.metadata || typeof c.metadata !== 'object') return false;
+        return c.metadata.callerDigits === callerDigits;
+      });
     }
 
-    // 3. Prevent reuse of expired or already terminal calls
-    const terminalStatuses = ['COMPLETED', 'FAILED', 'BUSY', 'NO_ANSWER', 'CANCELED'];
-    if (terminalStatuses.includes(callLog.status)) {
-      console.warn(`[Exotel CCM] Call ${callLog.callSid || callSid} is already in terminal state: ${callLog.status}`);
-      return { httpStatus: 410, payload: { error: 'Call session has already ended' } };
-    }
-
-    const metadata = (callLog.metadata || {}) as Record<string, any>;
-    if (metadata.correlationExpiresAt && new Date(metadata.correlationExpiresAt).getTime() < Date.now()) {
-      console.warn(`[Exotel CCM] Correlation token expired for Call ${callLog.callSid}`);
-      return { httpStatus: 410, payload: { error: 'Correlation token has expired' } };
-    }
-
-    // 4. Resolve verified hospital destination number from encrypted database storage
     let destinationPhone = '';
-    try {
-      destinationPhone = decryptPhoneNumber(callLog.toPhone);
-    } catch (err: any) {
-      console.error('[Exotel CCM] Failed to decrypt toPhone:', err.message);
-      return { httpStatus: 500, payload: { error: 'Failed to resolve destination phone number' } };
+
+    // 3. If CallLog record was matched, decrypt destination phone
+    if (callLog) {
+      const terminalStatuses = ['COMPLETED', 'FAILED', 'BUSY', 'NO_ANSWER', 'CANCELED'];
+      if (terminalStatuses.includes(callLog.status)) {
+        console.warn(`[Exotel CCM] Call ${callLog.callSid || callSid} is already in terminal state: ${callLog.status}`);
+        return { httpStatus: 410, payload: { error: 'Call session has already ended' } };
+      }
+
+      const metadata = (callLog.metadata || {}) as Record<string, any>;
+      const expiry = metadata.expiresAt || metadata.correlationExpiresAt;
+      if (expiry && new Date(expiry).getTime() < Date.now()) {
+        console.warn(`[Exotel CCM] Correlation token expired for Call ${callLog.callSid || callSid}`);
+        return { httpStatus: 410, payload: { error: 'Call intent has expired' } };
+      }
+
+      try {
+        destinationPhone = decryptPhoneNumber(callLog.toPhone);
+      } catch (err: any) {
+        console.error('[Exotel CCM] Failed to decrypt toPhone:', err.message);
+        return { httpStatus: 500, payload: { error: 'Failed to resolve destination phone number' } };
+      }
+
+      // Update CallLog with active CallSid and status
+      if (ExotelCallService.callLogModel && callSid) {
+        await ExotelCallService.callLogModel.update({
+          where: { id: callLog.id },
+          data: {
+            callSid,
+            status: 'IN_PROGRESS',
+            metadata: {
+              ...metadata,
+              ccmConnectedAt: new Date().toISOString(),
+              ccmCallSid: callSid,
+            },
+          },
+        });
+      }
+    } else if (callerDigits) {
+      // 4. Fallback Direct Inbound Resolution: Resolve caller's active booking
+      console.log(`[Exotel CCM] Inbound dial from caller: ...${callerDigits}. Resolving active booking...`);
+
+      // Check if Patient has an active booking
+      const activeOp = await prisma.oPBooking.findFirst({
+        where: {
+          patientPhone: { endsWith: callerDigits },
+          status: { not: 'CANCELLED' },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (activeOp && activeOp.hospitalId) {
+        const hospital = await prisma.hospital.findUnique({
+          where: { id: activeOp.hospitalId },
+          select: { id: true, name: true, contactPhone: true, emergencyContact: true },
+        });
+
+        if (hospital) {
+          destinationPhone = hospital.contactPhone || hospital.emergencyContact || '';
+          console.log(`[Exotel CCM] Inbound patient matched to hospital: ${hospital.name}`);
+
+          if (ExotelCallService.callLogModel) {
+            await ExotelCallService.callLogModel.create({
+              data: {
+                callSid: callSid || undefined,
+                bookingId: activeOp.id,
+                bookingType: 'OP',
+                initiatedById: activeOp.patientId || 'inbound-dialer',
+                callerRole: 'PATIENT',
+                fromPhone: encryptPhoneNumber(callerRaw || callerDigits),
+                toPhone: encryptPhoneNumber(destinationPhone),
+                virtualNumber: env.EXOTEL_CALLER_ID || '08047290980',
+                direction: 'PATIENT_TO_HOSPITAL',
+                status: 'IN_PROGRESS',
+                metadata: {
+                  mode: 'DIRECT_INBOUND',
+                  patientName: activeOp.patientName,
+                  hospitalName: hospital.name,
+                },
+              },
+            });
+          }
+        }
+      } else {
+        // Check if Caller is Hospital Staff calling a patient
+        const staffUser = await prisma.user.findFirst({
+          where: {
+            phone: { endsWith: callerDigits },
+            hospitalId: { not: null },
+            role: { in: ['HOSPITAL_ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE'] },
+          },
+        });
+
+        if (staffUser && staffUser.hospitalId) {
+          const recentOp = await prisma.oPBooking.findFirst({
+            where: {
+              hospitalId: staffUser.hospitalId,
+              status: { not: 'CANCELLED' },
+            },
+            orderBy: { createdAt: 'desc' },
+          });
+
+          if (recentOp && recentOp.patientPhone) {
+            destinationPhone = recentOp.patientPhone;
+            console.log(`[Exotel CCM] Inbound staff matched to patient: ${recentOp.patientName}`);
+
+            if (ExotelCallService.callLogModel) {
+              await ExotelCallService.callLogModel.create({
+                data: {
+                  callSid: callSid || undefined,
+                  bookingId: recentOp.id,
+                  bookingType: 'OP',
+                  initiatedById: staffUser.id,
+                  callerRole: staffUser.role as Role,
+                  fromPhone: encryptPhoneNumber(callerRaw || callerDigits),
+                  toPhone: encryptPhoneNumber(destinationPhone),
+                  virtualNumber: env.EXOTEL_CALLER_ID || '08047290980',
+                  direction: 'HOSPITAL_TO_PATIENT',
+                  status: 'IN_PROGRESS',
+                  metadata: {
+                    mode: 'DIRECT_INBOUND_STAFF',
+                    staffName: staffUser.name,
+                    patientName: recentOp.patientName,
+                  },
+                },
+              });
+            }
+          }
+        }
+      }
+    }
+
+    if (!destinationPhone.trim()) {
+      console.warn(`[Exotel CCM] Destination phone could not be resolved for CallSid: ${callSid}, From: ${callerDigits}`);
+      return { httpStatus: 404, payload: { error: 'Destination phone number not found for this call' } };
     }
 
     const normalizedDestination = this.client.normalizePhoneNumber(destinationPhone);
-    const virtualNumber = this.client.normalizeCallerId(callLog.virtualNumber || env.EXOTEL_CALLER_ID || '08047290980');
-
-    // 5. Update CallLog status to IN_PROGRESS
-    await ExotelCallService.callLogModel.update({
-      where: { id: callLog.id },
-      data: {
-        status: 'IN_PROGRESS',
-        metadata: {
-          ...metadata,
-          ccmConnectedAt: new Date().toISOString(),
-          ccmCallSid: callSid,
-        },
-      },
-    });
+    const virtualNumber = this.client.normalizeCallerId(env.EXOTEL_CALLER_ID || '08047290980');
 
     // 6. Return standard Exotel CCM response payload
     const appBaseUrl =

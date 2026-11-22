@@ -10,6 +10,7 @@ import {
 } from './exotel.schema';
 import {
   initiateCallHandler,
+  registerIntentHandler,
   getCallStatusHandler,
   getBookingCallsHandler,
   webhookHandler,
@@ -45,6 +46,12 @@ const callRateLimiter = rateLimit({
  */
 router.post('/initiate', authenticate, callRateLimiter, validateRequest(initiateCallSchema), initiateCallHandler);
 router.post('/calls/initiate', authenticate, callRateLimiter, validateRequest(initiateCallSchema), initiateCallHandler);
+
+/**
+ * Pre-register Call Intent for Direct Inbound Masked Dialing (e.g. tel:08047290980)
+ */
+router.post('/intent', authenticate, callRateLimiter, validateRequest(initiateCallSchema), registerIntentHandler);
+router.post('/calls/intent', authenticate, callRateLimiter, validateRequest(initiateCallSchema), registerIntentHandler);
 
 /**
  * 2. CCM Primary URL: Dynamic routing callback from Exotel Connect Applet

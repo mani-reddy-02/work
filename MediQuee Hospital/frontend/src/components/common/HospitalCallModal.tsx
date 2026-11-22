@@ -10,7 +10,7 @@ import {
   CheckCircle2,
   RefreshCw,
 } from 'lucide-react';
-import { initiatePatientCall, getCallStatus, maskPhoneNumber } from '../../services/callApi';
+import { initiatePatientCall, getCallStatus, maskPhoneNumber, registerCallIntent } from '../../services/callApi';
 
 export interface HospitalCallModalProps {
   isOpen: boolean;
@@ -50,6 +50,13 @@ export const HospitalCallModal: React.FC<HospitalCallModalProps> = ({
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
     };
   }, []);
+
+  const handleDialDirect = async () => {
+    if (bookingId) {
+      registerCallIntent(bookingId, bookingType).catch(() => {});
+    }
+    window.location.href = `tel:${hospitalVirtualNumber}`;
+  };
 
   const handleStartCall = async () => {
     if (!bookingId) {
@@ -173,26 +180,41 @@ export const HospitalCallModal: React.FC<HospitalCallModalProps> = ({
               <div className="space-y-4">
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-xs text-slate-600 leading-relaxed space-y-1.5">
                   <p className="font-bold text-slate-800 flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-blue-600" /> Two-Way Number Masking Flow:
+                    <Phone className="w-3.5 h-3.5 text-blue-600" /> Two-Way Number Masking:
                   </p>
-                  <ol className="list-decimal list-inside space-y-1 text-slate-600 text-[11px]">
-                    <li>Exotel dials your hospital/registered staff phone first.</li>
-                    <li>Answer the incoming call from <strong className="text-slate-800">{hospitalVirtualNumber}</strong>.</li>
-                    <li>Exotel then automatically bridges you to the patient.</li>
-                  </ol>
-                  <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-200/80">
-                    Neither your phone number nor the patient's personal phone number is ever revealed.
+                  <p className="text-[11px] text-slate-600">
+                    Both your phone number and the patient's personal number are completely protected and masked via virtual number <strong className="text-slate-800">{hospitalVirtualNumber}</strong>.
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleStartCall}
-                  className="w-full py-3 bg-[#1769E0] hover:bg-[#1258be] text-white font-extrabold rounded-xl text-sm transition-all shadow-md shadow-blue-500/20 active:scale-[0.99] flex items-center justify-center gap-2"
-                >
-                  <Phone className="w-4 h-4" />
-                  Connect Call
-                </button>
+                <div className="space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={handleDialDirect}
+                    className="w-full py-3 bg-[#1769E0] hover:bg-[#1258be] text-white font-extrabold rounded-xl text-sm transition-all shadow-md shadow-blue-500/20 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Phone className="w-4 h-4" />
+                    Dial {hospitalVirtualNumber} Directly
+                  </button>
+                  <p className="text-[10px] text-center text-slate-400">
+                    Opens your dialer. Automatically connects to {patientName} via masked line.
+                  </p>
+
+                  <div className="relative flex py-1 items-center">
+                    <div className="flex-grow border-t border-slate-200"></div>
+                    <span className="flex-shrink mx-3 text-[10px] font-bold text-slate-400 uppercase">Or</span>
+                    <div className="flex-grow border-t border-slate-200"></div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleStartCall}
+                    className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <PhoneForwarded className="w-3.5 h-3.5 text-slate-500" />
+                    Receive Call on Hospital Phone (Desktop Click-to-Call)
+                  </button>
+                </div>
               </div>
             )}
 
@@ -294,20 +316,30 @@ export const HospitalCallModal: React.FC<HospitalCallModalProps> = ({
                     {callError || 'Unable to complete the call at this moment.'}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex flex-col gap-2 pt-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleClose}
+                      className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleStartCall}
+                      className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                    >
+                      Retry Connection
+                    </button>
+                  </div>
                   <button
                     type="button"
-                    onClick={handleClose}
-                    className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                    onClick={handleDialDirect}
+                    className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    Close
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleStartCall}
-                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
-                  >
-                    Retry Call
+                    <Phone className="w-3.5 h-3.5" />
+                    Dial Masked Line ({hospitalVirtualNumber}) Directly
                   </button>
                 </div>
               </div>

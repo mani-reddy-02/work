@@ -32,7 +32,7 @@ import { ReviewModal } from '../components/ReviewModal';
 import { opAppointmentApi, type OpBookingRecord } from '../lib/opAppointmentApi';
 import { labBookingApi, type LabBookingRecord } from '../lib/labTestApi';
 import { homeNursingApi, type HomeNursingBookingRecord } from '../lib/homeNursingApi';
-import { initiateHospitalCall, getCallStatus } from '../lib/callApi';
+import { initiateHospitalCall, getCallStatus, registerCallIntent } from '../lib/callApi';
 import { cn } from '../lib/utils';
 import { getDiseaseIconUrl } from '../utils/diseaseIcons';
 import { getTestIcon } from '../lib/optimizedTestIcons';
@@ -74,58 +74,17 @@ const BookingDetails = () => {
     const bookingType = labBooking ? 'LAB_WALK_IN' : nursingBooking ? 'NURSING' : ((appointment?.opType || '').toLowerCase().includes('video') ? 'VIDEO' : 'OP');
 
     if (!bookingId) {
-      setCallError('Booking reference not found');
+      setToastMessage({ message: 'Booking reference not found', type: 'error' });
       return;
     }
 
-    setCallState('initiating');
-    setCallError(null);
+    // Register call intent in background (failsafe, non-blocking)
+    registerCallIntent(bookingId, bookingType).catch(() => {});
 
-    try {
-      const res = await initiateHospitalCall(bookingId, bookingType);
-      if (res.success && res.callSid) {
-        setActiveCallSid(res.callSid);
-        setCallState('calling_patient');
-
-        let elapsedSeconds = 0;
-        if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-
-        pollTimerRef.current = setInterval(async () => {
-          elapsedSeconds += 3;
-          if (elapsedSeconds > 120) {
-            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-            return;
-          }
-
-          try {
-            const statusRes = await getCallStatus(res.callSid!);
-            if (statusRes.success && statusRes.data) {
-              const st = statusRes.data.status;
-              if (st === 'RINGING') {
-                setCallState('connecting_hospital');
-              } else if (st === 'IN_PROGRESS') {
-                setCallState('connected');
-              } else if (st === 'COMPLETED') {
-                setCallState('completed');
-                if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-              } else if (['BUSY', 'NO_ANSWER', 'FAILED', 'CANCELED'].includes(st)) {
-                setCallState('failed');
-                setCallError(`Call ended: ${st.toLowerCase().replace('_', ' ')}`);
-                if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-              }
-            }
-          } catch {
-            // Non-fatal polling error
-          }
-        }, 3000);
-      } else {
-        setCallState('failed');
-        setCallError(res.message || 'Unable to initiate call');
-      }
-    } catch (err: any) {
-      setCallState('failed');
-      setCallError(err.message || 'Call initiation failed');
-    }
+    // Open phone dialer directly with virtual number 08047290980
+    setToastMessage({ message: 'Opening dialer to 080-472-90980 (Masked Line)...', type: 'success' });
+    setIsCallModalOpen(false);
+    window.location.href = 'tel:08047290980';
   };
 
   const handleCloseCallModal = () => {
@@ -1378,33 +1337,18 @@ const BookingDetails = () => {
                       {appointment.hospitalPhone && (
                         <p className="text-xs text-blue-600 font-semibold mt-1 flex items-center gap-1">
                           <Phone className="w-3 h-3" />
-                          <span>{appointment.hospitalPhone}</span>
+                          <span>080-472-90980 (Masked Line)</span>
                         </p>
                       )}
 
                       <div className="mt-2.5 flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => {
-                            setCallState('idle');
-                            setCallError(null);
-                            setIsCallModalOpen(true);
-                          }}
-                          disabled={['initiating', 'calling_patient', 'connecting_hospital', 'connected'].includes(callState)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                          onClick={handleStartCall}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all active:scale-95 cursor-pointer"
                         >
                           <Phone className="w-3.5 h-3.5" />
-                          <span>
-                            {callState === 'initiating'
-                              ? 'Initiating...'
-                              : callState === 'calling_patient'
-                              ? 'Calling Phone...'
-                              : callState === 'connecting_hospital'
-                              ? 'Connecting...'
-                              : callState === 'connected'
-                              ? 'Call Active'
-                              : 'Call Hospital'}
-                          </span>
+                          <span>Call Hospital (080-472-90980)</span>
                         </button>
                       </div>
                     </div>
@@ -1648,32 +1592,11 @@ const BookingDetails = () => {
                 {appointment.status !== 'CANCELLED' && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setCallState('idle');
-                      setCallError(null);
-                      setIsCallModalOpen(true);
-                    }}
-                    disabled={['initiating', 'calling_patient', 'connecting_hospital', 'connected'].includes(callState)}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-emerald-500/25 transition-all text-sm flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    onClick={handleStartCall}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-emerald-500/25 transition-all text-sm flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer"
                   >
-                    {['initiating', 'calling_patient', 'connecting_hospital'].includes(callState) ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-white" />
-                    ) : callState === 'connected' ? (
-                      <PhoneCall className="w-5 h-5 text-white animate-pulse" />
-                    ) : (
-                      <Phone className="w-5 h-5 text-white" />
-                    )}
-                    <span>
-                      {callState === 'initiating'
-                        ? 'Initiating Secure Call...'
-                        : callState === 'calling_patient'
-                        ? 'Calling Your Phone...'
-                        : callState === 'connecting_hospital'
-                        ? 'Connecting Hospital Desk...'
-                        : callState === 'connected'
-                        ? 'Call in Progress'
-                        : 'Call Hospital'}
-                    </span>
+                    <Phone className="w-5 h-5 text-white" />
+                    <span>Call Hospital (080-472-90980)</span>
                   </button>
                 )}
 
@@ -1759,7 +1682,7 @@ const BookingDetails = () => {
                     <span>How it works:</span>
                   </p>
                   <p className="text-[11px] leading-relaxed text-blue-800">
-                    You will receive an incoming call from <strong className="font-bold text-blue-950">080-472-90980</strong>. Please answer to connect to the hospital desk.
+                    Call <strong className="font-bold text-blue-950">080-472-90980</strong> directly from your phone. MediQuee securely bridges you to the hospital desk with complete two-way privacy.
                   </p>
                 </div>
 
@@ -1782,9 +1705,10 @@ const BookingDetails = () => {
                   <button
                     type="button"
                     onClick={handleStartCall}
-                    className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/25 transition-all active:scale-95 cursor-pointer"
+                    className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-500/25 transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    Connect Call
+                    <Phone className="w-4 h-4" />
+                    <span>Dial 080-472-90980</span>
                   </button>
                 </div>
               </div>
