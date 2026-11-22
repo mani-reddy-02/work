@@ -289,8 +289,19 @@ export class ExotelCallService {
     }
 
     // 8. Build Webhook Event URL with authentication token
-    const baseUrl = env.EXOTEL_STATUS_CALLBACK_URL || `${env.CORS_ORIGIN || 'https://api.mediquee.in'}/api/v1/exotel/events`;
-    const callbackUrl = `${baseUrl}?token=${encodeURIComponent(env.EXOTEL_WEBHOOK_SECRET || 'mediquee_exotel_webhook_secret_key')}`;
+    let callbackBaseUrl = 'https://mediquee.in/api/v1/exotel/events';
+    if (env.EXOTEL_STATUS_CALLBACK_URL) {
+      callbackBaseUrl = env.EXOTEL_STATUS_CALLBACK_URL.replace(/\/+$/, '');
+    } else if (process.env.API_BASE_URL) {
+      callbackBaseUrl = `${process.env.API_BASE_URL.replace(/\/+$/, '')}/api/v1/exotel/events`;
+    } else if (env.CORS_ORIGIN) {
+      // Guard against comma-separated origins or localhost in webhook URLs
+      const firstOrigin = env.CORS_ORIGIN.split(',')[0].trim().replace(/\/+$/, '');
+      if (firstOrigin.startsWith('https://') && !firstOrigin.includes('localhost')) {
+        callbackBaseUrl = `${firstOrigin}/api/v1/exotel/events`;
+      }
+    }
+    const callbackUrl = `${callbackBaseUrl}?token=${encodeURIComponent(env.EXOTEL_WEBHOOK_SECRET || 'mediquee_exotel_webhook_secret_key')}`;
 
     // 9. Dispatch call to Exotel API
     const callPayload: ExotelCallParams = {
