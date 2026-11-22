@@ -55,14 +55,16 @@ router.post('/calls/intent', authenticate, callRateLimiter, validateRequest(init
 
 /**
  * 2. CCM Primary URL: Dynamic routing callback from Exotel Connect Applet
- * Expected response: application/json with destination array within 5s
+ * Expected response: text/plain with destination E.164 phone number (or JSON if requested)
  */
 router.get('/connect', ccmConnectHandler);
+router.post('/connect', ccmConnectHandler);
 
 /**
  * 3. CCM Fallback URL: Failover callback if Primary URL fails or times out
  */
 router.get('/fallback', ccmFallbackHandler);
+router.post('/fallback', ccmFallbackHandler);
 
 /**
  * 4. CCM Call Events Webhook Endpoint

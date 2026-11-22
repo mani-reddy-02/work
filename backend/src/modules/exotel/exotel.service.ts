@@ -466,6 +466,7 @@ export class ExotelCallService {
     tokenParam?: string
   ): Promise<{
     httpStatus: number;
+    destinationPhone?: string;
     payload: ExotelCcmConnectResponse | { error: string };
   }> {
     // 1. Timing-safe webhook authentication
@@ -482,7 +483,12 @@ export class ExotelCallService {
 
     const callSid = queryParams.CallSid || queryParams.Sid;
     const customToken = queryParams.CustomField;
-    const callerRaw = queryParams.From || (queryParams as any).from;
+    const callerRaw =
+      (queryParams as any).CallFrom ||
+      queryParams.From ||
+      (queryParams as any).from ||
+      (queryParams as any).caller ||
+      (queryParams as any).Caller;
     const callerDigits = String(callerRaw || '').replace(/\D/g, '').slice(-10);
 
     if (!callSid && !customToken && !callerDigits) {
@@ -577,7 +583,10 @@ export class ExotelCallService {
       // Check if Patient has an active booking
       const activeOp = await prisma.oPBooking.findFirst({
         where: {
-          patientPhone: { endsWith: callerDigits },
+          OR: [
+            { patientPhone: { endsWith: callerDigits } },
+            { patient: { phone: { endsWith: callerDigits } } },
+          ],
           status: { not: 'CANCELLED' },
         },
         orderBy: { createdAt: 'desc' },
@@ -664,6 +673,25 @@ export class ExotelCallService {
       }
     }
 
+    // 5. Default Fallback: If destination could not be identified, route to primary active hospital reception
+    if (!destinationPhone.trim()) {
+      const defaultHospital = await prisma.hospital.findFirst({
+        where: {
+          OR: [
+            { contactPhone: { not: '' } },
+            { emergencyContact: { not: '' } },
+          ],
+        },
+        orderBy: { createdAt: 'asc' },
+        select: { name: true, contactPhone: true, emergencyContact: true },
+      });
+
+      if (defaultHospital && (defaultHospital.contactPhone || defaultHospital.emergencyContact)) {
+        destinationPhone = defaultHospital.contactPhone || defaultHospital.emergencyContact || '';
+        console.log(`[Exotel CCM] Unmapped inbound dialer routed to hospital desk: ${defaultHospital.name}`);
+      }
+    }
+
     if (!destinationPhone.trim()) {
       console.warn(`[Exotel CCM] Destination phone could not be resolved for CallSid: ${callSid}, From: ${callerDigits}`);
       return { httpStatus: 404, payload: { error: 'Destination phone number not found for this call' } };
@@ -697,7 +725,11 @@ export class ExotelCallService {
       max_conversation_duration: 900,
     };
 
-    return { httpStatus: 200, payload: ccmResponse };
+    return {
+      httpStatus: 200,
+      destinationPhone: normalizedDestination,
+      payload: ccmResponse,
+    };
   }
 
   /**
@@ -708,6 +740,7 @@ export class ExotelCallService {
     tokenParam?: string
   ): Promise<{
     httpStatus: number;
+    destinationPhone?: string;
     payload: ExotelCcmConnectResponse | { error: string };
   }> {
     // 1. Timing-safe webhook authentication
@@ -724,6 +757,13 @@ export class ExotelCallService {
 
     const callSid = queryParams.CallSid || queryParams.Sid;
     const customToken = queryParams.CustomField;
+    const callerRaw =
+      (queryParams as any).CallFrom ||
+      queryParams.From ||
+      (queryParams as any).from ||
+      (queryParams as any).caller ||
+      (queryParams as any).Caller;
+    const callerDigits = String(callerRaw || '').replace(/\D/g, '').slice(-10);
 
     if (!ExotelCallService.callLogModel) {
       return { httpStatus: 500, payload: { error: 'CallLog model not available' } };
@@ -750,35 +790,52 @@ export class ExotelCallService {
       );
     }
 
-    if (!callLog) {
-      console.warn(`[Exotel CCM Fallback] No call found to fallback for CallSid: ${callSid}`);
-      return { httpStatus: 404, payload: { error: 'Call session not found' } };
-    }
-
-    // Log the fallback event in metadata
-    const metadata = (callLog.metadata || {}) as Record<string, any>;
-    await ExotelCallService.callLogModel.update({
-      where: { id: callLog.id },
-      data: {
-        metadata: {
-          ...metadata,
-          fallbackTriggered: true,
-          fallbackAt: new Date().toISOString(),
-          fallbackReason: queryParams.Reason || 'Primary URL timeout or failover',
+    if (!callLog && callerDigits) {
+      const candidates = await ExotelCallService.callLogModel.findMany({
+        where: {
+          createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
         },
-      },
-    });
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      });
+      callLog = candidates.find(
+        (c: any) => c.metadata && typeof c.metadata === 'object' && c.metadata.callerDigits === callerDigits
+      );
+    }
 
     // Resolve verified hospital destination
     let destinationPhone = '';
-    try {
-      destinationPhone = decryptPhoneNumber(callLog.toPhone);
-    } catch {
+    if (callLog) {
+      try {
+        destinationPhone = decryptPhoneNumber(callLog.toPhone);
+      } catch {
+        destinationPhone = '';
+      }
+    }
+
+    if (!destinationPhone.trim()) {
+      const defaultHospital = await prisma.hospital.findFirst({
+        where: {
+          OR: [
+            { contactPhone: { not: '' } },
+            { emergencyContact: { not: '' } },
+          ],
+        },
+        orderBy: { createdAt: 'asc' },
+        select: { name: true, contactPhone: true, emergencyContact: true },
+      });
+
+      if (defaultHospital && (defaultHospital.contactPhone || defaultHospital.emergencyContact)) {
+        destinationPhone = defaultHospital.contactPhone || defaultHospital.emergencyContact || '';
+      }
+    }
+
+    if (!destinationPhone.trim()) {
       return { httpStatus: 500, payload: { error: 'Unable to resolve destination in fallback' } };
     }
 
     const normalizedDestination = this.client.normalizePhoneNumber(destinationPhone);
-    const virtualNumber = this.client.normalizeCallerId(callLog.virtualNumber || env.EXOTEL_CALLER_ID || '08047290980');
+    const virtualNumber = this.client.normalizeCallerId(callLog?.virtualNumber || env.EXOTEL_CALLER_ID || '08047290980');
 
     const appBaseUrl =
       process.env.APP_BASE_URL ||
@@ -789,6 +846,7 @@ export class ExotelCallService {
 
     return {
       httpStatus: 200,
+      destinationPhone: normalizedDestination,
       payload: {
         destination: [
           {
@@ -807,7 +865,6 @@ export class ExotelCallService {
       },
     };
   }
-
 
   /**
    * Handle incoming Exotel StatusCallback webhook with idempotency & timing-safe token verification.

@@ -213,9 +213,14 @@ export async function getConfigStatusHandler(_req: Request, res: Response) {
 }
 
 /**
- * CCM Primary URL Handler (GET /api/v1/exotel/connect)
- * Accepts Exotel GET requests, correlates call session, resolves destination,
- * and responds with JSON within 5 seconds (<100ms actual).
+ * CCM Primary URL Handler (GET/POST /api/v1/exotel/connect)
+ * Accepts Exotel requests, correlates call session, resolves destination,
+ * and responds within 5 seconds (<100ms actual).
+ *
+ * NOTE FOR EXOTEL FLOW BUILDER CONNECT APPLET:
+ * By default, Exotel's Connect Applet strictly expects Content-Type: text/plain
+ * with ONLY the destination phone number in E.164 format (e.g. +919876543210).
+ * If the client specifies Accept: application/json or ?format=json, it returns full JSON.
  */
 export async function ccmConnectHandler(req: Request, res: Response) {
   try {
@@ -224,19 +229,44 @@ export async function ccmConnectHandler(req: Request, res: Response) {
     const token =
       (req.headers['x-exotel-token'] as string) ||
       bearerToken ||
-      (req.query.token as string);
+      (req.query.token as string) ||
+      (req.body?.token as string);
 
-    const outcome = await callService.handleCcmConnect(req.query, token);
-    return res.status(outcome.httpStatus).type('application/json').json(outcome.payload);
+    const mergedParams = { ...(req.query || {}), ...(req.body || {}) };
+    console.log('[Exotel Connect Request] Query/Body:', JSON.stringify(mergedParams));
+
+    const outcome = await callService.handleCcmConnect(mergedParams, token);
+
+    // If client explicitly requested JSON (via Accept header or ?format=json)
+    const acceptsJson = req.headers['accept']?.includes('application/json') || req.query.format === 'json';
+
+    if (acceptsJson) {
+      return res.status(outcome.httpStatus).type('application/json').json(outcome.payload);
+    }
+
+    // Default for Exotel Flow Builder Connect Applet:
+    // Exotel requires Content-Type: text/plain with ONLY the destination phone number (e.g. +919876543210)
+    if (outcome.httpStatus === 200 && outcome.destinationPhone) {
+      console.log(`[Exotel Connect Success] Returning text/plain destination: ${outcome.destinationPhone}`);
+      return res.status(200).type('text/plain').send(outcome.destinationPhone);
+    }
+
+    if (outcome.httpStatus !== 200) {
+      const errorMsg = (outcome.payload as any)?.error || 'Unable to resolve destination';
+      console.warn(`[Exotel Connect Failed] Status: ${outcome.httpStatus}, Error: ${errorMsg}`);
+      return res.status(outcome.httpStatus).type('text/plain').send(errorMsg);
+    }
+
+    return res.status(200).type('text/plain').send(outcome.destinationPhone || '');
   } catch (err: any) {
     console.error('[Exotel CCM Connect Error]:', err.message);
-    return res.status(500).type('application/json').json({ error: 'Internal server error in CCM Connect' });
+    return res.status(500).type('text/plain').send('');
   }
 }
 
 /**
- * CCM Fallback URL Handler (GET /api/v1/exotel/fallback)
- * Accepts Exotel failover GET requests, logs failover, and returns safe verified destination.
+ * CCM Fallback URL Handler (GET/POST /api/v1/exotel/fallback)
+ * Accepts Exotel failover requests, logs failover, and returns safe verified destination.
  */
 export async function ccmFallbackHandler(req: Request, res: Response) {
   try {
@@ -245,13 +275,35 @@ export async function ccmFallbackHandler(req: Request, res: Response) {
     const token =
       (req.headers['x-exotel-token'] as string) ||
       bearerToken ||
-      (req.query.token as string);
+      (req.query.token as string) ||
+      (req.body?.token as string);
 
-    const outcome = await callService.handleCcmFallback(req.query, token);
-    return res.status(outcome.httpStatus).type('application/json').json(outcome.payload);
+    const mergedParams = { ...(req.query || {}), ...(req.body || {}) };
+    console.log('[Exotel Fallback Request] Query/Body:', JSON.stringify(mergedParams));
+
+    const outcome = await callService.handleCcmFallback(mergedParams, token);
+
+    const acceptsJson = req.headers['accept']?.includes('application/json') || req.query.format === 'json';
+
+    if (acceptsJson) {
+      return res.status(outcome.httpStatus).type('application/json').json(outcome.payload);
+    }
+
+    if (outcome.httpStatus === 200 && outcome.destinationPhone) {
+      console.log(`[Exotel Fallback Success] Returning text/plain destination: ${outcome.destinationPhone}`);
+      return res.status(200).type('text/plain').send(outcome.destinationPhone);
+    }
+
+    if (outcome.httpStatus !== 200) {
+      const errorMsg = (outcome.payload as any)?.error || 'Unable to resolve destination';
+      console.warn(`[Exotel Fallback Failed] Status: ${outcome.httpStatus}, Error: ${errorMsg}`);
+      return res.status(outcome.httpStatus).type('text/plain').send(errorMsg);
+    }
+
+    return res.status(200).type('text/plain').send(outcome.destinationPhone || '');
   } catch (err: any) {
     console.error('[Exotel CCM Fallback Error]:', err.message);
-    return res.status(500).type('application/json').json({ error: 'Internal server error in CCM Fallback' });
+    return res.status(500).type('text/plain').send('');
   }
 }
 
