@@ -292,14 +292,6 @@ export class ExotelClient {
     }
     if (params.statusCallback) {
       formBody.append('StatusCallback', params.statusCallback);
-      formBody.append('StatusCallbackContentType', params.statusCallbackContentType || 'application/json');
-      if (params.statusCallbackEvents && params.statusCallbackEvents.length > 0) {
-        for (const ev of params.statusCallbackEvents) {
-          formBody.append('StatusCallbackEvents[]', ev);
-        }
-      } else {
-        formBody.append('StatusCallbackEvents[]', 'terminal');
-      }
     }
 
     // Call Recording: strictly opt-in and controlled by policy

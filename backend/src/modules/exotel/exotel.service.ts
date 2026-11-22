@@ -311,8 +311,6 @@ export class ExotelCallService {
       timeLimit: 1800, // 30 min duration cap
       timeOut: 35, // 35 second ring timeout
       statusCallback: callbackUrl,
-      statusCallbackEvents: ['terminal', 'answered'],
-      statusCallbackContentType: 'application/json',
       record: false, // Call recording strictly disabled by default
       customField: correlationToken, // Secure correlation token passed to Exotel
     };
