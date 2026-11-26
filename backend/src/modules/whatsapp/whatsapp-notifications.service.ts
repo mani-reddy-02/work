@@ -155,9 +155,9 @@ export class WhatsAppNotificationService {
 
       // 1b. Send alert to Doctor / Staff
       if (booking.doctor?.phone && booking.doctor?.whatsappConsent !== false) {
-        await WhatsAppClient.sendTemplateMessage({
+        const staffAlertResult = await WhatsAppClient.sendTemplateMessage({
           recipientPhone: booking.doctor.phone,
-          templateName: 'staff_new_booking_alert',
+          templateName: 'mediquee_staff_booking_alert',
           languageCode: 'en',
           messageType: 'STAFF_ALERT',
           appointmentId: booking.id,
@@ -175,6 +175,29 @@ export class WhatsAppNotificationService {
             },
           ],
         });
+
+        if (!staffAlertResult.success) {
+          await WhatsAppClient.sendTemplateMessage({
+            recipientPhone: booking.doctor.phone,
+            templateName: 'staff_new_booking_alert',
+            languageCode: 'en',
+            messageType: 'STAFF_ALERT',
+            appointmentId: booking.id,
+            components: [
+              {
+                type: 'body',
+                parameters: [
+                  { type: 'text', text: `Dr. ${booking.doctor.name}` },
+                  { type: 'text', text: patientName },
+                  { type: 'text', text: appointmentRef },
+                  { type: 'text', text: doctorOrDept },
+                  { type: 'text', text: dateStr },
+                  { type: 'text', text: timeStr },
+                ],
+              },
+            ],
+          });
+        }
       }
     } catch (err: any) {
       console.error('[WhatsAppNotificationService] Error in sendAppointmentConfirmation:', err.message);
@@ -358,7 +381,19 @@ export class WhatsAppNotificationService {
   }
 
   /**
-   * 4. Send OP / Video Appointment 1-Hour Prior Reminder
+   * Helper to format clean human-friendly timing labels
+   */
+  private static formatReminderTiming(timingLabel: string): string {
+    const t = timingLabel.trim().toLowerCase();
+    if (t.includes('hour')) return 'in 1 Hour';
+    if (t.includes('15')) return 'in 15 Minutes';
+    if (t.includes('starting') || t.includes('now')) return 'Starting Now';
+    if (t.includes('tomorrow')) return 'Tomorrow';
+    return timingLabel;
+  }
+
+  /**
+   * 4. Send OP / Video Appointment Reminder
    */
   static async sendAppointmentReminder(bookingId: string, timingLabel: string) {
     try {
@@ -386,11 +421,17 @@ export class WhatsAppNotificationService {
         : (booking.department?.name || (isVideo ? 'Video Consultation' : 'OP Consultation'));
       const dateStr = this.formatDate(booking.appointmentDate);
       const timeStr = booking.timeSlot || booking.slotTime || 'Scheduled Time';
-      const statusLabel = timingLabel.toLowerCase().includes('hour') ? 'REMINDER: 1 Hour Left' : `REMINDER: ${timingLabel}`;
+      const cleanTiming = this.formatReminderTiming(timingLabel);
+      const serviceLabel = isVideo ? 'online video consultation' : 'outpatient (OP) appointment';
+      const instruction = isVideo
+        ? 'Please open the MediQuee app and join 5 minutes before your scheduled session.'
+        : cleanTiming === 'Starting Now'
+          ? 'Your consultation is starting shortly. Please proceed to the doctor desk.'
+          : 'Please arrive 15 minutes before your scheduled appointment for smooth check-in.';
 
-      await WhatsAppClient.sendTemplateMessage({
+      const reminderResult = await WhatsAppClient.sendTemplateMessage({
         recipientPhone,
-        templateName: 'op_appointment_confirmed',
+        templateName: 'mediquee_appointment_reminder',
         languageCode: 'en',
         messageType: 'APPOINTMENT_REMINDER_1HOUR',
         appointmentId: booking.id,
@@ -399,23 +440,50 @@ export class WhatsAppNotificationService {
             type: 'body',
             parameters: [
               { type: 'text', text: patientName },
+              { type: 'text', text: serviceLabel },
+              { type: 'text', text: cleanTiming },
               { type: 'text', text: appointmentRef },
               { type: 'text', text: hospitalName },
               { type: 'text', text: doctorOrDept },
               { type: 'text', text: dateStr },
               { type: 'text', text: timeStr },
-              { type: 'text', text: statusLabel },
+              { type: 'text', text: instruction },
             ],
           },
         ],
       });
+
+      if (!reminderResult.success) {
+        const statusLabel = timingLabel.toLowerCase().includes('hour') ? 'REMINDER: 1 Hour Left' : `REMINDER: ${timingLabel}`;
+        await WhatsAppClient.sendTemplateMessage({
+          recipientPhone,
+          templateName: 'op_appointment_confirmed',
+          languageCode: 'en',
+          messageType: 'APPOINTMENT_REMINDER_1HOUR',
+          appointmentId: booking.id,
+          components: [
+            {
+              type: 'body',
+              parameters: [
+                { type: 'text', text: patientName },
+                { type: 'text', text: appointmentRef },
+                { type: 'text', text: hospitalName },
+                { type: 'text', text: doctorOrDept },
+                { type: 'text', text: dateStr },
+                { type: 'text', text: timeStr },
+                { type: 'text', text: statusLabel },
+              ],
+            },
+          ],
+        });
+      }
     } catch (err: any) {
       console.error('[WhatsAppNotificationService] Error in sendAppointmentReminder:', err.message);
     }
   }
 
   /**
-   * 5. Send Lab Booking 1-Hour Prior Reminder
+   * 5. Send Lab Booking Reminder
    */
   static async sendLabBookingReminder(labBookingId: string, timingLabel: string) {
     try {
@@ -440,14 +508,18 @@ export class WhatsAppNotificationService {
         .map(i => i.labTest?.platformTest?.name || (i.labTest as any)?.customName || 'Diagnostic Test')
         .slice(0, 2)
         .join(', ');
-      const serviceDesc = `${testNames || 'Lab Tests'} (${isHome ? 'Home Sample Collection' : 'Lab Visit'})`;
+      const serviceDesc = testNames || 'Diagnostic Lab Tests';
       const dateStr = booking.collectionDate ? this.formatDate(booking.collectionDate) : 'Today';
       const timeStr = booking.collectionTimeSlot || 'Scheduled Slot';
-      const statusLabel = timingLabel.toLowerCase().includes('hour') ? 'REMINDER: 1 Hour Left' : `REMINDER: ${timingLabel}`;
+      const cleanTiming = this.formatReminderTiming(timingLabel);
+      const serviceLabel = isHome ? 'home sample collection' : 'diagnostic lab test';
+      const instruction = isHome
+        ? 'Please keep your ID and test requirements ready; our certified phlebotomist will arrive shortly.'
+        : 'Please arrive at the diagnostic center 10 minutes before your scheduled slot.';
 
-      await WhatsAppClient.sendTemplateMessage({
+      const labReminderRes = await WhatsAppClient.sendTemplateMessage({
         recipientPhone: booking.patient.phone,
-        templateName: 'op_appointment_confirmed',
+        templateName: 'mediquee_appointment_reminder',
         languageCode: 'en',
         messageType: 'LAB_REMINDER_1HOUR',
         appointmentId: booking.id,
@@ -456,23 +528,50 @@ export class WhatsAppNotificationService {
             type: 'body',
             parameters: [
               { type: 'text', text: patientName },
+              { type: 'text', text: serviceLabel },
+              { type: 'text', text: cleanTiming },
               { type: 'text', text: refCode },
               { type: 'text', text: providerName },
               { type: 'text', text: serviceDesc },
               { type: 'text', text: dateStr },
               { type: 'text', text: timeStr },
-              { type: 'text', text: statusLabel },
+              { type: 'text', text: instruction },
             ],
           },
         ],
       });
+
+      if (!labReminderRes.success) {
+        const statusLabel = timingLabel.toLowerCase().includes('hour') ? 'REMINDER: 1 Hour Left' : `REMINDER: ${timingLabel}`;
+        await WhatsAppClient.sendTemplateMessage({
+          recipientPhone: booking.patient.phone,
+          templateName: 'op_appointment_confirmed',
+          languageCode: 'en',
+          messageType: 'LAB_REMINDER_1HOUR',
+          appointmentId: booking.id,
+          components: [
+            {
+              type: 'body',
+              parameters: [
+                { type: 'text', text: patientName },
+                { type: 'text', text: refCode },
+                { type: 'text', text: providerName },
+                { type: 'text', text: `${serviceDesc} (${isHome ? 'Home Sample Collection' : 'Lab Visit'})` },
+                { type: 'text', text: dateStr },
+                { type: 'text', text: timeStr },
+                { type: 'text', text: statusLabel },
+              ],
+            },
+          ],
+        });
+      }
     } catch (err: any) {
       console.error('[WhatsAppNotificationService] Error in sendLabBookingReminder:', err.message);
     }
   }
 
   /**
-   * 6. Send Home Nursing 1-Hour Prior Reminder
+   * 6. Send Home Nursing Reminder
    */
   static async sendHomeNursingReminder(nursingBookingId: string, timingLabel: string) {
     try {
@@ -492,14 +591,15 @@ export class WhatsAppNotificationService {
       const patientName = booking.patientName || booking.user?.name || 'Valued Patient';
       const refCode = this.formatRef(booking.bookingNumber || booking.id, 'HN');
       const providerName = booking.hospital?.name || 'MediQuee Home Care';
-      const serviceDesc = `${booking.service?.name || 'Home Nursing'} (Home Visit)`;
+      const serviceDesc = booking.service?.name || 'Home Nursing Care';
       const dateStr = this.formatDate(booking.serviceDate);
       const timeStr = booking.timeSlot || 'Scheduled Slot';
-      const statusLabel = timingLabel.toLowerCase().includes('hour') ? 'REMINDER: 1 Hour Left' : `REMINDER: ${timingLabel}`;
+      const cleanTiming = this.formatReminderTiming(timingLabel);
+      const instruction = 'Our certified nursing staff will arrive at your doorstep at the scheduled time.';
 
-      await WhatsAppClient.sendTemplateMessage({
+      const nursingReminderRes = await WhatsAppClient.sendTemplateMessage({
         recipientPhone,
-        templateName: 'op_appointment_confirmed',
+        templateName: 'mediquee_appointment_reminder',
         languageCode: 'en',
         messageType: 'NURSING_REMINDER_1HOUR',
         appointmentId: booking.id,
@@ -508,16 +608,43 @@ export class WhatsAppNotificationService {
             type: 'body',
             parameters: [
               { type: 'text', text: patientName },
+              { type: 'text', text: 'home nursing visit' },
+              { type: 'text', text: cleanTiming },
               { type: 'text', text: refCode },
               { type: 'text', text: providerName },
               { type: 'text', text: serviceDesc },
               { type: 'text', text: dateStr },
               { type: 'text', text: timeStr },
-              { type: 'text', text: statusLabel },
+              { type: 'text', text: instruction },
             ],
           },
         ],
       });
+
+      if (!nursingReminderRes.success) {
+        const statusLabel = timingLabel.toLowerCase().includes('hour') ? 'REMINDER: 1 Hour Left' : `REMINDER: ${timingLabel}`;
+        await WhatsAppClient.sendTemplateMessage({
+          recipientPhone,
+          templateName: 'op_appointment_confirmed',
+          languageCode: 'en',
+          messageType: 'NURSING_REMINDER_1HOUR',
+          appointmentId: booking.id,
+          components: [
+            {
+              type: 'body',
+              parameters: [
+                { type: 'text', text: patientName },
+                { type: 'text', text: refCode },
+                { type: 'text', text: providerName },
+                { type: 'text', text: `${serviceDesc} (Home Visit)` },
+                { type: 'text', text: dateStr },
+                { type: 'text', text: timeStr },
+                { type: 'text', text: statusLabel },
+              ],
+            },
+          ],
+        });
+      }
     } catch (err: any) {
       console.error('[WhatsAppNotificationService] Error in sendHomeNursingReminder:', err.message);
     }
@@ -544,16 +671,18 @@ export class WhatsAppNotificationService {
       if (!recipientPhone || booking.patient?.whatsappConsent === false) return;
 
       const patientName = booking.patientName || 'Valued Patient';
-      const appointmentRef = this.formatRef(booking.id);
+      const isVideo = (booking.opType || '').toLowerCase().includes('video');
+      const appointmentRef = this.formatRef(booking.id, isVideo ? 'VID' : 'OP');
       const hospitalName = booking.hospital?.name || 'MediQuee Hospital';
       const doctorOrDept = booking.doctor?.name ? `Dr. ${booking.doctor.name}` : (booking.department?.name || 'OP Consultation');
       const dateStr = this.formatDate(booking.appointmentDate);
       const timeStr = booking.timeSlot || booking.slotTime || 'Scheduled Time';
       const safeReason = reason ? reason.trim().slice(0, 100) : 'Schedule updated or cancelled';
+      const serviceLabel = isVideo ? 'online video consultation' : 'outpatient (OP) appointment';
 
-      await WhatsAppClient.sendTemplateMessage({
+      const cancelResult = await WhatsAppClient.sendTemplateMessage({
         recipientPhone,
-        templateName: 'op_appointment_cancelled',
+        templateName: 'mediquee_booking_cancelled',
         languageCode: 'en',
         messageType: 'APPOINTMENT_CANCELLED',
         appointmentId: booking.id,
@@ -562,6 +691,7 @@ export class WhatsAppNotificationService {
             type: 'body',
             parameters: [
               { type: 'text', text: patientName },
+              { type: 'text', text: serviceLabel },
               { type: 'text', text: appointmentRef },
               { type: 'text', text: hospitalName },
               { type: 'text', text: doctorOrDept },
@@ -572,6 +702,30 @@ export class WhatsAppNotificationService {
           },
         ],
       });
+
+      if (!cancelResult.success) {
+        await WhatsAppClient.sendTemplateMessage({
+          recipientPhone,
+          templateName: 'op_appointment_cancelled',
+          languageCode: 'en',
+          messageType: 'APPOINTMENT_CANCELLED',
+          appointmentId: booking.id,
+          components: [
+            {
+              type: 'body',
+              parameters: [
+                { type: 'text', text: patientName },
+                { type: 'text', text: appointmentRef },
+                { type: 'text', text: hospitalName },
+                { type: 'text', text: doctorOrDept },
+                { type: 'text', text: dateStr },
+                { type: 'text', text: timeStr },
+                { type: 'text', text: safeReason },
+              ],
+            },
+          ],
+        });
+      }
     } catch (err: any) {
       console.error('[WhatsAppNotificationService] Error in sendAppointmentCancellation:', err.message);
     }
@@ -599,23 +753,47 @@ export class WhatsAppNotificationService {
       const patientName = booking.patientName || 'Valued Patient';
       const doctorName = booking.doctor?.name ? `Dr. ${booking.doctor.name}` : 'Your Doctor';
       const appointmentRef = this.formatRef(booking.id, 'VID');
+      const hospitalName = booking.hospital?.name || 'MediQuee Telehealth';
+      const timeStr = booking.timeSlot || booking.slotTime || 'Now';
 
-      const readyMsg = `${patientName}! Dr. ${doctorName} is ready for your video consultation (Ref: ${appointmentRef}). Please open MediQuee and select Join Video Consultation now.`;
-      await WhatsAppClient.sendTemplateMessage({
+      const videoReadyRes = await WhatsAppClient.sendTemplateMessage({
         recipientPhone,
-        templateName: 'test_utility_template_check',
-        languageCode: 'en_US',
+        templateName: 'mediquee_video_ready',
+        languageCode: 'en',
         messageType: 'VIDEO_CALL_READY',
         appointmentId: booking.id,
         components: [
           {
             type: 'body',
             parameters: [
-              { type: 'text', text: readyMsg },
+              { type: 'text', text: patientName },
+              { type: 'text', text: doctorName },
+              { type: 'text', text: appointmentRef },
+              { type: 'text', text: hospitalName },
+              { type: 'text', text: timeStr },
             ],
           },
         ],
       });
+
+      if (!videoReadyRes.success) {
+        const readyMsg = `${patientName}! ${doctorName} is ready for your video consultation (Ref: ${appointmentRef}). Please open MediQuee and select Join Video Consultation now.`;
+        await WhatsAppClient.sendTemplateMessage({
+          recipientPhone,
+          templateName: 'test_utility_template_check',
+          languageCode: 'en_US',
+          messageType: 'VIDEO_CALL_READY',
+          appointmentId: booking.id,
+          components: [
+            {
+              type: 'body',
+              parameters: [
+                { type: 'text', text: readyMsg },
+              ],
+            },
+          ],
+        });
+      }
     } catch (err: any) {
       console.error('[WhatsAppNotificationService] Error in sendVideoConsultationReadyNotification:', err.message);
     }
@@ -642,15 +820,17 @@ export class WhatsAppNotificationService {
       if (!recipientPhone || booking.patient?.whatsappConsent === false) return;
 
       const patientName = booking.patientName || 'Valued Patient';
-      const appointmentRef = this.formatRef(booking.id);
+      const isVideo = (booking.opType || '').toLowerCase().includes('video');
+      const appointmentRef = this.formatRef(booking.id, isVideo ? 'VID' : 'OP');
       const hospitalName = booking.hospital?.name || 'MediQuee Hospital';
       const doctorOrDept = booking.doctor?.name ? `Dr. ${booking.doctor.name}` : (booking.department?.name || 'OP Consultation');
       const newDateStr = this.formatDate(booking.appointmentDate);
       const newTimeStr = booking.timeSlot || booking.slotTime || 'Scheduled Time';
+      const serviceLabel = isVideo ? 'online video consultation' : 'outpatient (OP) appointment';
 
-      await WhatsAppClient.sendTemplateMessage({
+      const reschedRes = await WhatsAppClient.sendTemplateMessage({
         recipientPhone,
-        templateName: 'op_appointment_rescheduled',
+        templateName: 'mediquee_booking_rescheduled',
         languageCode: 'en',
         messageType: 'APPOINTMENT_RESCHEDULED',
         appointmentId: booking.id,
@@ -659,6 +839,7 @@ export class WhatsAppNotificationService {
             type: 'body',
             parameters: [
               { type: 'text', text: patientName },
+              { type: 'text', text: serviceLabel },
               { type: 'text', text: appointmentRef },
               { type: 'text', text: hospitalName },
               { type: 'text', text: doctorOrDept },
@@ -668,6 +849,29 @@ export class WhatsAppNotificationService {
           },
         ],
       });
+
+      if (!reschedRes.success) {
+        await WhatsAppClient.sendTemplateMessage({
+          recipientPhone,
+          templateName: 'mediquee_op_confirmed',
+          languageCode: 'en',
+          messageType: 'APPOINTMENT_RESCHEDULED',
+          appointmentId: booking.id,
+          components: [
+            {
+              type: 'body',
+              parameters: [
+                { type: 'text', text: patientName },
+                { type: 'text', text: appointmentRef },
+                { type: 'text', text: hospitalName },
+                { type: 'text', text: `${doctorOrDept} (Rescheduled)` },
+                { type: 'text', text: newDateStr },
+                { type: 'text', text: newTimeStr },
+              ],
+            },
+          ],
+        });
+      }
     } catch (err: any) {
       console.error('[WhatsAppNotificationService] Error in sendAppointmentRescheduled:', err.message);
     }

@@ -212,27 +212,60 @@ export class WhatsAppDripService {
       ONBOARDING_DRIP_MESSAGES[(stepNumber - 1) % ONBOARDING_DRIP_MESSAGES.length];
 
     const messageText = msgDef.buildText(firstName);
+    const headlineMap: Record<number, string> = {
+      1: 'Welcome to MediQuee Healthcare',
+      2: 'Doorstep Blood Tests & Home Nursing',
+      3: 'Instant Video Consultations',
+      4: 'Preventive Full Body Checkups',
+      5: 'Doorstep Medicine Delivery',
+      6: 'Family Healthcare Management',
+      7: '24/7 Hospital & Emergency Care',
+      8: 'Chronic Care & Prescriptions',
+      9: '24/7 Patient Care Support',
+      10: 'Lifetime Digital Health Records',
+    };
+    const headline = headlineMap[msgDef.step] || 'MediQuee Care Update';
+    const cleanDesc = messageText.replace(new RegExp(`^${firstName}[!,]?\\s*`, 'i'), '');
 
-    // Meta approved MARKETING template: test_utility_template_check
-    // Body: "Hello {{1}}, this is an automated service update from MediQuee."
-    await WhatsAppClient.sendTemplateMessage({
+    // Try structured mediquee_welcome_update template first, fall back to approved test_utility_template_check
+    const dripRes = await WhatsAppClient.sendTemplateMessage({
       recipientPhone: cleanPhone,
-      templateName: 'test_utility_template_check',
-      languageCode: 'en_US',
+      templateName: 'mediquee_welcome_update',
+      languageCode: 'en',
       messageType: `ONBOARDING_DRIP_${stepNumber}`,
       appointmentId: patient.id,
       components: [
         {
           type: 'body',
           parameters: [
-            {
-              type: 'text',
-              text: messageText,
-            },
+            { type: 'text', text: firstName },
+            { type: 'text', text: headline },
+            { type: 'text', text: cleanDesc },
           ],
         },
       ],
     });
+
+    if (!dripRes.success) {
+      await WhatsAppClient.sendTemplateMessage({
+        recipientPhone: cleanPhone,
+        templateName: 'test_utility_template_check',
+        languageCode: 'en_US',
+        messageType: `ONBOARDING_DRIP_${stepNumber}`,
+        appointmentId: patient.id,
+        components: [
+          {
+            type: 'body',
+            parameters: [
+              {
+                type: 'text',
+                text: messageText,
+              },
+            ],
+          },
+        ],
+      });
+    }
 
     console.log(`[WhatsAppDripService] Sent Onboarding Drip Step ${stepNumber} to ${cleanPhone} (${patient.name})`);
   }

@@ -77,75 +77,111 @@ export class WhatsAppOtpService {
     });
 
     // Template name for Meta authentication
-    // Uses approved clean service update template 'test_utility_template_check' by default
-    const templateName = env.META_WA_TEMPLATE_NAME || 'test_utility_template_check';
+    // Try crisp structured mediquee_welcome_update first unless explicitly overridden, falling back cleanly
+    const templateName = env.META_WA_TEMPLATE_NAME || 'mediquee_welcome_update';
 
-    let components: WhatsAppTemplateComponent[] = [];
-    let languageCode = 'en_US';
+    let sendResult;
+    if (templateName === 'mediquee_welcome_update') {
+      sendResult = await WhatsAppClient.sendTemplateMessage({
+        recipientPhone: cleanPhone,
+        templateName: 'mediquee_welcome_update',
+        languageCode: 'en',
+        messageType: 'OTP',
+        components: [
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: 'Valued User' },
+              { type: 'text', text: `Verification Code (OTP): ${otpCode}` },
+              { type: 'text', text: 'Use this one-time password to sign in securely to MediQuee Healthcare. Valid for 5 minutes — please do not share it with anyone.' },
+            ],
+          },
+        ],
+      });
 
-    if (templateName === 'test_utility_template_check') {
-      languageCode = 'en_US';
-      components = [
-        {
-          type: 'body',
-          parameters: [
+      if (!sendResult.success && sendResult.configured) {
+        sendResult = await WhatsAppClient.sendTemplateMessage({
+          recipientPhone: cleanPhone,
+          templateName: 'test_utility_template_check',
+          languageCode: 'en_US',
+          messageType: 'OTP',
+          components: [
             {
-              type: 'text',
-              text: `! Your MediQuee login OTP is ${otpCode}`,
+              type: 'body',
+              parameters: [
+                { type: 'text', text: `! Your MediQuee login OTP is ${otpCode}` },
+              ],
             },
           ],
-        },
-      ];
-    } else if (templateName === 'op_appointment_confirmed') {
-      languageCode = 'en';
-      components = [
-        {
-          type: 'body',
-          parameters: [
-            { type: 'text', text: 'Valued User' },
-            { type: 'text', text: `OTP: ${otpCode}` },
-            { type: 'text', text: 'MediQuee Healthcare' },
-            { type: 'text', text: 'Login Verification' },
-            { type: 'text', text: 'Immediate' },
-            { type: 'text', text: `Valid for 5 Mins (Code: ${otpCode})` },
-            { type: 'text', text: `OTP: ${otpCode}` },
-          ],
-        },
-      ];
+        });
+      }
     } else {
-      languageCode = 'en';
-      components = [
-        {
-          type: 'body',
-          parameters: [
-            {
-              type: 'text',
-              text: otpCode,
-            },
-          ],
-        },
-        {
-          type: 'button',
-          sub_type: 'url',
-          index: 0,
-          parameters: [
-            {
-              type: 'text',
-              text: otpCode,
-            },
-          ],
-        },
-      ];
-    }
+      let components: WhatsAppTemplateComponent[] = [];
+      let languageCode = 'en_US';
 
-    // Dispatch via Meta WhatsApp Cloud API
-    const sendResult = await WhatsAppClient.sendTemplateMessage({
-      recipientPhone: cleanPhone,
-      templateName,
-      languageCode,
-      messageType: 'OTP',
-      components,
-    });
+      if (templateName === 'test_utility_template_check') {
+        languageCode = 'en_US';
+        components = [
+          {
+            type: 'body',
+            parameters: [
+              {
+                type: 'text',
+                text: `! Your MediQuee login OTP is ${otpCode}`,
+              },
+            ],
+          },
+        ];
+      } else if (templateName === 'op_appointment_confirmed') {
+        languageCode = 'en';
+        components = [
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: 'Valued User' },
+              { type: 'text', text: `OTP: ${otpCode}` },
+              { type: 'text', text: 'MediQuee Healthcare' },
+              { type: 'text', text: 'Login Verification' },
+              { type: 'text', text: 'Immediate' },
+              { type: 'text', text: `Valid for 5 Mins (Code: ${otpCode})` },
+              { type: 'text', text: `OTP: ${otpCode}` },
+            ],
+          },
+        ];
+      } else {
+        languageCode = 'en';
+        components = [
+          {
+            type: 'body',
+            parameters: [
+              {
+                type: 'text',
+                text: otpCode,
+              },
+            ],
+          },
+          {
+            type: 'button',
+            sub_type: 'url',
+            index: 0,
+            parameters: [
+              {
+                type: 'text',
+                text: otpCode,
+              },
+            ],
+          },
+        ];
+      }
+
+      sendResult = await WhatsAppClient.sendTemplateMessage({
+        recipientPhone: cleanPhone,
+        templateName,
+        languageCode,
+        messageType: 'OTP',
+        components,
+      });
+    }
 
     if (!sendResult.configured) {
       return {
