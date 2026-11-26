@@ -68,7 +68,7 @@ async function processOpReminders() {
   const bookings = await prisma.oPBooking.findMany({
     where: {
       appointmentDate: { gte: today, lt: dayAfterTomorrow },
-      status: { notIn: ['CANCELLED', 'COMPLETED'] },
+      status: { notIn: ['CANCELLED', 'COMPLETED', 'PENDING'] },
       patientId: { not: null },
     },
     include: {
@@ -156,7 +156,7 @@ async function processLabReminders() {
   const bookings = await prisma.labBooking.findMany({
     where: {
       collectionDate: { gte: today, lt: dayAfterTomorrow },
-      status: { notIn: ['CANCELLED', 'COMPLETED'] },
+      status: { notIn: ['CANCELLED', 'COMPLETED', 'PAYMENT_PENDING'] },
     },
     include: {
       items: { include: { labTest: { include: { platformTest: true } } } },
@@ -218,7 +218,7 @@ async function processHomeNursingReminders() {
   const bookings = await prisma.homeNursingBooking.findMany({
     where: {
       serviceDate: { gte: today, lt: dayAfterTomorrow },
-      status: { notIn: ['CANCELLED', 'COMPLETED'] },
+      status: { notIn: ['CANCELLED', 'COMPLETED', 'PAYMENT_PENDING'] },
     },
     include: {
       service: { select: { name: true } },

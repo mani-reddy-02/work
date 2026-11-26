@@ -4,7 +4,8 @@ import {
   createPaymentOrder, 
   verifyPayment, 
   handleRazorpayWebhook, 
-  getPaymentConfig 
+  getPaymentConfig,
+  cancelPendingPayment
 } from './payments.controller';
 
 const router = Router();
@@ -13,6 +14,7 @@ const router = Router();
 router.get('/config', getPaymentConfig);
 router.post('/create-order', optionalAuthenticate, createPaymentOrder);
 router.post('/verify', optionalAuthenticate, verifyPayment);
+router.post('/cancel-pending', optionalAuthenticate, cancelPendingPayment);
 
 // Razorpay Asynchronous Webhook Endpoint
 router.post('/webhook', handleRazorpayWebhook);

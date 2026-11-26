@@ -223,6 +223,8 @@ export const getTodayBookings = async (req: Request, res: Response, next: NextFu
       } else {
         whereClause.status = status;
       }
+    } else {
+      whereClause.status = { not: 'PENDING' };
     }
 
     // Explicit opType filter if provided

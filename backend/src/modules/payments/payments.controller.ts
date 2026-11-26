@@ -118,3 +118,23 @@ export const getPaymentConfig = async (req: Request, res: Response) => {
     }
   });
 };
+
+export const cancelPendingPayment = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { serviceType, bookingId } = req.body;
+    if (!serviceType || !bookingId) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Missing serviceType or bookingId' }
+      });
+    }
+
+    const result = await PaymentsService.cancelPendingBooking(serviceType as ServiceType, bookingId);
+    return res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (err: any) {
+    next(err);
+  }
+};

@@ -213,7 +213,9 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
          throw { status: 400, code: 'BAD_REQUEST', message: 'Invalid time slot for the selected consultation type' };
       }
 
-      // 8a. Double-booking check: same user
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+
+      // 8a. Double-booking check: same user (ignore stale abandoned PENDING attempts > 10 mins old)
       const existingUserConflict = await tx.oPBooking.findFirst({
         where: {
           patientId,
@@ -225,9 +227,14 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
             gte: startOfDay,
             lte: endOfDay
           },
-          status: {
-            notIn: ['CANCELLED']
-          }
+          AND: [
+            {
+              OR: [
+                { status: { notIn: ['CANCELLED', 'PENDING'] } },
+                { status: 'PENDING', createdAt: { gte: tenMinutesAgo } }
+              ]
+            }
+          ]
         }
       });
 
@@ -251,9 +258,14 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
             gte: startOfDay,
             lte: endOfDay
           },
-          status: {
-            notIn: ['CANCELLED']
-          }
+          AND: [
+            {
+              OR: [
+                { status: { notIn: ['CANCELLED', 'PENDING'] } },
+                { status: 'PENDING', createdAt: { gte: tenMinutesAgo } }
+              ]
+            }
+          ]
         }
       });
 
@@ -274,8 +286,9 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       const feeAmount = !isNaN(rawDoctorFee) && rawDoctorFee >= 0 ? rawDoctorFee : 500;
       const hospitalAmt = feeAmount * (hospitalSharePct / 100);
       const mediqueeAmt = feeAmount * (mediqueeCommissionPct / 100);
+      const initialStatus = feeAmount > 0 ? 'PENDING' : 'WAITING';
 
-      // 9. Create appointment
+      // 9. Create appointment (kept as PENDING until Razorpay payment completes if fee > 0)
       const newBooking = await tx.oPBooking.create({
         data: {
           hospitalId,
@@ -291,7 +304,7 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
           slotTime: requestedSlot,
           reason: reason ? reason.trim() : null,
           opType: opType || 'Normal',
-          status: 'WAITING',
+          status: initialStatus,
           appointmentDate,
           fee: feeAmount,
           hospitalSharePercentage: hospitalSharePct,
@@ -320,45 +333,49 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
 
-    // Broadcast real-time notification to hospital reception & assigned doctor
-    sendNotification({
-      hospitalId: result.hospitalId,
-      userId: result.doctorId,
-      title: 'New OP Appointment',
-      message: `Patient ${result.patientName} booked with Dr. ${result.doctor.name} (${result.department.name}) at ${result.timeSlot}`,
-      type: 'appointment',
-      metadata: {
-        appointmentId: result.id,
-        patientName: result.patientName,
-        doctorName: result.doctor.name,
-        departmentName: result.department.name,
-        timeSlot: result.timeSlot,
-        date: result.appointmentDate,
+    // Only notify hospital, patient & trigger WhatsApp immediately when fee is 0.
+    // Paid bookings dispatch confirmations via PaymentsService after payment verification.
+    if (result.fee <= 0) {
+      // Broadcast real-time notification to hospital reception & assigned doctor
+      sendNotification({
+        hospitalId: result.hospitalId,
+        userId: result.doctorId,
+        title: 'New OP Appointment',
+        message: `Patient ${result.patientName} booked with Dr. ${result.doctor.name} (${result.department.name}) at ${result.timeSlot}`,
+        type: 'appointment',
+        metadata: {
+          appointmentId: result.id,
+          patientName: result.patientName,
+          doctorName: result.doctor.name,
+          departmentName: result.department.name,
+          timeSlot: result.timeSlot,
+          date: result.appointmentDate,
+          targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
+        },
         targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
-      },
-      targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
-    }).catch(console.error);
+      }).catch(console.error);
 
-    // Send notification to the patient
-    const displayDate = new Date(result.appointmentDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-    const isVideo = result.opType?.toLowerCase().includes('video');
-    sendNotification({
-      hospitalId: null, // Patient notification
-      userId: result.patientId,
-      title: 'Booking Confirmed',
-      message: `Your ${isVideo ? 'video ' : ''}consultation with Dr. ${result.doctor.name} is confirmed for ${displayDate} at ${result.timeSlot}.`,
-      type: 'BOOKING_CONFIRMED',
-      metadata: { 
-        bookingId: result.id, 
-        type: isVideo ? 'VIDEO' : 'OP',
+      // Send notification to the patient
+      const displayDate = new Date(result.appointmentDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+      const isVideo = result.opType?.toLowerCase().includes('video');
+      sendNotification({
+        hospitalId: null, // Patient notification
+        userId: result.patientId,
+        title: 'Booking Confirmed',
+        message: `Your ${isVideo ? 'video ' : ''}consultation with Dr. ${result.doctor.name} is confirmed for ${displayDate} at ${result.timeSlot}.`,
+        type: 'BOOKING_CONFIRMED',
+        metadata: { 
+          bookingId: result.id, 
+          type: isVideo ? 'VIDEO' : 'OP',
+          targetRoles: ['PATIENT']
+        },
         targetRoles: ['PATIENT']
-      },
-      targetRoles: ['PATIENT']
-    }).catch(console.error);
+      }).catch(console.error);
 
-    // Trigger Meta WhatsApp appointment confirmation (Patient & Staff)
-    const { WhatsAppNotificationService } = await import('../whatsapp/whatsapp-notifications.service');
-    WhatsAppNotificationService.sendAppointmentConfirmation(result.id).catch(console.error);
+      // Trigger Meta WhatsApp appointment confirmation (Patient & Staff)
+      const { WhatsAppNotificationService } = await import('../whatsapp/whatsapp-notifications.service');
+      WhatsAppNotificationService.sendAppointmentConfirmation(result.id).catch(console.error);
+    }
 
     res.status(201).json({
       success: true,
@@ -953,7 +970,9 @@ export const getMyAppointments = async (req: Request, res: Response, next: NextF
     const isDoctor = req.user!.role === 'DOCTOR';
 
     const bookings = await prisma.oPBooking.findMany({
-      where: isDoctor ? { doctorId: userId } : { patientId: userId },
+      where: isDoctor
+        ? { doctorId: userId, status: { not: 'PENDING' } }
+        : { patientId: userId, status: { not: 'PENDING' } },
       include: {
         hospital: {
           select: { id: true, name: true, city: true, addressLine1: true }

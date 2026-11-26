@@ -443,6 +443,8 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
     const startOfTargetDate = new Date(`${targetDateStr}T00:00:00.000Z`);
     const endOfTargetDate = new Date(`${targetDateStr}T23:59:59.999Z`);
 
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+
     const existingBookings = await prisma.labBooking.findMany({
       where: {
         hospitalId: String(laboratoryId),
@@ -450,7 +452,10 @@ export const getLaboratoryAvailability = async (req: Request, res: Response, nex
           gte: startOfTargetDate,
           lte: endOfTargetDate,
         },
-        status: { notIn: ['CANCELLED'] }
+        OR: [
+          { status: { notIn: ['CANCELLED', 'PAYMENT_PENDING'] } },
+          { status: 'PAYMENT_PENDING', createdAt: { gte: tenMinutesAgo } }
+        ]
       },
       select: {
         collectionTimeSlot: true,

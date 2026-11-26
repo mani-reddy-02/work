@@ -122,6 +122,21 @@ export const paymentApi = {
   },
 
   /**
+   * 3b. Cleans up unpaid PENDING booking draft when payment is cancelled or fails to start
+   */
+  async cancelPendingBooking(serviceType: ServiceType, bookingId: string): Promise<void> {
+    try {
+      await fetch(`${API_BASE_URL}/payments/cancel-pending`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ serviceType, bookingId })
+      });
+    } catch {
+      // Non-blocking cleanup
+    }
+  },
+
+  /**
    * 4. Helper to ensure Razorpay SDK script is loaded
    */
   async loadRazorpayScript(): Promise<boolean> {
@@ -153,6 +168,7 @@ export const paymentApi = {
 
     const isLoaded = await this.loadRazorpayScript();
     if (!isLoaded || !(window as any).Razorpay) {
+      await this.cancelPendingBooking(serviceType, bookingId);
       onFailure('Unable to load Razorpay payment gateway. Please check your internet connection.');
       return;
     }
@@ -160,12 +176,14 @@ export const paymentApi = {
     // 1. Create order on backend (amount calculated server-side from Prisma)
     const orderRes = await this.createPaymentOrder(serviceType, bookingId);
     if (!orderRes.success || !orderRes.data) {
+      await this.cancelPendingBooking(serviceType, bookingId);
       const errMsg = typeof orderRes.error === 'object' ? orderRes.error.message : (orderRes.error || 'Failed to initialize payment.');
       onFailure(errMsg);
       return;
     }
 
     const orderData = orderRes.data;
+    let paymentCompleted = false;
 
     // 2. Open standard Razorpay Checkout
     const razorpayOptions = {
@@ -217,8 +235,11 @@ export const paymentApi = {
         }
       },
       modal: {
-        ondismiss: () => {
-          onFailure('Payment cancelled by user.');
+        ondismiss: async () => {
+          if (!paymentCompleted) {
+            await paymentApi.cancelPendingBooking(serviceType, bookingId);
+            onFailure('Payment cancelled by user.');
+          }
         }
       },
       handler: async (response: {
@@ -226,6 +247,7 @@ export const paymentApi = {
         razorpay_order_id: string;
         razorpay_signature: string;
       }) => {
+        paymentCompleted = true;
         // 3. Cryptographically verify payment on server
         const verifyRes = await paymentApi.verifyPayment({
           orderId: response.razorpay_order_id,

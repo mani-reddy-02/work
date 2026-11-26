@@ -469,6 +469,8 @@ export const getDoctorAvailability = async (req: Request, res: Response, next: N
       currentMinutes += slotDuration;
     }
 
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+
     // Fetch existing active bookings for this doctor on this day
     const existingBookings = await prisma.oPBooking.findMany({
       where: {
@@ -477,9 +479,10 @@ export const getDoctorAvailability = async (req: Request, res: Response, next: N
           gte: startOfDay,
           lte: endOfDay
         },
-        status: {
-          not: 'CANCELLED'
-        }
+        OR: [
+          { status: { notIn: ['CANCELLED', 'PENDING'] } },
+          { status: 'PENDING', createdAt: { gte: tenMinutesAgo } }
+        ]
       },
       select: {
         timeSlot: true,

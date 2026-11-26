@@ -642,8 +642,9 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
 
     // 6. Execute in transaction to prevent race conditions and duplicate bookings
     const newBooking = await prisma.$transaction(async (tx) => {
-      // Check for slot conflict
+      // Check for slot conflict (ignore stale unpaid PAYMENT_PENDING > 10 mins old)
       const nextDay = new Date(bookingDay.getTime() + 24 * 60 * 60 * 1000);
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
 
       const conflict = await tx.homeNursingBooking.findFirst({
         where: {
@@ -654,7 +655,10 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
           },
           timeSlot,
           nurseId: nurseId || undefined,
-          status: { notIn: ['CANCELLED'] },
+          OR: [
+            { status: { notIn: ['CANCELLED', 'PAYMENT_PENDING'] } },
+            { status: 'PAYMENT_PENDING', createdAt: { gte: tenMinutesAgo } }
+          ]
         },
       });
 
@@ -667,6 +671,8 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
       const mediqueeCommissionPct = 100.0 - hospitalSharePct;
       const hospitalAmt = trustedTotalAmount * (hospitalSharePct / 100);
       const mediqueeAmt = trustedTotalAmount * (mediqueeCommissionPct / 100);
+      const initialStatus = trustedTotalAmount > 0 ? 'PAYMENT_PENDING' : 'CONFIRMED';
+      const initialPaymentStatus = trustedTotalAmount > 0 ? 'PENDING' : 'PAID';
 
       return await tx.homeNursingBooking.create({
         data: {
@@ -687,8 +693,8 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
           city: city ? city.trim() : hospital.city || null,
           pincode: pincode ? pincode.trim() : null,
           notes: notes ? notes.trim() : null,
-          status: 'CONFIRMED',
-          paymentStatus: 'PAID',
+          status: initialStatus,
+          paymentStatus: initialPaymentStatus,
           paymentMethod,
           totalAmount: trustedTotalAmount,
           hospitalSharePercentage: hospitalSharePct,
@@ -701,41 +707,45 @@ export const createNursingBooking = async (req: Request, res: Response, next: Ne
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
 
-    // Fire notification to patient
-    const displayDate = new Date(newBooking.serviceDate).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' });
-    sendNotification({
-      hospitalId: null, // Patient notification
-      userId: userId,
-      title: 'Booking Confirmed',
-      message: `Your Home Nursing service (${service.name}) is confirmed for ${displayDate} at ${newBooking.timeSlot}.`,
-      type: 'BOOKING_CONFIRMED',
-      metadata: { 
-        bookingId: newBooking.id, 
-        type: 'HOME_NURSING',
+    // Only send confirmation notifications & WhatsApp immediately when totalAmount <= 0.
+    // Paid orders dispatch confirmations in PaymentsService after Razorpay payment succeeds.
+    if (newBooking.totalAmount <= 0) {
+      // Fire notification to patient
+      const displayDate = new Date(newBooking.serviceDate).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' });
+      sendNotification({
+        hospitalId: null, // Patient notification
+        userId: userId,
+        title: 'Booking Confirmed',
+        message: `Your Home Nursing service (${service.name}) is confirmed for ${displayDate} at ${newBooking.timeSlot}.`,
+        type: 'BOOKING_CONFIRMED',
+        metadata: { 
+          bookingId: newBooking.id, 
+          type: 'HOME_NURSING',
+          targetRoles: ['PATIENT']
+        },
         targetRoles: ['PATIENT']
-      },
-      targetRoles: ['PATIENT']
-    }).catch(console.error);
+      }).catch(console.error);
 
-    // Fire notification to hospital (Hospital Admin and Nurse only)
-    sendNotification({
-      hospitalId: newBooking.hospitalId,
-      userId: newBooking.nurseId,
-      title: 'New Home Nursing Booking',
-      message: `Patient ${newBooking.patientName} booked ${service.name} for ${displayDate} at ${newBooking.timeSlot}.`,
-      type: 'activity',
-      metadata: { 
-        bookingId: newBooking.id, 
-        type: 'HOME_NURSING',
+      // Fire notification to hospital (Hospital Admin and Nurse only)
+      sendNotification({
+        hospitalId: newBooking.hospitalId,
+        userId: newBooking.nurseId,
+        title: 'New Home Nursing Booking',
+        message: `Patient ${newBooking.patientName} booked ${service.name} for ${displayDate} at ${newBooking.timeSlot}.`,
+        type: 'activity',
+        metadata: { 
+          bookingId: newBooking.id, 
+          type: 'HOME_NURSING',
+          targetRoles: ['HOSPITAL_ADMIN', 'NURSE']
+        },
         targetRoles: ['HOSPITAL_ADMIN', 'NURSE']
-      },
-      targetRoles: ['HOSPITAL_ADMIN', 'NURSE']
-    }).catch(console.error);
+      }).catch(console.error);
 
-    // Trigger Meta WhatsApp Home Nursing confirmation
-    import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
-      WhatsAppNotificationService.sendHomeNursingConfirmation(newBooking.id).catch(console.error);
-    }).catch(console.error);
+      // Trigger Meta WhatsApp Home Nursing confirmation
+      import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
+        WhatsAppNotificationService.sendHomeNursingConfirmation(newBooking.id).catch(console.error);
+      }).catch(console.error);
+    }
 
     res.status(201).json({
       success: true,
@@ -781,7 +791,7 @@ export const getMyNursingBookings = async (req: Request, res: Response, next: Ne
     }
 
     const bookings = await prisma.homeNursingBooking.findMany({
-      where: { userId },
+      where: { userId, status: { not: 'PAYMENT_PENDING' } },
       include: {
         service: {
           select: {
@@ -1436,10 +1446,12 @@ export const getHospitalNursingBookings = async (req: Request, res: Response, ne
     if (status && typeof status === 'string' && status !== 'ALL') {
       if (status === 'PENDING_ASSIGNMENT') {
         where.nurseId = null;
-        where.status = { notIn: ['CANCELLED', 'COMPLETED'] };
+        where.status = { notIn: ['CANCELLED', 'COMPLETED', 'PAYMENT_PENDING'] };
       } else {
         where.status = status;
       }
+    } else {
+      where.status = { not: 'PAYMENT_PENDING' };
     }
 
     if (date && typeof date === 'string' && date !== 'all' && date !== 'upcoming') {
@@ -1449,8 +1461,8 @@ export const getHospitalNursingBookings = async (req: Request, res: Response, ne
       where.serviceDate = { gte: start, lte: end };
     } else if (date === 'upcoming') {
       // Show all active requests (uncompleted and not cancelled)
-      if (!where.status) {
-        where.status = { notIn: ['CANCELLED', 'COMPLETED'] };
+      if (!where.status || typeof where.status === 'object') {
+        where.status = { notIn: ['CANCELLED', 'COMPLETED', 'PAYMENT_PENDING'] };
       }
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);

@@ -758,6 +758,7 @@ enum LabBookingType {
 }
 
 enum LabBookingStatus {
+  PAYMENT_PENDING
   REQUESTED
   ASSIGNED
   SAMPLE_COLLECTED

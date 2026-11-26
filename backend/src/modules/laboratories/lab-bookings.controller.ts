@@ -149,10 +149,11 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
       }
 
       if (collectionDate && collectionTimeSlot) {
-        // Check for double booking conflict
+        // Check for double booking conflict (ignore stale unpaid PAYMENT_PENDING > 10 mins old)
         const dateObj = new Date(collectionDate);
         const nextDay = new Date(dateObj);
         nextDay.setDate(nextDay.getDate() + 1);
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
         
         const conflict = await tx.labBooking.findFirst({
           where: {
@@ -162,7 +163,10 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
               lt: nextDay,
             },
             collectionTimeSlot,
-            status: { notIn: ['CANCELLED'] }
+            OR: [
+              { status: { notIn: ['CANCELLED', 'PAYMENT_PENDING'] } },
+              { status: 'PAYMENT_PENDING', createdAt: { gte: tenMinutesAgo } }
+            ]
           }
         });
         
@@ -176,14 +180,15 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
       const mediqueeCommissionPct = 100.0 - hospitalSharePct;
       const hospitalAmt = totalAmount * (hospitalSharePct / 100);
       const mediqueeAmt = totalAmount * (mediqueeCommissionPct / 100);
+      const initialLabStatus: LabBookingStatus = totalAmount > 0 ? LabBookingStatus.PAYMENT_PENDING : LabBookingStatus.REQUESTED;
 
-      // 2. Create the booking
+      // 2. Create the booking (PAYMENT_PENDING until Razorpay verification if totalAmount > 0)
       const newBooking = await tx.labBooking.create({
         data: {
           hospitalId,
           patientId,
           bookingType: bookingType as LabBookingType,
-          status: 'REQUESTED' as LabBookingStatus,
+          status: initialLabStatus,
           totalAmount,
           homeCollectionFee: bookingType === 'HOME_COLLECTION' ? totalHomeCollectionFee : 0,
           collectionAddress: collectionAddress || null,
@@ -208,45 +213,49 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
 
-    // Fire notification to hospital (Lab staff & Hospital Admin only)
-    await sendNotification({
-      hospitalId,
-      title: `New Lab Test Order`,
-      message: `New ${bookingType === 'HOME_COLLECTION' ? 'Home Collection' : 'Walk-in'} order placed by ${booking.patient?.name || 'Patient'}`,
-      type: 'lab',
-      metadata: { 
-        bookingId: booking.id,
-        bookingType,
+    // Only notify & trigger WhatsApp immediately when totalAmount === 0.
+    // Paid lab/home-sample orders dispatch notifications in PaymentsService after payment succeeds.
+    if (booking.totalAmount <= 0) {
+      // Fire notification to hospital (Lab staff & Hospital Admin only)
+      await sendNotification({
+        hospitalId,
+        title: `New Lab Test Order`,
+        message: `New ${bookingType === 'HOME_COLLECTION' ? 'Home Collection' : 'Walk-in'} order placed by ${booking.patient?.name || 'Patient'}`,
+        type: 'lab',
+        metadata: { 
+          bookingId: booking.id,
+          bookingType,
+          targetRoles: ['LAB_ADMIN', 'HOSPITAL_ADMIN']
+        },
         targetRoles: ['LAB_ADMIN', 'HOSPITAL_ADMIN']
-      },
-      targetRoles: ['LAB_ADMIN', 'HOSPITAL_ADMIN']
-    });
+      });
 
-    // Fire notification to patient
-    const displayDate = booking.collectionDate 
-      ? new Date(booking.collectionDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
-      : 'shortly';
-    const timeText = booking.collectionTimeSlot ? ` at ${booking.collectionTimeSlot}` : '';
-    const isHome = booking.bookingType === 'HOME_COLLECTION';
+      // Fire notification to patient
+      const displayDate = booking.collectionDate 
+        ? new Date(booking.collectionDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
+        : 'shortly';
+      const timeText = booking.collectionTimeSlot ? ` at ${booking.collectionTimeSlot}` : '';
+      const isHome = booking.bookingType === 'HOME_COLLECTION';
 
-    await sendNotification({
-      hospitalId: null, // Patient notification
-      userId: booking.patientId,
-      title: 'Booking Confirmed',
-      message: `Your ${isHome ? 'Home Sample Collection' : 'Lab Test'} booking is confirmed for ${displayDate}${timeText}.`,
-      type: 'BOOKING_CONFIRMED',
-      metadata: { 
-        bookingId: booking.id, 
-        type: isHome ? 'HOME_SAMPLE' : 'LAB',
+      await sendNotification({
+        hospitalId: null, // Patient notification
+        userId: booking.patientId,
+        title: 'Booking Confirmed',
+        message: `Your ${isHome ? 'Home Sample Collection' : 'Lab Test'} booking is confirmed for ${displayDate}${timeText}.`,
+        type: 'BOOKING_CONFIRMED',
+        metadata: { 
+          bookingId: booking.id, 
+          type: isHome ? 'HOME_SAMPLE' : 'LAB',
+          targetRoles: ['PATIENT']
+        },
         targetRoles: ['PATIENT']
-      },
-      targetRoles: ['PATIENT']
-    });
+      });
 
-    // Trigger Meta WhatsApp Lab booking confirmation
-    import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
-      WhatsAppNotificationService.sendLabBookingConfirmation(booking.id).catch(console.error);
-    }).catch(console.error);
+      // Trigger Meta WhatsApp Lab booking confirmation
+      import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
+        WhatsAppNotificationService.sendLabBookingConfirmation(booking.id).catch(console.error);
+      }).catch(console.error);
+    }
 
     const responseData = {
       ...booking,
@@ -302,7 +311,7 @@ export const getHospitalLabDashboard = async (req: Request, res: Response, next:
         }
       }),
       prisma.labBooking.findMany({
-        where: { hospitalId },
+        where: { hospitalId, status: { not: 'PAYMENT_PENDING' } },
         include: {
           items: {
             include: {
@@ -555,6 +564,8 @@ export const getHospitalLabBookings = async (req: Request, res: Response, next: 
       } else {
         where.status = status as string;
       }
+    } else {
+      where.status = { not: 'PAYMENT_PENDING' };
     }
 
     if (bookingType && bookingType !== 'All') where.bookingType = bookingType as string;
@@ -863,7 +874,7 @@ export const getMyLabBookings = async (req: Request, res: Response, next: NextFu
   try {
     const userId = (req as any).user.id;
     const bookings = await prisma.labBooking.findMany({
-      where: { patientId: userId },
+      where: { patientId: userId, status: { not: 'PAYMENT_PENDING' } },
       include: {
         items: { include: { labTest: { include: { platformTest: { include: { department: true } } } } } },
         hospital: {

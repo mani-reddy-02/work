@@ -15,7 +15,7 @@ export const getNearestUpcomingBooking = async (req: Request, res: Response, nex
       where: {
         patientId: userId,
         appointmentDate: { gte: new Date(now.setHours(0, 0, 0, 0)) }, // Today or later
-        status: { notIn: ['CANCELLED', 'COMPLETED'] }
+        status: { notIn: ['CANCELLED', 'COMPLETED', 'PENDING'] }
       },
       include: {
         doctor: { select: { name: true } },
@@ -27,7 +27,7 @@ export const getNearestUpcomingBooking = async (req: Request, res: Response, nex
     const labBookings = await prisma.labBooking.findMany({
       where: {
         patientId: userId,
-        status: { notIn: ['CANCELLED', 'COMPLETED'] }
+        status: { notIn: ['CANCELLED', 'COMPLETED', 'PAYMENT_PENDING'] }
       },
       include: {
         hospital: { select: { name: true } },
@@ -46,7 +46,7 @@ export const getNearestUpcomingBooking = async (req: Request, res: Response, nex
       where: {
         userId,
         serviceDate: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
-        status: { notIn: ['CANCELLED', 'COMPLETED'] }
+        status: { notIn: ['CANCELLED', 'COMPLETED', 'PAYMENT_PENDING'] }
       },
       include: {
         service: { select: { name: true } }

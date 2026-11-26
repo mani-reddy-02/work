@@ -3,6 +3,7 @@ import { prisma } from '../../config/prisma';
 import { env } from '../../config/env';
 import { BookingStatus, LabBookingStatus } from '@prisma/client';
 import { getRazorpayClient, isRazorpayConfigured } from './razorpay.client';
+import { sendNotification } from '../notifications/notifications.service';
 
 export type ServiceType = 
   | 'OP_BOOKING' 
@@ -214,6 +215,7 @@ export class PaymentsService {
 
   /**
    * 4. Confirms the booking atomically in Prisma upon valid payment
+   *    and fires hospital/patient notifications + WhatsApp once.
    */
   static async confirmBookingAfterPayment(
     serviceType: ServiceType, 
@@ -225,15 +227,26 @@ export class PaymentsService {
     switch (serviceType) {
       case 'OP_BOOKING':
       case 'VIDEO_CONSULTATION': {
+        const existing = await prisma.oPBooking.findUnique({ where: { id: bookingId } });
+        if (!existing) throw new Error(`OP appointment #${bookingId} not found`);
+
+        const wasPending = existing.status === BookingStatus.PENDING;
+
         const updated = await prisma.oPBooking.update({
           where: { id: bookingId },
           data: {
             status: BookingStatus.WAITING,
+          },
+          include: {
+            hospital: { select: { id: true, name: true } },
+            doctor: { select: { id: true, name: true } },
+            department: { select: { id: true, name: true } }
           }
         });
 
         // If it's a video consultation, ensure room is ready
-        if (serviceType === 'VIDEO_CONSULTATION' || updated.opType === 'Video Consultation') {
+        const isVideo = serviceType === 'VIDEO_CONSULTATION' || (updated.opType || '').toLowerCase().includes('video');
+        if (isVideo) {
           const roomName = `room-${updated.id}`;
           await prisma.videoConsultation.upsert({
             where: { bookingId: updated.id },
@@ -248,33 +261,236 @@ export class PaymentsService {
             }
           });
         }
+
+        // Only fire confirmation notifications once when transitioning from PENDING
+        if (wasPending) {
+          sendNotification({
+            hospitalId: updated.hospitalId,
+            userId: updated.doctorId,
+            title: isVideo ? 'New Video Consultation' : 'New OP Appointment',
+            message: `Patient ${updated.patientName} booked with Dr. ${updated.doctor.name} (${updated.department.name}) at ${updated.timeSlot}`,
+            type: 'appointment',
+            metadata: {
+              appointmentId: updated.id,
+              patientName: updated.patientName,
+              doctorName: updated.doctor.name,
+              departmentName: updated.department.name,
+              timeSlot: updated.timeSlot,
+              date: updated.appointmentDate,
+              targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
+            },
+            targetRoles: ['RECEPTIONIST', 'HOSPITAL_ADMIN', 'DOCTOR']
+          }).catch(console.error);
+
+          if (updated.patientId) {
+            const displayDate = new Date(updated.appointmentDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+            sendNotification({
+              hospitalId: null,
+              userId: updated.patientId,
+              title: 'Booking Confirmed',
+              message: `Your ${isVideo ? 'video ' : ''}consultation with Dr. ${updated.doctor.name} is confirmed for ${displayDate} at ${updated.timeSlot}.`,
+              type: 'BOOKING_CONFIRMED',
+              metadata: {
+                bookingId: updated.id,
+                type: isVideo ? 'VIDEO' : 'OP',
+                targetRoles: ['PATIENT']
+              },
+              targetRoles: ['PATIENT']
+            }).catch(console.error);
+          }
+
+          import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
+            WhatsAppNotificationService.sendAppointmentConfirmation(updated.id).catch(console.error);
+          }).catch(console.error);
+        }
+
         return updated;
       }
 
       case 'LAB_BOOKING':
       case 'HOME_SAMPLE': {
-        return await prisma.labBooking.update({
+        const existing = await prisma.labBooking.findUnique({ where: { id: bookingId } });
+        if (!existing) throw new Error(`Lab booking #${bookingId} not found`);
+
+        const wasPending = existing.status === LabBookingStatus.PAYMENT_PENDING;
+
+        const updated = await prisma.labBooking.update({
           where: { id: bookingId },
           data: {
             status: LabBookingStatus.REQUESTED
+          },
+          include: {
+            patient: { select: { id: true, name: true } }
           }
         });
+
+        if (wasPending) {
+          const isHome = updated.bookingType === 'HOME_COLLECTION' || serviceType === 'HOME_SAMPLE';
+
+          sendNotification({
+            hospitalId: updated.hospitalId,
+            title: `New Lab Test Order`,
+            message: `New ${isHome ? 'Home Collection' : 'Walk-in'} order placed by ${updated.patient?.name || 'Patient'}`,
+            type: 'lab',
+            metadata: {
+              bookingId: updated.id,
+              bookingType: updated.bookingType,
+              targetRoles: ['LAB_ADMIN', 'HOSPITAL_ADMIN']
+            },
+            targetRoles: ['LAB_ADMIN', 'HOSPITAL_ADMIN']
+          }).catch(console.error);
+
+          const displayDate = updated.collectionDate
+            ? new Date(updated.collectionDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
+            : 'shortly';
+          const timeText = updated.collectionTimeSlot ? ` at ${updated.collectionTimeSlot}` : '';
+
+          sendNotification({
+            hospitalId: null,
+            userId: updated.patientId,
+            title: 'Booking Confirmed',
+            message: `Your ${isHome ? 'Home Sample Collection' : 'Lab Test'} booking is confirmed for ${displayDate}${timeText}.`,
+            type: 'BOOKING_CONFIRMED',
+            metadata: {
+              bookingId: updated.id,
+              type: isHome ? 'HOME_SAMPLE' : 'LAB',
+              targetRoles: ['PATIENT']
+            },
+            targetRoles: ['PATIENT']
+          }).catch(console.error);
+
+          import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
+            WhatsAppNotificationService.sendLabBookingConfirmation(updated.id).catch(console.error);
+          }).catch(console.error);
+        }
+
+        return updated;
       }
 
       case 'HOME_NURSING': {
-        return await prisma.homeNursingBooking.update({
+        const existing = await prisma.homeNursingBooking.findUnique({ where: { id: bookingId } });
+        if (!existing) throw new Error(`Home nursing booking #${bookingId} not found`);
+
+        const wasPending = existing.status === 'PAYMENT_PENDING' || existing.paymentStatus !== 'PAID';
+
+        const updated = await prisma.homeNursingBooking.update({
           where: { id: bookingId },
           data: {
             status: 'CONFIRMED',
             paymentStatus: 'PAID',
             paymentMethod: method || 'RAZORPAY'
+          },
+          include: {
+            service: { select: { name: true } }
           }
         });
+
+        if (wasPending) {
+          const displayDate = new Date(updated.serviceDate).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' });
+          const serviceName = updated.service?.name || 'Home Nursing';
+
+          sendNotification({
+            hospitalId: null,
+            userId: updated.userId,
+            title: 'Booking Confirmed',
+            message: `Your Home Nursing service (${serviceName}) is confirmed for ${displayDate} at ${updated.timeSlot}.`,
+            type: 'BOOKING_CONFIRMED',
+            metadata: {
+              bookingId: updated.id,
+              type: 'HOME_NURSING',
+              targetRoles: ['PATIENT']
+            },
+            targetRoles: ['PATIENT']
+          }).catch(console.error);
+
+          sendNotification({
+            hospitalId: updated.hospitalId,
+            userId: updated.nurseId,
+            title: 'New Home Nursing Booking',
+            message: `Patient ${updated.patientName} booked ${serviceName} for ${displayDate} at ${updated.timeSlot}.`,
+            type: 'activity',
+            metadata: {
+              bookingId: updated.id,
+              type: 'HOME_NURSING',
+              targetRoles: ['HOSPITAL_ADMIN', 'NURSE']
+            },
+            targetRoles: ['HOSPITAL_ADMIN', 'NURSE']
+          }).catch(console.error);
+
+          import('../whatsapp/whatsapp-notifications.service').then(({ WhatsAppNotificationService }) => {
+            WhatsAppNotificationService.sendHomeNursingConfirmation(updated.id).catch(console.error);
+          }).catch(console.error);
+        }
+
+        return updated;
       }
 
       default:
         throw new Error(`Unknown service type: ${serviceType}`);
     }
+  }
+
+  /**
+   * 4b. Safely cleans up an unpaid PENDING/PAYMENT_PENDING draft booking if payment was cancelled or failed
+   */
+  static async cancelPendingBooking(serviceType: ServiceType, bookingId: string) {
+    // Never delete if any PAID transaction exists for this booking
+    const paidTx = await prisma.paymentTransaction.findFirst({
+      where: { bookingId, status: 'PAID' }
+    });
+    if (paidTx) {
+      return { cancelled: false, reason: 'Payment already completed' };
+    }
+
+    await prisma.paymentTransaction.updateMany({
+      where: { bookingId, status: 'CREATED' },
+      data: {
+        status: 'CANCELLED',
+        failureReason: 'Payment cancelled or failed before completion'
+      }
+    });
+
+    let deletedCount = 0;
+
+    switch (serviceType) {
+      case 'OP_BOOKING':
+      case 'VIDEO_CONSULTATION': {
+        const res = await prisma.oPBooking.deleteMany({
+          where: {
+            id: bookingId,
+            status: BookingStatus.PENDING
+          }
+        });
+        deletedCount = res.count;
+        break;
+      }
+
+      case 'LAB_BOOKING':
+      case 'HOME_SAMPLE': {
+        const res = await prisma.labBooking.deleteMany({
+          where: {
+            id: bookingId,
+            status: LabBookingStatus.PAYMENT_PENDING
+          }
+        });
+        deletedCount = res.count;
+        break;
+      }
+
+      case 'HOME_NURSING': {
+        const res = await prisma.homeNursingBooking.deleteMany({
+          where: {
+            id: bookingId,
+            status: 'PAYMENT_PENDING',
+            paymentStatus: 'PENDING'
+          }
+        });
+        deletedCount = res.count;
+        break;
+      }
+    }
+
+    return { cancelled: deletedCount > 0, deletedCount };
   }
 
   /**
