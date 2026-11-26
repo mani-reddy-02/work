@@ -1,6 +1,7 @@
 import assert from 'assert';
 import {
   ExotelClient,
+  ExotelCallService,
   validateExotelConfig,
   getExotelSafeStatus,
   getExotelConfig,
@@ -9,6 +10,9 @@ import {
   isLikelyPersonalMobileNumber,
   ExotelConfigurationError,
 } from '../modules/exotel';
+import { ccmConnectHandler, ccmEventsHandler } from '../modules/exotel/exotel.controller';
+import { prisma } from '../config/prisma';
+import { encryptPhoneNumber } from '../utils/phoneCrypto';
 
 async function runExotelTests() {
   console.log('[TEST] Starting Updated Exotel Configuration & Telephony Verification...');
@@ -315,6 +319,101 @@ async function runExotelTests() {
   assert.strictEqual(mockCallLog[0].status, 'FAILED');
   assert.strictEqual(mockCallLog[0].failureReason, 'Unauthorized; ');
   console.log('  -> CallLog correctly transitions to FAILED with failureReason stored');
+
+  // 12. Dynamic URL Connect Applet JSON Schema & Controller Content-Type
+  console.log('[TEST 12] Dynamic URL Connect Applet JSON schema, intent routing, and dial_passthru_event_url');
+  const originalCallLog = (prisma as any).callLog;
+  const inMemoryLogs: any[] = [];
+  (prisma as any).callLog = {
+    async findUnique({ where }: any) {
+      return inMemoryLogs.find((c) => c.callSid === where.callSid) || null;
+    },
+    async findMany({ where }: any) {
+      return inMemoryLogs.filter((c) => !where?.status || c.status === where.status);
+    },
+    async create({ data }: any) {
+      const row = { id: 'log_' + (inMemoryLogs.length + 1), createdAt: new Date(), ...data };
+      inMemoryLogs.push(row);
+      return row;
+    },
+    async update({ where, data }: any) {
+      const idx = inMemoryLogs.findIndex((c) => c.id === where.id);
+      if (idx !== -1) inMemoryLogs[idx] = { ...inMemoryLogs[idx], ...data };
+      return inMemoryLogs[idx];
+    },
+  };
+
+  try {
+    inMemoryLogs.push({
+      id: 'intent_1',
+      callSid: null,
+      bookingId: 'bk_sm_1',
+      bookingType: 'OP',
+      status: 'INITIATED',
+      toPhone: encryptPhoneNumber('7981964002'),
+      virtualNumber: '08047290980',
+      metadata: {
+        mode: 'INBOUND_INTENT',
+        callerDigits: '8309188159',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      },
+      createdAt: new Date(),
+    });
+
+    const svc = new ExotelCallService();
+    const webhookSecret = getExotelConfig().webhookSecret || 'mediquee_exotel_webhook_secret_key';
+
+    const connectRes = await svc.handleCcmConnect(
+      { CallSid: 'sid_dynamic_1', CallFrom: '08309188159', CallTo: '08047290980', Direction: 'incoming' },
+      webhookSecret
+    );
+    assert.strictEqual(connectRes.httpStatus, 200);
+    const payload = connectRes.payload as any;
+    assert.deepStrictEqual(payload.destination, { numbers: ['+917981964002'] }, 'Must return destination.numbers array');
+    assert.strictEqual(payload.outgoing_phone_number, '+918047290980', 'outgoing_phone_number must be E.164');
+    assert.strictEqual(payload.fetch_after_attempt, false);
+    assert(payload.dial_passthru_event_url?.includes('/api/v1/exotel/events?token='), 'Must include dial_passthru_event_url');
+    assert.strictEqual((payload as any).contact_uri, undefined, 'Must not return legacy contact_uri');
+
+    // Controller must send Content-Type: application/json even when Accept is */*
+    let capturedStatus = 0;
+    let capturedType = '';
+    let capturedBody: any = null;
+    const mockRes: any = {
+      status(code: number) { capturedStatus = code; return this; },
+      type(t: string) { capturedType = t; return this; },
+      json(b: any) { capturedBody = b; return this; },
+      send(b: any) { capturedBody = b; return this; },
+    };
+
+    await ccmConnectHandler(
+      {
+        headers: { accept: '*/*' },
+        query: { token: webhookSecret, CallSid: 'sid_dynamic_1', CallFrom: '08309188159' },
+        body: {},
+      } as any,
+      mockRes
+    );
+    assert.strictEqual(capturedStatus, 200);
+    assert.strictEqual(capturedType, 'application/json', 'Controller must return application/json for Exotel');
+    assert.deepStrictEqual(capturedBody?.destination, { numbers: ['+917981964002'] });
+
+    // dial_passthru_event_url GET query updates CallLog via ccmEventsHandler
+    await ccmEventsHandler(
+      {
+        headers: {},
+        query: { token: webhookSecret, CallSid: 'sid_dynamic_1', DialCallStatus: 'completed', DialCallDuration: '42' },
+        body: {},
+      } as any,
+      mockRes
+    );
+    assert.strictEqual(capturedStatus, 200);
+    assert.strictEqual(inMemoryLogs[0].status, 'COMPLETED');
+    assert.strictEqual(inMemoryLogs[0].duration, 42);
+    console.log('  -> Dynamic URL JSON schema, Content-Type, intent routing, and dial_passthru_event_url verified');
+  } finally {
+    (prisma as any).callLog = originalCallLog;
+  }
 
   console.log('\n[PASS] All updated Exotel configuration & safety tests passed 100%!');
 }

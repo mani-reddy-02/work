@@ -446,6 +446,63 @@ export class ExotelCallService {
     };
   }
 
+  private isValidWebhookToken(tokenParam?: string): boolean {
+    const expectedToken = env.EXOTEL_WEBHOOK_SECRET || 'mediquee_exotel_webhook_secret_key';
+    return (
+      typeof tokenParam === 'string' &&
+      tokenParam.length === expectedToken.length &&
+      crypto.timingSafeEqual(Buffer.from(tokenParam), Buffer.from(expectedToken))
+    );
+  }
+
+  private extractCallerInfo(queryParams: ExotelCcmQueryParams): { callerRaw: string; callerDigits: string } {
+    const callerRaw = String(
+      (queryParams as any).CallFrom ||
+        queryParams.From ||
+        (queryParams as any).from ||
+        (queryParams as any).caller ||
+        (queryParams as any).Caller ||
+        ''
+    );
+    const callerDigits = callerRaw.replace(/\D/g, '').slice(-10);
+    return { callerRaw, callerDigits };
+  }
+
+  private buildConnectResponse(
+    destinationPhone: string,
+    rawVirtualNumber?: string
+  ): {
+    normalizedDestination: string;
+    payload: ExotelCcmConnectResponse;
+  } {
+    const normalizedDestination = this.client.normalizePhoneNumber(destinationPhone);
+    const outgoingPhoneNumber = this.client.normalizePhoneNumber(
+      rawVirtualNumber || env.EXOTEL_CALLER_ID || '08047290980'
+    );
+    const appBaseUrl = (
+      process.env.APP_BASE_URL ||
+      process.env.API_BASE_URL ||
+      'https://mediquee.in'
+    ).replace(/\/+$/, '');
+    const eventSecret = env.EXOTEL_WEBHOOK_SECRET || 'mediquee_exotel_webhook_secret_key';
+    const dialPassthruEventUrl = `${appBaseUrl}/api/v1/exotel/events?token=${encodeURIComponent(eventSecret)}`;
+
+    const payload: ExotelCcmConnectResponse = {
+      fetch_after_attempt: false,
+      destination: {
+        numbers: [normalizedDestination],
+      },
+      outgoing_phone_number: outgoingPhoneNumber,
+      record: false,
+      recording_channels: 'single',
+      max_ringing_duration: 30,
+      max_conversation_duration: 900,
+      dial_passthru_event_url: dialPassthruEventUrl,
+    };
+
+    return { normalizedDestination, payload };
+  }
+
   /**
    * CCM Primary URL Handler (GET /api/v1/exotel/connect)
    *
@@ -454,12 +511,12 @@ export class ExotelCallService {
    *
    * Dynamic Routing Flow:
    * 1. Validates webhook secret token (?token=...).
-   * 2. Correlates by CallSid, CustomField, or Caller phone number (From).
+   * 2. Correlates by CallSid, CustomField, or Caller phone number (CallFrom / From).
    * 3. For Inbound Calls to 08047290980:
    *    - Checks pre-registered Intent in CallLog.
    *    - Falls back to database lookup of caller's active OP booking.
    * 4. Resolves destination phone number from verified database records.
-   * 5. Returns documented Exotel Connect destination payload.
+   * 5. Returns documented Exotel Connect Applet (Dynamic URL) JSON payload.
    */
   public async handleCcmConnect(
     queryParams: ExotelCcmQueryParams,
@@ -470,26 +527,14 @@ export class ExotelCallService {
     payload: ExotelCcmConnectResponse | { error: string };
   }> {
     // 1. Timing-safe webhook authentication
-    const expectedToken = env.EXOTEL_WEBHOOK_SECRET || 'mediquee_exotel_webhook_secret_key';
-    const isValidToken =
-      typeof tokenParam === 'string' &&
-      tokenParam.length === expectedToken.length &&
-      crypto.timingSafeEqual(Buffer.from(tokenParam), Buffer.from(expectedToken));
-
-    if (!isValidToken) {
+    if (!this.isValidWebhookToken(tokenParam)) {
       console.warn('[Exotel CCM] Unauthorized Connect attempt: Token mismatch');
       return { httpStatus: 403, payload: { error: 'Unauthorized webhook access' } };
     }
 
     const callSid = queryParams.CallSid || queryParams.Sid;
     const customToken = queryParams.CustomField;
-    const callerRaw =
-      (queryParams as any).CallFrom ||
-      queryParams.From ||
-      (queryParams as any).from ||
-      (queryParams as any).caller ||
-      (queryParams as any).Caller;
-    const callerDigits = String(callerRaw || '').replace(/\D/g, '').slice(-10);
+    const { callerRaw, callerDigits } = this.extractCallerInfo(queryParams);
 
     if (!callSid && !customToken && !callerDigits) {
       return { httpStatus: 400, payload: { error: 'Missing CallSid, CustomField, and From parameters' } };
@@ -673,8 +718,8 @@ export class ExotelCallService {
       }
     }
 
-    // 5. Default Fallback: If destination could not be identified, route to primary active hospital reception
-    if (!destinationPhone.trim()) {
+    // 5. Default Fallback: If destination could not be identified for an inbound caller, route to primary active hospital reception
+    if (!destinationPhone.trim() && callerDigits) {
       const defaultHospital = await prisma.hospital.findFirst({
         where: {
           OR: [
@@ -683,12 +728,35 @@ export class ExotelCallService {
           ],
         },
         orderBy: { createdAt: 'asc' },
-        select: { name: true, contactPhone: true, emergencyContact: true },
+        select: { id: true, name: true, contactPhone: true, emergencyContact: true },
       });
 
       if (defaultHospital && (defaultHospital.contactPhone || defaultHospital.emergencyContact)) {
         destinationPhone = defaultHospital.contactPhone || defaultHospital.emergencyContact || '';
         console.log(`[Exotel CCM] Unmapped inbound dialer routed to hospital desk: ${defaultHospital.name}`);
+
+        if (ExotelCallService.callLogModel && callSid) {
+          await ExotelCallService.callLogModel
+            .create({
+              data: {
+                callSid,
+                bookingType: 'OP',
+                initiatedById: 'inbound-dialer',
+                callerRole: 'PATIENT',
+                fromPhone: encryptPhoneNumber(callerRaw || callerDigits || 'unknown'),
+                toPhone: encryptPhoneNumber(destinationPhone),
+                virtualNumber: env.EXOTEL_CALLER_ID || '08047290980',
+                direction: 'PATIENT_TO_HOSPITAL',
+                status: 'IN_PROGRESS',
+                metadata: {
+                  mode: 'DEFAULT_HOSPITAL_FALLBACK',
+                  hospitalId: defaultHospital.id,
+                  hospitalName: defaultHospital.name,
+                },
+              },
+            })
+            .catch(() => {});
+        }
       }
     }
 
@@ -697,38 +765,12 @@ export class ExotelCallService {
       return { httpStatus: 404, payload: { error: 'Destination phone number not found for this call' } };
     }
 
-    const normalizedDestination = this.client.normalizePhoneNumber(destinationPhone);
-    const virtualNumber = this.client.normalizeCallerId(env.EXOTEL_CALLER_ID || '08047290980');
-
-    // 6. Return standard Exotel CCM response payload
-    const appBaseUrl =
-      process.env.APP_BASE_URL ||
-      process.env.API_BASE_URL ||
-      (env.NODE_ENV === 'production' ? 'https://mediquee.in' : 'https://mediquee.in');
-    const eventSecret = env.EXOTEL_WEBHOOK_SECRET || 'mediquee_exotel_webhook_secret_key';
-    const eventPassthruUrl = `${appBaseUrl.replace(/\/+$/, '')}/api/v1/exotel/events?token=${encodeURIComponent(eventSecret)}`;
-
-    const ccmResponse: ExotelCcmConnectResponse = {
-      destination: [
-        {
-          contact_uri: normalizedDestination,
-        },
-      ],
-      call_event_passthru_url: eventPassthruUrl,
-      state_management: true,
-      outgoing_phone_number: virtualNumber,
-      recording: {
-        record: false,
-        channels: 'single',
-      },
-      max_ringing_duration: 30,
-      max_conversation_duration: 900,
-    };
+    const { normalizedDestination, payload } = this.buildConnectResponse(destinationPhone);
 
     return {
       httpStatus: 200,
       destinationPhone: normalizedDestination,
-      payload: ccmResponse,
+      payload,
     };
   }
 
@@ -744,26 +786,14 @@ export class ExotelCallService {
     payload: ExotelCcmConnectResponse | { error: string };
   }> {
     // 1. Timing-safe webhook authentication
-    const expectedToken = env.EXOTEL_WEBHOOK_SECRET || 'mediquee_exotel_webhook_secret_key';
-    const isValidToken =
-      typeof tokenParam === 'string' &&
-      tokenParam.length === expectedToken.length &&
-      crypto.timingSafeEqual(Buffer.from(tokenParam), Buffer.from(expectedToken));
-
-    if (!isValidToken) {
+    if (!this.isValidWebhookToken(tokenParam)) {
       console.warn('[Exotel CCM Fallback] Unauthorized Fallback attempt');
       return { httpStatus: 403, payload: { error: 'Unauthorized webhook access' } };
     }
 
     const callSid = queryParams.CallSid || queryParams.Sid;
     const customToken = queryParams.CustomField;
-    const callerRaw =
-      (queryParams as any).CallFrom ||
-      queryParams.From ||
-      (queryParams as any).from ||
-      (queryParams as any).caller ||
-      (queryParams as any).Caller;
-    const callerDigits = String(callerRaw || '').replace(/\D/g, '').slice(-10);
+    const { callerDigits } = this.extractCallerInfo(queryParams);
 
     if (!ExotelCallService.callLogModel) {
       return { httpStatus: 500, payload: { error: 'CallLog model not available' } };
@@ -803,9 +833,24 @@ export class ExotelCallService {
       );
     }
 
-    // Resolve verified hospital destination
+    // Resolve verified hospital destination and record failover telemetry
     let destinationPhone = '';
     if (callLog) {
+      const metadata = (callLog.metadata || {}) as Record<string, any>;
+      await ExotelCallService.callLogModel
+        .update({
+          where: { id: callLog.id },
+          data: {
+            metadata: {
+              ...metadata,
+              fallbackTriggered: true,
+              fallbackAt: new Date().toISOString(),
+              fallbackReason: String(queryParams.Reason || 'Primary URL timeout or failover'),
+            },
+          },
+        })
+        .catch(() => {});
+
       try {
         destinationPhone = decryptPhoneNumber(callLog.toPhone);
       } catch {
@@ -834,50 +879,24 @@ export class ExotelCallService {
       return { httpStatus: 500, payload: { error: 'Unable to resolve destination in fallback' } };
     }
 
-    const normalizedDestination = this.client.normalizePhoneNumber(destinationPhone);
-    const virtualNumber = this.client.normalizeCallerId(callLog?.virtualNumber || env.EXOTEL_CALLER_ID || '08047290980');
-
-    const appBaseUrl =
-      process.env.APP_BASE_URL ||
-      process.env.API_BASE_URL ||
-      (env.NODE_ENV === 'production' ? 'https://mediquee.in' : 'https://mediquee.in');
-    const eventSecret = env.EXOTEL_WEBHOOK_SECRET || 'mediquee_exotel_webhook_secret_key';
-    const eventPassthruUrl = `${appBaseUrl.replace(/\/+$/, '')}/api/v1/exotel/events?token=${encodeURIComponent(eventSecret)}`;
+    const { normalizedDestination, payload } = this.buildConnectResponse(
+      destinationPhone,
+      callLog?.virtualNumber
+    );
 
     return {
       httpStatus: 200,
       destinationPhone: normalizedDestination,
-      payload: {
-        destination: [
-          {
-            contact_uri: normalizedDestination,
-          },
-        ],
-        call_event_passthru_url: eventPassthruUrl,
-        state_management: true,
-        outgoing_phone_number: virtualNumber,
-        recording: {
-          record: false,
-          channels: 'single',
-        },
-        max_ringing_duration: 30,
-        max_conversation_duration: 900,
-      },
+      payload,
     };
   }
 
   /**
-   * Handle incoming Exotel StatusCallback webhook with idempotency & timing-safe token verification.
+   * Handle incoming Exotel StatusCallback / dial_passthru_event_url webhook with idempotency & timing-safe token verification.
    */
   public async handleWebhook(payload: ExotelWebhookPayload, tokenQuery?: string) {
     // 1. Timing-safe Webhook Authentication
-    const expectedToken = env.EXOTEL_WEBHOOK_SECRET || 'mediquee_exotel_webhook_secret_key';
-    const isValidToken =
-      typeof tokenQuery === 'string' &&
-      tokenQuery.length === expectedToken.length &&
-      crypto.timingSafeEqual(Buffer.from(tokenQuery), Buffer.from(expectedToken));
-
-    if (!isValidToken) {
+    if (!this.isValidWebhookToken(tokenQuery)) {
       console.warn('[Exotel Webhook] Unauthorized webhook attempt: Token mismatch');
       return { status: 403, message: 'Invalid webhook authentication token' };
     }
@@ -923,8 +942,8 @@ export class ExotelCallService {
       return { status: 200, message: 'Event already processed' };
     }
 
-    // 4. Map Exotel status & EventType to CallStatus enum
-    const rawStatus = (payload.Status || payload.EventType || '').toLowerCase();
+    // 4. Map Exotel DialCallStatus / Status / EventType to CallStatus enum
+    const rawStatus = String(payload.DialCallStatus || payload.Status || payload.EventType || '').toLowerCase();
     let mappedStatus = 'IN_PROGRESS';
     if (rawStatus === 'completed' || rawStatus === 'terminal') {
       mappedStatus = 'COMPLETED';
@@ -945,8 +964,8 @@ export class ExotelCallService {
     }
 
     // Extract duration (in seconds)
-    const durationRaw = payload.ConversationDuration || payload.Duration;
-    const duration = durationRaw ? parseInt(String(durationRaw), 10) : undefined;
+    const durationRaw = payload.DialCallDuration || payload.ConversationDuration || payload.Duration;
+    const duration = durationRaw !== undefined ? parseInt(String(durationRaw), 10) : undefined;
 
     // Extract failure or disconnect reason
     let failureReason = payload.DisconnectedBy ? `Disconnected by ${payload.DisconnectedBy}` : undefined;

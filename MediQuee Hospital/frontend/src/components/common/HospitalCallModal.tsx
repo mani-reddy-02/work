@@ -53,7 +53,10 @@ export const HospitalCallModal: React.FC<HospitalCallModalProps> = ({
 
   const handleDialDirect = async () => {
     if (bookingId) {
-      registerCallIntent(bookingId, bookingType).catch(() => {});
+      await Promise.race([
+        registerCallIntent(bookingId, bookingType),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ]).catch(() => {});
     }
     window.location.href = `tel:${hospitalVirtualNumber}`;
   };

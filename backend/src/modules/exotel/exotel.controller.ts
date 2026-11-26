@@ -159,19 +159,25 @@ export async function getBookingCallsHandler(req: Request, res: Response) {
   }
 }
 
+function extractWebhookToken(req: Request): string | undefined {
+  const authHeader = req.headers['authorization'] as string;
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : undefined;
+  return (
+    (req.headers['x-exotel-token'] as string) ||
+    bearerToken ||
+    (req.query.token as string) ||
+    (req.body?.token as string)
+  );
+}
+
 /**
  * Exotel Webhook Handler for call status updates (StatusCallback & Passthru).
  * Performs token authentication and idempotent status updates.
  */
 export async function webhookHandler(req: Request, res: Response) {
   try {
-    const authHeader = req.headers['authorization'] as string;
-    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : undefined;
-    const token =
-      (req.headers['x-exotel-token'] as string) ||
-      bearerToken ||
-      (req.query.token as string);
-    const payload = req.body || {};
+    const token = extractWebhookToken(req);
+    const payload = { ...(req.query || {}), ...(req.body || {}) };
 
     const outcome = await callService.handleWebhook(payload, token);
     return res.status(outcome.status).json({ message: outcome.message });
@@ -214,112 +220,83 @@ export async function getConfigStatusHandler(_req: Request, res: Response) {
 
 /**
  * CCM Primary URL Handler (GET/POST /api/v1/exotel/connect)
- * Accepts Exotel requests, correlates call session, resolves destination,
+ * Accepts Exotel Dynamic Connect Applet requests, correlates call session, resolves destination,
  * and responds within 5 seconds (<100ms actual).
  *
- * NOTE FOR EXOTEL FLOW BUILDER CONNECT APPLET:
- * By default, Exotel's Connect Applet strictly expects Content-Type: text/plain
- * with ONLY the destination phone number in E.164 format (e.g. +919876543210).
- * If the client specifies Accept: application/json or ?format=json, it returns full JSON.
+ * Exotel Programmable Connect (Dynamic URL) strictly requires HTTP 200 with
+ * Content-Type: application/json and { destination: { numbers: ["+91..."] }, ... }.
+ * Pass ?format=text only for manual plain-text debugging.
  */
 export async function ccmConnectHandler(req: Request, res: Response) {
   try {
-    const authHeader = req.headers['authorization'] as string;
-    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : undefined;
-    const token =
-      (req.headers['x-exotel-token'] as string) ||
-      bearerToken ||
-      (req.query.token as string) ||
-      (req.body?.token as string);
-
+    const token = extractWebhookToken(req);
     const mergedParams = { ...(req.query || {}), ...(req.body || {}) };
     console.log('[Exotel Connect Request] Query/Body:', JSON.stringify(mergedParams));
 
     const outcome = await callService.handleCcmConnect(mergedParams, token);
 
-    // If client explicitly requested JSON (via Accept header or ?format=json)
-    const acceptsJson = req.headers['accept']?.includes('application/json') || req.query.format === 'json';
-
-    if (acceptsJson) {
-      return res.status(outcome.httpStatus).type('application/json').json(outcome.payload);
-    }
-
-    // Default for Exotel Flow Builder Connect Applet:
-    // Exotel requires Content-Type: text/plain with ONLY the destination phone number (e.g. +919876543210)
-    if (outcome.httpStatus === 200 && outcome.destinationPhone) {
-      console.log(`[Exotel Connect Success] Returning text/plain destination: ${outcome.destinationPhone}`);
-      return res.status(200).type('text/plain').send(outcome.destinationPhone);
-    }
-
-    if (outcome.httpStatus !== 200) {
+    if (req.query.format === 'text') {
+      if (outcome.httpStatus === 200 && outcome.destinationPhone) {
+        return res.status(200).type('text/plain').send(outcome.destinationPhone);
+      }
       const errorMsg = (outcome.payload as any)?.error || 'Unable to resolve destination';
-      console.warn(`[Exotel Connect Failed] Status: ${outcome.httpStatus}, Error: ${errorMsg}`);
       return res.status(outcome.httpStatus).type('text/plain').send(errorMsg);
     }
 
-    return res.status(200).type('text/plain').send(outcome.destinationPhone || '');
+    if (outcome.httpStatus === 200) {
+      console.log(`[Exotel Connect Success] Returning JSON destination: ${outcome.destinationPhone}`);
+    } else {
+      console.warn(`[Exotel Connect Failed] Status: ${outcome.httpStatus}, Error: ${(outcome.payload as any)?.error}`);
+    }
+
+    return res.status(outcome.httpStatus).type('application/json').json(outcome.payload);
   } catch (err: any) {
     console.error('[Exotel CCM Connect Error]:', err.message);
-    return res.status(500).type('text/plain').send('');
+    return res.status(500).type('application/json').json({ error: 'Internal server error' });
   }
 }
 
 /**
  * CCM Fallback URL Handler (GET/POST /api/v1/exotel/fallback)
- * Accepts Exotel failover requests, logs failover, and returns safe verified destination.
+ * Accepts Exotel failover requests, logs failover, and returns safe verified destination JSON.
  */
 export async function ccmFallbackHandler(req: Request, res: Response) {
   try {
-    const authHeader = req.headers['authorization'] as string;
-    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : undefined;
-    const token =
-      (req.headers['x-exotel-token'] as string) ||
-      bearerToken ||
-      (req.query.token as string) ||
-      (req.body?.token as string);
-
+    const token = extractWebhookToken(req);
     const mergedParams = { ...(req.query || {}), ...(req.body || {}) };
     console.log('[Exotel Fallback Request] Query/Body:', JSON.stringify(mergedParams));
 
     const outcome = await callService.handleCcmFallback(mergedParams, token);
 
-    const acceptsJson = req.headers['accept']?.includes('application/json') || req.query.format === 'json';
-
-    if (acceptsJson) {
-      return res.status(outcome.httpStatus).type('application/json').json(outcome.payload);
-    }
-
-    if (outcome.httpStatus === 200 && outcome.destinationPhone) {
-      console.log(`[Exotel Fallback Success] Returning text/plain destination: ${outcome.destinationPhone}`);
-      return res.status(200).type('text/plain').send(outcome.destinationPhone);
-    }
-
-    if (outcome.httpStatus !== 200) {
+    if (req.query.format === 'text') {
+      if (outcome.httpStatus === 200 && outcome.destinationPhone) {
+        return res.status(200).type('text/plain').send(outcome.destinationPhone);
+      }
       const errorMsg = (outcome.payload as any)?.error || 'Unable to resolve destination';
-      console.warn(`[Exotel Fallback Failed] Status: ${outcome.httpStatus}, Error: ${errorMsg}`);
       return res.status(outcome.httpStatus).type('text/plain').send(errorMsg);
     }
 
-    return res.status(200).type('text/plain').send(outcome.destinationPhone || '');
+    if (outcome.httpStatus === 200) {
+      console.log(`[Exotel Fallback Success] Returning JSON destination: ${outcome.destinationPhone}`);
+    } else {
+      console.warn(`[Exotel Fallback Failed] Status: ${outcome.httpStatus}, Error: ${(outcome.payload as any)?.error}`);
+    }
+
+    return res.status(outcome.httpStatus).type('application/json').json(outcome.payload);
   } catch (err: any) {
     console.error('[Exotel CCM Fallback Error]:', err.message);
-    return res.status(500).type('text/plain').send('');
+    return res.status(500).type('application/json').json({ error: 'Internal server error' });
   }
 }
 
 /**
- * CCM Call Events Webhook Handler (POST /api/v1/exotel/events)
- * Handles dial, ringing, answered, completed, terminal events with idempotency.
+ * CCM Call Events Webhook Handler (GET/POST /api/v1/exotel/events)
+ * Handles dial_passthru_event_url (GET query params) and StatusCallback (POST body) with idempotency.
  */
 export async function ccmEventsHandler(req: Request, res: Response) {
   try {
-    const authHeader = req.headers['authorization'] as string;
-    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : undefined;
-    const token =
-      (req.headers['x-exotel-token'] as string) ||
-      bearerToken ||
-      (req.query.token as string);
-    const payload = req.body || {};
+    const token = extractWebhookToken(req);
+    const payload = { ...(req.query || {}), ...(req.body || {}) };
 
     const outcome = await callService.handleCcmEvents(payload, token);
     return res.status(outcome.status).json({ message: outcome.message });

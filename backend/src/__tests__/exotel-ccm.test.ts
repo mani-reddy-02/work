@@ -173,27 +173,30 @@ async function runExotelCcmTests() {
     assert.strictEqual(connectResult.httpStatus, 200, 'CCM Connect must respond with HTTP 200 OK');
     const payload = connectResult.payload as any;
 
-    // Verify mandatory CCM fields
-    assert(Array.isArray(payload.destination), 'CCM payload must contain destination array');
-    assert.strictEqual(payload.destination.length, 1);
+    // Verify mandatory Dynamic URL Connect fields (Exotel doc 3000096873)
+    assert(
+      payload.destination && Array.isArray(payload.destination.numbers),
+      'CCM payload must contain destination.numbers array'
+    );
+    assert.strictEqual(payload.destination.numbers.length, 1);
     assert.strictEqual(
-      payload.destination[0].contact_uri,
+      payload.destination.numbers[0],
       testDestinationRaw,
       'Destination must match the decrypted hospital phone in E.164'
     );
-    assert.strictEqual(payload.state_management, true);
-    assert.strictEqual(payload.outgoing_phone_number, '08047290980');
-    assert.strictEqual(payload.recording?.record, false);
+    assert.strictEqual(payload.fetch_after_attempt, false);
+    assert.strictEqual(payload.outgoing_phone_number, '+918047290980');
+    assert.strictEqual(payload.record, false);
     assert.strictEqual(payload.max_ringing_duration, 30);
     assert.strictEqual(payload.max_conversation_duration, 900);
     assert(
-      typeof payload.call_event_passthru_url === 'string' &&
-        payload.call_event_passthru_url.includes('/api/v1/exotel/events?token='),
-      'CCM Connect payload must include valid call_event_passthru_url'
+      typeof payload.dial_passthru_event_url === 'string' &&
+        payload.dial_passthru_event_url.includes('/api/v1/exotel/events?token='),
+      'CCM Connect payload must include valid dial_passthru_event_url'
     );
     const safePayloadToLog = {
       ...payload,
-      call_event_passthru_url: payload.call_event_passthru_url?.replace(/token=[^&]+/g, 'token=[REDACTED]'),
+      dial_passthru_event_url: payload.dial_passthru_event_url?.replace(/token=[^&]+/g, 'token=[REDACTED]'),
     };
     console.log('  -> CCM Primary URL response successfully validated:');
     console.log('     ', JSON.stringify(safePayloadToLog));
@@ -251,11 +254,11 @@ async function runExotelCcmTests() {
 
       assert.strictEqual(fallbackResult.httpStatus, 200, 'Fallback must respond with HTTP 200 OK');
       const fallbackPayload = fallbackResult.payload as any;
-      assert.strictEqual(fallbackPayload.destination[0].contact_uri, testDestinationRaw);
+      assert.strictEqual(fallbackPayload.destination.numbers[0], testDestinationRaw);
       assert(
-        typeof fallbackPayload.call_event_passthru_url === 'string' &&
-          fallbackPayload.call_event_passthru_url.includes('/api/v1/exotel/events?token='),
-        'Fallback payload must include valid call_event_passthru_url'
+        typeof fallbackPayload.dial_passthru_event_url === 'string' &&
+          fallbackPayload.dial_passthru_event_url.includes('/api/v1/exotel/events?token='),
+        'Fallback payload must include valid dial_passthru_event_url'
       );
 
       // Verify metadata logged the fallback

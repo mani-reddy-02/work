@@ -92,32 +92,26 @@ export interface ExotelCallParams {
 }
 
 /**
- * Exotel CCM Programmable Connect Destination Item
- */
-export interface ExotelCcmDestinationItem {
-  contact_uri: string;
-}
-
-/**
- * Exotel CCM Programmable Connect Response Payload
- * Returned by Primary URL and Fallback URL
+ * Exotel Programmable Connect (Dynamic URL) Response Payload
+ * Spec: https://support.exotel.com/support/solutions/articles/3000096873-working-with-connect-applet-dynamic-url-
+ * Must be returned with HTTP 200 OK and Content-Type: application/json
  */
 export interface ExotelCcmConnectResponse {
-  destination: ExotelCcmDestinationItem[];
-  state_management?: boolean;
-  outgoing_phone_number: string;
-  recording?: {
-    record: boolean;
-    channels?: 'single' | 'dual';
+  fetch_after_attempt?: boolean;
+  destination: {
+    numbers: string[];
   };
+  outgoing_phone_number?: string;
+  record?: boolean;
+  recording_channels?: 'single' | 'dual';
   max_ringing_duration?: number;
   max_conversation_duration?: number;
-  call_event_passthru_url?: string;
+  dial_passthru_event_url?: string;
   [key: string]: unknown;
 }
 
 /**
- * Exotel CCM Request Query Parameters (GET /connect, GET /fallback)
+ * Exotel Connect Applet (Dynamic URL) Request Query Parameters (GET /connect, GET /fallback)
  */
 export interface ExotelCcmQueryParams {
   CallSid?: string;
@@ -126,7 +120,9 @@ export interface ExotelCcmQueryParams {
   CallFrom?: string;
   To?: string;
   CallTo?: string;
+  DialWhomNumber?: string;
   CustomField?: string;
+  flow_id?: string;
   token?: string;
   [key: string]: unknown;
 }
@@ -158,12 +154,14 @@ export interface ExotelWebhookPayload {
   Sid?: string;
   Status?: string;
   EventType?: string;
+  DialCallStatus?: string;
   From?: string;
   To?: string;
   PhoneNumberSid?: string;
   StartTime?: string;
   EndTime?: string;
   ConversationDuration?: string | number;
+  DialCallDuration?: string | number;
   Duration?: string | number;
   RecordingUrl?: string;
   Price?: string;

@@ -78,8 +78,11 @@ const BookingDetails = () => {
       return;
     }
 
-    // Register call intent in background (failsafe, non-blocking)
-    registerCallIntent(bookingId, bookingType).catch(() => {});
+    // Ensure call intent is registered before launching the phone dialer (bounded timeout)
+    await Promise.race([
+      registerCallIntent(bookingId, bookingType),
+      new Promise((resolve) => setTimeout(resolve, 1500)),
+    ]).catch(() => {});
 
     // Open phone dialer directly with virtual number 08047290980
     setToastMessage({ message: 'Opening dialer to 080-472-90980 (Masked Line)...', type: 'success' });
