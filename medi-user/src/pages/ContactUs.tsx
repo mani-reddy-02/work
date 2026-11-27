@@ -35,7 +35,7 @@ export default function ContactUs() {
     setSubmitted(true);
   };
 
-  const mailtoHref = `mailto:support@mediquee.in?subject=${encodeURIComponent(
+  const mailtoHref = `mailto:mediqueetech@gmail.com?subject=${encodeURIComponent(
     `[MediQuee Support] ${topic}${bookingRef ? ` (${bookingRef})` : ''}`
   )}&body=${encodeURIComponent(
     `Name: ${name || '-'}\nPhone/Email: ${contact || '-'}\nBooking Reference: ${bookingRef || 'N/A'}\n\nMessage:\n${message || ''}`
@@ -45,7 +45,7 @@ export default function ContactUs() {
     <div className="bg-slate-50 text-slate-800">
       <SEOHead
         title="Contact Us"
-        description="Contact MediQuee Healthcare Solutions for booking help, payment support, or refund inquiries at support@mediquee.in or +91-9014535199."
+        description="Contact MediQuee Healthcare Solutions for booking help, payment support, or refund inquiries at mediqueetech@gmail.com or +91-9014535199."
         canonicalUrl="https://mediquee.in/contact"
       />
 
@@ -99,7 +99,7 @@ export default function ContactUs() {
               </div>
 
               <a
-                href="mailto:support@mediquee.in"
+                href="mailto:mediqueetech@gmail.com"
                 className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100 hover:border-blue-300 transition-colors flex items-start gap-3 block"
               >
                 <Mail className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
@@ -107,7 +107,7 @@ export default function ContactUs() {
                   <h2 className="text-xs font-bold uppercase tracking-wider text-blue-700">
                     Customer Support Email
                   </h2>
-                  <p className="text-sm font-bold text-slate-900 mt-0.5">support@mediquee.in</p>
+                  <p className="text-sm font-bold text-slate-900 mt-0.5">mediqueetech@gmail.com</p>
                   <p className="text-xs text-slate-500 mt-0.5">Response within 24 hours</p>
                 </div>
               </a>
@@ -175,7 +175,7 @@ export default function ContactUs() {
                       Inquiry Prepared for MediQuee Support
                     </h3>
                     <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                      Thank you, <strong>{name}</strong>. For fastest tracking, click below to send this directly via your email app to <strong>support@mediquee.in</strong>, or call <strong>+91-9014535199</strong>.
+                      Thank you, <strong>{name}</strong>. For fastest tracking, click below to send this directly via your email app to <strong>mediqueetech@gmail.com</strong>, or call <strong>+91-9014535199</strong>.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
                       <a
@@ -219,7 +219,7 @@ export default function ContactUs() {
                           type="text"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          placeholder="e.g., Srinivas Reddy"
+                          placeholder="Username"
                           className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         />
                       </div>
@@ -232,7 +232,7 @@ export default function ContactUs() {
                           type="text"
                           value={contact}
                           onChange={(e) => setContact(e.target.value)}
-                          placeholder="e.g., +91 9014535199"
+                          placeholder="9876543210 or user@example.com"
                           className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         />
                       </div>
@@ -298,7 +298,7 @@ export default function ContactUs() {
                         className="w-full sm:w-auto px-5 py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs inline-flex items-center justify-center gap-2 transition-colors"
                       >
                         <Mail className="w-4 h-4 text-blue-600" />
-                        <span>Email support@mediquee.in Directly</span>
+                        <span>Email mediqueetech@gmail.com Directly</span>
                       </a>
                     </div>
                   </form>

@@ -402,85 +402,66 @@ const Home = () => {
 
 
   const medicalOrgSchema = {
-
     "@context": "https://schema.org",
-
-    "@type": "MedicalOrganization",
-
-    "name": "MediQuee",
-
-    "url": "https://mediquee.in",
-
-    "logo": "https://mediquee.in/logo.png",
-
-    "description": "Comprehensive digital healthcare platform offering in-person hospital OP appointments, verified telemedicine video consultations, home nursing, and diagnostic lab tests.",
-
-    "telephone": "+91-9014535199",
-
-    "email": "support@mediquee.in",
-
-    "address": {
-
-      "@type": "PostalAddress",
-
-      "addressRegion": "Andhra Pradesh / Telangana",
-
-      "addressCountry": "IN"
-
-    },
-
-    "areaServed": {
-
-      "@type": "Country",
-
-      "name": "India"
-
-    },
-
-    "availableService": [
-
+    "@graph": [
       {
-
-        "@type": "MedicalTherapy",
-
-        "name": "Hospital Outpatient (OP) Consultations",
-
-        "description": "In-person appointment booking across certified partner hospitals."
-
+        "@type": "WebSite",
+        "@id": "https://mediquee.in/#website",
+        "name": "MediQuee",
+        "alternateName": ["MediQuee Healthcare", "mediquee.in"],
+        "url": "https://mediquee.in/"
       },
-
       {
-
-        "@type": "MedicalTherapy",
-
-        "name": "Telemedicine Video Consultations",
-
-        "description": "Remote consultations with verified doctors."
-
-      },
-
-      {
-
-        "@type": "MedicalTest",
-
-        "name": "Diagnostic Pathology & Home Sample Collection",
-
-        "description": "Routine blood, urine, and health checkup panels with doorstep phlebotomy."
-
-      },
-
-      {
-
-        "@type": "MedicalTherapy",
-
-        "name": "Home Nursing Care",
-
-        "description": "Post-discharge clinical nursing and elderly attendant services."
-
+        "@type": "MedicalOrganization",
+        "@id": "https://mediquee.in/#organization",
+        "name": "MediQuee",
+        "url": "https://mediquee.in/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://mediquee.in/favicon.png",
+          "width": 192,
+          "height": 192
+        },
+        "image": "https://mediquee.in/og-image.jpg",
+        "sameAs": [
+          "https://www.instagram.com/medi.quee/"
+        ],
+        "description": "MediQuee (mediquee.in) is a digital healthcare platform in India for in-person hospital outpatient (OP) appointments, verified telemedicine video consultations, home nursing care, and diagnostic lab tests.",
+        "telephone": "+91-9014535199",
+        "email": "mediqueetech@gmail.com",
+        "address": {
+          "@type": "PostalAddress",
+          "addressRegion": "Andhra Pradesh & Telangana",
+          "addressCountry": "IN"
+        },
+        "areaServed": {
+          "@type": "Country",
+          "name": "India"
+        },
+        "availableService": [
+          {
+            "@type": "MedicalTherapy",
+            "name": "Hospital Outpatient (OP) Consultations",
+            "description": "In-person appointment booking across certified partner hospitals."
+          },
+          {
+            "@type": "MedicalTherapy",
+            "name": "Telemedicine Video Consultations",
+            "description": "Remote consultations with verified doctors."
+          },
+          {
+            "@type": "MedicalTest",
+            "name": "Diagnostic Pathology & Home Sample Collection",
+            "description": "Routine blood, urine, and health checkup panels with doorstep phlebotomy."
+          },
+          {
+            "@type": "MedicalTherapy",
+            "name": "Home Nursing Care",
+            "description": "Post-discharge clinical nursing and elderly attendant services."
+          }
+        ]
       }
-
     ]
-
   };
 
 
@@ -516,15 +497,10 @@ const Home = () => {
     <>
 
       <SEOHead
-
-        title="Healthcare at Your Doorstep | Online Doctor Consultation & OP Booking"
-
-        description="Book verified hospital outpatient (OP) appointments, video consultations with certified specialists, home nursing, and diagnostic lab tests with MediQuee."
-
+        title="MediQuee — Healthcare at Your Doorstep | Online Doctor Consultation & Hospital OP Booking"
+        description="MediQuee (mediquee.in) is an Indian digital healthcare platform to book hospital outpatient (OP) appointments, online video consultations with verified doctors, diagnostic lab tests, and home nursing care across Andhra Pradesh & Telangana."
         canonicalUrl="https://mediquee.in/"
-
         jsonLd={[medicalOrgSchema, faqSchema]}
-
       />
 
       <div 

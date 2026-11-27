@@ -153,7 +153,7 @@ export default function RefundPolicy() {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
               <a
-                href="mailto:support@mediquee.in?subject=Refund%20%2F%20Cancellation%20Request"
+                href="mailto:mediqueetech@gmail.com?subject=Refund%20%2F%20Cancellation%20Request"
                 className="flex items-center gap-3 p-4 rounded-2xl bg-blue-50/70 border border-blue-100 hover:border-blue-300 transition-colors"
               >
                 <Mail className="w-5 h-5 text-blue-600 shrink-0" />
@@ -161,7 +161,7 @@ export default function RefundPolicy() {
                   <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 block">
                     Email Billing &amp; Refund Desk
                   </span>
-                  <span className="text-sm font-bold text-slate-900">support@mediquee.in</span>
+                  <span className="text-sm font-bold text-slate-900">mediqueetech@gmail.com</span>
                 </div>
               </a>
               <a
@@ -185,7 +185,7 @@ export default function RefundPolicy() {
             <div className="text-xs sm:text-sm text-amber-950 space-y-1">
               <h3 className="font-bold">Failed or Duplicate Payment Deductions</h3>
               <p className="text-amber-900/90 leading-relaxed">
-                If money was debited from your bank/UPI account for a failed or duplicate booking, it is automatically reversed by Razorpay and your bank within <strong>5–7 business days</strong>. If not credited after 7 business days, email <a href="mailto:support@mediquee.in" className="font-bold underline">support@mediquee.in</a> with your transaction screenshot for immediate reconciliation.
+                If money was debited from your bank/UPI account for a failed or duplicate booking, it is automatically reversed by Razorpay and your bank within <strong>5–7 business days</strong>. If not credited after 7 business days, email <a href="mailto:mediqueetech@gmail.com" className="font-bold underline">mediqueetech@gmail.com</a> with your transaction screenshot for immediate reconciliation.
               </p>
             </div>
           </section>

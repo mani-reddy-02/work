@@ -14,6 +14,8 @@ const envSchema = z.object({
   WHATSAPP_BUSINESS_ACCOUNT_ID: z.string().optional(),
   WHATSAPP_API_VERSION: z.string().default('v21.0'),
   WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().default('mediquee_wa_verify_token_secure'),
+  WHATSAPP_APP_SECRET: z.string().optional(),
+  SUPABASE_URL: z.string().optional(),
   META_WA_PHONE_NUMBER_ID: z.string().optional(),
   META_WA_ACCESS_TOKEN: z.string().optional(),
   META_WA_TEMPLATE_NAME: z.string().optional(),
@@ -54,3 +56,10 @@ if (!_env.success) {
 }
 
 export const env = _env.data;
+
+// Production fail-closed secret strength enforcement (OWASP A02/A04)
+if (env.NODE_ENV === 'production') {
+  if (!env.JWT_SECRET || env.JWT_SECRET.trim().length < 32 || env.JWT_SECRET === 'local_dev_secret_key') {
+    throw new Error('[SECURITY CRITICAL] JWT_SECRET must be a strong, unique secret (at least 32 characters) in production.');
+  }
+}

@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/prisma';
-import { Prisma } from '@prisma/client';
-import { Role } from '@prisma/client';
+import { Prisma, Role, BookingStatus } from '@prisma/client';
 import { sendNotification } from '../notifications/notifications.service';
 import { checkAndExpireDoctorOverrides } from '../doctors/doctor-override.service';
 
@@ -280,9 +279,9 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       const hospitalConfig = await tx.hospital.findUnique({ where: { id: hospitalId }, select: { hospitalShare: true } });
       const hospitalSharePct = hospitalConfig?.hospitalShare ?? 80.0;
       const mediqueeCommissionPct = 100.0 - hospitalSharePct;
-      const rawDoctorFee = doctor.consultationFee !== null && doctor.consultationFee !== undefined 
-        ? Number(doctor.consultationFee) 
-        : (fee !== undefined && fee !== null ? Number(fee) : 500);
+      const rawDoctorFee = doctor.consultationFee !== null && doctor.consultationFee !== undefined
+        ? Number(doctor.consultationFee)
+        : 500;
       const feeAmount = !isNaN(rawDoctorFee) && rawDoctorFee >= 0 ? rawDoctorFee : 500;
       const hospitalAmt = feeAmount * (hospitalSharePct / 100);
       const mediqueeAmt = feeAmount * (mediqueeCommissionPct / 100);
@@ -885,7 +884,15 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
     }
 
     const updateData: any = {};
-    if (normalizedStatus) updateData.status = normalizedStatus;
+    if (normalizedStatus) {
+      if (!Object.values(BookingStatus).includes(normalizedStatus as BookingStatus)) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_STATUS', message: 'Invalid appointment status' }
+        });
+      }
+      updateData.status = normalizedStatus;
+    }
     if (reason !== undefined) updateData.reason = reason;
     else if (notes !== undefined) updateData.reason = notes;
 

@@ -2262,7 +2262,7 @@ const DepartmentBooking: React.FC = () => {
 
                 onChange={(e) => setPatientName(e.target.value)}
 
-                placeholder="e.g. Ramesh Kumar"
+                placeholder="Username"
 
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
 
@@ -2290,7 +2290,7 @@ const DepartmentBooking: React.FC = () => {
 
                 onChange={(e) => setPatientPhone(e.target.value)}
 
-                placeholder="e.g. 9876543210"
+                placeholder="9876543210"
 
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
 

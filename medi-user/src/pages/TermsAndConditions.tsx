@@ -135,7 +135,7 @@ export default function TermsAndConditions() {
                 7. Contact Information
               </h2>
               <p>
-                If you have questions regarding these Terms and Conditions, billing, or support, please contact us at <a href="mailto:support@mediquee.in" className="text-blue-600 hover:underline font-semibold">support@mediquee.in</a>, call <a href="tel:+919014535199" className="text-blue-600 hover:underline font-semibold">+91-9014535199</a>, or visit our <Link to="/contact" className="text-blue-600 hover:underline font-medium">Contact Us</Link> page.
+                If you have questions regarding these Terms and Conditions, billing, or support, please contact us at <a href="mailto:mediqueetech@gmail.com" className="text-blue-600 hover:underline font-semibold">mediqueetech@gmail.com</a>, call <a href="tel:+919014535199" className="text-blue-600 hover:underline font-semibold">+91-9014535199</a>, or visit our <Link to="/contact" className="text-blue-600 hover:underline font-medium">Contact Us</Link> page.
               </p>
             </section>
           </div>

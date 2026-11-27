@@ -14,7 +14,41 @@ const MIME_MAP: Record<string, string> = {
   '.txt': 'text/plain; charset=utf-8',
 };
 
+const ALLOWED_BUCKETS = new Set<StorageBucket>(['reports', 'licenses', 'attachments', 'avatars']);
+const SAFE_FILENAME_PATTERN = /^[a-zA-Z0-9._ -]+$/;
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function isTrustedRedirectUrl(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+
+    if (SUPABASE_URL) {
+      try {
+        const supabaseOrigin = new URL(SUPABASE_URL).origin;
+        if (parsed.origin === supabaseOrigin) return true;
+      } catch {
+        // Ignore malformed SUPABASE_URL
+      }
+    }
+
+    return /^([a-z0-9-]+\.)?mediquee\.in$/i.test(parsed.hostname) && parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 function generateFallbackSvg(title: string, subtitle: string): string {
+  const safeTitle = escapeHtml(title);
+  const safeSubtitle = escapeHtml(subtitle);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
     <rect width="100%" height="100%" fill="#f8fafc"/>
     <rect x="40" y="40" width="720" height="520" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
@@ -22,10 +56,10 @@ function generateFallbackSvg(title: string, subtitle: string): string {
     <path d="M380 200 H420 M400 180 V220" stroke="#0055ff" stroke-width="6" stroke-linecap="round"/>
     <rect x="382" y="228" width="36" height="24" rx="4" fill="#0055ff"/>
     <text x="400" y="320" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="bold" fill="#0f172a" text-anchor="middle">
-      ${title}
+      ${safeTitle}
     </text>
     <text x="400" y="355" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" fill="#64748b" text-anchor="middle">
-      ${subtitle}
+      ${safeSubtitle}
     </text>
     <rect x="290" y="400" width="220" height="42" rx="10" fill="#0055ff"/>
     <text x="400" y="426" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="600" fill="#ffffff" text-anchor="middle">
@@ -38,12 +72,14 @@ function generateFallbackSvg(title: string, subtitle: string): string {
 }
 
 function generateFallbackHtml(title: string, subtitle: string): string {
+  const safeTitle = escapeHtml(title);
+  const safeSubtitle = escapeHtml(subtitle);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} - MediQuee Digital Records</title>
+  <title>${safeTitle} - MediQuee Digital Records</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -123,8 +159,8 @@ function generateFallbackHtml(title: string, subtitle: string): string {
 <body>
   <div class="card">
     <div class="badge">Official MediQuee Record</div>
-    <h1>${title}</h1>
-    <p>${subtitle}</p>
+    <h1>${escapeHtml(title)}</h1>
+    <p>${escapeHtml(subtitle)}</p>
     <div class="status-box">
       <div class="status-row">
         <span class="status-label">Network Verification</span>
@@ -148,29 +184,42 @@ function generateFallbackHtml(title: string, subtitle: string): string {
 export const viewFileHandler = (bucket: StorageBucket) => {
   return async (req: Request, res: Response) => {
     try {
+      if (!ALLOWED_BUCKETS.has(bucket)) {
+        return res.status(400).send('Invalid bucket');
+      }
+
       const rawParam = req.params.filename;
-      const fileName = path.basename(Array.isArray(rawParam) ? rawParam[0] : (rawParam || ''));
-      if (!fileName) {
-        return res.status(400).send('File name required');
+      const rawFileName = Array.isArray(rawParam) ? rawParam[0] : (rawParam || '');
+      const fileName = path.basename(rawFileName);
+      if (
+        !fileName ||
+        fileName === '.' ||
+        fileName === '..' ||
+        fileName.includes('..') ||
+        !SAFE_FILENAME_PATTERN.test(fileName)
+      ) {
+        return res.status(400).send('Invalid file name');
       }
 
       const ext = path.extname(fileName).toLowerCase();
       const mimeType = MIME_MAP[ext] || 'application/octet-stream';
       const localFilePath = path.join(process.cwd(), 'uploads', bucket, fileName);
+      const safeHeaderFileName = fileName.replace(/["\r\n]/g, '');
 
       // Check if file exists locally
       if (fs.existsSync(localFilePath)) {
-        res.setHeader('Content-Type', mimeType);
-        res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
-        res.setHeader('Access-Control-Allow-Origin', '*');
+        // Prevent active HTML/SVG script execution if untrusted content uploaded
+        const safeMimeType = (ext === '.html' || ext === '.svg') ? 'text/plain; charset=utf-8' : mimeType;
+        res.setHeader('Content-Type', safeMimeType);
+        res.setHeader('Content-Disposition', `inline; filename="${safeHeaderFileName}"`);
         res.setHeader('X-Content-Type-Options', 'nosniff');
         return fs.createReadStream(localFilePath).pipe(res);
       }
 
       // Check if file exists in Supabase Storage directly via fetch
-      const supabasePublicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${fileName}`;
+      const supabasePublicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${encodeURIComponent(fileName)}`;
       try {
-        const headRes = await fetch(supabasePublicUrl, { method: 'HEAD' });
+        const headRes = await fetch(supabasePublicUrl, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
         if (headRes.ok) {
           return res.redirect(302, supabasePublicUrl);
         }
@@ -179,8 +228,8 @@ export const viewFileHandler = (bucket: StorageBucket) => {
       }
 
       // Fallback if file was an older mock or not on local disk
-      res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline';");
 
       if (ext === '.png' || ext === '.jpg' || ext === '.jpeg') {
         res.setHeader('Content-Type', 'image/svg+xml');
@@ -203,15 +252,18 @@ export const universalFileProxy = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'URL query parameter required' });
     }
 
-    // If it's a Supabase URL, redirect directly
+    // Only allow redirects to trusted MediQuee / Supabase storage origins (prevent Open Redirect & SSRF)
     if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+      if (!isTrustedRedirectUrl(rawUrl)) {
+        return res.status(403).json({ success: false, message: 'Forbidden: Untrusted external file URL' });
+      }
       return res.redirect(302, rawUrl);
     }
 
     // Relative URL like /uploads/reports/abc.pdf
     const cleanPath = rawUrl.replace(/^\/+/, '');
     const parts = cleanPath.split('/');
-    if (parts[0] === 'uploads' && parts.length >= 3) {
+    if (parts[0] === 'uploads' && parts.length >= 3 && ALLOWED_BUCKETS.has(parts[1] as StorageBucket)) {
       const bucket = parts[1] as StorageBucket;
       const fileName = parts.slice(2).join('/');
       req.params.filename = fileName;

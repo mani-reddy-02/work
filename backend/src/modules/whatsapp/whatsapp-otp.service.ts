@@ -15,6 +15,13 @@ export class WhatsAppOtpService {
     return crypto.createHash('sha256').update(code.trim()).digest('hex');
   }
 
+  private static safeHashEquals(a?: string | null, b?: string | null): boolean {
+    if (!a || !b) return false;
+    const bufA = Buffer.from(a, 'utf8');
+    const bufB = Buffer.from(b, 'utf8');
+    return bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB);
+  }
+
   /**
    * Requests and sends a secure WhatsApp OTP to the user's phone
    */
@@ -246,7 +253,9 @@ export class WhatsAppOtpService {
       });
 
       if (verifiedRecord) {
-        const isMatch = verifiedRecord.codeHash ? verifiedRecord.codeHash === inputHash : verifiedRecord.code === trimmedCode;
+        const isMatch = verifiedRecord.codeHash
+          ? this.safeHashEquals(verifiedRecord.codeHash, inputHash)
+          : this.safeHashEquals(verifiedRecord.code, trimmedCode);
         if (isMatch) {
           return { valid: true, message: 'OTP verified successfully' };
         }
@@ -276,7 +285,9 @@ export class WhatsAppOtpService {
     }
 
     // Verify hash match (fallback to plain code match if migrating legacy record)
-    const isMatch = record.codeHash ? record.codeHash === inputHash : record.code === trimmedCode;
+    const isMatch = record.codeHash
+      ? this.safeHashEquals(record.codeHash, inputHash)
+      : this.safeHashEquals(record.code, trimmedCode);
 
     if (!isMatch) {
       const nextAttempts = record.attempts + 1;

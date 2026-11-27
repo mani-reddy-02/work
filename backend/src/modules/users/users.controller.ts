@@ -170,12 +170,14 @@ export const updateMe = async (req: Request, res: Response, next: NextFunction) 
     // Check if phone number is being changed; if so, require verified WhatsApp OTP
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { phone: true },
+      select: { phone: true, role: true },
     });
 
     if (!currentUser) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
+
+    const canEditClinicalFields = ['DOCTOR', 'NURSE', 'HOSPITAL_ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
 
     if (phone && phone !== currentUser.phone) {
       const { otp } = req.body;
@@ -239,15 +241,15 @@ export const updateMe = async (req: Request, res: Response, next: NextFunction) 
         ...(avatar !== undefined && { avatar }),
         ...(designation !== undefined && { designation }),
         ...(address !== undefined && { address }),
-        ...(licenseNumber !== undefined && { licenseNumber }),
-        ...(licenseDocumentUrl !== undefined && { licenseDocumentUrl }),
-        ...(qualification !== undefined && { qualification }),
-        ...(specialization !== undefined && { specialization }),
-        ...(experienceYears !== undefined && { experienceYears: experienceYears === null ? null : Number(experienceYears) }),
-        ...(consultationFee !== undefined && { consultationFee: consultationFee === null ? null : Number(consultationFee) }),
+        ...(canEditClinicalFields && licenseNumber !== undefined && { licenseNumber }),
+        ...(canEditClinicalFields && licenseDocumentUrl !== undefined && { licenseDocumentUrl }),
+        ...(canEditClinicalFields && qualification !== undefined && { qualification }),
+        ...(canEditClinicalFields && specialization !== undefined && { specialization }),
+        ...(canEditClinicalFields && experienceYears !== undefined && { experienceYears: experienceYears === null ? null : Number(experienceYears) }),
+        ...(canEditClinicalFields && consultationFee !== undefined && { consultationFee: consultationFee === null ? null : Number(consultationFee) }),
         ...(bio !== undefined && { bio }),
-        ...(digitalSignature !== undefined && { digitalSignature }),
-        ...(prescriptionSettings !== undefined && { prescriptionSettings }),
+        ...(canEditClinicalFields && digitalSignature !== undefined && { digitalSignature }),
+        ...(canEditClinicalFields && prescriptionSettings !== undefined && { prescriptionSettings }),
       },
       select: {
         id: true,

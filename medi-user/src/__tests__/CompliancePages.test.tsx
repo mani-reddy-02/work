@@ -38,7 +38,7 @@ describe('Payment Gateway Compliance Pages & Footer', () => {
       expect(link).toHaveAttribute('href', item.href);
     }
 
-    expect(screen.getByText('support@mediquee.in')).toBeInTheDocument();
+    expect(screen.getByText('mediqueetech@gmail.com')).toBeInTheDocument();
     expect(screen.getByText('+91-9014535199')).toBeInTheDocument();
   });
 
@@ -50,13 +50,13 @@ describe('Payment Gateway Compliance Pages & Footer', () => {
     expect(screen.getByText(/Online Video Telemedicine Consultations/i)).toBeInTheDocument();
     expect(screen.getByText(/Diagnostic Lab Tests & Home Sample Collection/i)).toBeInTheDocument();
     expect(screen.getByText(/Home Nursing Care Packages/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/support@mediquee\.in/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/mediqueetech@gmail\.com/i).length).toBeGreaterThan(0);
   });
 
   test('ContactUs renders official details and validates/submits inquiry form', () => {
     render(<ContactUs />);
     expect(screen.getByRole('heading', { name: /Contact MediQuee/i })).toBeInTheDocument();
-    expect(screen.getByText('support@mediquee.in')).toBeInTheDocument();
+    expect(screen.getByText('mediqueetech@gmail.com')).toBeInTheDocument();
     expect(screen.getByText('+91-9014535199')).toBeInTheDocument();
     expect(screen.getByText(/Andhra Pradesh/i)).toBeInTheDocument();
 
@@ -65,8 +65,8 @@ describe('Payment Gateway Compliance Pages & Footer', () => {
     expect(screen.getByText(/Please fill in your name/i)).toBeInTheDocument();
 
     // Valid submit
-    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Srinu' } });
-    fireEvent.change(screen.getByLabelText(/Email or Mobile Number/i), { target: { value: '+91 9014535199' } });
+    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: 'Username' } });
+    fireEvent.change(screen.getByLabelText(/Email or Mobile Number/i), { target: { value: '9876543210' } });
     fireEvent.change(screen.getByLabelText(/Message/i), { target: { value: 'Need refund status check' } });
     fireEvent.click(screen.getByRole('button', { name: /Submit Inquiry/i }));
 
@@ -83,18 +83,18 @@ describe('Payment Gateway Compliance Pages & Footer', () => {
     expect(screen.getAllByText(/Indian Rupees \(INR/i).length).toBeGreaterThan(0);
   });
 
-  test('TermsAndConditions and PrivacyPolicy reference mediquee.in, support@mediquee.in, and Indian payment gateways', () => {
+  test('TermsAndConditions and PrivacyPolicy reference mediquee.in, mediqueetech@gmail.com, and Indian payment gateways', () => {
     const { unmount } = render(<TermsAndConditions />);
     expect(screen.getByRole('heading', { name: /Terms and Conditions/i })).toBeInTheDocument();
     expect(screen.getAllByText(/https:\/\/mediquee\.in/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/support@mediquee\.in/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/mediqueetech@gmail\.com/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/RBI-regulated, PCI-DSS Level 1/i)).toBeInTheDocument();
     unmount();
 
     render(<PrivacyPolicy />);
     expect(screen.getByRole('heading', { name: /MediQuee Privacy Policy & Data Charter/i })).toBeInTheDocument();
     expect(screen.getAllByText(/https:\/\/mediquee\.in/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/support@mediquee\.in/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/mediqueetech@gmail\.com/i).length).toBeGreaterThan(0);
   });
 
   test('All 5 compliance routes load publicly via App and clicking footer links navigates without redirecting to /login', async () => {

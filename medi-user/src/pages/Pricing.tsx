@@ -183,7 +183,7 @@ export default function Pricing() {
                 MediQuee does not fix or mark up hospital or clinician fees. Every consultation, diagnostic test, and home nursing fee is configured directly by the respective hospital, doctor, or laboratory and shown on their listing page and booking summary prior to payment.
               </p>
               <p>
-                All online payments on <a href="https://mediquee.in" className="text-blue-600 font-semibold hover:underline">https://mediquee.in</a> are collected in <strong>Indian Rupees (INR)</strong> through authorized, RBI-regulated PCI-DSS Level 1 payment gateways (Razorpay — supporting UPI, Credit/Debit Cards, NetBanking, and Wallets), with any applicable taxes displayed before checkout. For billing questions, contact <a href="mailto:support@mediquee.in" className="text-blue-600 font-semibold hover:underline">support@mediquee.in</a> or call <a href="tel:+919014535199" className="text-blue-600 font-semibold hover:underline">+91-9014535199</a>.
+                All online payments on <a href="https://mediquee.in" className="text-blue-600 font-semibold hover:underline">https://mediquee.in</a> are collected in <strong>Indian Rupees (INR)</strong> through authorized, RBI-regulated PCI-DSS Level 1 payment gateways (Razorpay — supporting UPI, Credit/Debit Cards, NetBanking, and Wallets), with any applicable taxes displayed before checkout. For billing questions, contact <a href="mailto:mediqueetech@gmail.com" className="text-blue-600 font-semibold hover:underline">mediqueetech@gmail.com</a> or call <a href="tel:+919014535199" className="text-blue-600 font-semibold hover:underline">+91-9014535199</a>.
               </p>
             </div>
           </div>

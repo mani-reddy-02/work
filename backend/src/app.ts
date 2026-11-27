@@ -10,39 +10,62 @@ import { viewFileHandler, universalFileProxy } from './modules/files/files.contr
 
 const app = express();
 
+// Trust the first reverse proxy hop (Nginx) so req.ip & rate limiters see real client IPs
+app.set('trust proxy', 1);
+
 // Security and middleware
+const isProd = env.NODE_ENV === 'production';
+
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  hsts: isProd ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
-const allowedOrigins = [
-  ...((env.CORS_ORIGIN || '').split(',').map(s => s.trim())),
+const productionOrigins = [
   'https://mediquee.in',
   'https://www.mediquee.in',
   'https://hospital.mediquee.in',
   'https://admin.mediquee.in',
   'https://api.mediquee.in',
+  'https://34.93.190.51',
+];
+
+const devOnlyOrigins = [
   'http://mediquee.in',
   'http://www.mediquee.in',
   'http://hospital.mediquee.in',
   'http://admin.mediquee.in',
   'http://34.93.190.51',
-  'https://34.93.190.51',
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:5174',
   'http://127.0.0.1:3000',
-].filter(Boolean) as string[];
+];
+
+const configuredOrigins = (env.CORS_ORIGIN || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(s => Boolean(s) && (!isProd || s.startsWith('https://')));
+
+const allowedOrigins = Array.from(new Set([
+  ...configuredOrigins,
+  ...productionOrigins,
+  ...(isProd ? [] : devOnlyOrigins),
+]));
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow non-browser requests (e.g. mobile apps, curl, server-to-server) where origin is undefined
     if (!origin) return callback(null, true);
+    const domainRegex = isProd
+      ? /^https:\/\/([a-z0-9-]+\.)?mediquee\.in$/
+      : /^https?:\/\/([a-z0-9-]+\.)?mediquee\.in$/;
     if (
       allowedOrigins.includes(origin) ||
-      /^https?:\/\/([a-z0-9-]+\.)?mediquee\.in$/.test(origin)
+      domainRegex.test(origin)
     ) {
       return callback(null, true);
     }
@@ -79,17 +102,20 @@ app.get('/api/v1/files/view', universalFileProxy);
 app.use('/uploads/icons', express.static(path.join(process.cwd(), 'uploads/icons')));
 
 // Root Route & Health Check
+const defaultFrontendUrl = isProd
+  ? 'https://mediquee.in'
+  : (configuredOrigins[0] || 'http://localhost:5173');
+
 app.get('/', (req, res) => {
   if (req.accepts('html')) {
-    // If opened in a web browser, redirect directly to the user frontend
-    return res.redirect('http://localhost:5173');
+    return res.redirect(defaultFrontendUrl);
   }
   return res.json({
     status: 'ok',
     message: 'MediQuee Backend API Service is running',
     version: 'v1',
     endpoints: '/api/v1',
-    frontend: 'http://localhost:5173'
+    frontend: defaultFrontendUrl
   });
 });
 

@@ -53,11 +53,11 @@ export default function Footer() {
             </h3>
             <div className="space-y-2.5 text-xs sm:text-sm">
               <a
-                href="mailto:support@mediquee.in"
+                href="mailto:mediqueetech@gmail.com"
                 className="flex items-center gap-2 text-slate-600 hover:text-blue-600 font-medium transition-colors w-fit"
               >
                 <Mail className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>support@mediquee.in</span>
+                <span>mediqueetech@gmail.com</span>
               </a>
               <a
                 href="tel:+919014535199"

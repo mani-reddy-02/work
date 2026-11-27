@@ -6,6 +6,7 @@ import { env } from '../../config/env';
 import { BusinessType, Role } from '@prisma/client';
 import { resolveCoordinatesForLocation } from '../../utils/geo';
 import { storageService } from '../../services/storage.service';
+import { AuditLogger } from '../../utils/auditLogger';
 
 const DOC_TITLES: Record<string, string> = {
   registrationCertificate: 'Hospital Registration Certificate',
@@ -44,9 +45,6 @@ export class AuthService {
       throw new Error(`Too many failed login attempts. Account temporarily locked for ${waitMinutes} minute(s).`);
     }
 
-    console.log('[LOGIN_DEBUG] LOGIN REQUEST RECEIVED');
-    console.log('[LOGIN_DEBUG] IDENTIFIER TYPE:', identifier.includes('@') ? 'EMAIL' : 'PHONE');
-
     // Find user by email or phone (case-insensitive for email)
     const user = await prisma.user.findFirst({
       where: {
@@ -57,26 +55,36 @@ export class AuthService {
       },
     });
 
-    console.log('[LOGIN_DEBUG] USER FOUND:', user ? 'YES' : 'NO');
-
     if (!user) {
       const record = failedLoginAttempts.get(normIdentifier) || { count: 0 };
       record.count += 1;
       if (record.count >= 5) {
         record.lockedUntil = Date.now() + 15 * 60 * 1000;
+        AuditLogger.log({
+          actorId: normIdentifier,
+          action: 'AUTH_ACCOUNT_LOCKED',
+          targetEntity: 'User',
+          targetId: normIdentifier,
+          details: { reason: 'unknown_identifier_threshold', attemptCount: record.count },
+        });
       }
       failedLoginAttempts.set(normIdentifier, record);
       throw new Error('Invalid credentials');
     }
 
     if (!user.active) {
-      console.log('[LOGIN_DEBUG] ACCOUNT IS DEACTIVATED');
+      AuditLogger.log({
+        actorId: user.id,
+        actorRole: user.role,
+        action: 'AUTH_LOGIN_BLOCKED_INACTIVE',
+        targetEntity: 'User',
+        targetId: user.id,
+      });
       throw new Error('Account is deactivated');
     }
 
     const isValid = await bcrypt.compare(password, user.passwordHash);
-    console.log('[LOGIN_DEBUG] PASSWORD CHECK RESULT:', isValid ? 'MATCH' : 'NO MATCH');
-    
+
     if (!isValid) {
       const record = failedLoginAttempts.get(normIdentifier) || { count: 0 };
       record.count += 1;
@@ -84,6 +92,14 @@ export class AuthService {
         record.lockedUntil = Date.now() + 15 * 60 * 1000;
       }
       failedLoginAttempts.set(normIdentifier, record);
+      AuditLogger.log({
+        actorId: user.id,
+        actorRole: user.role,
+        action: record.count >= 5 ? 'AUTH_ACCOUNT_LOCKED' : 'AUTH_LOGIN_FAILED',
+        targetEntity: 'User',
+        targetId: user.id,
+        details: { attemptCount: record.count },
+      });
       throw new Error('Invalid credentials');
     }
 
@@ -542,6 +558,14 @@ export class AuthService {
 
     // Invalidate/consume the OTP
     await WhatsAppOtpService.consumeOtp(cleanPhone);
+
+    AuditLogger.log({
+      actorId: user.id,
+      actorRole: user.role,
+      action: 'AUTH_PASSWORD_RESET',
+      targetEntity: 'User',
+      targetId: user.id,
+    });
 
     return {
       success: true,

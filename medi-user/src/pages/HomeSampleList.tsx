@@ -1595,7 +1595,7 @@ const HomeSampleList = () => {
                     onChange={handlePatientChange}
                     type="email"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                    placeholder="name@example.com"
+                    placeholder="user@example.com"
                   />
                 </div>
 

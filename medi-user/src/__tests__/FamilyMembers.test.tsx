@@ -31,9 +31,9 @@ describe('FamilyMembers Component', () => {
     expect(screen.getByText('Add Family Member')).toBeInTheDocument();
 
     // Fill form
-    const nameInput = screen.getByPlaceholderText(/e\.g\. Ramesh Reddy/i);
+    const nameInput = screen.getByPlaceholderText(/^Username$/i);
     const ageInput = screen.getByPlaceholderText(/e\.g\. 52/i);
-    const phoneInput = screen.getByPlaceholderText(/e\.g\. 9876543210/i);
+    const phoneInput = screen.getByPlaceholderText(/^9876543210$/i);
 
     fireEvent.change(nameInput, { target: { value: 'Suresh Kumar' } });
     fireEvent.change(ageInput, { target: { value: '55' } });

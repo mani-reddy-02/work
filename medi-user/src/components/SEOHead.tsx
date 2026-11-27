@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export interface SEOHeadProps {
   title: string;
@@ -10,43 +10,70 @@ export interface SEOHeadProps {
   jsonLd?: Record<string, any> | Record<string, any>[];
 }
 
+function upsertMeta(selectorAttr: 'name' | 'property', key: string, content: string) {
+  if (typeof document === 'undefined') return;
+  let el = document.head.querySelector<HTMLMetaElement>(`meta[${selectorAttr}="${key}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(selectorAttr, key);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
+
+function upsertCanonical(href: string) {
+  if (typeof document === 'undefined') return;
+  let link = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  if (!link) {
+    link = document.createElement('link');
+    link.setAttribute('rel', 'canonical');
+    document.head.appendChild(link);
+  }
+  link.setAttribute('href', href);
+}
+
 export const SEOHead: React.FC<SEOHeadProps> = ({
   title,
   description,
   canonicalUrl = 'https://mediquee.in',
   ogImage = 'https://mediquee.in/og-image.jpg',
   ogType = 'website',
-  keywords = ['healthcare', 'doctor consultation', 'online doctor appointment', 'hospital op booking', 'home nursing', 'lab tests'],
+  keywords = ['MediQuee', 'healthcare', 'doctor consultation', 'online doctor appointment', 'hospital op booking', 'home nursing', 'lab tests'],
   jsonLd
 }) => {
-  const fullTitle = `${title} | MediQuee Healthcare`;
+  const fullTitle = title.includes('MediQuee') ? title : `${title} | MediQuee`;
+
+  useEffect(() => {
+    document.title = fullTitle;
+    upsertMeta('name', 'description', description);
+    upsertMeta('name', 'keywords', keywords.join(', '));
+    upsertCanonical(canonicalUrl);
+
+    upsertMeta('property', 'og:site_name', 'MediQuee');
+    upsertMeta('property', 'og:title', fullTitle);
+    upsertMeta('property', 'og:description', description);
+    upsertMeta('property', 'og:type', ogType);
+    upsertMeta('property', 'og:url', canonicalUrl);
+    upsertMeta('property', 'og:image', ogImage);
+
+    upsertMeta('name', 'twitter:card', 'summary_large_image');
+    upsertMeta('name', 'twitter:title', fullTitle);
+    upsertMeta('name', 'twitter:description', description);
+    upsertMeta('name', 'twitter:image', ogImage);
+  }, [fullTitle, description, canonicalUrl, ogImage, ogType, keywords]);
 
   return (
     <>
-      <title>{fullTitle}</title>
-      <meta name="description" content={description} />
-      <meta name="keywords" content={keywords.join(', ')} />
-      <link rel="canonical" href={canonicalUrl} />
-
-      {/* Open Graph / Facebook / WhatsApp */}
-      <meta property="og:site_name" content="MediQuee" />
-      <meta property="og:title" content={fullTitle} />
-      <meta property="og:description" content={description} />
-      <meta property="og:type" content={ogType} />
-      <meta property="og:url" content={canonicalUrl} />
-      <meta property="og:image" content={ogImage} />
-
-      {/* Twitter Cards */}
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content={fullTitle} />
-      <meta name="twitter:description" content={description} />
-      <meta name="twitter:image" content={ogImage} />
-
-      {/* Structured Data (JSON-LD) */}
+      {/* Dynamic Structured Data (JSON-LD) */}
       {jsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(jsonLd)
+              .replace(/</g, '\\u003c')
+              .replace(/>/g, '\\u003e')
+              .replace(/&/g, '\\u0026')
+          }}
         />
       )}
     </>
@@ -54,4 +81,3 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
 };
 
 export default SEOHead;
-

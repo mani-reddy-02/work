@@ -2,7 +2,16 @@ import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 
 export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('[Error]:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  const isProd = process.env.NODE_ENV === 'production';
+  if (isProd) {
+    console.error('[Error]:', { code: err?.code, statusCode: err?.statusCode || 500, message: err?.message });
+  } else {
+    console.error('[Error]:', err);
+  }
 
   if (err instanceof ZodError) {
     return res.status(400).json({
@@ -10,7 +19,7 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
       error: {
         code: 'VALIDATION_ERROR',
         message: 'Invalid input data',
-        details: (err as any).errors,
+        details: isProd ? undefined : (err as any).errors,
       },
     });
   }
@@ -43,14 +52,18 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
     });
   }
 
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
+  const statusCode = typeof err.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 600
+    ? err.statusCode
+    : 500;
+  const message = isProd && statusCode >= 500
+    ? 'Internal Server Error'
+    : (err.message || 'Internal Server Error');
 
   res.status(statusCode).json({
     success: false,
     error: {
       code: err.code || 'INTERNAL_ERROR',
-      message: process.env.NODE_ENV === 'production' && statusCode === 500 ? 'Internal Server Error' : message,
+      message,
     },
   });
 };

@@ -29,12 +29,19 @@ export const createPaymentOrder = async (req: Request, res: Response, next: Next
       });
     }
 
-    const userId = req.user?.id || 'guest_user';
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Authentication required to initiate payment' }
+      });
+    }
 
     const orderData = await PaymentsService.createOrder({
       serviceType,
       bookingId,
-      userId,
+      userId: req.user.id,
+      userRole: req.user.role,
+      userHospitalId: req.user.hospitalId,
       notes
     });
 
@@ -64,7 +71,9 @@ export const verifyPayment = async (req: Request, res: Response, next: NextFunct
       signature,
       serviceType,
       bookingId,
-      userId: req.user?.id
+      userId: req.user?.id,
+      userRole: req.user?.role,
+      userHospitalId: req.user?.hospitalId
     });
 
     return res.status(200).json({
@@ -73,7 +82,8 @@ export const verifyPayment = async (req: Request, res: Response, next: NextFunct
       data: result
     });
   } catch (err: any) {
-    return res.status(400).json({
+    const status = err.statusCode || 400;
+    return res.status(status).json({
       success: false,
       error: { message: err.message || 'Payment verification failed' }
     });
@@ -129,7 +139,18 @@ export const cancelPendingPayment = async (req: Request, res: Response, next: Ne
       });
     }
 
-    const result = await PaymentsService.cancelPendingBooking(serviceType as ServiceType, bookingId);
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Authentication required to cancel pending booking' }
+      });
+    }
+
+    const result = await PaymentsService.cancelPendingBooking(
+      serviceType as ServiceType,
+      bookingId,
+      { id: req.user.id, role: req.user.role, hospitalId: req.user.hospitalId }
+    );
     return res.status(200).json({
       success: true,
       data: result

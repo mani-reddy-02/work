@@ -3,6 +3,8 @@ import { prisma } from '../../config/prisma';
 import { Role, DosageTiming, DoctorPresenceStatus } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { storageService } from '../../services/storage.service';
 
 /**
@@ -219,10 +221,10 @@ export const getPatientHistory = async (req: Request, res: Response, next: NextF
     const userRole = req.user?.role;
     const hospitalId = req.user?.hospitalId;
 
-    if (userRole === Role.DOCTOR && !hospitalId) {
+    if (userRole !== Role.SUPER_ADMIN && !hospitalId) {
       return res.status(403).json({
         success: false,
-        error: { code: 'FORBIDDEN', message: 'Doctor must be affiliated with a hospital to access patient records' }
+        error: { code: 'FORBIDDEN', message: 'Hospital affiliation is required to access patient records' }
       });
     }
 
@@ -506,12 +508,13 @@ export const sendPrescriptionToPatient = async (req: Request, res: Response, nex
       } else {
         const cleanPhone = booking.patientPhone.replace(/\D/g, '') || Date.now().toString();
         const dummyEmail = `patient_${cleanPhone}@mediquee.in`;
+        const randomPasswordHash = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 10);
         const newPatient = await prisma.user.create({
           data: {
             phone: booking.patientPhone,
             name: booking.patientName || 'Patient',
             email: dummyEmail,
-            passwordHash: '$2b$10$temporaryhashforprescriptionsend1234567890',
+            passwordHash: randomPasswordHash,
             role: Role.PATIENT,
             active: true
           }

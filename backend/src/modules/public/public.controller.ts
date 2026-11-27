@@ -123,18 +123,19 @@ export const reverseGeocode = async (req: Request, res: Response, next: NextFunc
     const lat = parseFloat(req.query.lat as string);
     const lng = parseFloat(req.query.lng as string);
 
-    if (isNaN(lat) || isNaN(lng)) {
-      return res.status(400).json({ success: false, error: 'Valid lat and lng required' });
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({ success: false, error: 'Valid lat (-90..90) and lng (-180..180) required' });
     }
 
-    // 1. Authoritative Nominatim lookup (with accurate User-Agent)
+    // 1. Authoritative Nominatim lookup (with accurate User-Agent & bounded timeout)
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`,
         {
           headers: {
-            'User-Agent': 'MediQuee-Platform/1.0 (contact@mediquee.in)'
-          }
+            'User-Agent': 'MediQuee-Platform/1.0 (mediqueetech@gmail.com)'
+          },
+          signal: AbortSignal.timeout(5000)
         }
       );
 

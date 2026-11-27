@@ -3,37 +3,110 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
-    <!-- Official MediQuee Favicons & App Icons -->
+
+    <!-- Official MediQuee Favicons & App Icons (48px multiples listed first per Google Search Favicon guidelines) -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="144x144" href="/favicon-144x144.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="shortcut icon" href="/favicon.ico" />
-    <meta name="theme-color" content="#1769E0" />
+    <link rel="manifest" href="/site.webmanifest" />
 
-    <title>MediQuee - Healthcare at Your Doorstep</title>
-    <meta name="description" content="Book hospital outpatient appointments, video consultations with verified doctors, home nursing, and lab tests on MediQuee." />
+    <meta name="theme-color" content="#1769E0" />
+    <meta name="application-name" content="MediQuee" />
+    <meta name="apple-mobile-web-app-title" content="MediQuee" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="author" content="MediQuee" />
+
+    <title>MediQuee — Healthcare at Your Doorstep | Online Doctor Consultation &amp; Hospital OP Booking</title>
+    <meta name="description" content="MediQuee (mediquee.in) is an Indian digital healthcare platform to book hospital outpatient (OP) appointments, online video consultations with verified doctors, diagnostic lab tests, and home nursing care across Andhra Pradesh &amp; Telangana." />
+    <meta name="keywords" content="MediQuee, mediquee.in, online doctor consultation, hospital OP booking, video telemedicine India, home nursing care, diagnostic lab tests, home sample collection, Andhra Pradesh hospitals, Telangana hospitals" />
+    <link rel="canonical" href="https://mediquee.in/" />
 
     <!-- Open Graph / WhatsApp / Facebook / LinkedIn Link Previews -->
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_IN" />
     <meta property="og:site_name" content="MediQuee" />
     <meta property="og:url" content="https://mediquee.in/" />
-    <meta property="og:title" content="MediQuee - Healthcare at Your Doorstep" />
-    <meta property="og:description" content="Book hospital outpatient appointments, video consultations with verified doctors, home nursing, and lab tests on MediQuee." />
+    <meta property="og:title" content="MediQuee — Healthcare at Your Doorstep | Online Doctor Consultation &amp; Hospital OP Booking" />
+    <meta property="og:description" content="Book verified hospital outpatient (OP) appointments, online video consultations with certified doctors, diagnostic lab tests, and home nursing care on MediQuee (mediquee.in)." />
     <meta property="og:image" content="https://mediquee.in/og-image.jpg" />
     <meta property="og:image:secure_url" content="https://mediquee.in/og-image.jpg" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="MediQuee - Healthcare at Your Doorstep" />
+    <meta property="og:image:alt" content="MediQuee — Healthcare at Your Doorstep" />
 
     <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="MediQuee - Healthcare at Your Doorstep" />
-    <meta name="twitter:description" content="Book hospital outpatient appointments, video consultations with verified doctors, home nursing, and lab tests on MediQuee." />
+    <meta name="twitter:title" content="MediQuee — Healthcare at Your Doorstep | Online Doctor Consultation &amp; Hospital OP Booking" />
+    <meta name="twitter:description" content="Book verified hospital OP appointments, online video consultations, diagnostic lab tests, and home nursing care on MediQuee (mediquee.in)." />
     <meta name="twitter:image" content="https://mediquee.in/og-image.jpg" />
+
+    <!-- Authoritative Static Structured Data for Google Search, Site Name & Gemini Knowledge Graph -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://mediquee.in/#website",
+            "url": "https://mediquee.in/",
+            "name": "MediQuee",
+            "alternateName": ["MediQuee Healthcare", "mediquee.in"],
+            "description": "Digital healthcare platform in India for hospital outpatient (OP) slot booking, video telemedicine consultations, diagnostic lab tests, and home nursing care.",
+            "inLanguage": ["en-IN", "te-IN"],
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": "https://mediquee.in/specialties?search={search_term_string}",
+              "query-input": "required name=search_term_string"
+            }
+          },
+          {
+            "@type": "MedicalOrganization",
+            "@id": "https://mediquee.in/#organization",
+            "name": "MediQuee",
+            "legalName": "MediQuee",
+            "url": "https://mediquee.in/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://mediquee.in/favicon.png",
+              "width": 192,
+              "height": 192
+            },
+            "image": "https://mediquee.in/og-image.jpg",
+            "description": "MediQuee (mediquee.in) is a healthcare and patient booking platform in India connecting patients with verified partner hospitals, specialist doctors, NABL/accredited diagnostic laboratories, and certified home nursing care across Andhra Pradesh and Telangana.",
+            "email": "mediqueetech@gmail.com",
+            "telephone": "+91-9014535199",
+            "sameAs": [
+              "https://www.instagram.com/medi.quee/"
+            ],
+            "address": {
+              "@type": "PostalAddress",
+              "addressRegion": "Andhra Pradesh & Telangana",
+              "addressCountry": "IN"
+            },
+            "areaServed": [
+              { "@type": "State", "name": "Andhra Pradesh" },
+              { "@type": "State", "name": "Telangana" },
+              { "@type": "Country", "name": "India" }
+            ],
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "telephone": "+91-9014535199",
+              "email": "mediqueetech@gmail.com",
+              "contactType": "customer support",
+              "areaServed": "IN",
+              "availableLanguage": ["English", "Telugu"]
+            }
+          }
+        ]
+      }
+    </script>
 
     <!-- Non-Blocking Google Fonts Loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -70,20 +143,28 @@
       </style>
     </div>
 
-    <!-- Crawlable Fallback for Non-JS Clients & SEO Bots -->
+    <!-- Crawlable Fallback for Non-JS Search & AI Overview Bots -->
     <noscript>
-      <div style="padding: 2rem; max-width: 800px; margin: 0 auto; font-family: sans-serif; text-align: center;">
-        <h1 style="font-size: 1.5rem; font-weight: bold; color: #1e293b;">MediQuee Healthcare</h1>
-        <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 1.5rem;">Hospital Appointments, Video Consultations, Home Nursing &amp; Lab Tests</p>
-        <h2 style="font-size: 1.1rem; color: #334155;">Healthcare Services</h2>
-        <ul style="list-style: none; padding: 0; line-height: 2;">
-          <li><a href="/specialties?type=hospital-op" style="color: #1769E0;">Hospital Outpatient (OP) Booking</a></li>
-          <li><a href="/specialties?type=doctor" style="color: #1769E0;">Doctor Video Consultations</a></li>
+      <main style="padding: 2rem; max-width: 820px; margin: 0 auto; font-family: sans-serif; color: #1e293b;">
+        <h1 style="font-size: 1.75rem; font-weight: bold;">MediQuee — Healthcare at Your Doorstep</h1>
+        <p style="font-size: 1rem; color: #475569; line-height: 1.6;">
+          MediQuee (<strong>https://mediquee.in</strong>) is a digital healthcare platform in India enabling patients across Andhra Pradesh and Telangana to book priority hospital outpatient (OP) consultations, encrypted online video consultations with verified doctors, diagnostic lab tests with home sample collection, and certified home nursing care. Partner fees are shown transparently in INR before booking.
+        </p>
+        <p style="font-size: 0.9rem; color: #475569;">
+          Support: <a href="mailto:mediqueetech@gmail.com">mediqueetech@gmail.com</a> | Phone: +91-9014535199
+        </p>
+        <h2 style="font-size: 1.15rem; margin-top: 1.5rem;">Healthcare Services on MediQuee</h2>
+        <ul style="line-height: 2;">
+          <li><a href="/specialties?type=hospital-op" style="color: #1769E0;">Hospital Outpatient (OP) Slot Booking</a></li>
+          <li><a href="/specialties?type=doctor" style="color: #1769E0;">Online Video Telemedicine Consultations</a></li>
           <li><a href="/departments" style="color: #1769E0;">Clinical Departments &amp; Specialists</a></li>
-          <li><a href="/services/lab-tests" style="color: #1769E0;">Diagnostic Lab Tests &amp; Packages</a></li>
-          <li><a href="/services/home-nursing" style="color: #1769E0;">Home Nursing &amp; Attendant Care</a></li>
+          <li><a href="/services/lab-tests" style="color: #1769E0;">Diagnostic Lab Tests &amp; Home Sample Collection</a></li>
+          <li><a href="/services/home-nursing" style="color: #1769E0;">Home Nursing Care Packages</a></li>
+          <li><a href="/pricing" style="color: #1769E0;">Service Pricing Overview (INR)</a></li>
+          <li><a href="/contact" style="color: #1769E0;">Contact Us</a></li>
+          <li><a href="/terms" style="color: #1769E0;">Terms &amp; Conditions</a> | <a href="/privacy" style="color: #1769E0;">Privacy Policy</a> | <a href="/refund-policy" style="color: #1769E0;">Refund &amp; Cancellation Policy</a></li>
         </ul>
-      </div>
+      </main>
     </noscript>
 
     <!-- Razorpay Standard Checkout SDK -->

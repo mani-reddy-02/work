@@ -416,7 +416,7 @@ export default function FamilyMembers() {
                   required
                   value={formData.name || ''}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Ramesh Reddy"
+                  placeholder="Username"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                 />
               </div>
@@ -496,7 +496,7 @@ export default function FamilyMembers() {
                   type="tel"
                   value={formData.phone || ''}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="e.g. 9876543210"
+                  placeholder="9876543210"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                 />
               </div>

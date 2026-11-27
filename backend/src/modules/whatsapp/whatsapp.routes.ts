@@ -1,10 +1,26 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import { WhatsAppClient } from './whatsapp.client';
 import { WhatsAppOtpService } from './whatsapp-otp.service';
 import { env } from '../../config/env';
 import { authRateLimiter } from '../auth/auth.routes';
 
 const router = Router();
+
+function isValidMetaSignature(req: Request): boolean {
+  const appSecret = env.WHATSAPP_APP_SECRET?.trim();
+  if (!appSecret) return true; // Optional unless WHATSAPP_APP_SECRET is configured
+
+  const sigHeader = req.headers['x-hub-signature-256'];
+  const headerVal = Array.isArray(sigHeader) ? sigHeader[0] : sigHeader;
+  if (!headerVal || !headerVal.startsWith('sha256=')) return false;
+
+  const rawBody = (req as any).rawBody || JSON.stringify(req.body || {});
+  const expected = `sha256=${crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex')}`;
+  const a = Buffer.from(headerVal, 'utf8');
+  const b = Buffer.from(expected, 'utf8');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 /**
  * 1. Meta Webhook Verification Endpoint
@@ -32,6 +48,11 @@ router.get('/webhook', (req: Request, res: Response) => {
  */
 router.post('/webhook', async (req: Request, res: Response) => {
   try {
+    if (!isValidMetaSignature(req)) {
+      console.warn('[WhatsApp Webhook] Invalid Meta webhook signature.');
+      return res.sendStatus(403);
+    }
+
     const body = req.body;
 
     if (body.object === 'whatsapp_business_account') {

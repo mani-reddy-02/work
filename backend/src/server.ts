@@ -25,8 +25,9 @@ const startServer = async () => {
       startReminderScheduler();
     }).catch(console.error);
 
-    app.listen(Number(PORT), '0.0.0.0', () => {
-      console.log(`Server is running on port ${PORT} in ${env.NODE_ENV} mode.`);
+    const host = process.env.HOST || (env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0');
+    app.listen(Number(PORT), host, () => {
+      console.log(`Server is running on ${host}:${PORT} in ${env.NODE_ENV} mode.`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

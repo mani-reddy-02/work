@@ -33,7 +33,7 @@ export const createLabBooking = async (req: Request, res: Response, next: NextFu
         const rawPhone = String(req.body.mobile || req.body.phone).trim();
         let patient = await prisma.user.findFirst({ where: { phone: rawPhone } });
         if (!patient) {
-          const defaultPasswordHash = await bcrypt.hash('123456', 10);
+          const defaultPasswordHash = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 10);
           patient = await prisma.user.create({
             data: {
               phone: rawPhone,

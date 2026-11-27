@@ -5,6 +5,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { storageService } from '../../services/storage.service';
+import { AuditLogger } from '../../utils/auditLogger';
 
 const ALLOWED_MIME_TYPES: Record<string, string> = {
   'application/pdf': '.pdf',
@@ -136,6 +137,15 @@ export const deleteReport = async (req: Request, res: Response) => {
       where: { id: reportId },
     });
 
+    AuditLogger.log({
+      actorId: userId,
+      actorRole: (req as any).user?.role,
+      action: 'DELETE_MEDICAL_REPORT',
+      targetEntity: 'PatientReport',
+      targetId: reportId,
+      clientIp: req.ip || req.socket.remoteAddress,
+    });
+
     res.json({ success: true, message: 'Report deleted successfully' });
   } catch (error) {
     console.error('Error deleting report:', error);
@@ -162,11 +172,33 @@ export const downloadReport = async (req: Request, res: Response) => {
 
     const isOwner = report.userId === userId;
     const userRole = (req as any).user?.role;
-    const isStaff = userRole === 'DOCTOR' || userRole === 'HOSPITAL_ADMIN' || userRole === 'SUPER_ADMIN';
+    const hospitalId = (req as any).user?.hospitalId as string | null | undefined;
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
 
-    if (!isOwner && !isStaff) {
+    let isAuthorizedHospitalStaff = false;
+    if (!isOwner && !isSuperAdmin && (userRole === 'DOCTOR' || userRole === 'HOSPITAL_ADMIN' || userRole === 'LAB_ADMIN') && hospitalId) {
+      // Enforce tenant isolation: staff may only access reports for patients who have a booking at their hospital
+      const [opMatch, labMatch, nursingMatch] = await Promise.all([
+        prisma.oPBooking.findFirst({ where: { patientId: report.userId, hospitalId }, select: { id: true } }),
+        prisma.labBooking.findFirst({ where: { patientId: report.userId, hospitalId }, select: { id: true } }),
+        prisma.homeNursingBooking.findFirst({ where: { userId: report.userId, hospitalId }, select: { id: true } }),
+      ]);
+      isAuthorizedHospitalStaff = Boolean(opMatch || labMatch || nursingMatch);
+    }
+
+    if (!isOwner && !isSuperAdmin && !isAuthorizedHospitalStaff) {
       return res.status(403).json({ success: false, message: 'Forbidden: You do not have permission to access this report' });
     }
+
+    AuditLogger.log({
+      actorId: userId,
+      actorRole: userRole,
+      action: 'ACCESS_MEDICAL_REPORT',
+      targetEntity: 'PatientReport',
+      targetId: reportId,
+      details: { patientId: report.userId, isOwner },
+      clientIp: req.ip || req.socket.remoteAddress,
+    });
 
     if (!report.fileUrl) {
       return res.status(404).json({ success: false, message: 'Report file not found' });

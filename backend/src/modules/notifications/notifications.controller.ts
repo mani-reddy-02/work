@@ -33,11 +33,27 @@ export const streamNotifications = async (req: Request, res: Response) => {
     const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: string };
     const dbUser = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, hospitalId: true, role: true, active: true }
+      select: {
+        id: true,
+        hospitalId: true,
+        role: true,
+        active: true,
+        hospital: { select: { verificationStatus: true } }
+      }
     });
 
     if (!dbUser || !dbUser.active) {
       res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Invalid or inactive account' } });
+      return;
+    }
+
+    if (
+      dbUser.hospitalId &&
+      dbUser.role !== Role.PATIENT &&
+      dbUser.role !== Role.SUPER_ADMIN &&
+      dbUser.hospital?.verificationStatus !== 'APPROVED'
+    ) {
+      res.status(403).json({ success: false, error: { code: 'ACCOUNT_PENDING_VERIFICATION', message: 'Hospital verification pending' } });
       return;
     }
 

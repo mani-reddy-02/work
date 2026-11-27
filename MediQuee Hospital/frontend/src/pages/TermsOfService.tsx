@@ -81,7 +81,7 @@ export function TermsOfService() {
               </p>
               <ul className="list-disc pl-5 mt-2 space-y-1 text-xs">
                 <li><strong>Helpline:</strong> <a href="tel:8331045500" className="text-primary font-semibold hover:underline">+91 8331045500</a></li>
-                <li><strong>Email:</strong> support@mediquee.in | legal@mediquee.in</li>
+                <li><strong>Email:</strong> mediqueetech@gmail.com</li>
                 <li><strong>Headquarters:</strong> MediQuee Healthcare Solutions Pvt. Ltd., Hyderabad, Telangana, India</li>
               </ul>
             </section>

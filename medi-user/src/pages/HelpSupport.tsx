@@ -110,7 +110,7 @@ export default function HelpSupport() {
 
         <div className="mt-8 flex flex-col items-center justify-center gap-3 text-center text-slate-500 pb-8">
           <Mail className="w-5 h-5 text-slate-400" />
-          <p className="text-xs sm:text-sm font-medium">Still need help?<br/>Call us at <a href="tel:8331045500" className="text-blue-500 hover:underline font-bold">8331045500</a> or Email <a href="mailto:support@mediquee.in" className="text-blue-500 hover:underline font-semibold">support@mediquee.in</a></p>
+          <p className="text-xs sm:text-sm font-medium">Still need help?<br/>Call us at <a href="tel:8331045500" className="text-blue-500 hover:underline font-bold">8331045500</a> or Email <a href="mailto:mediqueetech@gmail.com" className="text-blue-500 hover:underline font-semibold">mediqueetech@gmail.com</a></p>
           <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-400 pt-2 border-t border-slate-200/60 w-full justify-center">
             <Link to="/pricing" className="hover:text-blue-600 transition-colors">Pricing</Link>
             <span>•</span>

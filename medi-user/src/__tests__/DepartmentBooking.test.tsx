@@ -159,8 +159,8 @@ describe('DepartmentBooking Component', () => {
     });
 
     // Fill in name, phone, age
-    fireEvent.change(screen.getByPlaceholderText('e.g. Ramesh Kumar'), { target: { value: 'Ramesh Kumar' } });
-    fireEvent.change(screen.getByPlaceholderText('e.g. 9876543210'), { target: { value: '9876543210' } });
+    fireEvent.change(screen.getByPlaceholderText('Username'), { target: { value: 'Username' } });
+    fireEvent.change(screen.getByPlaceholderText('9876543210'), { target: { value: '9876543210' } });
     fireEvent.change(screen.getByPlaceholderText('e.g. 35'), { target: { value: '28' } });
 
     // Submit details

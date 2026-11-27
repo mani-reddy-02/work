@@ -16,6 +16,8 @@ export interface CreateOrderParams {
   serviceType: ServiceType;
   bookingId: string;
   userId: string;
+  userRole?: string;
+  userHospitalId?: string | null;
   notes?: Record<string, string>;
 }
 
@@ -26,9 +28,82 @@ export interface VerifyPaymentParams {
   serviceType: ServiceType;
   bookingId: string;
   userId?: string;
+  userRole?: string;
+  userHospitalId?: string | null;
 }
 
 export class PaymentsService {
+  /**
+   * Verifies that the authenticated actor owns the booking (or is staff of its hospital / SUPER_ADMIN).
+   */
+  static async assertBookingAccess(
+    serviceType: ServiceType,
+    bookingId: string,
+    actor: { id: string; role?: string; hospitalId?: string | null }
+  ): Promise<void> {
+    if (actor.role === 'SUPER_ADMIN') return;
+
+    let ownerId: string | null | undefined;
+    let hospitalId: string | null | undefined;
+
+    switch (serviceType) {
+      case 'OP_BOOKING':
+      case 'VIDEO_CONSULTATION': {
+        const b = await prisma.oPBooking.findUnique({
+          where: { id: bookingId },
+          select: { patientId: true, hospitalId: true }
+        });
+        if (!b) {
+          const err: any = new Error(`Booking #${bookingId} not found`);
+          err.statusCode = 404;
+          throw err;
+        }
+        ownerId = b.patientId;
+        hospitalId = b.hospitalId;
+        break;
+      }
+      case 'LAB_BOOKING':
+      case 'HOME_SAMPLE': {
+        const b = await prisma.labBooking.findUnique({
+          where: { id: bookingId },
+          select: { patientId: true, hospitalId: true }
+        });
+        if (!b) {
+          const err: any = new Error(`Lab booking #${bookingId} not found`);
+          err.statusCode = 404;
+          throw err;
+        }
+        ownerId = b.patientId;
+        hospitalId = b.hospitalId;
+        break;
+      }
+      case 'HOME_NURSING': {
+        const b = await prisma.homeNursingBooking.findUnique({
+          where: { id: bookingId },
+          select: { userId: true, hospitalId: true }
+        });
+        if (!b) {
+          const err: any = new Error(`Home nursing booking #${bookingId} not found`);
+          err.statusCode = 404;
+          throw err;
+        }
+        ownerId = b.userId;
+        hospitalId = b.hospitalId;
+        break;
+      }
+      default:
+        throw new Error(`Unsupported service type: ${serviceType}`);
+    }
+
+    const isOwner = Boolean(actor.id && ownerId && actor.id === ownerId);
+    const isHospitalStaff = Boolean(actor.hospitalId && hospitalId && actor.hospitalId === hospitalId);
+
+    if (!isOwner && !isHospitalStaff) {
+      const err: any = new Error('Forbidden: You do not have permission to access this booking payment');
+      err.statusCode = 403;
+      throw err;
+    }
+  }
   /**
    * 1. Calculates the exact, authoritative payable amount in INR from the database
    * Never trusts client-supplied amounts.
@@ -127,7 +202,13 @@ export class PaymentsService {
       throw new Error('Razorpay payment gateway is not configured on this server.');
     }
 
-    const { serviceType, bookingId, userId, notes = {} } = params;
+    const { serviceType, bookingId, userId, userRole, userHospitalId, notes = {} } = params;
+
+    await this.assertBookingAccess(serviceType, bookingId, {
+      id: userId,
+      role: userRole,
+      hospitalId: userHospitalId
+    });
 
     // Independently calculate exact amount from DB
     const { amountInINR, amountInPaise, hospitalId, description } = 
@@ -433,7 +514,15 @@ export class PaymentsService {
   /**
    * 4b. Safely cleans up an unpaid PENDING/PAYMENT_PENDING draft booking if payment was cancelled or failed
    */
-  static async cancelPendingBooking(serviceType: ServiceType, bookingId: string) {
+  static async cancelPendingBooking(
+    serviceType: ServiceType,
+    bookingId: string,
+    actor?: { id: string; role?: string; hospitalId?: string | null }
+  ) {
+    if (actor) {
+      await this.assertBookingAccess(serviceType, bookingId, actor);
+    }
+
     // Never delete if any PAID transaction exists for this booking
     const paidTx = await prisma.paymentTransaction.findFirst({
       where: { bookingId, status: 'PAID' }
@@ -497,7 +586,15 @@ export class PaymentsService {
    * 5. Verifies and finalizes a payment from standard checkout callback
    */
   static async verifyPayment(params: VerifyPaymentParams) {
-    const { orderId, paymentId, signature, serviceType, bookingId, userId } = params;
+    const { orderId, paymentId, signature, serviceType, bookingId, userId, userRole, userHospitalId } = params;
+
+    if (userId) {
+      await this.assertBookingAccess(serviceType, bookingId, {
+        id: userId,
+        role: userRole,
+        hospitalId: userHospitalId
+      });
+    }
 
     // Cryptographic signature verification
     const isValid = this.verifySignature(orderId, paymentId, signature);

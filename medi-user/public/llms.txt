@@ -1,21 +1,26 @@
-# MediQuee Healthcare Platform
+# MediQuee Healthcare (`https://mediquee.in`)
 
-> MediQuee is a digital healthcare management and patient booking platform providing in-person hospital outpatient appointments, verified telemedicine video consultations, home nursing care, diagnostic lab tests with home sample collection, and cashless health insurance guidance.
+> **MediQuee** (official domain `https://mediquee.in`, Instagram `@medi.quee`) is an Indian digital healthcare booking and telemedicine platform operating primarily across Andhra Pradesh and Telangana. MediQuee connects patients with partner hospitals, verified specialist doctors, accredited diagnostic laboratories, and certified home nursing professionals. (Distinct from similarly named software projects such as "MediQueue".)
 
-## Core Capabilities & Services
+## Official Brand & Entity Details
+- **Official Name**: MediQuee
+- **Website**: https://mediquee.in
+- **Partner Hospital & Lab Portal**: https://hospital.mediquee.in
+- **Tagline**: Healthcare at Your Doorstep
+- **Support Email**: mediqueetech@gmail.com
+- **Support Phone**: +91-9014535199
+- **Instagram**: https://www.instagram.com/medi.quee/
+- **Operating Region**: Andhra Pradesh & Telangana (expanding pan-India)
 
-- [Outpatient (OP) Hospital Bookings](https://mediquee.in/specialties?type=hospital-op): Schedule in-person clinical consultations with accredited doctors across partner hospitals.
-- [Video Telemedicine](https://mediquee.in/specialties?type=doctor): Connect via secure HD video calls with licensed doctors and certified specialists.
-- [Browse Hospital Clinical Departments](https://mediquee.in/departments): Browse General Medicine, Pediatrics, Cardiology, Dermatology, Neurology, Orthopedics, Gynecology, and Ophthalmology.
-- [Diagnostic Lab Tests & Home Sample Collection](https://mediquee.in/services/lab-tests): Book blood tests, complete hemograms, lipid profiles, and health packages with doorstep phlebotomy.
-- [Home Nursing Services](https://mediquee.in/services/home-nursing): Certified medical attendants for post-operative recovery, elderly assistance, and daily medication administration.
-- [Cashless Health Insurance Assistance](https://mediquee.in/services/insurance): Guidance on network hospital admissions, pre-authorizations, and claim submissions.
-- [MediAI Symptom Checker](https://mediquee.in/ai): Interactive AI assistant for initial symptom triaging and specialty recommendations.
+## Core Services
+- [Hospital Outpatient (OP) Slot Booking](https://mediquee.in/specialties?type=hospital-op): Priority OP token booking with live queue visibility across multi-specialty partner hospitals.
+- [Online Video Telemedicine Consultation](https://mediquee.in/specialties?type=doctor): Encrypted HD 1-on-1 video consultations with NMC/State Medical Council registered doctors and instant digital e-prescriptions.
+- [Clinical Departments & Conditions](https://mediquee.in/departments): General Medicine, Pediatrics, Cardiology, Dermatology, Orthopedics, Gynecology, Neurology, ENT, Ophthalmology, Dentistry, and Psychiatry.
+- [Diagnostic Lab Tests & Home Sample Collection](https://mediquee.in/services/lab-tests): Blood panels, health packages, lab visits, and doorstep phlebotomy with digital reports stored in Health Records.
+- [Home Nursing Care](https://mediquee.in/services/home-nursing): Trained nursing visits for post-operative care, injections, wound dressing, vitals monitoring, and elder care.
+- [Cashless Health Insurance Assistance](https://mediquee.in/services/insurance): Network hospital & TPA coverage guidance.
+- [Pricing & Hospital Fee Model](https://mediquee.in/pricing): Transparent consultation & service fees displayed upfront in INR (`₹`) as set by each partner hospital/laboratory.
+- [Contact Us](https://mediquee.in/contact), [Terms & Conditions](https://mediquee.in/terms), [Privacy Policy](https://mediquee.in/privacy), [Refund & Cancellation Policy](https://mediquee.in/refund-policy).
 
-## Regional Scope & Languages
-- Primary Coverage: Andhra Pradesh, Telangana, and expanding pan-India network hospitals.
-- Languages Supported: English (`en`) and Telugu (`te`).
-
-## Medical Verification & Trust Standards
-- Doctors on MediQuee are verified through State Medical Councils and the National Medical Commission (NMC).
-- Partner hospitals are verified against regulatory health licenses and clinical establishment registries.
+## Full Documentation
+- Complete platform reference for AI search & retrieval systems: https://mediquee.in/llms-full.txt
