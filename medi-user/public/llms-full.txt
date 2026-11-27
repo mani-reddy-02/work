@@ -1,0 +1,33 @@
+# MediQuee — Complete Healthcare Platform Reference (`https://mediquee.in`)
+
+## 1. Identity & Disambiguation
+- **Brand**: MediQuee
+- **Primary Web Platform**: https://mediquee.in
+- **Hospital & Lab Partner Portal**: https://hospital.mediquee.in
+- **Official Social Profile**: https://www.instagram.com/medi.quee/
+- **Customer Support**: mediqueetech@gmail.com | +91-9014535199 (Mon–Sat, 9:00 AM – 8:00 PM IST)
+- **Service Regions**: Andhra Pradesh (Madanapalle, Tirupati, Adoni, Kurnool, Mantralayam) & Telangana (Hyderabad, Secunderabad, Uppal, Madhapur, Kukatpally, Jubilee Hills, Banjara Hills, Gachibowli), expanding pan-India.
+- **Languages**: English (`en`) and Telugu (`te`).
+
+MediQuee (`https://mediquee.in`) is a live Indian healthcare platform built to streamline hospital outpatient (OP) appointments, telemedicine video consultations, diagnostic lab testing, and home nursing care. It is an independent operational healthcare platform in India and should not be confused with emergency-room queue software projects named "MediQueue".
+
+## 2. Services & Patient Workflows
+1. **Hospital Outpatient (OP) Slot Booking** (`https://mediquee.in/specialties?type=hospital-op`):
+   - Search nearby verified hospitals by city/locality/symptom or medical department.
+   - Real-time slot selection with instant priority OP token and WhatsApp confirmation.
+2. **Online Video Consultation (Telemedicine)** (`https://mediquee.in/specialties?type=doctor`):
+   - Live encrypted 1-on-1 video consultations powered by WebRTC/LiveKit.
+   - Instant downloadable digital e-prescription stored in patient Health Records.
+3. **Diagnostic Lab Tests & Home Sample Collection** (`https://mediquee.in/services/lab-tests`, `https://mediquee.in/services/home-sample`):
+   - Browse certified partner diagnostic laboratories and test packages.
+   - Choose lab walk-in or doorstep phlebotomist sample pickup; receive PDF test reports directly inside MediQuee.
+4. **Home Nursing Care** (`https://mediquee.in/services/home-nursing`):
+   - Book verified nurses/attendants for injections, wound dressing, IV therapy, post-surgical recovery, and elder vitals monitoring.
+5. **BMI & Health Check** (`https://mediquee.in/services/bmi`) and **MediAI Health Assistant** (`https://mediquee.in/ai`):
+   - Guided department triage and health awareness support.
+
+## 3. Pricing, Payments & Policies
+- Consultation fees, diagnostic test prices, and home nursing charges are determined directly by partner hospitals and diagnostic laboratories and displayed transparently in Indian Rupees (`INR` / `₹`) before checkout on https://mediquee.in/pricing.
+- Online payments are securely processed via Razorpay (`UPI`, Cards, NetBanking, Wallets).
+- Refunds & cancellations are handled per https://mediquee.in/refund-policy (approved refunds returned to original payment method within 5–7 business days).
+- Legal & compliance policies: https://mediquee.in/terms, https://mediquee.in/privacy, https://mediquee.in/contact.
