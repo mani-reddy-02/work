@@ -102,3 +102,10 @@ backend/table_columns.json
 # Agent tools
 .agents/
 skills-lock.json
+
+# Android signing keys & binaries
+medi-user-android/keystore/
+medi-user-android/keystore.properties
+*.jks
+*.keystore
+*.aab

@@ -1,0 +1,12 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "in.mediquee.app",
+    "sha256_cert_fingerprints": [
+      "3D:74:F7:01:F6:3D:0E:2B:CF:24:14:F6:90:31:93:1B:E2:56:38:B9:F9:94:EE:82:36:81:33:BB:48:D1:4D:59",
+      "5D:01:33:07:B8:CA:79:3E:ED:62:FF:CD:DD:EF:50:D9:1E:CC:86:C6:37:74:E4:B1:74:6B:F7:FE:EB:91:95:FF",
+      "9A:FA:BF:8C:89:09:F8:6C:16:5E:4D:11:F4:89:FA:FD:64:41:2D:70:0E:E4:47:CB:92:1C:84:6E:A9:D5:6F:E1"
+    ]
+  }
+}]

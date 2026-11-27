@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1769E0" />
+    <title>Offline — MediQuee</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f5f8fd;
+        font-family: Inter, system-ui, -apple-system, sans-serif;
+        color: #0f172a;
+        padding: 24px;
+        text-align: center;
+      }
+      .card {
+        max-width: 380px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 32px 24px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+      }
+      img {
+        width: 72px;
+        height: 72px;
+        border-radius: 16px;
+        margin-bottom: 16px;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 8px;
+      }
+      p {
+        font-size: 14px;
+        line-height: 1.5;
+        color: #475569;
+        margin: 0 0 20px;
+      }
+      button {
+        background: #1769e0;
+        color: #ffffff;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <img src="/favicon-144x144.png" alt="MediQuee" />
+      <h1>No Internet Connection</h1>
+      <p>Please check your mobile data or Wi-Fi connection to continue booking appointments and consultations on MediQuee.</p>
+      <button type="button" onclick="window.location.reload()">Try Again</button>
+    </main>
+  </body>
+</html>
