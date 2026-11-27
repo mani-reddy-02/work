@@ -89,20 +89,20 @@ export function AppointmentDetailModal({ isOpen, onClose, appointment, onUpdateS
 
             {/* Appointment Info */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-orange-50/70 border border-orange-100 p-3.5 rounded-2xl">
-                <div className="text-orange-500 mb-1.5">
+              <div className="bg-orange-50/70 dark:bg-orange-950/35 border border-orange-100 dark:border-orange-800/60 p-3.5 rounded-2xl">
+                <div className="text-orange-500 dark:text-orange-400 mb-1.5">
                   <Calendar className="w-4 h-4" />
                 </div>
-                <p className="text-[10px] text-orange-600/80 font-bold uppercase tracking-wider mb-0.5">Date & Time</p>
+                <p className="text-[10px] text-orange-700 dark:text-orange-300 font-bold uppercase tracking-wider mb-0.5">Date & Time</p>
                 <p className="font-bold text-foreground text-sm">{appointment.time}</p>
                 <p className="text-xs text-muted mt-0.5">{appointment.date || 'Today'}</p>
               </div>
 
-              <div className="bg-purple-50/70 border border-purple-100 p-3.5 rounded-2xl">
-                <div className="text-purple-500 mb-1.5">
+              <div className="bg-purple-50/70 dark:bg-purple-950/35 border border-purple-100 dark:border-purple-800/60 p-3.5 rounded-2xl">
+                <div className="text-purple-500 dark:text-purple-400 mb-1.5">
                   <User className="w-4 h-4" />
                 </div>
-                <p className="text-[10px] text-purple-600/80 font-bold uppercase tracking-wider mb-0.5">Assigned Doctor</p>
+                <p className="text-[10px] text-purple-700 dark:text-purple-300 font-bold uppercase tracking-wider mb-0.5">Assigned Doctor</p>
                 <p className="font-bold text-foreground text-sm truncate">{appointment.doctor}</p>
                 <p className="text-xs text-muted mt-0.5 truncate">{appointment.type}</p>
               </div>
@@ -130,9 +130,9 @@ export function AppointmentDetailModal({ isOpen, onClose, appointment, onUpdateS
                 onClose();
                 navigate(`/patients/${appointment.id}`);
               }}
-              className="w-full py-2.5 bg-blue-50/80 hover:bg-blue-100/80 text-[#1B5DF1] border border-blue-200/60 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer active:scale-95"
+              className="w-full py-2.5 bg-blue-50/80 hover:bg-blue-100/80 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 text-[#1B5DF1] dark:text-blue-300 border border-blue-200/60 dark:border-blue-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer active:scale-95"
             >
-              <User className="w-4 h-4 text-[#1B5DF1]" />
+              <User className="w-4 h-4 text-[#1B5DF1] dark:text-blue-300" />
               View Full Patient Profile & History
             </button>
 

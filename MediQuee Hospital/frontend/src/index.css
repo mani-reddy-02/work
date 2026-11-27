@@ -81,10 +81,13 @@
   .dark .bg-gray-50,
   .dark .bg-gray-50\/30,
   .dark .bg-gray-50\/50,
+  .dark .bg-gray-50\/60,
   .dark .bg-gray-50\/70,
+  .dark .bg-gray-50\/80,
   .dark .bg-gray-50\/90,
   .dark .bg-\[\#F8F9FC\],
   .dark .bg-\[\#F8FAFC\],
+  .dark .bg-\[\#F8FAFC\]\/95,
   .dark .bg-\[\#F7F8FA\],
   .dark .bg-\[\#F9FAFB\],
   .dark .bg-\[\#F4F5F7\],
@@ -135,31 +138,45 @@
   /* Tinted Pill/Badge Containers */
   .dark .bg-\[\#EBF5FF\],
   .dark .bg-blue-50,
-  .dark .bg-blue-50\/50 {
+  .dark .bg-blue-50\/50,
+  .dark .bg-blue-50\/60,
+  .dark .bg-blue-50\/80,
+  .dark .bg-indigo-50,
+  .dark .bg-indigo-50\/50 {
     background-color: rgb(30 58 138 / 0.25) !important;
   }
 
   .dark .border-\[\#1B5DF1\]\/20,
-  .dark .border-blue-100 {
+  .dark .border-blue-100,
+  .dark .border-indigo-100 {
     border-color: rgb(30 58 138 / 0.4) !important;
   }
 
   .dark .bg-emerald-50,
-  .dark .bg-green-50 {
+  .dark .bg-emerald-50\/50,
+  .dark .bg-green-50,
+  .dark .bg-teal-50,
+  .dark .bg-teal-50\/50 {
     background-color: rgb(6 78 59 / 0.25) !important;
   }
 
   .dark .bg-orange-50,
-  .dark .bg-amber-50 {
+  .dark .bg-orange-50\/70,
+  .dark .bg-amber-50,
+  .dark .bg-amber-50\/50 {
     background-color: rgb(120 53 15 / 0.25) !important;
   }
 
-  .dark .bg-purple-50 {
+  .dark .bg-purple-50,
+  .dark .bg-purple-50\/50,
+  .dark .bg-purple-50\/70 {
     background-color: rgb(88 28 135 / 0.25) !important;
   }
 
   .dark .bg-pink-50,
-  .dark .bg-red-50 {
+  .dark .bg-red-50,
+  .dark .bg-rose-50,
+  .dark .bg-rose-50\/50 {
     background-color: rgb(136 19 55 / 0.25) !important;
   }
 }

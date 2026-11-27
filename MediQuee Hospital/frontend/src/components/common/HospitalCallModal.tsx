@@ -6,7 +6,6 @@ import {
   PhoneCall,
   PhoneForwarded,
   PhoneOff,
-  ShieldCheck,
   CheckCircle2,
   RefreshCw,
 } from 'lucide-react';
@@ -135,24 +134,21 @@ export const HospitalCallModal: React.FC<HospitalCallModalProps> = ({
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
+          className="w-full max-w-sm bg-surface text-foreground rounded-2xl shadow-2xl border border-border overflow-hidden"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/70">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
-                <ShieldCheck className="w-4 h-4" />
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                <Phone className="w-4 h-4" />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">MediQuee Call Masking</h3>
-                <p className="text-[11px] text-slate-500 font-medium">Privacy-Protected Exotel Connection</p>
-              </div>
+              <h3 className="text-sm font-bold text-foreground">Call Patient</h3>
             </div>
             <button
               type="button"
               onClick={handleClose}
               disabled={['initiating', 'calling_staff', 'connecting_patient'].includes(callState)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-40"
+              className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-40 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -161,128 +157,85 @@ export const HospitalCallModal: React.FC<HospitalCallModalProps> = ({
           {/* Modal Body */}
           <div className="p-5">
             {/* Target Patient Card */}
-            <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100/80 mb-4 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600">Patient</span>
-                <p className="text-sm font-bold text-slate-900 truncate max-w-[200px]">{patientName}</p>
-                <p className="text-xs font-mono text-slate-600 mt-0.5">
-                  Phone: {maskPhoneNumber(patientPhone)}
+            <div className="p-3.5 rounded-xl bg-background/80 dark:bg-slate-800/70 border border-border mb-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Patient</span>
+              <p className="text-sm font-bold text-foreground truncate">{patientName}</p>
+              {patientPhone && (
+                <p className="text-xs font-mono text-muted mt-0.5">
+                  {maskPhoneNumber(patientPhone)}
                 </p>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Caller ID</span>
-                <p className="text-xs font-bold text-slate-900">{hospitalVirtualNumber}</p>
-                <span className="inline-block text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 mt-0.5">
-                  MASKED
-                </span>
-              </div>
+              )}
             </div>
 
             {/* State: IDLE */}
             {callState === 'idle' && (
-              <div className="space-y-4">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-xs text-slate-600 leading-relaxed space-y-1.5">
-                  <p className="font-bold text-slate-800 flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-blue-600" /> Two-Way Number Masking:
-                  </p>
-                  <p className="text-[11px] text-slate-600">
-                    Both your phone number and the patient's personal number are completely protected and masked via virtual number <strong className="text-slate-800">{hospitalVirtualNumber}</strong>.
-                  </p>
-                </div>
+              <div className="space-y-2.5">
+                <button
+                  type="button"
+                  onClick={handleDialDirect}
+                  className="w-full py-3 bg-[#1769E0] hover:bg-[#1258be] text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-blue-500/20 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Phone className="w-4 h-4" />
+                  <span>Call</span>
+                </button>
 
-                <div className="space-y-2.5">
-                  <button
-                    type="button"
-                    onClick={handleDialDirect}
-                    className="w-full py-3 bg-[#1769E0] hover:bg-[#1258be] text-white font-extrabold rounded-xl text-sm transition-all shadow-md shadow-blue-500/20 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <Phone className="w-4 h-4" />
-                    Dial {hospitalVirtualNumber} Directly
-                  </button>
-                  <p className="text-[10px] text-center text-slate-400">
-                    Opens your dialer. Automatically connects to {patientName} via masked line.
-                  </p>
-
-                  <div className="relative flex py-1 items-center">
-                    <div className="flex-grow border-t border-slate-200"></div>
-                    <span className="flex-shrink mx-3 text-[10px] font-bold text-slate-400 uppercase">Or</span>
-                    <div className="flex-grow border-t border-slate-200"></div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleStartCall}
-                    className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <PhoneForwarded className="w-3.5 h-3.5 text-slate-500" />
-                    Receive Call on Hospital Phone (Desktop Click-to-Call)
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleStartCall}
+                  className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-foreground font-semibold rounded-xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <PhoneForwarded className="w-3.5 h-3.5 text-muted" />
+                  <span>Call via Hospital Phone</span>
+                </button>
               </div>
             )}
 
             {/* State: INITIATING */}
             {callState === 'initiating' && (
               <div className="py-6 text-center space-y-3">
-                <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+                <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
                   <RefreshCw className="w-7 h-7 animate-spin" />
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Dispatching call to Exotel...</p>
-                  <p className="text-xs text-slate-500 mt-1">Please wait while the connection is established.</p>
-                </div>
+                <p className="text-sm font-bold text-foreground">Connecting call...</p>
               </div>
             )}
 
-            {/* State: CALLING STAFF (Leg 1) */}
+            {/* State: CALLING STAFF */}
             {callState === 'calling_staff' && (
               <div className="py-6 text-center space-y-3">
-                <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto animate-pulse">
+                <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto animate-pulse">
                   <Phone className="w-7 h-7" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-900">Ringing your phone...</p>
-                  <p className="text-xs text-slate-600 mt-1">
-                    Your phone will ring from <span className="font-bold text-blue-600">{hospitalVirtualNumber}</span>.
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Please answer the incoming call to connect to the patient.</p>
+                  <p className="text-sm font-bold text-foreground">Ringing your phone...</p>
+                  <p className="text-xs text-muted mt-1">Answer the incoming call to connect.</p>
                 </div>
               </div>
             )}
 
-            {/* State: CONNECTING PATIENT (Leg 2) */}
+            {/* State: CONNECTING PATIENT */}
             {callState === 'connecting_patient' && (
               <div className="py-6 text-center space-y-3">
-                <div className="w-14 h-14 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto animate-pulse">
+                <div className="w-14 h-14 rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto animate-pulse">
                   <PhoneForwarded className="w-7 h-7" />
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Hospital phone answered!</p>
-                  <p className="text-xs text-slate-600 mt-1">
-                    Now ringing patient via <span className="font-bold">{hospitalVirtualNumber}</span>...
-                  </p>
-                </div>
+                <p className="text-sm font-bold text-foreground">Connecting to {patientName}...</p>
               </div>
             )}
 
             {/* State: CONNECTED */}
             {callState === 'connected' && (
               <div className="py-6 text-center space-y-3">
-                <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                <div className="w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
                   <PhoneCall className="w-7 h-7 animate-bounce" />
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-emerald-800">Call Connected</p>
-                  <p className="text-xs text-slate-600 mt-1">
-                    You are speaking with {patientName} via our secure masked line.
-                  </p>
-                </div>
+                <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">Call Connected</p>
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-foreground font-bold rounded-xl text-xs transition-colors cursor-pointer"
                 >
-                  Keep in Background
+                  Close
                 </button>
               </div>
             )}
@@ -290,17 +243,14 @@ export const HospitalCallModal: React.FC<HospitalCallModalProps> = ({
             {/* State: COMPLETED */}
             {callState === 'completed' && (
               <div className="py-6 text-center space-y-3">
-                <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                <div className="w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-7 h-7" />
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Call Completed</p>
-                  <p className="text-xs text-slate-500 mt-1">The call session has ended successfully.</p>
-                </div>
+                <p className="text-sm font-bold text-foreground">Call Completed</p>
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  className="w-full py-2.5 bg-primary hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
                 >
                   Done
                 </button>
@@ -310,39 +260,29 @@ export const HospitalCallModal: React.FC<HospitalCallModalProps> = ({
             {/* State: FAILED */}
             {callState === 'failed' && (
               <div className="py-6 text-center space-y-3">
-                <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+                <div className="w-14 h-14 rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
                   <PhoneOff className="w-7 h-7" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-900">Call Ended or Failed</p>
-                  <p className="text-xs text-rose-600 mt-1 leading-relaxed">
+                  <p className="text-sm font-bold text-foreground">Call Ended or Failed</p>
+                  <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 leading-relaxed">
                     {callError || 'Unable to complete the call at this moment.'}
                   </p>
                 </div>
-                <div className="flex flex-col gap-2 pt-2">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleClose}
-                      className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
-                    >
-                      Close
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleStartCall}
-                      className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
-                    >
-                      Retry Connection
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="flex-1 py-2.5 border border-border hover:bg-gray-100 dark:hover:bg-slate-800 text-foreground font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
                   <button
                     type="button"
                     onClick={handleDialDirect}
-                    className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="flex-1 py-2.5 bg-primary hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
                   >
-                    <Phone className="w-3.5 h-3.5" />
-                    Dial Masked Line ({hospitalVirtualNumber}) Directly
+                    Call Again
                   </button>
                 </div>
               </div>

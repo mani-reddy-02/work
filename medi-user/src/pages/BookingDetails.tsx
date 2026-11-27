@@ -84,8 +84,8 @@ const BookingDetails = () => {
       new Promise((resolve) => setTimeout(resolve, 1500)),
     ]).catch(() => {});
 
-    // Open phone dialer directly with virtual number 08047290980
-    setToastMessage({ message: 'Opening dialer to 080-472-90980 (Masked Line)...', type: 'success' });
+    // Open phone dialer directly
+    setToastMessage({ message: 'Calling hospital...', type: 'success' });
     setIsCallModalOpen(false);
     window.location.href = 'tel:08047290980';
   };
@@ -1337,12 +1337,6 @@ const BookingDetails = () => {
                           {appointment.hospitalAddress}
                         </p>
                       )}
-                      {appointment.hospitalPhone && (
-                        <p className="text-xs text-blue-600 font-semibold mt-1 flex items-center gap-1">
-                          <Phone className="w-3 h-3" />
-                          <span>080-472-90980 (Masked Line)</span>
-                        </p>
-                      )}
 
                       <div className="mt-2.5 flex items-center gap-2">
                         <button
@@ -1351,7 +1345,7 @@ const BookingDetails = () => {
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all active:scale-95 cursor-pointer"
                         >
                           <Phone className="w-3.5 h-3.5" />
-                          <span>Call Hospital (080-472-90980)</span>
+                          <span>Call Hospital</span>
                         </button>
                       </div>
                     </div>
@@ -1599,7 +1593,7 @@ const BookingDetails = () => {
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-emerald-500/25 transition-all text-sm flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer"
                   >
                     <Phone className="w-5 h-5 text-white" />
-                    <span>Call Hospital (080-472-90980)</span>
+                    <span>Call Hospital</span>
                   </button>
                 )}
 
@@ -1652,7 +1646,7 @@ const BookingDetails = () => {
         />
       )}
 
-      {/* Exotel CCM Call Hospital Modal */}
+      {/* Call Hospital Modal */}
       {isCallModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-200">
@@ -1662,10 +1656,7 @@ const BookingDetails = () => {
                 <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
                   <Phone className="w-4 h-4" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">Call Hospital</h3>
-                  <p className="text-[11px] text-slate-500">Secure MediQuee Telephony</p>
-                </div>
+                <h3 className="text-sm font-bold text-slate-900">Call Hospital</h3>
               </div>
               <button
                 type="button"
@@ -1679,22 +1670,9 @@ const BookingDetails = () => {
             {/* Modal Body depending on callState */}
             {callState === 'idle' && (
               <div className="space-y-4">
-                <div className="p-3.5 bg-blue-50/70 rounded-2xl border border-blue-100 text-xs text-blue-900 space-y-2">
-                  <p className="font-semibold text-blue-950 flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-                    <span>How it works:</span>
-                  </p>
-                  <p className="text-[11px] leading-relaxed text-blue-800">
-                    Call <strong className="font-bold text-blue-950">080-472-90980</strong> directly from your phone. MediQuee securely bridges you to the hospital desk with complete two-way privacy.
-                  </p>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-2xl text-[11px] text-slate-600 space-y-1">
+                <div className="p-3 bg-slate-50 rounded-2xl text-xs text-slate-600">
                   <p className="text-slate-400 uppercase text-[9px] font-bold tracking-wider">Hospital</p>
-                  <p className="font-bold text-slate-800">{appointment?.hospitalName || nursingBooking?.hospitalName || 'Care Facility'}</p>
-                  <p className="text-[10px] text-emerald-700 flex items-center gap-1 font-medium pt-1">
-                    <span>🔒 Two-way privacy masking enabled</span>
-                  </p>
+                  <p className="font-bold text-slate-800 mt-0.5">{appointment?.hospitalName || nursingBooking?.hospitalName || 'Care Facility'}</p>
                 </div>
 
                 <div className="flex items-center gap-2 pt-1">
@@ -1711,7 +1689,7 @@ const BookingDetails = () => {
                     className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-500/25 transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Phone className="w-4 h-4" />
-                    <span>Dial 080-472-90980</span>
+                    <span>Call</span>
                   </button>
                 </div>
               </div>
@@ -1720,10 +1698,7 @@ const BookingDetails = () => {
             {callState === 'initiating' && (
               <div className="py-6 text-center space-y-3">
                 <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto" />
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Initiating call...</p>
-                  <p className="text-xs text-slate-500 mt-1">Connecting with Exotel telephony server...</p>
-                </div>
+                <p className="text-sm font-bold text-slate-900">Connecting call...</p>
               </div>
             )}
 
@@ -1733,11 +1708,8 @@ const BookingDetails = () => {
                   <Phone className="w-7 h-7" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-slate-900">Calling your phone...</p>
-                  <p className="text-xs text-slate-600 mt-1">
-                    Your phone will ring shortly from <span className="font-bold text-blue-600">080-472-90980</span>.
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Please pick up the incoming call to continue.</p>
+                  <p className="text-sm font-bold text-slate-900">Ringing your phone...</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Please answer the incoming call to continue.</p>
                 </div>
               </div>
             )}
@@ -1747,12 +1719,7 @@ const BookingDetails = () => {
                 <div className="w-14 h-14 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto animate-pulse">
                   <PhoneForwarded className="w-7 h-7" />
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Connecting to hospital desk...</p>
-                  <p className="text-xs text-slate-600 mt-1">
-                    You have answered. Dialing the hospital now...
-                  </p>
-                </div>
+                <p className="text-sm font-bold text-slate-900">Connecting to hospital...</p>
               </div>
             )}
 
@@ -1761,12 +1728,7 @@ const BookingDetails = () => {
                 <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
                   <PhoneCall className="w-7 h-7 animate-bounce" />
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-emerald-800">Call Connected</p>
-                  <p className="text-xs text-slate-600 mt-1">
-                    You are speaking with the hospital desk via our secure line.
-                  </p>
-                </div>
+                <p className="text-sm font-bold text-emerald-800">Call Connected</p>
                 <button
                   type="button"
                   onClick={handleCloseCallModal}

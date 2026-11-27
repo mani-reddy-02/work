@@ -21,10 +21,11 @@ const ThemeContext =
 (globalThis as unknown as Record<string, unknown>).__MEDIQUEE_THEME_CONTEXT__ = ThemeContext;
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [theme, setThemeState] = useState<Theme>(() => {
+    const isExplicit = localStorage.getItem("theme_explicit") === "1";
     const saved = localStorage.getItem("theme");
-    if (saved === "dark" || saved === "light") return saved;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    if (isExplicit && (saved === "dark" || saved === "light")) return saved;
+    return "light";
   });
 
   useEffect(() => {
@@ -34,8 +35,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  const setTheme = (newTheme: Theme) => {
+    localStorage.setItem("theme_explicit", "1");
+    setThemeState(newTheme);
+  };
+
   const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+    setThemeState((prev) => {
+      const next = prev === "light" ? "dark" : "light";
+      localStorage.setItem("theme_explicit", "1");
+      return next;
+    });
   };
 
   return (

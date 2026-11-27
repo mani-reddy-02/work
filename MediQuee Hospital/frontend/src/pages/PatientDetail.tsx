@@ -2,8 +2,8 @@ import {
   ArrowLeft, Phone, Calendar, Activity, Clock, FileCheck, 
   AlertCircle, HeartPulse, Thermometer, Droplets, Stethoscope, 
   ShieldCheck, Pill, FlaskConical, ChevronRight, RefreshCw, 
-  Video, CheckCircle2, MessageSquare, Plus, Edit3, X, 
-  FileText, Sparkles, User, BadgeCheck, Stethoscope as ConsultationIcon
+  Video, CheckCircle2, Plus, Edit3, X,
+  Sparkles, User, Stethoscope as ConsultationIcon
 } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
@@ -386,34 +386,34 @@ export function PatientDetail() {
       case 'WAITING':
       case 'PENDING':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
             WAITING
           </span>
         );
       case 'IN_CONSULTATION':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
             IN CONSULTATION
           </span>
         );
       case 'COMPLETED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800">
+            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
             COMPLETED
           </span>
         );
       case 'CANCELLED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800">
             CANCELLED
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-100 text-foreground border border-border">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-100 text-foreground border border-border dark:bg-slate-800">
             {status}
           </span>
         );
@@ -433,7 +433,6 @@ export function PatientDetail() {
   }
 
   const isVideoConsult = (patient.opType || '').toLowerCase().includes('video');
-  const cleanPhone = patient.phone.replace(/^(\+91|91)/, '').replace(/\D/g, '');
 
   // Consolidate all prescriptions across history
   const allPrescriptions = [
@@ -469,7 +468,7 @@ export function PatientDetail() {
   const totalReportsCount = allPrescriptions.length + allLabOrders.length;
 
   return (
-    <div className="flex flex-col bg-[#F8FAFC] min-h-[calc(100vh-80px)] pb-28">
+    <div className="flex flex-col bg-background min-h-[calc(100vh-80px)] pb-28">
       
       {/* Executive Compact Clinical Header Card */}
       <div className="bg-surface px-4 pt-3.5 pb-4 border-b border-border shadow-xs sticky top-0 z-20">
@@ -479,10 +478,10 @@ export function PatientDetail() {
           <div className="flex items-center justify-between">
             <button 
               onClick={() => navigate(-1)} 
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-foreground hover:bg-gray-100 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-foreground hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               title="Go back"
             >
-              <ArrowLeft className="w-4 h-4 text-primary" />
+              <ArrowLeft className="w-4 h-4 text-primary dark:text-blue-400" />
               <span>Back</span>
             </button>
 
@@ -490,13 +489,13 @@ export function PatientDetail() {
               <button
                 onClick={() => loadPatientData(false)}
                 disabled={isRefreshing}
-                className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-gray-100 transition-all cursor-pointer"
+                className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-gray-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
                 title="Refresh patient chart"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-primary dark:text-blue-400' : ''}`} />
               </button>
 
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-primary bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-primary dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200/80 dark:border-blue-800 px-2.5 py-0.5 rounded-md uppercase tracking-wider">
                 ID: #{patient.id}
               </span>
             </div>
@@ -507,7 +506,7 @@ export function PatientDetail() {
             {/* Avatar with gradient ring */}
             <div className="relative shrink-0">
               <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 p-[2px] shadow-sm flex items-center justify-center">
-                <div className="w-full h-full rounded-full bg-surface flex items-center justify-center text-primary font-bold text-xl">
+                <div className="w-full h-full rounded-full bg-surface flex items-center justify-center text-primary dark:text-blue-400 font-bold text-xl">
                   {patient.name.charAt(0).toUpperCase()}
                 </div>
               </div>
@@ -523,13 +522,13 @@ export function PatientDetail() {
                 {patient.name}
               </h1>
 
-              {/* Clean Demographics Row — never shows '--' or 'Unknown' */}
+              {/* Clean Demographics Row */}
               {demographicsPills.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-muted mt-0.5">
                   {demographicsPills.map((val, idx) => (
                     <span key={idx} className="flex items-center gap-1.5">
                       <span>{val}</span>
-                      {idx < demographicsPills.length - 1 && <span className="text-muted/40">•</span>}
+                      {idx < demographicsPills.length - 1 && <span className="text-muted/60">•</span>}
                     </span>
                   ))}
                 </div>
@@ -539,43 +538,30 @@ export function PatientDetail() {
               <div className="flex flex-wrap items-center gap-1.5 mt-2">
                 {getStatusBadge(patient.status)}
 
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-100 text-foreground">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-100 dark:bg-slate-800 text-foreground border border-border/60">
                   {patient.department}
                 </span>
 
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                  {isVideoConsult ? <Video className="w-3 h-3 text-indigo-600" /> : <Stethoscope className="w-3 h-3 text-indigo-600" />}
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800">
+                  {isVideoConsult ? <Video className="w-3 h-3 text-indigo-600 dark:text-indigo-400" /> : <Stethoscope className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />}
                   {patient.opType}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Quick Actions Row: Call, WhatsApp, and Status Transition */}
+          {/* Quick Actions Row: Call and Status Transition */}
           <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/60">
             {patient.phone ? (
               <button
                 type="button"
                 onClick={() => setIsCallModalOpen(true)}
-                className="flex-1 min-w-[130px] flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-primary border border-blue-200/80 rounded-xl text-xs font-bold transition-all active:scale-95"
-                title="Call Patient via MediQuee Masked Line"
+                className="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                title="Call Patient"
               >
                 <Phone className="w-3.5 h-3.5" />
-                <span>Call Patient (Masked)</span>
+                <span>Call Patient</span>
               </button>
-            ) : null}
-
-            {cleanPhone ? (
-              <a 
-                href={`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hello ${patient.name}, regarding your consultation at ${patient.hospitalName || 'MediQuee Hospital'}...`)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 rounded-xl text-xs font-bold transition-all active:scale-95"
-                title="Open WhatsApp chat"
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-                <span>WhatsApp</span>
-              </a>
             ) : null}
 
             {/* Quick Status Advance Control */}
@@ -606,13 +592,13 @@ export function PatientDetail() {
       </div>
 
       {/* Tabs Bar */}
-      <div className="px-4 py-2.5 sticky top-[138px] sm:top-[142px] bg-[#F8FAFC]/95 backdrop-blur-sm z-10 border-b border-border/50">
-        <div className="flex bg-gray-100/80 p-1 rounded-xl max-w-2xl mx-auto border border-border/60">
+      <div className="px-4 py-2.5 sticky top-[138px] sm:top-[142px] bg-background/95 backdrop-blur-sm z-10 border-b border-border/50">
+        <div className="flex bg-gray-100/80 dark:bg-slate-800/80 p-1 rounded-xl max-w-2xl mx-auto border border-border/60">
           <button 
             onClick={() => setActiveTab('overview')}
             className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
               activeTab === 'overview' 
-                ? 'bg-surface text-primary shadow-xs' 
+                ? 'bg-surface text-primary dark:text-blue-400 shadow-xs' 
                 : 'text-muted hover:text-foreground'
             }`}
           >
@@ -622,7 +608,7 @@ export function PatientDetail() {
             onClick={() => setActiveTab('history')}
             className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
               activeTab === 'history' 
-                ? 'bg-surface text-primary shadow-xs' 
+                ? 'bg-surface text-primary dark:text-blue-400 shadow-xs' 
                 : 'text-muted hover:text-foreground'
             }`}
           >
@@ -632,7 +618,7 @@ export function PatientDetail() {
             onClick={() => setActiveTab('reports')}
             className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
               activeTab === 'reports' 
-                ? 'bg-surface text-primary shadow-xs' 
+                ? 'bg-surface text-primary dark:text-blue-400 shadow-xs' 
                 : 'text-muted hover:text-foreground'
             }`}
           >
@@ -652,11 +638,11 @@ export function PatientDetail() {
             <div className="bg-surface p-4 sm:p-5 rounded-2xl shadow-xs border border-border flex flex-col gap-3.5">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
-                  <ConsultationIcon className="w-4 h-4 text-primary" />
+                  <ConsultationIcon className="w-4 h-4 text-primary dark:text-blue-400" />
                   <span className="text-xs font-bold text-foreground uppercase tracking-wider">Current Consultation</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-primary bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200/60">
+                  <span className="text-xs font-bold text-primary dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2.5 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-800">
                     {patient.time}
                   </span>
                   <span className="text-xs font-medium text-muted">
@@ -668,11 +654,11 @@ export function PatientDetail() {
               {/* Chief Complaint / Condition */}
               <div className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-semibold text-muted uppercase">Chief Complaint / Condition</span>
-                <div className="p-2.5 bg-gray-50/80 rounded-xl border border-border/60 flex items-center gap-2">
+                <div className="p-2.5 bg-background/80 dark:bg-slate-800/70 rounded-xl border border-border/60 flex items-center gap-2">
                   <ConditionLabel name={patient.condition} textClassName="text-[15px] sm:text-[16px] font-bold text-foreground" />
                 </div>
                 {patient.reason && patient.reason !== patient.condition && (
-                  <p className="text-xs text-muted font-medium bg-gray-50/50 p-2.5 rounded-xl border border-border/50 italic">
+                  <p className="text-xs text-muted font-medium bg-background/60 dark:bg-slate-800/50 p-2.5 rounded-xl border border-border/50 italic">
                     "{patient.reason}"
                   </p>
                 )}
@@ -680,7 +666,7 @@ export function PatientDetail() {
 
               {/* Doctor, Department & Fee Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 border-t border-border/60 text-xs">
-                <div className="flex flex-col bg-gray-50/60 p-2.5 rounded-xl border border-border/40">
+                <div className="flex flex-col bg-background/80 dark:bg-slate-800/70 p-2.5 rounded-xl border border-border/50">
                   <span className="text-[10px] font-semibold text-muted uppercase">Attending Doctor</span>
                   <span className="font-bold text-foreground mt-0.5">{patient.doctor}</span>
                   {patient.doctorSpecialization && (
@@ -688,19 +674,19 @@ export function PatientDetail() {
                   )}
                 </div>
 
-                <div className="flex flex-col bg-gray-50/60 p-2.5 rounded-xl border border-border/40">
+                <div className="flex flex-col bg-background/80 dark:bg-slate-800/70 p-2.5 rounded-xl border border-border/50">
                   <span className="text-[10px] font-semibold text-muted uppercase">Consultation Type</span>
                   <span className="font-bold text-foreground mt-0.5 flex items-center gap-1">
-                    {isVideoConsult ? <Video className="w-3.5 h-3.5 text-primary" /> : <Stethoscope className="w-3.5 h-3.5 text-primary" />}
+                    {isVideoConsult ? <Video className="w-3.5 h-3.5 text-primary dark:text-blue-400" /> : <Stethoscope className="w-3.5 h-3.5 text-primary dark:text-blue-400" />}
                     {patient.opType}
                   </span>
                   <span className="text-[11px] text-muted">{patient.department}</span>
                 </div>
 
-                <div className="col-span-2 sm:col-span-1 flex flex-col bg-gray-50/60 p-2.5 rounded-xl border border-border/40">
+                <div className="col-span-2 sm:col-span-1 flex flex-col bg-background/80 dark:bg-slate-800/70 p-2.5 rounded-xl border border-border/50">
                   <span className="text-[10px] font-semibold text-muted uppercase">Consultation Fee</span>
                   <span className="font-bold text-foreground mt-0.5">₹{patient.fee}</span>
-                  <span className="text-[11px] text-emerald-600 font-semibold">Included in Dashboard</span>
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">Included in Dashboard</span>
                 </div>
               </div>
             </div>
@@ -709,7 +695,7 @@ export function PatientDetail() {
             <div className="bg-surface p-4 sm:p-5 rounded-2xl shadow-xs border border-border flex flex-col gap-3">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-primary" />
+                  <Activity className="w-4 h-4 text-primary dark:text-blue-400" />
                   <h3 className="font-bold text-xs uppercase tracking-wider text-foreground">
                     Vitals Baseline
                   </h3>
@@ -730,10 +716,10 @@ export function PatientDetail() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                     {/* Blood Pressure */}
                     {latestVitals.systolicBp ? (
-                      <div className="p-3 bg-rose-50/50 dark:bg-rose-950/20 rounded-xl border border-rose-100 flex items-center gap-2.5">
-                        <HeartPulse className="w-5 h-5 text-rose-500 shrink-0" />
+                      <div className="p-3 bg-rose-50/70 dark:bg-rose-950/35 rounded-xl border border-rose-200/70 dark:border-rose-800/60 flex items-center gap-2.5">
+                        <HeartPulse className="w-5 h-5 text-rose-500 dark:text-rose-400 shrink-0" />
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-rose-700/80 uppercase">Blood Pressure</span>
+                          <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 uppercase">Blood Pressure</span>
                           <span className="text-sm font-bold text-foreground">
                             {latestVitals.systolicBp}{latestVitals.diastolicBp ? `/${latestVitals.diastolicBp}` : ''} <span className="text-[10px] font-normal text-muted">mmHg</span>
                           </span>
@@ -743,10 +729,10 @@ export function PatientDetail() {
 
                     {/* Pulse Rate */}
                     {latestVitals.pulseRate ? (
-                      <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl border border-blue-100 flex items-center gap-2.5">
-                        <Droplets className="w-5 h-5 text-blue-500 shrink-0" />
+                      <div className="p-3 bg-blue-50/70 dark:bg-blue-950/35 rounded-xl border border-blue-200/70 dark:border-blue-800/60 flex items-center gap-2.5">
+                        <Droplets className="w-5 h-5 text-blue-500 dark:text-blue-400 shrink-0" />
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-blue-700/80 uppercase">Pulse Rate</span>
+                          <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase">Pulse Rate</span>
                           <span className="text-sm font-bold text-foreground">
                             {latestVitals.pulseRate} <span className="text-[10px] font-normal text-muted">bpm</span>
                           </span>
@@ -756,10 +742,10 @@ export function PatientDetail() {
 
                     {/* Body Temperature */}
                     {latestVitals.bodyTemperature ? (
-                      <div className="p-3 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-100 flex items-center gap-2.5">
-                        <Thermometer className="w-5 h-5 text-amber-500 shrink-0" />
+                      <div className="p-3 bg-amber-50/70 dark:bg-amber-950/35 rounded-xl border border-amber-200/70 dark:border-amber-800/60 flex items-center gap-2.5">
+                        <Thermometer className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" />
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-amber-700/80 uppercase">Temperature</span>
+                          <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase">Temperature</span>
                           <span className="text-sm font-bold text-foreground">
                             {latestVitals.bodyTemperature} <span className="text-[10px] font-normal text-muted">°F</span>
                           </span>
@@ -769,10 +755,10 @@ export function PatientDetail() {
 
                     {/* SpO2 */}
                     {latestVitals.spo2 ? (
-                      <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl border border-emerald-100 flex items-center gap-2.5">
-                        <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
+                      <div className="p-3 bg-emerald-50/70 dark:bg-emerald-950/35 rounded-xl border border-emerald-200/70 dark:border-emerald-800/60 flex items-center gap-2.5">
+                        <ShieldCheck className="w-5 h-5 text-emerald-500 dark:text-emerald-400 shrink-0" />
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-emerald-700/80 uppercase">SpO2 Oxygen</span>
+                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase">SpO2 Oxygen</span>
                           <span className="text-sm font-bold text-foreground">
                             {latestVitals.spo2} <span className="text-[10px] font-normal text-muted">%</span>
                           </span>
@@ -782,10 +768,10 @@ export function PatientDetail() {
 
                     {/* Weight */}
                     {latestVitals.weightKg ? (
-                      <div className="p-3 bg-purple-50/50 dark:bg-purple-950/20 rounded-xl border border-purple-100 flex items-center gap-2.5">
-                        <Activity className="w-5 h-5 text-purple-500 shrink-0" />
+                      <div className="p-3 bg-purple-50/70 dark:bg-purple-950/35 rounded-xl border border-purple-200/70 dark:border-purple-800/60 flex items-center gap-2.5">
+                        <Activity className="w-5 h-5 text-purple-500 dark:text-purple-400 shrink-0" />
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-purple-700/80 uppercase">Weight</span>
+                          <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase">Weight</span>
                           <span className="text-sm font-bold text-foreground">
                             {latestVitals.weightKg} <span className="text-[10px] font-normal text-muted">kg</span>
                           </span>
@@ -795,10 +781,10 @@ export function PatientDetail() {
 
                     {/* Height */}
                     {latestVitals.heightCm ? (
-                      <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 flex items-center gap-2.5">
-                        <User className="w-5 h-5 text-indigo-500 shrink-0" />
+                      <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/35 rounded-xl border border-indigo-200/70 dark:border-indigo-800/60 flex items-center gap-2.5">
+                        <User className="w-5 h-5 text-indigo-500 dark:text-indigo-400 shrink-0" />
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-indigo-700/80 uppercase">Height</span>
+                          <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 uppercase">Height</span>
                           <span className="text-sm font-bold text-foreground">
                             {latestVitals.heightCm} <span className="text-[10px] font-normal text-muted">cm</span>
                           </span>
@@ -808,10 +794,10 @@ export function PatientDetail() {
 
                     {/* Respiratory Rate */}
                     {latestVitals.respiratoryRate ? (
-                      <div className="p-3 bg-teal-50/50 dark:bg-teal-950/20 rounded-xl border border-teal-100 flex items-center gap-2.5">
-                        <Activity className="w-5 h-5 text-teal-500 shrink-0" />
+                      <div className="p-3 bg-teal-50/70 dark:bg-teal-950/35 rounded-xl border border-teal-200/70 dark:border-teal-800/60 flex items-center gap-2.5">
+                        <Activity className="w-5 h-5 text-teal-500 dark:text-teal-400 shrink-0" />
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-teal-700/80 uppercase">Resp. Rate</span>
+                          <span className="text-[10px] font-bold text-teal-700 dark:text-teal-300 uppercase">Resp. Rate</span>
                           <span className="text-sm font-bold text-foreground">
                             {latestVitals.respiratoryRate} <span className="text-[10px] font-normal text-muted">/min</span>
                           </span>
@@ -827,8 +813,8 @@ export function PatientDetail() {
                   )}
                 </div>
               ) : (
-                <div className="py-6 flex flex-col items-center text-center gap-2 bg-gray-50/60 rounded-xl p-4 border border-border/50">
-                  <HeartPulse className="w-8 h-8 text-muted/40" />
+                <div className="py-6 flex flex-col items-center text-center gap-2 bg-background/80 dark:bg-slate-800/50 rounded-xl p-4 border border-border/60">
+                  <HeartPulse className="w-8 h-8 text-muted/60" />
                   <p className="text-xs font-bold text-foreground">No Baseline Vitals Recorded</p>
                   <p className="text-[11px] text-muted max-w-xs">
                     Vitals recorded by doctor or nurse appear here in real-time.
@@ -867,11 +853,11 @@ export function PatientDetail() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-primary dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
                       {visit.opType?.toLowerCase().includes('video') ? (
-                        <Video className="w-5 h-5 text-indigo-600" />
+                        <Video className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                       ) : (
-                        <Stethoscope className="w-5 h-5 text-blue-600" />
+                        <Stethoscope className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                       )}
                     </div>
                     <div>
@@ -901,12 +887,12 @@ export function PatientDetail() {
 
                   <div className="flex items-center gap-2">
                     {visit.hasVitals && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 text-[10px] font-semibold">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 text-[10px] font-semibold border border-rose-200/50 dark:border-rose-800/50">
                         <HeartPulse className="w-2.5 h-2.5" /> Vitals
                       </span>
                     )}
                     {visit.hasPrescription && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-semibold">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px] font-semibold border border-emerald-200/50 dark:border-emerald-800/50">
                         <Pill className="w-2.5 h-2.5" /> Rx
                       </span>
                     )}
@@ -918,8 +904,8 @@ export function PatientDetail() {
                 {selectedVisit?.id === visit.id && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-2 border-t border-dashed border-border/70 flex flex-col gap-2 text-xs">
                     {visit.vitals && (
-                      <div className="bg-gray-50 p-2.5 rounded-xl border border-border/50 flex flex-wrap gap-3">
-                        <span className="font-bold text-foreground">Recorded Vitals:</span>
+                      <div className="bg-background/80 dark:bg-slate-800/70 p-2.5 rounded-xl border border-border/60 flex flex-wrap gap-3 text-foreground">
+                        <span className="font-bold">Recorded Vitals:</span>
                         {visit.vitals.systolicBp && <span>BP: {visit.vitals.systolicBp}/{visit.vitals.diastolicBp} mmHg</span>}
                         {visit.vitals.pulseRate && <span>Pulse: {visit.vitals.pulseRate} bpm</span>}
                         {visit.vitals.bodyTemperature && <span>Temp: {visit.vitals.bodyTemperature} °F</span>}
@@ -927,10 +913,10 @@ export function PatientDetail() {
                       </div>
                     )}
                     {visit.prescription && (
-                      <div className="bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100 flex flex-col gap-1">
-                        <span className="font-bold text-emerald-900">Diagnosis: {visit.prescription.diagnosis}</span>
+                      <div className="bg-emerald-50/70 dark:bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-200/70 dark:border-emerald-800/60 flex flex-col gap-1">
+                        <span className="font-bold text-emerald-900 dark:text-emerald-200">Diagnosis: {visit.prescription.diagnosis}</span>
                         {visit.prescription.clinicalNotes && (
-                          <span className="text-emerald-800">Notes: {visit.prescription.clinicalNotes}</span>
+                          <span className="text-emerald-800 dark:text-emerald-300">Notes: {visit.prescription.clinicalNotes}</span>
                         )}
                       </div>
                     )}
@@ -959,7 +945,7 @@ export function PatientDetail() {
                       <h3 className="text-xs font-bold text-muted uppercase tracking-wider">
                         Issued Prescriptions ({allPrescriptions.length})
                       </h3>
-                      <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md">
+                      <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800">
                         Digitally Signed
                       </span>
                     </div>
@@ -968,7 +954,7 @@ export function PatientDetail() {
                       <div key={rx.id || rx.bookingId} className="bg-surface p-4 rounded-2xl shadow-xs border border-border flex flex-col gap-3">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
                               <Pill className="w-5 h-5" />
                             </div>
                             <div>
@@ -976,13 +962,13 @@ export function PatientDetail() {
                               <p className="text-xs text-muted">{rx.doctor} • {rx.date}</p>
                             </div>
                           </div>
-                          <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 rounded-md">
+                          <span className="text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800 px-2 py-0.5 rounded-md">
                             {rx.items?.length || 0} Medicines
                           </span>
                         </div>
 
                         {rx.clinicalNotes && (
-                          <p className="text-xs text-gray-700 bg-gray-50/80 p-2.5 rounded-xl border border-border/60">
+                          <p className="text-xs text-foreground/90 bg-background/80 dark:bg-slate-800/70 p-2.5 rounded-xl border border-border/60">
                             <b>Clinical Notes:</b> {rx.clinicalNotes}
                           </p>
                         )}
@@ -990,11 +976,11 @@ export function PatientDetail() {
                         {rx.items && rx.items.length > 0 && (
                           <div className="flex flex-col gap-1.5 pt-1 border-t border-border/50">
                             {rx.items.map((item: any, idx: number) => (
-                              <div key={item.id || idx} className="flex items-center justify-between text-xs py-1 border-b border-gray-50 last:border-0">
+                              <div key={item.id || idx} className="flex items-center justify-between text-xs py-1 border-b border-border/40 last:border-0">
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-bold text-foreground">{item.medicineName}</span>
                                   {item.strength && <span className="text-muted text-[11px]">({item.strength})</span>}
-                                  <span className="text-[10px] text-muted bg-gray-100 px-1.5 py-0.5 rounded">{item.dosageForm}</span>
+                                  <span className="text-[10px] text-muted bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{item.dosageForm}</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-muted font-medium text-[11px]">
                                   <span>{item.frequency}</span>
@@ -1020,7 +1006,7 @@ export function PatientDetail() {
                     {allLabOrders.map(lo => (
                       <div key={lo.id} className="bg-surface p-4 rounded-2xl shadow-xs border border-border flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center">
                             <FlaskConical className="w-5 h-5" />
                           </div>
                           <div>
@@ -1028,7 +1014,7 @@ export function PatientDetail() {
                             <p className="text-xs text-muted">{lo.category || 'Diagnostic'} • Ordered by Dr. {lo.doctorName} on {lo.bookingDate}</p>
                           </div>
                         </div>
-                        <span className="text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200/60 px-2 py-0.5 rounded-md shrink-0">
+                        <span className="text-[10px] font-bold bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800 px-2 py-0.5 rounded-md shrink-0">
                           Prescribed
                         </span>
                       </div>

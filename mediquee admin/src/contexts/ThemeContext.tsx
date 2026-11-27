@@ -12,10 +12,11 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
-    // Check local storage or system preference on initial load
+    // Always default to light mode unless the user explicitly chose dark mode in Settings
+    const isExplicit = localStorage.getItem('theme_explicit') === '1';
     const savedTheme = localStorage.getItem('theme') as Theme;
-    if (savedTheme === 'light' || savedTheme === 'dark') return savedTheme;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (isExplicit && (savedTheme === 'light' || savedTheme === 'dark')) return savedTheme;
+    return 'light';
   });
 
   const applyTheme = (t: Theme) => {
@@ -32,10 +33,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [theme]);
 
   const toggleTheme = () => {
-    setThemeState((prev) => (prev === 'light' ? 'dark' : 'light'));
+    setThemeState((prev) => {
+      const next = prev === 'light' ? 'dark' : 'light';
+      localStorage.setItem('theme_explicit', '1');
+      return next;
+    });
   };
 
   const setTheme = (newTheme: Theme) => {
+    localStorage.setItem('theme_explicit', '1');
     setThemeState(newTheme);
   };
 
