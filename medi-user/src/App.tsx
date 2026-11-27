@@ -19,6 +19,9 @@ const CheckMyBMI = lazy(() => import('./pages/CheckMyBMI'));
 const ServiceDetails = lazy(() => import('./pages/ServiceDetails'));
 const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
+const ContactUs = lazy(() => import('./pages/ContactUs'));
+const Pricing = lazy(() => import('./pages/Pricing'));
 const MediQueeAI = lazy(() => import('./pages/MediQueeAI'));
 const Medicines = lazy(() => import('./pages/Medicines'));
 const HelpSupport = lazy(() => import('./pages/HelpSupport'));
@@ -101,12 +104,6 @@ function App() {
             <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
             <Route path="/register" element={<AuthRoute><Register /></AuthRoute>} />
             <Route path="/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
-            
-            {/* Legal / Policy Public Routes */}
-            <Route path="/terms" element={<TermsAndConditions />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
-            <Route path="/deletion" element={<PrivacyPolicy />} />
-            <Route path="/data-deletion" element={<PrivacyPolicy />} />
 
             {/* Main Application Shell with Public Discovery */}
             <Route path="/" element={<Layout />}>
@@ -128,6 +125,15 @@ function App() {
               <Route path="ambulance" element={<Navigate to="/" replace />} />
               <Route path="medicines" element={<Medicines />} />
               <Route path="help" element={<HelpSupport />} />
+              {/* Public Payment Gateway Compliance & Legal Routes */}
+              <Route path="pricing" element={<Pricing />} />
+              <Route path="contact" element={<ContactUs />} />
+              <Route path="terms" element={<TermsAndConditions />} />
+              <Route path="privacy" element={<PrivacyPolicy />} />
+              <Route path="deletion" element={<PrivacyPolicy />} />
+              <Route path="data-deletion" element={<PrivacyPolicy />} />
+              <Route path="refund-policy" element={<RefundPolicy />} />
+              <Route path="cancellation-refund" element={<RefundPolicy />} />
 
               {/* --- Protected Patient Private Routes (Strictly Gated Behind Auth & Disallowed in robots.txt) --- */}
               <Route path="bookings" element={<ProtectedRoute><MyBookings /></ProtectedRoute>} />

@@ -13,6 +13,9 @@ Allow: /specialties
 Allow: /departments
 Allow: /terms
 Allow: /privacy
+Allow: /refund-policy
+Allow: /contact
+Allow: /pricing
 Allow: /help
 Disallow: /bookings
 Disallow: /booking/

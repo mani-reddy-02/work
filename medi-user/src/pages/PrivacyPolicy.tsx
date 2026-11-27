@@ -2,9 +2,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { 
   ArrowLeft, Shield, Lock, Eye, Database, Smartphone, 
-  Trash2, FileText, CheckCircle2, AlertTriangle, UserCheck, 
-  HardDrive, Clock, Mail, Phone, ExternalLink, HelpCircle 
+  Trash2, CheckCircle2, AlertTriangle, UserCheck, 
+  HardDrive, Mail
 } from 'lucide-react';
+import SEOHead from '../components/SEOHead';
 
 export default function PrivacyPolicy() {
   const navigate = useNavigate();
@@ -20,28 +21,24 @@ export default function PrivacyPolicy() {
   }, [location]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 overflow-x-hidden selection:bg-blue-100 selection:text-blue-900">
-      {/* Top Sticky Header */}
-      <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors cursor-pointer group"
-          >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            <span>Back</span>
-          </button>
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="MediQuee" className="h-6 w-auto object-contain" />
-            <span className="hidden sm:inline-block text-xs font-bold text-slate-400 border-l border-slate-200 pl-3">
-              Trust & Security
-            </span>
-          </div>
-        </div>
-      </header>
+    <div className="bg-slate-50 text-slate-800 overflow-x-hidden selection:bg-blue-100 selection:text-blue-900">
+      <SEOHead
+        title="Privacy Policy"
+        description="MediQuee Privacy Policy and DPDPA 2023 Data Charter for patients on https://mediquee.in."
+        canonicalUrl="https://mediquee.in/privacy"
+      />
 
       {/* Main Content Area */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors mb-5 cursor-pointer group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          <span>Back</span>
+        </button>
+
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6 sm:p-10 md:p-12">
           
           {/* Header Banner */}
@@ -128,7 +125,7 @@ export default function PrivacyPolicy() {
                 <span>1. Introduction & Regulatory Commitment</span>
               </h2>
               <p>
-                MediQuee Healthcare Solutions Pvt. Ltd. ("MediQuee", "we", "us", or "our") operates the MediQuee platform, mobile applications, and digital healthcare coordination services. We recognize the profoundly sensitive nature of personal health data and are steadfast in upholding the highest global security and confidentiality standards.
+                MediQuee Healthcare Solutions Pvt. Ltd. ("MediQuee", "we", "us", or "our") operates the MediQuee platform (<a href="https://mediquee.in" className="text-blue-600 hover:underline font-medium">https://mediquee.in</a>), mobile applications, and digital healthcare coordination services. We recognize the profoundly sensitive nature of personal health data and are steadfast in upholding the highest global security and confidentiality standards.
               </p>
               <p className="mt-3">
                 This Privacy Policy is formulated in strict compliance with:
@@ -211,7 +208,7 @@ export default function PrivacyPolicy() {
                     F. Financial & Billing Metadata
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                    Transaction reference IDs, invoice amounts, billing timestamps, and payment statuses. <strong>Important:</strong> MediQuee does <em>NOT</em> store or process credit/debit card numbers, CVVs, or UPI PINs. All payment transactions are executed directly through RBI-regulated, PCI-DSS Level 1 compliant payment gateways.
+                    Transaction reference IDs, invoice amounts, billing timestamps, and payment statuses in Indian Rupees (INR). <strong>Important:</strong> MediQuee does <em>NOT</em> store or process credit/debit card numbers, CVVs, or UPI PINs. All online payment transactions are executed directly through authorized, RBI-regulated, PCI-DSS Level 1 compliant Indian payment gateways (including Razorpay). For payment or data queries, contact <a href="mailto:support@mediquee.in" className="text-blue-600 hover:underline font-semibold">support@mediquee.in</a>.
                   </p>
                 </div>
 
