@@ -73,14 +73,14 @@ describe('Payment Gateway Compliance Pages & Footer', () => {
     expect(screen.getByText(/Inquiry Prepared for MediQuee Support/i)).toBeInTheDocument();
   });
 
-  test('Pricing renders transparent INR service pricing ranges', () => {
+  test('Pricing renders hospital-defined INR pricing model', () => {
     render(<Pricing />);
     expect(screen.getByRole('heading', { name: /Transparent Healthcare Service Pricing/i })).toBeInTheDocument();
-    expect(screen.getByText(/Starting from ₹99/i)).toBeInTheDocument();
-    expect(screen.getByText(/₹199 – ₹499/i)).toBeInTheDocument();
-    expect(screen.getByText(/Starting from ₹299/i)).toBeInTheDocument();
-    expect(screen.getByText(/Starting from ₹799/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Indian Rupees \(INR\)/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Set by Hospital & Doctor/i)).toBeInTheDocument();
+    expect(screen.getByText(/Set by Consulting Doctor/i)).toBeInTheDocument();
+    expect(screen.getByText(/Set by Diagnostic Laboratory/i)).toBeInTheDocument();
+    expect(screen.getByText(/Set by Care Provider \/ Hospital/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Indian Rupees \(INR/i).length).toBeGreaterThan(0);
   });
 
   test('TermsAndConditions and PrivacyPolicy reference mediquee.in, support@mediquee.in, and Indian payment gateways', () => {

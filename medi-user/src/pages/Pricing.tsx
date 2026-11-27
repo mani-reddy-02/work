@@ -12,65 +12,65 @@ import {
 } from 'lucide-react';
 import SEOHead from '../components/SEOHead';
 
-const PRICING_TIERS = [
+const PRICING_MODELS = [
   {
     name: 'Hospital Outpatient (OP) Slot Booking',
-    priceRange: 'Starting from ₹99',
-    unit: 'per consultation slot (varies by hospital & specialist)',
+    priceDisplay: 'Set by Hospital & Doctor',
+    unit: 'Shown in INR (₹) on each hospital & specialist listing',
     icon: Stethoscope,
-    badge: 'In-Hospital Visit',
+    badge: 'Platform Fee: ₹0 (FREE)',
     badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
     ctaLabel: 'Browse Hospitals',
     ctaTo: '/specialties?type=hospital-op',
     features: [
-      'Confirmed priority OP queue token',
-      'Instant WhatsApp & SMS slot confirmation',
-      'Exact doctor/hospital fee displayed prior to checkout',
+      'Consultation fees are set directly by each partner hospital and specialist',
+      'Confirmed priority OP queue token with instant WhatsApp & SMS updates',
+      'Exact payable amount in INR (₹) displayed clearly before checkout',
     ],
   },
   {
     name: 'Online Video Telemedicine Consultation',
-    priceRange: '₹199 – ₹499',
-    unit: 'per video session',
+    priceDisplay: 'Set by Consulting Doctor',
+    unit: 'Varies by specialty, hospital & doctor experience',
     icon: Video,
-    badge: 'HD Video Call',
+    badge: 'Platform Fee: ₹0 (FREE)',
     badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200',
     ctaLabel: 'Consult Online',
     ctaTo: '/specialties?type=doctor',
     features: [
-      'Live encrypted 1-on-1 video consultation with verified doctors',
-      'Digital prescription available immediately after session',
-      '100% refund if doctor fails to join scheduled slot',
+      'Session fee is determined by the selected doctor or hospital',
+      'Live encrypted 1-on-1 video consultation and instant digital prescription',
+      '100% refund if the doctor fails to join the scheduled consultation slot',
     ],
   },
   {
     name: 'Diagnostic Lab Tests & Home Sample Collection',
-    priceRange: 'Starting from ₹299',
-    unit: 'per test or preventive health package',
+    priceDisplay: 'Set by Diagnostic Laboratory',
+    unit: 'Test rate + applicable lab home collection fee (if any)',
     icon: FlaskConical,
-    badge: 'Lab & Home Collection',
+    badge: 'Transparent INR Billing',
     badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     ctaLabel: 'Book Lab Tests',
     ctaTo: '/services/lab-tests',
     features: [
-      'Certified NABL/accredited diagnostic laboratories',
-      'Doorstep phlebotomist sample pickup option',
-      'Digital PDF lab reports stored in Health Records',
+      'Test & package rates are set directly by partner diagnostic laboratories',
+      'Any doorstep sample collection fee is itemized separately before payment',
+      'Digital PDF reports delivered straight to your Health Records',
     ],
   },
   {
     name: 'Home Nursing Care Packages',
-    priceRange: 'Starting from ₹799',
-    unit: 'per visit / nursing shift',
+    priceDisplay: 'Set by Care Provider / Hospital',
+    unit: 'Based on selected nursing service, shift & care duration',
     icon: HeartHandshake,
-    badge: 'At-Home Care',
+    badge: 'Upfront Quote in INR',
     badgeClass: 'bg-rose-50 text-rose-700 border-rose-200',
     ctaLabel: 'Book Home Nursing',
     ctaTo: '/services/home-nursing',
     features: [
-      'Trained & background-verified nursing professionals',
-      'Post-operative care, vitals monitoring, injections & wound dressing',
-      'Transparent upfront package breakdown before payment',
+      'Package rates are set by partner hospitals and verified nursing agencies',
+      'Calculated transparently based on care type and visit/shift duration',
+      'Full itemized total displayed in INR (₹) prior to booking confirmation',
     ],
   },
 ];
@@ -82,7 +82,7 @@ export default function Pricing() {
     <div className="bg-slate-50 text-slate-800">
       <SEOHead
         title="Service Pricing (INR)"
-        description="Transparent INR pricing for MediQuee Hospital OP bookings, Online Video Consultations, Diagnostic Lab Tests, and Home Nursing packages."
+        description="Transparent hospital-determined INR pricing for MediQuee Outpatient bookings, Video Consultations, Diagnostic Lab Tests, and Home Nursing."
         canonicalUrl="https://mediquee.in/pricing"
       />
 
@@ -96,7 +96,6 @@ export default function Pricing() {
           <span>Back</span>
         </button>
 
-        {/* Hero / Header Card */}
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6 sm:p-10 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
             <div className="flex items-start gap-4">
@@ -108,7 +107,7 @@ export default function Pricing() {
                   Transparent Healthcare Service Pricing
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-                  All prices are listed and billed directly by MediQuee in <strong>Indian Rupees (INR / ₹)</strong>.
+                  Fees are set directly by each partner hospital, doctor, or diagnostic lab and billed in <strong>Indian Rupees (INR / ₹)</strong> with <strong>₹0 platform booking fee</strong>.
                 </p>
               </div>
             </div>
@@ -120,9 +119,9 @@ export default function Pricing() {
             </Link>
           </div>
 
-          {/* Pricing Cards Grid */}
+          {/* Hospital-Determined Pricing Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-8">
-            {PRICING_TIERS.map((tier) => {
+            {PRICING_MODELS.map((tier) => {
               const Icon = tier.icon;
               return (
                 <div
@@ -142,9 +141,9 @@ export default function Pricing() {
                     <h2 className="text-base sm:text-lg font-bold text-slate-900">
                       {tier.name}
                     </h2>
-                    <div className="mt-2 flex items-baseline gap-2 flex-wrap">
-                      <span className="text-2xl font-extrabold text-blue-600">
-                        {tier.priceRange}
+                    <div className="mt-2">
+                      <span className="text-xl font-extrabold text-blue-600 block">
+                        {tier.priceDisplay}
                       </span>
                       <span className="text-xs text-slate-500 font-medium">
                         {tier.unit}
@@ -178,13 +177,13 @@ export default function Pricing() {
             <ShieldCheck className="w-6 h-6 text-blue-600 shrink-0 mt-0.5" />
             <div className="text-xs sm:text-sm text-slate-700 space-y-1.5 leading-relaxed">
               <h3 className="font-bold text-slate-900">
-                Direct INR Billing &amp; Checkout Transparency
+                Hospital-Defined Pricing &amp; Direct INR Checkout
               </h3>
               <p>
-                All payments on <a href="https://mediquee.in" className="text-blue-600 font-semibold hover:underline">https://mediquee.in</a> are collected directly by <strong>MediQuee</strong> in <strong>Indian Rupees (INR)</strong> through authorized, RBI-regulated PCI-DSS Level 1 payment gateways (Razorpay — supporting UPI, Credit/Debit Cards, NetBanking, and Wallets).
+                MediQuee does not fix or mark up hospital or clinician fees. Every consultation, diagnostic test, and home nursing fee is configured directly by the respective hospital, doctor, or laboratory and shown on their listing page and booking summary prior to payment.
               </p>
               <p>
-                Exact consultation, lab test, or nursing fees — along with any applicable taxes (GST) and platform charges — are itemized and displayed clearly prior to checkout so there are no hidden fees. For billing questions, contact <a href="mailto:support@mediquee.in" className="text-blue-600 font-semibold hover:underline">support@mediquee.in</a> or call <a href="tel:+919014535199" className="text-blue-600 font-semibold hover:underline">+91-9014535199</a>.
+                All online payments on <a href="https://mediquee.in" className="text-blue-600 font-semibold hover:underline">https://mediquee.in</a> are collected in <strong>Indian Rupees (INR)</strong> through authorized, RBI-regulated PCI-DSS Level 1 payment gateways (Razorpay — supporting UPI, Credit/Debit Cards, NetBanking, and Wallets), with any applicable taxes displayed before checkout. For billing questions, contact <a href="mailto:support@mediquee.in" className="text-blue-600 font-semibold hover:underline">support@mediquee.in</a> or call <a href="tel:+919014535199" className="text-blue-600 font-semibold hover:underline">+91-9014535199</a>.
               </p>
             </div>
           </div>
