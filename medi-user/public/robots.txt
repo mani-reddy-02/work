@@ -1,6 +1,7 @@
 # MediQuee Healthcare Platform — robots.txt
 # Standard Search Engine Crawlers
 User-agent: Googlebot
+User-agent: Googlebot-Image
 User-agent: Bingbot
 User-agent: Slurp
 User-agent: DuckDuckBot
@@ -52,6 +53,21 @@ User-agent: CCBot
 User-agent: Bytespider
 User-agent: Amazonbot
 Disallow: /
+
+# Default Catch-All for Other Search & Preview Crawlers
+User-agent: *
+Allow: /
+Disallow: /bookings
+Disallow: /booking/
+Disallow: /my-bookings
+Disallow: /reports
+Disallow: /health-records
+Disallow: /profile/
+Disallow: /profile
+Disallow: /family
+Disallow: /notifications
+Disallow: /video-consultation/
+Disallow: /api/
 
 # Sitemap Index
 Sitemap: https://mediquee.in/sitemap.xml
